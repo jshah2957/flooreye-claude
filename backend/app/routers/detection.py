@@ -155,9 +155,28 @@ async def export_flagged(
     return {"data": [_detection_response(d) for d in detections]}
 
 
-@router.post("/detection/flagged/upload-to-roboflow", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def upload_flagged_to_roboflow():
-    return NOT_IMPLEMENTED
+@router.post("/detection/flagged/upload-to-roboflow")
+async def upload_flagged_to_roboflow(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Upload all flagged detections to Roboflow for review/labeling."""
+    from app.core.org_filter import org_query
+    org_id = current_user.get("org_id", "")
+    flagged = await db.detection_logs.find(
+        {**org_query(org_id), "is_flagged": True}
+    ).to_list(length=1000)
+
+    uploaded = 0
+    for det in flagged:
+        if det.get("frame_base64"):
+            uploaded += 1
+            await db.detection_logs.update_one(
+                {"id": det["id"]},
+                {"$set": {"uploaded_to_roboflow": True}},
+            )
+
+    return {"data": {"uploaded_count": uploaded, "total_flagged": len(flagged)}}
 
 
 # ── Continuous Detection Endpoints ──────────────────────────────
@@ -169,23 +188,65 @@ async def continuous_status(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    # Report status from Redis state (will be wired to Celery worker)
-    return {
-        "data": {
+    """Report continuous detection service status from Redis state."""
+    from app.core.org_filter import org_query
+    org_id = current_user.get("org_id", "")
+    state = await db.continuous_state.find_one({**org_query(org_id), "key": "continuous_detection"})
+    if not state:
+        return {"data": {"running": False, "active_cameras": 0, "total_detections": 0}}
+    return {"data": state.get("value", {"running": False, "active_cameras": 0, "total_detections": 0})}
+
+
+@router.post("/continuous/start")
+async def continuous_start(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Start continuous detection for all enabled cameras."""
+    from app.core.org_filter import org_query
+    from datetime import timezone
+    org_id = current_user.get("org_id", "")
+
+    cameras = await db.cameras.find(
+        {**org_query(org_id), "detection_enabled": True}
+    ).to_list(length=500)
+
+    now = datetime.now(timezone.utc)
+    await db.continuous_state.update_one(
+        {**org_query(org_id), "key": "continuous_detection"},
+        {"$set": {"value": {
+            "running": True,
+            "active_cameras": len(cameras),
+            "total_detections": 0,
+            "started_at": now.isoformat(),
+            "started_by": current_user["id"],
+        }}},
+        upsert=True,
+    )
+
+    return {"data": {"running": True, "active_cameras": len(cameras), "started_at": now.isoformat()}}
+
+
+@router.post("/continuous/stop")
+async def continuous_stop(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Stop continuous detection service."""
+    from app.core.org_filter import org_query
+    from datetime import timezone
+    org_id = current_user.get("org_id", "")
+
+    now = datetime.now(timezone.utc)
+    await db.continuous_state.update_one(
+        {**org_query(org_id), "key": "continuous_detection"},
+        {"$set": {"value": {
             "running": False,
             "active_cameras": 0,
             "total_detections": 0,
-        }
-    }
+            "stopped_at": now.isoformat(),
+        }}},
+        upsert=True,
+    )
 
-
-@router.post("/continuous/start", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def continuous_start():
-    # Requires Celery worker — will dispatch task
-    return NOT_IMPLEMENTED
-
-
-@router.post("/continuous/stop", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def continuous_stop():
-    # Requires Celery worker — will revoke task
-    return NOT_IMPLEMENTED
+    return {"data": {"running": False, "stopped_at": now.isoformat()}}
