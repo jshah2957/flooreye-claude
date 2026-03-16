@@ -101,3 +101,29 @@
 - Installed `pytest-asyncio==0.24.0` (compatible version)
 
 **Status:** FIXED — 24/24 tests passing
+
+---
+
+## 2026-03-16 | Session 20 | Edge Agent Setup
+
+### ERROR: ONNX model opset 22 incompatible with onnxruntime 1.18
+
+**Symptom:** Inference server crashed on startup: `ONNX Runtime only guarantees support for models stamped with official released onnx opset versions. Opset 22 is under development`.
+
+**Root Cause:** torch 2.10 + onnx 1.20 exported with opset 22 by default. onnxruntime 1.18 only supports up to opset 21.
+
+**Fix:** Re-exported YOLOv8n model with `opset=17`.
+
+**Status:** FIXED
+
+---
+
+### ERROR: Edge agent numpy/OpenCV version conflict
+
+**Symptom:** Edge agent crashed: `AttributeError: _ARRAY_API not found` — `numpy.core.multiarray failed to import`.
+
+**Root Cause:** `opencv-python-headless==4.9.0.80` compiled against numpy 1.x, but pip installed numpy 2.4.3.
+
+**Fix:** Added `numpy<2` to `agent/requirements.txt` to pin compatible version.
+
+**Status:** FIXED
