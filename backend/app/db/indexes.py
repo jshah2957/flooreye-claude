@@ -56,6 +56,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("org_id", ASCENDING), ("timestamp", DESCENDING)]),
         IndexModel([("is_wet", ASCENDING)]),
         IndexModel([("is_flagged", ASCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("is_flagged", ASCENDING), ("timestamp", DESCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("is_wet", ASCENDING), ("timestamp", DESCENDING)]),
     ])
 
     # events (incidents)
@@ -65,6 +67,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("org_id", ASCENDING), ("start_time", DESCENDING)]),
         IndexModel([("status", ASCENDING)]),
         IndexModel([("severity", ASCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("camera_id", ASCENDING), ("status", ASCENDING), ("start_time", DESCENDING)]),
     ])
 
     # clips
