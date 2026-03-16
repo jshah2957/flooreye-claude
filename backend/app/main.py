@@ -4,13 +4,44 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.db.database import connect_db, close_db
+from app.db.indexes import ensure_indexes
+from app.db.database import get_db
+from app.routers import (
+    active_learning,
+    annotations,
+    auth,
+    cameras,
+    clips,
+    dataset,
+    detection,
+    detection_control,
+    devices,
+    edge,
+    events,
+    integrations,
+    live_stream,
+    logs,
+    mobile,
+    models,
+    notifications,
+    roboflow,
+    storage,
+    stores,
+    training,
+    validation,
+    websockets,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    await connect_db()
+    await ensure_indexes(get_db())
     yield
     # Shutdown
+    await close_db()
 
 
 def create_app() -> FastAPI:
@@ -38,6 +69,31 @@ def create_app() -> FastAPI:
             "version": "2.0.0",
             "environment": settings.ENVIRONMENT,
         }
+
+    # Register all routers
+    application.include_router(auth.router)
+    application.include_router(stores.router)
+    application.include_router(cameras.router)
+    application.include_router(detection.router)
+    application.include_router(detection_control.router)
+    application.include_router(live_stream.router)
+    application.include_router(clips.router)
+    application.include_router(dataset.router)
+    application.include_router(annotations.router)
+    application.include_router(roboflow.router)
+    application.include_router(models.router)
+    application.include_router(training.router)
+    application.include_router(active_learning.router)
+    application.include_router(edge.router)
+    application.include_router(integrations.router)
+    application.include_router(mobile.router)
+    application.include_router(events.router)
+    application.include_router(notifications.router)
+    application.include_router(devices.router)
+    application.include_router(logs.router)
+    application.include_router(storage.router)
+    application.include_router(validation.router)
+    application.include_router(websockets.router)
 
     return application
 
