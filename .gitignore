@@ -65,8 +65,8 @@ logs/
 *.trt
 *.engine
 training-data/
-models/
-data/
+/models/
+/data/
 
 # Secrets
 *.pem
