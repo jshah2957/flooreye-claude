@@ -108,6 +108,7 @@ export default function ApiManagerPage() {
       const res = await api.get("/integrations");
       return res.data.data as Integration[];
     },
+    refetchInterval: 60000,
   });
 
   const saveMutation = useMutation({
@@ -147,10 +148,32 @@ export default function ApiManagerPage() {
     },
   });
 
-  function openDrawer(service: string) {
+  const deleteMutation = useMutation({
+    mutationFn: (service: string) => api.delete(`/integrations/${service}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
+      success("Integration reset");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Reset failed");
+    },
+  });
+
+  async function openDrawer(service: string) {
     setDrawerService(service);
-    setFormData({});
     setError("");
+    // Pre-fill from existing config
+    try {
+      const res = await api.get(`/integrations/${service}`);
+      const cfg = res.data?.data?.config ?? {};
+      const filled: Record<string, string> = {};
+      for (const [k, v] of Object.entries(cfg)) {
+        filled[k] = typeof v === "string" ? v : String(v ?? "");
+      }
+      setFormData(filled);
+    } catch {
+      setFormData({});
+    }
   }
 
   function handleSave() {
@@ -222,6 +245,18 @@ export default function ApiManagerPage() {
                     Test
                   </button>
                 </div>
+                {intg.status !== "not_configured" && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Reset ${svc.label} configuration?`)) {
+                        deleteMutation.mutate(intg.service);
+                      }
+                    }}
+                    className="mt-2 w-full rounded-md border border-[#FEE2E2] px-2 py-1 text-[10px] text-[#DC2626] hover:bg-[#FEE2E2]"
+                  >
+                    Reset Configuration
+                  </button>
+                )}
               </div>
             );
           })}
