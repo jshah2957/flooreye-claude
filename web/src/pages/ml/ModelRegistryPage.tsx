@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 interface ModelVersion {
   id: string;
@@ -25,6 +26,7 @@ interface ModelVersion {
 export default function ModelRegistryPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelVersion | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -167,7 +169,7 @@ export default function ModelRegistryPage() {
                     <ArrowUpCircle size={12} /> Promote to Production
                   </button>
                 )}
-                <button onClick={() => deleteMutation.mutate(selectedModel.id)}
+                <button onClick={() => setDeleteTarget(selectedModel.id)}
                   className="flex items-center justify-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-2 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
                   <Trash2 size={12} /> Delete
                 </button>
@@ -178,6 +180,16 @@ export default function ModelRegistryPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Model"
+        description="This model will be permanently deleted."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {/* Create Dialog */}
       {createOpen && (

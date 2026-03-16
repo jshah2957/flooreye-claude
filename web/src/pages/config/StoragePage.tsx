@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { HardDrive, Loader2 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -37,7 +38,7 @@ export default function StoragePage() {
                 <p className="text-xs text-[#78716C]">Tested: {new Date(intg.last_tested).toLocaleString()}</p>
               )}
               <p className="mt-2 text-xs text-[#78716C]">
-                Configure in <a href="/integrations/api-manager" className="text-[#0D9488] hover:underline">API Integration Manager</a>
+                Configure in <Link to="/integrations/api-manager" className="text-[#0D9488] hover:underline">API Integration Manager</Link>
               </p>
             </div>
           ))}

@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 interface NotificationRule {
   id: string;
@@ -22,6 +23,7 @@ interface NotificationRule {
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState<"rules" | "history">("rules");
 
@@ -121,7 +123,7 @@ export default function NotificationsPage() {
                     {rule.quiet_hours_enabled && " · Quiet hours ON"}
                   </p>
                 </div>
-                <button onClick={() => deleteMutation.mutate(rule.id)}
+                <button onClick={() => setDeleteTarget(rule.id)}
                   className="rounded p-1 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]">
                   <Trash2 size={14} />
                 </button>
@@ -158,6 +160,16 @@ export default function NotificationsPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Rule"
+        description="This notification rule will be permanently deleted."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {/* Create Drawer */}
       {drawerOpen && (

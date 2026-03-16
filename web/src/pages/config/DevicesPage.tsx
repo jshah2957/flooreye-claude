@@ -7,6 +7,7 @@ import type { Store, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 interface Device {
   id: string;
@@ -22,6 +23,7 @@ interface Device {
 export default function DevicesPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
@@ -122,7 +124,7 @@ export default function DevicesPage() {
                   className="flex flex-1 items-center justify-center gap-1 rounded-md bg-[#D97706] px-2 py-1.5 text-xs text-white hover:bg-amber-700 disabled:opacity-50">
                   <Zap size={10} /> Trigger
                 </button>
-                <button onClick={() => deleteMutation.mutate(d.id)}
+                <button onClick={() => setDeleteTarget(d.id)}
                   className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]">
                   <Trash2 size={10} />
                 </button>
@@ -131,6 +133,16 @@ export default function DevicesPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Device"
+        description="This device will be permanently deleted."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {/* Create Drawer */}
       {drawerOpen && (

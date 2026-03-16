@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, Camera as CameraIcon, Loader2, MoreVertical } from "lucide-react";
 
 import api from "@/lib/api";
@@ -8,9 +8,12 @@ import type { Camera, Store, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonCard from "@/components/shared/SkeletonCard";
+import { useToast } from "@/components/ui/Toast";
 
 export default function CamerasPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [search, setSearch] = useState("");
   const [storeFilter, setStoreFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -174,7 +177,17 @@ export default function CamerasPage() {
                           View Detail
                         </button>
                         <button
-                          onClick={() => { setMenuOpen(null); }}
+                          onClick={() => {
+                            setMenuOpen(null);
+                            api.post(`/cameras/${cam.id}/test`)
+                              .then(() => {
+                                queryClient.invalidateQueries({ queryKey: ["cameras"] });
+                                success("Connection test successful");
+                              })
+                              .catch((err: any) => {
+                                showError(err?.response?.data?.detail || "Connection test failed");
+                              });
+                          }}
                           className="block w-full px-4 py-2 text-left text-sm hover:bg-[#F8F7F4]"
                         >
                           Test Connection

@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const [realtimeDetections, setRealtimeDetections] = useState<Detection[]>([]);
 
   // Stats queries
-  const { data: stores } = useQuery({
+  const { data: stores, isLoading: storesLoading } = useQuery({
     queryKey: ["stores-count"],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<Store>>("/stores", { params: { limit: 1 } });
@@ -28,7 +28,7 @@ export default function DashboardPage() {
     },
   });
 
-  const { data: cameras } = useQuery({
+  const { data: cameras, isLoading: camerasLoading } = useQuery({
     queryKey: ["cameras-all"],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<CameraType>>("/cameras", { params: { limit: 100 } });
@@ -36,7 +36,7 @@ export default function DashboardPage() {
     },
   });
 
-  const { data: incidents } = useQuery({
+  const { data: incidents, isLoading: incidentsLoading } = useQuery({
     queryKey: ["incidents-active"],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<Incident>>("/events", {
@@ -46,7 +46,7 @@ export default function DashboardPage() {
     },
   });
 
-  const { data: recentDetections } = useQuery({
+  const { data: recentDetections, isLoading: detectionsLoading } = useQuery({
     queryKey: ["detections-recent"],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<Detection>>("/detection/history", {
@@ -79,6 +79,10 @@ export default function DashboardPage() {
   const detectionsFeed = realtimeDetections.length > 0
     ? realtimeDetections
     : (recentDetections?.data ?? []);
+
+  if (storesLoading || camerasLoading || incidentsLoading || detectionsLoading) {
+    return <div className="flex h-64 items-center justify-center"><Loader2 size={24} className="animate-spin text-[#0D9488]" /></div>;
+  }
 
   return (
     <div>

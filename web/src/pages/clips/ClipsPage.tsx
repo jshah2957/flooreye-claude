@@ -5,6 +5,7 @@ import { Film, Loader2, Trash2, Play } from "lucide-react";
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 interface Clip {
   id: string;
@@ -20,6 +21,7 @@ interface Clip {
 
 export default function ClipsPage() {
   const queryClient = useQueryClient();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const limit = 20;
 
@@ -74,7 +76,7 @@ export default function ClipsPage() {
                   <td className="px-4 py-2"><StatusBadge status={c.status} /></td>
                   <td className="px-4 py-2 text-[#78716C]">{new Date(c.created_at).toLocaleString()}</td>
                   <td className="px-4 py-2 text-right">
-                    <button onClick={() => deleteMutation.mutate(c.id)}
+                    <button onClick={() => setDeleteTarget(c.id)}
                       className="rounded p-1 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]"><Trash2 size={12} /></button>
                   </td>
                 </tr>
@@ -83,6 +85,16 @@ export default function ClipsPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Clip"
+        description="This clip will be permanently deleted."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {total > limit && (
         <div className="mt-4 flex items-center justify-between text-sm text-[#78716C]">

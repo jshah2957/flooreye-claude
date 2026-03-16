@@ -6,10 +6,12 @@ import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 export default function DatasetPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [splitFilter, setSplitFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -120,7 +122,7 @@ export default function DatasetPage() {
                   <td className="px-4 py-2"><StatusBadge status={f.split} size="sm" /></td>
                   <td className="px-4 py-2 text-[#78716C]">{new Date(f.created_at).toLocaleDateString()}</td>
                   <td className="px-4 py-2 text-right">
-                    <button onClick={() => deleteMutation.mutate(f.id)}
+                    <button onClick={() => setDeleteTarget(f.id)}
                       className="rounded p-1 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]"><Trash2 size={12} /></button>
                   </td>
                 </tr>
@@ -141,6 +143,16 @@ export default function DatasetPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Frame"
+        description="This frame will be permanently deleted."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
