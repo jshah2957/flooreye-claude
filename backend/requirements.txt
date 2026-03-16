@@ -1,0 +1,51 @@
+# FastAPI & Server
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+gunicorn==23.0.0
+python-multipart==0.0.18
+
+# Database
+motor==3.6.0
+pymongo==4.10.1
+
+# Cache & Queue
+redis==5.2.1
+celery==5.4.0
+
+# Auth & Security
+PyJWT==2.10.1
+bcrypt==4.2.1
+cryptography==44.0.0
+passlib[bcrypt]==1.7.4
+
+# Data Validation & Settings
+pydantic==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.2.0
+
+# HTTP Client
+httpx==0.28.1
+
+# Media Processing
+opencv-python-headless==4.10.0.84
+Pillow==11.1.0
+
+# AI / ML
+ultralytics==8.3.57
+onnxruntime==1.20.1
+
+# Cloud & Storage
+boto3==1.35.92
+
+# Firebase
+firebase-admin==6.6.0
+
+# Monitoring
+sentry-sdk[fastapi]==2.19.2
+
+# MQTT
+paho-mqtt==2.1.0
+
+# Utilities
+python-dateutil==2.9.0
+orjson==3.10.13
