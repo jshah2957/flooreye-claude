@@ -15,6 +15,7 @@ import DashboardPage from "@/pages/dashboard/DashboardPage";
 import DetectionHistoryPage from "@/pages/detection/DetectionHistoryPage";
 import IncidentsPage from "@/pages/detection/IncidentsPage";
 import DetectionControlPage from "@/pages/detection-control/DetectionControlPage";
+import ApiManagerPage from "@/pages/integrations/ApiManagerPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -134,7 +135,7 @@ export default function AppRoutes() {
         <Route path="/detection-control/classes" element={<Placeholder title="Class Manager" />} />
 
         {/* Integrations */}
-        <Route path="/integrations/api-manager" element={<Placeholder title="API Integration Manager" />} />
+        <Route path="/integrations/api-manager" element={<ApiManagerPage />} />
         <Route path="/integrations/api-tester" element={<Placeholder title="API Testing Console" />} />
         <Route path="/integrations/roboflow" element={<Placeholder title="Roboflow Integration" />} />
 
