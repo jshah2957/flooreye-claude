@@ -442,3 +442,41 @@ Session 10: Phase 3 — Detection engine, live monitoring, incidents
 
 ### Next Session Plan
 Session 11: Phase 3 Web — Dashboard, Detection History, Incident Management, Live Viewer, WebSocket hook
+
+---
+
+## Session 11 — Phase 3 Web UI
+### Date: 2026-03-15
+### Goal: Web UI for dashboard, detection history, incident management, live viewer
+
+### Tasks Completed
+- Task 1: web/src/hooks/useWebSocket.ts — JWT auth, exponential backoff reconnect — commit 6759d61
+- Task 2: web/src/pages/dashboard/DashboardPage.tsx — stats row, recent detections, active incidents, WebSocket — commit fb15b03
+- Task 3: web/src/pages/detection/DetectionHistoryPage.tsx — gallery/table views, 6 filters, detail modal — commit 70935d4
+- Task 4: web/src/pages/detection/IncidentsPage.tsx — table, severity borders, acknowledge/resolve, detail modal
+- Task 5: web/src/components/detection/LiveFrameViewer.tsx — WebSocket + polling fallback, status badges
+- Tasks 4-5: commit 81c5e81
+- Task 6: Routes wired — DashboardPage, DetectionHistoryPage, IncidentsPage
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- web/src/hooks/useWebSocket.ts (implemented)
+- web/src/pages/dashboard/DashboardPage.tsx (implemented)
+- web/src/pages/detection/DetectionHistoryPage.tsx (implemented)
+- web/src/pages/detection/IncidentsPage.tsx (implemented)
+- web/src/components/detection/LiveFrameViewer.tsx (implemented)
+- web/src/routes/index.tsx (updated)
+
+### Phase 3 Summary
+Phase 3 — Detection Engine & Live Monitoring is now COMPLETE:
+- Backend: Roboflow inference, 4-layer validation, detection/incident services, Celery worker, WebSocket hub
+- Web: Dashboard with stats + live feeds, Detection History (gallery/table/modal), Incident Management, LiveFrameViewer
+- useWebSocket hook with JWT auth and exponential backoff
+
+### Issues
+- None
+
+### Next Session Plan
+Session 12: Phase 4 — Detection Control Center (backend + web)

@@ -11,6 +11,9 @@ import StoreDetailPage from "@/pages/stores/StoreDetailPage";
 import CamerasPage from "@/pages/cameras/CamerasPage";
 import CameraDetailPage from "@/pages/cameras/CameraDetailPage";
 import CameraWizardPage from "@/pages/cameras/CameraWizardPage";
+import DashboardPage from "@/pages/dashboard/DashboardPage";
+import DetectionHistoryPage from "@/pages/detection/DetectionHistoryPage";
+import IncidentsPage from "@/pages/detection/IncidentsPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -97,13 +100,13 @@ export default function AppRoutes() {
         }
       >
         {/* Monitoring */}
-        <Route path="/dashboard" element={<Placeholder title="Dashboard" />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/monitoring" element={<Placeholder title="Live Monitoring" />} />
         <Route path="/clips" element={<Placeholder title="Recorded Clips" />} />
 
         {/* Detection & Review */}
-        <Route path="/detection/history" element={<Placeholder title="Detection History" />} />
-        <Route path="/incidents" element={<Placeholder title="Incident Management" />} />
+        <Route path="/detection/history" element={<DetectionHistoryPage />} />
+        <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/review" element={<Placeholder title="Review Queue" />} />
 
         {/* ML & Training */}
