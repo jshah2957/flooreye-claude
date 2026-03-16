@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     TRAINING_DATA_DIR: str = "/app/training-data"
     MODELS_DIR: str = "/app/models"
 
+    # Roboflow Inference
+    ROBOFLOW_API_KEY: str = ""
+    ROBOFLOW_MODEL_ID: str = ""
+    ROBOFLOW_API_URL: str = "https://detect.roboflow.com"
+
     # Sentry (optional)
     SENTRY_DSN: str = ""
 
