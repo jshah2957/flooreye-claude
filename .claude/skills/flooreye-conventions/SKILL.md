@@ -40,3 +40,18 @@ description: FloorEye coding conventions - load when writing Python or TypeScrip
 - Always read docs/api.md before writing any route
 - Commit after every completed task
 - Push to GitHub every 3 commits
+
+## Context Privacy (context-mode)
+When working with sensitive FloorEye data use context-mode:
+- Never log camera RTSP URLs with credentials in context
+- Never display API keys in output (Roboflow, Firebase, SMTP)
+- Use context-mode ctx_execute for credential handling
+- All .env values treated as private context
+- Route docker logs through ctx_execute to avoid context bloat
+- Process large detection_logs query results through ctx_execute_file
+
+## Available External Frameworks
+- **obra/superpowers**: Agentic methodology — use for complex multi-step tasks, parallel agents, TDD, code review
+- **gsd-build/get-shit-done**: Spec-driven development — use for feature planning, milestone tracking, autonomous execution
+- **anthropics/skills**: Official Anthropic skills — use for standard workflows, document generation, API integration
+- **mksglu/context-mode**: Privacy-first context optimization — use for credential protection, log analysis, large output handling
