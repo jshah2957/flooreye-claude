@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -6,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.org_filter import org_query
 
+log = logging.getLogger(__name__)
 
 # Default grouping window: 5 minutes
 INCIDENT_GROUPING_WINDOW_SECONDS = 300
@@ -65,6 +67,10 @@ async def create_or_update_incident(
                 {"$set": updates},
             )
             existing.update(updates)
+
+            # Broadcast via WebSocket and dispatch notifications
+            await _broadcast_and_notify(db, existing, detection, is_new=False)
+
             return existing
 
     # Create new incident
@@ -94,7 +100,48 @@ async def create_or_update_incident(
         "created_at": now,
     }
     await db.events.insert_one(incident_doc)
+
+    # Broadcast via WebSocket and dispatch notifications
+    await _broadcast_and_notify(db, incident_doc, detection, is_new=True)
+
     return incident_doc
+
+
+async def _broadcast_and_notify(
+    db: AsyncIOMotorDatabase,
+    incident: dict,
+    detection: dict,
+    is_new: bool,
+) -> None:
+    """Broadcast WebSocket events and dispatch notifications for an incident."""
+    org_id = incident.get("org_id") or ""
+
+    # WebSocket broadcast — detection + incident
+    try:
+        from app.routers.websockets import publish_detection, publish_incident
+
+        # Strip _id for JSON serialization
+        det_clean = {k: v for k, v in detection.items() if k != "_id"}
+        inc_clean = {k: v for k, v in incident.items() if k != "_id"}
+        # Convert datetimes to ISO strings for JSON
+        for d in (det_clean, inc_clean):
+            for key, val in d.items():
+                if isinstance(val, datetime):
+                    d[key] = val.isoformat()
+
+        await publish_detection(org_id, det_clean)
+        event_type = "incident_created" if is_new else "incident_updated"
+        await publish_incident(org_id, inc_clean, event_type)
+    except Exception as e:
+        log.warning(f"WebSocket broadcast failed: {e}")
+
+    # Notification dispatch — only for new incidents to avoid alert spam
+    if is_new:
+        try:
+            from app.services.notification_service import dispatch_notifications
+            await dispatch_notifications(db, org_id, incident)
+        except Exception as e:
+            log.warning(f"Notification dispatch failed: {e}")
 
 
 def _classify_incident_severity(

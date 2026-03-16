@@ -102,6 +102,17 @@ async def run_manual_detection(
     }
     await db.detection_logs.insert_one(detection_doc)
 
+    # Broadcast detection via WebSocket (all detections, not just wet)
+    try:
+        from app.routers.websockets import publish_detection
+        det_clean = {k: v for k, v in detection_doc.items() if k != "_id"}
+        for key, val in det_clean.items():
+            if isinstance(val, datetime):
+                det_clean[key] = val.isoformat()
+        await publish_detection(org_id, det_clean)
+    except Exception:
+        pass  # Non-critical
+
     # If validated wet, create/update incident
     if validation.is_wet:
         from app.services.incident_service import create_or_update_incident
