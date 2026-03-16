@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -60,7 +61,12 @@ async def get_user_by_id(db: AsyncIOMotorDatabase, user_id: str) -> dict:
     return user
 
 
-async def create_user(db: AsyncIOMotorDatabase, data: UserCreate) -> dict:
+async def create_user(db: AsyncIOMotorDatabase, data: UserCreate, org_id: str | None = None) -> dict:
+    if org_id and data.org_id and data.org_id != org_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create user in another org")
+    if org_id and not data.org_id:
+        data.org_id = org_id  # Default to caller's org
+
     existing = await db.users.find_one({"email": data.email})
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -83,7 +89,7 @@ async def create_user(db: AsyncIOMotorDatabase, data: UserCreate) -> dict:
     return user_doc
 
 
-async def update_user(db: AsyncIOMotorDatabase, user_id: str, data: UserUpdate) -> dict:
+async def update_user(db: AsyncIOMotorDatabase, user_id: str, data: UserUpdate, org_id: str | None = None) -> dict:
     updates: dict = {}
     for field, value in data.model_dump(exclude_unset=True).items():
         if field == "password" and value is not None:
@@ -95,7 +101,7 @@ async def update_user(db: AsyncIOMotorDatabase, user_id: str, data: UserUpdate) 
     updates["updated_at"] = datetime.now(timezone.utc)
 
     result = await db.users.find_one_and_update(
-        {"id": user_id},
+        {**org_query(org_id), "id": user_id},
         {"$set": updates},
         return_document=True,
     )
@@ -127,9 +133,9 @@ async def update_profile(db: AsyncIOMotorDatabase, user_id: str, data: ProfileUp
     return result
 
 
-async def deactivate_user(db: AsyncIOMotorDatabase, user_id: str) -> None:
+async def deactivate_user(db: AsyncIOMotorDatabase, user_id: str, org_id: str | None = None) -> None:
     result = await db.users.update_one(
-        {"id": user_id},
+        {**org_query(org_id), "id": user_id},
         {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}},
     )
     if result.matched_count == 0:

@@ -84,9 +84,10 @@ async def stop_stream(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Stop a live stream session."""
+    org_id = current_user.get("org_id", "")
     now = datetime.now(timezone.utc)
     result = await db.stream_sessions.find_one_and_update(
-        {"camera_id": camera_id, "status": "active"},
+        {**org_query(org_id), "camera_id": camera_id, "status": "active"},
         {"$set": {"status": "stopped", "stopped_at": now}},
         return_document=True,
     )
@@ -135,9 +136,10 @@ async def stop_recording(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Stop an active recording."""
+    org_id = current_user.get("org_id", "")
     now = datetime.now(timezone.utc)
     result = await db.recordings.find_one_and_update(
-        {"id": rec_id, "status": "recording"},
+        {**org_query(org_id), "id": rec_id, "status": "recording"},
         {"$set": {"status": "completed", "stopped_at": now}},
         return_document=True,
     )
@@ -154,7 +156,8 @@ async def recording_status(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Get recording status."""
-    rec = await db.recordings.find_one({"id": rec_id})
+    org_id = current_user.get("org_id", "")
+    rec = await db.recordings.find_one({**org_query(org_id), "id": rec_id})
     if not rec:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")
 

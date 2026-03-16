@@ -88,7 +88,7 @@ async def export_coco(
 
     # Gather unique frame_ids
     frame_ids = list({a.get("frame_id") for a in annotations if a.get("frame_id")})
-    frames = await db.dataset_frames.find({"id": {"$in": frame_ids}}).to_list(length=10000)
+    frames = await db.dataset_frames.find({"id": {"$in": frame_ids}, "org_id": org_id}).to_list(length=10000)
     frame_map = {f["id"]: f for f in frames}
 
     categories = [{"id": 1, "name": "wet_floor", "supercategory": "hazard"}]
@@ -106,7 +106,7 @@ async def export_coco(
         for a in annotations:
             if a.get("frame_id") != fid:
                 continue
-            for box in a.get("boxes", []):
+            for box in a.get("bboxes", a.get("boxes", [])):
                 coco_annotations.append({
                     "id": ann_id,
                     "image_id": idx + 1,

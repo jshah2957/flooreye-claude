@@ -275,7 +275,7 @@ async def export_coco(
         }
         coco_images.append(img_entry)
         for a in ann_by_frame.get(frame["id"], []):
-            for box in a.get("boxes", []):
+            for box in a.get("bboxes", a.get("boxes", [])):
                 coco_annotations.append({
                     "id": ann_id,
                     "image_id": idx + 1,

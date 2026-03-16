@@ -78,7 +78,8 @@ async def register(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    user = await auth_service.create_user(db, body)
+    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    user = await auth_service.create_user(db, body, org_id)
     return {"data": _user_response(user)}
 
 
@@ -164,7 +165,8 @@ async def create_user(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    user = await auth_service.create_user(db, body)
+    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    user = await auth_service.create_user(db, body, org_id)
     return {"data": _user_response(user)}
 
 
@@ -175,7 +177,8 @@ async def update_user(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    updated = await auth_service.update_user(db, user_id, body)
+    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    updated = await auth_service.update_user(db, user_id, body, org_id)
     return {"data": _user_response(updated)}
 
 
@@ -185,5 +188,6 @@ async def deactivate_user(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await auth_service.deactivate_user(db, user_id)
+    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    await auth_service.deactivate_user(db, user_id, org_id)
     return {"data": {"ok": True}}
