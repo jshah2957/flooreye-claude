@@ -22,6 +22,13 @@ import DevicesPage from "@/pages/config/DevicesPage";
 import DatasetPage from "@/pages/ml/DatasetPage";
 import ModelRegistryPage from "@/pages/ml/ModelRegistryPage";
 import TrainingJobsPage from "@/pages/ml/TrainingJobsPage";
+import ReviewQueuePage from "@/pages/detection/ReviewQueuePage";
+import ClipsPage from "@/pages/clips/ClipsPage";
+import LogsPage from "@/pages/admin/LogsPage";
+import UsersPage from "@/pages/admin/UsersPage";
+import RoboflowPage from "@/pages/integrations/RoboflowPage";
+import StoragePage from "@/pages/config/StoragePage";
+import TestInferencePage from "@/pages/ml/TestInferencePage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -110,12 +117,12 @@ export default function AppRoutes() {
         {/* Monitoring */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/monitoring" element={<Placeholder title="Live Monitoring" />} />
-        <Route path="/clips" element={<Placeholder title="Recorded Clips" />} />
+        <Route path="/clips" element={<ClipsPage />} />
 
         {/* Detection & Review */}
         <Route path="/detection/history" element={<DetectionHistoryPage />} />
         <Route path="/incidents" element={<IncidentsPage />} />
-        <Route path="/review" element={<Placeholder title="Review Queue" />} />
+        <Route path="/review" element={<ReviewQueuePage />} />
 
         {/* ML & Training */}
         <Route path="/dataset" element={<DatasetPage />} />
@@ -124,7 +131,7 @@ export default function AppRoutes() {
         <Route path="/training/explorer" element={<Placeholder title="Training Data Explorer" />} />
         <Route path="/training/jobs" element={<TrainingJobsPage />} />
         <Route path="/models" element={<ModelRegistryPage />} />
-        <Route path="/ml/test-inference" element={<Placeholder title="Test Inference" />} />
+        <Route path="/ml/test-inference" element={<TestInferencePage />} />
 
         {/* Configuration */}
         <Route path="/stores" element={<StoresPage />} />
@@ -134,7 +141,7 @@ export default function AppRoutes() {
         <Route path="/cameras/:id" element={<CameraDetailPage />} />
         <Route path="/devices" element={<DevicesPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/settings/storage" element={<Placeholder title="Storage Settings" />} />
+        <Route path="/settings/storage" element={<StoragePage />} />
 
         {/* Detection Control */}
         <Route path="/detection-control" element={<DetectionControlPage />} />
@@ -143,14 +150,14 @@ export default function AppRoutes() {
         {/* Integrations */}
         <Route path="/integrations/api-manager" element={<ApiManagerPage />} />
         <Route path="/integrations/api-tester" element={<Placeholder title="API Testing Console" />} />
-        <Route path="/integrations/roboflow" element={<Placeholder title="Roboflow Integration" />} />
+        <Route path="/integrations/roboflow" element={<RoboflowPage />} />
 
         {/* Edge */}
         <Route path="/edge" element={<EdgeManagementPage />} />
 
         {/* Administration */}
-        <Route path="/admin/users" element={<Placeholder title="User Management" />} />
-        <Route path="/admin/logs" element={<Placeholder title="System Logs & Audit" />} />
+        <Route path="/admin/users" element={<UsersPage />} />
+        <Route path="/admin/logs" element={<LogsPage />} />
         <Route path="/docs" element={<Placeholder title="User Manual" />} />
       </Route>
 
