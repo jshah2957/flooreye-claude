@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
 import LoginPage from "@/pages/auth/LoginPage";
+import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -68,7 +70,7 @@ export default function AppRoutes() {
         path="/forgot-password"
         element={
           <PublicRoute>
-            <Placeholder title="Forgot Password" />
+            <ForgotPasswordPage />
           </PublicRoute>
         }
       />
@@ -76,7 +78,7 @@ export default function AppRoutes() {
         path="/reset-password"
         element={
           <PublicRoute>
-            <Placeholder title="Reset Password" />
+            <ResetPasswordPage />
           </PublicRoute>
         }
       />
