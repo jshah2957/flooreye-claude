@@ -222,3 +222,28 @@ Issues remaining: 0 critical, 2 cosmetic (placeholder tabs in detail pages)
 - Loading states: all pages have loading spinner
 - Empty states: all list pages have EmptyState component
 - Button consistency: brand teal primary, red destructive, outlined secondary
+
+## POST-AUDIT FIXES APPLIED
+Based on detailed agent audits (3 agents, 33 pages total):
+
+### Critical Fixes (8 bugs)
+1. CamerasPage "Test Connection" was a no-op — NOW calls real API with toast
+2. DashboardPage had no loading state — NOW shows spinner for all 4 queries
+3. DatasetPage delete had no confirmation — NOW uses ConfirmDialog
+4. ModelRegistryPage delete had no confirmation — NOW uses ConfirmDialog
+5. NotificationsPage delete had no confirmation — NOW uses ConfirmDialog
+6. DevicesPage delete had no confirmation — NOW uses ConfirmDialog
+7. ClipsPage delete had no confirmation — NOW uses ConfirmDialog
+8. StoragePage used <a href> instead of React Router <Link> — FIXED
+
+### Systemic Fixes (applied earlier)
+- Toast notifications added to 21 pages (45+ mutations) — ALL mutations now show feedback
+- ErrorBoundary added to App.tsx — graceful error handling
+- ToastProvider added to App.tsx — global notification system
+
+### Remaining Cosmetic Issues (non-blocking)
+- StoreDetailPage: 4 placeholder tabs (Incidents, Edge Agent, Detection Overrides, Audit Log)
+- CameraDetailPage: 5 placeholder tabs (Live Feed, Detection History, Inference Config, Detection Overrides, Audit Log)
+- No edit flows for Notifications rules and Devices (create + delete only)
+- ApiManagerPage config drawer doesn't pre-fill existing config
+- "Remember me" checkbox on LoginPage is decorative
