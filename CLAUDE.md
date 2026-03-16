@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 8 — Phase 2 Backend IN PROGRESS
+Session 9 — Phase 2 COMPLETE
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -32,6 +32,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 ## Completed Phases
 - Phase 0 — Scaffold: COMPLETE (Sessions 1-4)
 - Phase 1 — Authentication & RBAC: COMPLETE (Sessions 5-7)
+- Phase 2 — Stores, Cameras & Onboarding: COMPLETE (Sessions 8-9)
 
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
@@ -42,11 +43,12 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 6: Axios client, TanStack Query, useAuth, types, LoginPage, Sidebar, AppLayout, React Router
 - Session 7: ForgotPassword, ResetPassword, mobile API client, mobile useAuth, mobile login — Phase 1 COMPLETE
 - Session 8: Store model/schemas/service/router, Camera+ROI+DryRef models/schemas/service/router — Phase 2 backend CRUD
+- Session 9: Shared components, StoresPage, StoreDetailPage, CamerasPage, CameraDetailPage, ROI tool, Camera Wizard — Phase 2 COMPLETE
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
 - Phase 1 — Authentication & RBAC: COMPLETE
-- Phase 2 — Stores, Cameras & Onboarding: backend CRUD complete, web UI not started
+- Phase 2 — Stores, Cameras & Onboarding: COMPLETE
 - Phase 3 through 11: not started
 
 ## Dependency Log
@@ -76,4 +78,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 9 — Phase 2: Web stores page, store detail, cameras page, camera detail, onboarding wizard, ROI tool
+Session 10 — Phase 3: Detection engine, live monitoring, incidents

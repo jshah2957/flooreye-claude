@@ -332,3 +332,51 @@ Session 8: Phase 2 — Backend stores and cameras CRUD with models and services
 
 ### Next Session Plan
 Session 9: Phase 2 Web — Stores page, Store Detail, Cameras page, Camera Detail, Onboarding Wizard, ROI Drawing Tool
+
+---
+
+## Session 9 — Phase 2 Web UI
+### Date: 2026-03-15
+### Goal: Web UI for stores, cameras, onboarding wizard, ROI drawing tool
+
+### Tasks Completed
+- Task 1: Shared components — StatusBadge, ConfirmDialog, EmptyState, SkeletonCard — commit c219500
+- Task 2: StoresPage — table with search/filter, pagination, "New Store" button
+- Task 3: StoreDrawer (create/edit) + StoreDetailPage with 6 tabs (Overview + Cameras live, rest placeholder)
+- Tasks 2-3: commit 82e79d0
+- Task 4: CamerasPage — grid view with store/status/mode filters, action menu, pagination
+- Task 5: CameraDetailPage — 8 tabs (Overview, ROI, Dry Reference live, rest placeholder)
+- Task 6: RoiCanvas — polygon drawing tool with vertex drag, mask preview, keyboard shortcuts, save
+- Tasks 4-6: commit 80db354
+- Task 7: CameraWizardPage — 6-step onboarding (Connect, Configure, Inference, ROI, Reference, Confirm)
+- Task 8: Routes wired — StoresPage, StoreDetailPage, CamerasPage, CameraDetailPage, CameraWizardPage
+- Tasks 7-8: commit 50976c4
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- web/src/components/shared/StatusBadge.tsx (implemented)
+- web/src/components/shared/ConfirmDialog.tsx (implemented)
+- web/src/components/shared/EmptyState.tsx (implemented)
+- web/src/components/shared/SkeletonCard.tsx (implemented)
+- web/src/pages/stores/StoresPage.tsx (implemented)
+- web/src/pages/stores/StoreDrawer.tsx (new)
+- web/src/pages/stores/StoreDetailPage.tsx (implemented)
+- web/src/pages/cameras/CamerasPage.tsx (implemented)
+- web/src/pages/cameras/CameraDetailPage.tsx (implemented)
+- web/src/pages/cameras/CameraWizardPage.tsx (implemented)
+- web/src/components/roi/RoiCanvas.tsx (implemented)
+- web/src/routes/index.tsx (updated)
+
+### Phase 2 Summary
+Phase 2 — Stores, Cameras & Onboarding is now COMPLETE:
+- Backend: Store CRUD, Camera CRUD, connection test (OpenCV), quality analysis, ROI, dry reference
+- Web: Stores page + detail, Cameras grid + detail, 6-step onboarding wizard, ROI drawing tool
+- 4 shared components (StatusBadge, ConfirmDialog, EmptyState, SkeletonCard)
+
+### Issues
+- None
+
+### Next Session Plan
+Session 10: Phase 3 — Detection engine, live monitoring, incidents
