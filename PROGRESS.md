@@ -603,3 +603,48 @@ Phase 6 — Edge Agent Stack is now COMPLETE:
 
 ### Next Session Plan
 Session 15: Phase 7 — Notifications, Push, Devices
+
+---
+
+## Session 15 — Phase 7 Notifications, Push, Devices
+### Date: 2026-03-15
+### Goal: Notification rules, delivery engine, workers, device control
+
+### Tasks Completed
+- Task 1: Notification + Device models — commit 2eb7df1
+- Task 2: Notification + Device schemas — commit 2eb7df1
+- Task 3: notification_service.py — rules CRUD, delivery engine, quiet hours
+- Task 4: notification_worker.py — email, webhook, SMS, FCM Celery tasks
+- Task 5: notifications router — 5 endpoints live
+- Task 6: device_service.py + devices router — CRUD + HTTP trigger, 6 endpoints
+- Tasks 3-6: commit bdf7ffc
+- Task 7: NotificationsPage + DevicesPage web UI
+- Task 8: Routes wired
+- Tasks 7-8: commit 6ff991b
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/models/notification.py (implemented)
+- backend/app/models/device.py (implemented)
+- backend/app/schemas/notification.py (implemented)
+- backend/app/services/notification_service.py (implemented)
+- backend/app/workers/notification_worker.py (implemented)
+- backend/app/routers/notifications.py (implemented)
+- backend/app/services/device_service.py (new)
+- backend/app/routers/devices.py (implemented)
+- web/src/pages/config/NotificationsPage.tsx (implemented)
+- web/src/pages/config/DevicesPage.tsx (implemented)
+- web/src/routes/index.tsx (updated)
+
+### Phase 7 Summary
+Phase 7 — Notifications, Push, Devices is now COMPLETE:
+- Backend: notification rules CRUD, delivery engine with quiet hours + severity matching, 4 Celery workers (email/webhook/SMS/FCM), device CRUD + HTTP trigger
+- Web: Notification Settings (rules list, create drawer, delivery history), Device Control (card grid, trigger button, create drawer)
+
+### Issues
+- None
+
+### Next Session Plan
+Session 16: Phase 8 — Mobile App (Store Owner)
