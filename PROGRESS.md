@@ -563,3 +563,43 @@ Phase 5 — API Integration Manager is now COMPLETE:
 
 ### Next Session Plan
 Session 14: Phase 6 — Edge Agent Stack
+
+---
+
+## Session 14 — Phase 6 Edge Agent Stack
+### Date: 2026-03-15
+### Goal: Edge agent API, provisioning, heartbeat, commands, web management
+
+### Tasks Completed
+- Task 1: backend/app/models/edge_agent.py — EdgeAgent model
+- Task 2: backend/app/schemas/edge.py — provision, register, heartbeat, frame, command schemas
+- Tasks 1-2: commit 618817c
+- Task 3: backend/app/services/edge_service.py — provision (JWT + docker-compose), register, heartbeat, commands, CRUD
+- Task 4: backend/app/routers/edge.py — 12 live endpoints with edge token auth
+- Tasks 3-4: commit 4345f3b
+- Task 5: web/src/pages/edge/EdgeManagementPage.tsx — agent list, detail panel, provision drawer, command sender
+- Task 6: Route wired
+- Tasks 5-6: commit 4fe8beb
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/models/edge_agent.py (implemented)
+- backend/app/schemas/edge.py (implemented)
+- backend/app/services/edge_service.py (implemented)
+- backend/app/routers/edge.py (implemented — replaced stubs)
+- web/src/pages/edge/EdgeManagementPage.tsx (implemented)
+- web/src/routes/index.tsx (updated)
+
+### Phase 6 Summary
+Phase 6 — Edge Agent Stack is now COMPLETE:
+- Backend: edge token JWT auth, provision (generates token + docker-compose), register, heartbeat with health metrics, command queue (ping/restart/reload/deploy), frame + detection upload, agent CRUD
+- Web: agent list with health bars, detail panel, provision drawer (shows token + docker-compose), command sender
+- Edge agent Python app and inference server are standalone deployables (built separately)
+
+### Issues
+- None
+
+### Next Session Plan
+Session 15: Phase 7 — Notifications, Push, Devices

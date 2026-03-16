@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 13 — Phase 5 COMPLETE
+Session 14 — Phase 6 COMPLETE
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -36,6 +36,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Phase 3 — Detection Engine & Live Monitoring: COMPLETE (Sessions 10-11)
 - Phase 4 — Detection Control Center: COMPLETE (Session 12)
 - Phase 5 — API Integration Manager & Testing Console: COMPLETE (Session 13)
+- Phase 6 — Edge Agent Stack: COMPLETE (Session 14)
 
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
@@ -51,6 +52,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 11: useWebSocket hook, Dashboard, Detection History, Incident Management, LiveFrameViewer — Phase 3 COMPLETE
 - Session 12: DetectionControl models/schemas/service/router, inheritance chain, Detection Control Center page — Phase 4 COMPLETE
 - Session 13: AES encryption, IntegrationConfig model/service/router, API Integration Manager page — Phase 5 COMPLETE
+- Session 14: EdgeAgent model/service/router, edge token auth, provision, heartbeat, commands, Edge Management page — Phase 6 COMPLETE
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
@@ -59,7 +61,8 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Phase 3 — Detection Engine & Live Monitoring: COMPLETE
 - Phase 4 — Detection Control Center: COMPLETE
 - Phase 5 — API Integration Manager: COMPLETE
-- Phase 6 through 11: not started
+- Phase 6 — Edge Agent Stack: COMPLETE
+- Phase 7 through 11: not started
 
 ## Dependency Log
 No libraries installed yet. All versions pinned in:
@@ -88,4 +91,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 14 — Phase 6: Edge Agent Stack
+Session 15 — Phase 7: Notifications, Push, Devices
