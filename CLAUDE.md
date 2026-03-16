@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 1 — folder scaffold + docs complete
+Session 2 — all config and dependency files complete
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -34,17 +34,25 @@ Tagline: "See Every Drop. Stop Every Slip."
 
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
+- Session 2: .gitignore, requirements.txt, package.json, .env.example, all config files
 
 ## Phase Progress
-- Phase 0 — Scaffold: 60% done
-  DONE: folder structure, docs extracted
-  PENDING: CLAUDE.md, PROGRESS.md, SESSION_PLAN.md, requirements.txt,
-           package.json files, .env.example files, docker-compose.dev.yml,
-           Dockerfiles, .gitignore
+- Phase 0 — Scaffold: 80% done
+  DONE: folder structure, docs, .gitignore, requirements.txt, requirements-dev.txt,
+        requirements-training.txt, package.json (web + mobile), tsconfig.json (web + mobile),
+        vite.config.ts, tailwind.config.ts, postcss.config.js, app.json, eas.json,
+        .env.example (backend + edge-agent)
+  PENDING: Dockerfiles, docker-compose.dev.yml, config.py, main.py, database.py,
+           stub routers, constants.py
 - Phase 1 through 11: not started
 
 ## Dependency Log
-No libraries installed yet.
+No libraries installed yet. All versions pinned in:
+- backend/requirements.txt (production)
+- backend/requirements-dev.txt (testing/linting)
+- training/requirements-training.txt (ML pipeline)
+- web/package.json (React 18, Vite, Tailwind, Shadcn, TanStack Query)
+- mobile/package.json (Expo 51, React Native 0.74, NativeWind 4)
 
 ## Schema Decisions
 None yet. All field names must come from docs/schemas.md.
@@ -65,4 +73,4 @@ None.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 2 — Phase 0 remaining config files then Phase 1 auth
+Session 3 — Dockerfiles, docker-compose.dev.yml, config.py, main.py

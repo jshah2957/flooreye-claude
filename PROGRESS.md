@@ -35,14 +35,46 @@
 - None
 
 ### Next Session Plan
-Session 2 tasks:
-1. Create .gitignore
-2. Create backend/requirements.txt
-3. Create backend/requirements-dev.txt
-4. Create web/package.json
-5. Create mobile/package.json
-6. Create all .env.example files
-7. Create docker-compose.dev.yml
-8. Create backend/Dockerfile and Dockerfile.worker
-9. Create SESSION_PLAN.md (full build breakdown)
-10. Begin Phase 1 — authentication backend
+See Session 2 below.
+
+---
+
+## Session 2 — Phase 0 Config Files
+### Date: 2026-03-15
+### Goal: Create all dependency manifests and config files
+
+### Tasks Completed
+- Task 1: .gitignore — commit 98facdf
+- Task 2: backend/requirements.txt — all production deps pinned — commit 56a280a
+- Task 3: backend/requirements-dev.txt — pytest, ruff, mypy — commit c42824e
+- Task 4: backend/.env.example — all env vars — commit c3e692d
+- Task 5: web/package.json, tsconfig.json, vite.config.ts, tailwind.config.ts — commit 19bac8e
+- Task 6: mobile/package.json, app.json, tsconfig.json, eas.json, web/postcss.config.js — commit c01c063
+- Task 7: edge-agent/.env.example, training/requirements-training.txt — commit 3b47036
+- Task 8: CLAUDE.md + PROGRESS.md updated — this commit
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- .gitignore
+- backend/requirements.txt
+- backend/requirements-dev.txt
+- backend/.env.example
+- web/package.json
+- web/tsconfig.json
+- web/vite.config.ts
+- web/tailwind.config.ts
+- web/postcss.config.js
+- mobile/package.json
+- mobile/app.json
+- mobile/tsconfig.json
+- mobile/eas.json
+- edge-agent/.env.example
+- training/requirements-training.txt
+
+### Issues
+- None
+
+### Next Session Plan
+Session 3: Dockerfiles, docker-compose.dev.yml, config.py, main.py, health endpoint
