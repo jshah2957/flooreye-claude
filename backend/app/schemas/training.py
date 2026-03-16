@@ -20,14 +20,14 @@ class TrainingJobResponse(BaseModel):
     id: str
     org_id: Optional[str] = None
     status: str
-    config: dict
-    triggered_by: str
+    config: Optional[dict] = None
+    triggered_by: Optional[str] = None
     celery_task_id: Optional[str] = None
-    frames_used: int
+    frames_used: Optional[int] = None
     current_epoch: Optional[int] = None
     total_epochs: Optional[int] = None
     resulting_model_id: Optional[str] = None
     error_message: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None

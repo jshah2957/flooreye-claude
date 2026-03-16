@@ -25,21 +25,21 @@ class ModelVersionUpdate(BaseModel):
 class ModelVersionResponse(BaseModel):
     id: str
     org_id: Optional[str] = None
-    version_str: str
-    architecture: str
+    version_str: Optional[str] = None
+    architecture: Optional[str] = None
     param_count: Optional[int] = None
-    status: str
+    status: Optional[str] = None
     training_job_id: Optional[str] = None
-    frame_count: int
+    frame_count: Optional[int] = None
     map_50: Optional[float] = None
     map_50_95: Optional[float] = None
     precision: Optional[float] = None
     recall: Optional[float] = None
     f1: Optional[float] = None
-    per_class_metrics: list[dict] = []
+    per_class_metrics: Optional[list[dict]] = None
     onnx_path: Optional[str] = None
     pt_path: Optional[str] = None
     model_size_mb: Optional[float] = None
     promoted_to_staging_at: Optional[datetime] = None
     promoted_to_production_at: Optional[datetime] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
