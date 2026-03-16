@@ -16,6 +16,7 @@ import DetectionHistoryPage from "@/pages/detection/DetectionHistoryPage";
 import IncidentsPage from "@/pages/detection/IncidentsPage";
 import DetectionControlPage from "@/pages/detection-control/DetectionControlPage";
 import ApiManagerPage from "@/pages/integrations/ApiManagerPage";
+import EdgeManagementPage from "@/pages/edge/EdgeManagementPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -140,7 +141,7 @@ export default function AppRoutes() {
         <Route path="/integrations/roboflow" element={<Placeholder title="Roboflow Integration" />} />
 
         {/* Edge */}
-        <Route path="/edge" element={<Placeholder title="Edge Agents" />} />
+        <Route path="/edge" element={<EdgeManagementPage />} />
 
         {/* Administration */}
         <Route path="/admin/users" element={<Placeholder title="User Management" />} />
