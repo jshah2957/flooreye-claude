@@ -204,4 +204,45 @@ See Session 5 below.
 - forgot-password/reset-password endpoints return 501 — blocked on SMTP integration (Phase 5)
 
 ### Next Session Plan
-Session 6: Web login page, auth context, protected routes, role-based sidebar
+See Session 6 below.
+
+---
+
+## Session 6 — Phase 1 Web Auth & Layout
+### Date: 2026-03-15
+### Goal: Web login page, auth context, protected routes, role-based sidebar
+
+### Tasks Completed
+- Task 1: web/src/lib/api.ts — Axios with token interceptors + silent refresh — commit 4e85cbc
+- Task 2: web/src/lib/queryClient.ts + utils.ts — TanStack Query + cn() helper — commit 380e266
+- Task 3: web/src/hooks/useAuth.ts — login, logout, bootstrap, role-based redirect — commit cb64784
+- Task 4: web/src/types/index.ts — User, Store, Camera, Detection, Incident types — commit 123c337
+- Task 5: web/src/pages/auth/LoginPage.tsx — email/password form, show/hide, error — commit 1e61977
+- Task 6: web/src/components/layout/Sidebar.tsx — role-based nav with 8 sections — commit 57c334a
+- Task 7: web/src/components/layout/AppLayout.tsx + Header.tsx — layout shell — commit 8ee5ff1
+- Task 8: web/src/routes/index.tsx + App.tsx + main.tsx + index.css + index.html — commit 791a2d1
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- web/src/lib/api.ts
+- web/src/lib/queryClient.ts
+- web/src/lib/utils.ts
+- web/src/hooks/useAuth.ts
+- web/src/types/index.ts
+- web/src/pages/auth/LoginPage.tsx
+- web/src/components/layout/Sidebar.tsx
+- web/src/components/layout/AppLayout.tsx
+- web/src/components/layout/Header.tsx
+- web/src/routes/index.tsx
+- web/src/App.tsx
+- web/src/main.tsx
+- web/src/index.css (new)
+- web/index.html (new)
+
+### Issues
+- None
+
+### Next Session Plan
+Session 7: Forgot/reset password pages, mobile login, Header polish — complete Phase 1

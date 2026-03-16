@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 5 — Phase 1 backend auth complete
+Session 6 — web login, auth context, protected routes, sidebar
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -38,12 +38,14 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 3: Dockerfiles (backend, worker, web, edge), docker-compose.dev.yml, nginx.conf, config.py, main.py
 - Session 4: database.py, indexes.py, dependencies.py, 23 router stubs, constants.py — Phase 0 COMPLETE
 - Session 5: User model, security.py (JWT/bcrypt), auth schemas, auth_service, auth router, permissions, get_current_user
+- Session 6: Axios client, TanStack Query, useAuth, types, LoginPage, Sidebar, AppLayout, React Router
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
 - Phase 1 — Authentication & RBAC: IN PROGRESS
-  DONE: backend auth (JWT, bcrypt, login, refresh, logout, user CRUD, RBAC, device tokens)
-  PENDING: web login page, auth context, protected routes, forgot/reset password, mobile login
+  DONE: backend auth, web login page, auth context (useAuth), protected routes, role-based sidebar,
+        AppLayout, Header, React Router with all page placeholders, TypeScript types
+  PENDING: forgot/reset password pages (web), mobile login, Header user menu polish
 - Phase 2 through 11: not started
 
 ## Dependency Log
@@ -73,4 +75,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 6 — Phase 1: Web login page, auth context, protected routes, role-based sidebar
+Session 7 — Phase 1: Forgot/reset password, mobile login, Header, complete Phase 1
