@@ -1,0 +1,81 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp.*
+
+# Build outputs
+web/dist/
+mobile/.expo/
+mobile/android/
+mobile/ios/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Storage / data
+*.onnx
+*.pt
+*.pth
+*.trt
+*.engine
+training-data/
+models/
+data/
+
+# Secrets
+*.pem
+*.key
+firebase-credentials.json
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Sentry
+.sentryclirc
