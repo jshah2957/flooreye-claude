@@ -45,7 +45,7 @@ export default function CamerasPage() {
   const total = data?.meta?.total ?? 0;
 
   const filtered = cameras.filter((c) => {
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !(c.name ?? '').toLowerCase().includes(search.toLowerCase())) return false;
     if (modeFilter && c.inference_mode !== modeFilter) return false;
     return true;
   });
@@ -208,7 +208,7 @@ export default function CamerasPage() {
                   {storeMap.get(cam.store_id) ?? "Unknown Store"}
                 </p>
                 <p className="mt-1 text-xs text-[#78716C]">
-                  {cam.stream_type.toUpperCase()} &middot; {cam.floor_type}
+                  {(cam.stream_type ?? 'rtsp').toUpperCase()} &middot; {cam.floor_type ?? 'tile'}
                   {cam.last_seen && ` · Last seen ${new Date(cam.last_seen).toLocaleTimeString()}`}
                 </p>
                 <div className="mt-2 flex items-center gap-2">

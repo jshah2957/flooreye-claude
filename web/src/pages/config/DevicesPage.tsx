@@ -114,7 +114,7 @@ export default function DevicesPage() {
                 <StatusBadge status={d.status} size="sm" />
               </div>
               <p className="text-xs text-[#78716C]">
-                {d.device_type} &middot; {d.control_method.toUpperCase()} &middot; {storeMap.get(d.store_id) ?? "—"}
+                {d.device_type} &middot; {(d.control_method ?? 'http').toUpperCase()} &middot; {storeMap.get(d.store_id) ?? "—"}
               </p>
               {d.last_triggered && (
                 <p className="mt-1 text-[10px] text-[#78716C]">Last triggered: {new Date(d.last_triggered).toLocaleString()}</p>

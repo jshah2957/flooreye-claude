@@ -279,7 +279,7 @@ export default function CameraWizardPage() {
                         />
                       )}
                       <p className="mt-2 text-xs text-[#16A34A]">
-                        Detected: {state.streamType.toUpperCase()} | {testResult.resolution}
+                        Detected: {(state.streamType ?? 'rtsp').toUpperCase()} | {testResult.resolution}
                       </p>
                     </div>
                   ) : (
@@ -500,7 +500,7 @@ export default function CameraWizardPage() {
                 <div className="flex justify-between">
                   <dt className="text-[#78716C]">Stream</dt>
                   <dd className="text-[#1C1917]">
-                    {state.streamType.toUpperCase()} &middot; {state.resolution || "Auto"}
+                    {(state.streamType ?? 'rtsp').toUpperCase()} &middot; {state.resolution || "Auto"}
                   </dd>
                 </div>
                 <div className="flex justify-between">

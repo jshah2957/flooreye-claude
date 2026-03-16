@@ -30,7 +30,7 @@ export default function StoragePage() {
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <HardDrive size={18} className="text-[#D97706]" />
-                  <span className="text-sm font-medium text-[#1C1917]">{intg.service.toUpperCase()}</span>
+                  <span className="text-sm font-medium text-[#1C1917]">{(intg.service ?? '').toUpperCase()}</span>
                 </div>
                 <StatusBadge status={intg.status} size="sm" />
               </div>

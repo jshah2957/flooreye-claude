@@ -101,7 +101,7 @@ export default function ReviewQueuePage() {
                   <StatusBadge status={d.is_wet ? "critical" : "online"} />
                   <span className="text-sm font-semibold text-[#1C1917]">{(d.confidence * 100).toFixed(0)}%</span>
                 </div>
-                <p className="text-xs text-[#78716C]">{d.model_source.toUpperCase()} · {new Date(d.timestamp).toLocaleString()}</p>
+                <p className="text-xs text-[#78716C]">{(d.model_source ?? 'unknown').toUpperCase()} · {new Date(d.timestamp).toLocaleString()}</p>
                 <div className="mt-3 flex gap-2">
                   <button onClick={() => trainingMutation.mutate(d.id)} disabled={d.in_training_set}
                     className="flex flex-1 items-center justify-center gap-1 rounded-md bg-[#16A34A] px-2 py-1.5 text-xs text-white hover:bg-green-700 disabled:opacity-50">

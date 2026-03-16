@@ -55,7 +55,7 @@ export default function StoresPage() {
 
   // Client-side filtering
   const filtered = stores.filter((s) => {
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !(s.name ?? '').toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter === "active" && !s.is_active) return false;
     if (statusFilter === "inactive" && s.is_active) return false;
     return true;

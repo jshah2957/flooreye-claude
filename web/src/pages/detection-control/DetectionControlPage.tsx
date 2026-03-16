@@ -141,12 +141,12 @@ export default function DetectionControlPage() {
   }
 
   const storeList = (stores ?? []).filter(
-    (s) => !treeSearch || s.name.toLowerCase().includes(treeSearch.toLowerCase())
+    (s) => !treeSearch || (s.name ?? '').toLowerCase().includes(treeSearch.toLowerCase())
   );
 
   const camerasByStore = new Map<string, CameraType[]>();
   for (const cam of cameras ?? []) {
-    if (treeSearch && !cam.name.toLowerCase().includes(treeSearch.toLowerCase())) continue;
+    if (treeSearch && !(cam.name ?? '').toLowerCase().includes(treeSearch.toLowerCase())) continue;
     const list = camerasByStore.get(cam.store_id) ?? [];
     list.push(cam);
     camerasByStore.set(cam.store_id, list);

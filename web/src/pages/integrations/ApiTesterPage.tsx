@@ -340,8 +340,8 @@ export default function ApiTesterPage() {
     endpoints: cat.endpoints.filter(
       (ep) =>
         !endpointSearch ||
-        ep.label.toLowerCase().includes(endpointSearch.toLowerCase()) ||
-        ep.path.toLowerCase().includes(endpointSearch.toLowerCase())
+        (ep.label ?? '').toLowerCase().includes(endpointSearch.toLowerCase()) ||
+        (ep.path ?? '').toLowerCase().includes(endpointSearch.toLowerCase())
     ),
   })).filter((cat) => cat.endpoints.length > 0);
 

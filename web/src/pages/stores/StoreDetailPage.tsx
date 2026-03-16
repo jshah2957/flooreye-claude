@@ -175,7 +175,7 @@ export default function StoreDetailPage() {
                     <StatusBadge status={cam.status} />
                   </div>
                   <p className="mt-1 text-xs text-[#78716C]">
-                    {cam.stream_type.toUpperCase()} &middot; {cam.floor_type} &middot; {cam.inference_mode}
+                    {(cam.stream_type ?? 'rtsp').toUpperCase()} &middot; {cam.floor_type ?? 'tile'} &middot; {cam.inference_mode ?? 'cloud'}
                   </p>
                 </Link>
               ))}

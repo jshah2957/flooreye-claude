@@ -149,7 +149,7 @@ export default function CameraDetailPage() {
           <div>
             <h1 className="text-xl font-semibold text-[#1C1917]">{camera.name}</h1>
             <p className="text-sm text-[#78716C]">
-              {camera.stream_type.toUpperCase()} &middot; {camera.floor_type} &middot; {camera.resolution ?? "Unknown"}
+              {(camera.stream_type ?? 'rtsp').toUpperCase()} &middot; {camera.floor_type ?? 'tile'} &middot; {camera.resolution ?? "Unknown"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -221,7 +221,7 @@ export default function CameraDetailPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-[#78716C]">Stream Type</dt>
-                <dd className="text-[#1C1917]">{camera.stream_type.toUpperCase()}</dd>
+                <dd className="text-[#1C1917]">{(camera.stream_type ?? 'rtsp').toUpperCase()}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-[#78716C]">Resolution</dt>

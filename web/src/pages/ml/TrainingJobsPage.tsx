@@ -93,7 +93,7 @@ export default function TrainingJobsPage() {
                 <div className="flex items-center gap-3">
                   <StatusBadge status={job.status} />
                   <span className="text-sm font-medium text-[#1C1917]">
-                    {(job.config as any).architecture ?? "yolov8n"} · {job.frames_used} frames
+                    {(job.config as any)?.architecture ?? "yolov8n"} · {job.frames_used ?? 0} frames
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

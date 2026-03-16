@@ -31,10 +31,10 @@ export default function LogsPage() {
 
   const { connected } = useWebSocket({ url: "/ws/system-logs", onMessage });
 
-  const filtered = tab === "All" ? logs : logs.filter((l) => l.level.toLowerCase() === tab.toLowerCase());
+  const filtered = tab === "All" ? logs : logs.filter((l) => (l.level ?? 'info').toLowerCase() === tab.toLowerCase());
 
   function levelColor(level: string) {
-    switch (level.toLowerCase()) {
+    switch ((level ?? 'info').toLowerCase()) {
       case "error": return "text-[#DC2626] bg-[#FEE2E2]";
       case "warning": return "text-[#D97706] bg-[#FEF3C7]";
       case "info": return "text-[#2563EB] bg-[#DBEAFE]";
@@ -88,7 +88,7 @@ export default function LogsPage() {
                   {new Date(log.timestamp).toLocaleTimeString()}
                 </span>
                 <span className={`w-14 shrink-0 rounded px-1 text-center text-[10px] font-semibold ${levelColor(log.level)}`}>
-                  {log.level.toUpperCase()}
+                  {(log.level ?? 'INFO').toUpperCase()}
                 </span>
                 <span className="text-gray-300">{log.message}</span>
               </div>

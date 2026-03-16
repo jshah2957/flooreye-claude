@@ -26,8 +26,9 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string }> =
 const DEFAULT_CONFIG = { bg: "bg-gray-100", text: "text-gray-500", dot: "bg-gray-500" };
 
 export default function StatusBadge({ status, size = "sm" }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status.toLowerCase()] ?? DEFAULT_CONFIG;
-  const label = status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const s = status ?? "unknown";
+  const config = STATUS_CONFIG[s.toLowerCase()] ?? DEFAULT_CONFIG;
+  const label = s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <span
