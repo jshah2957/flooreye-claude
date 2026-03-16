@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import settings
 from app.db.database import connect_db, close_db
@@ -54,13 +55,25 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Rate limiting
+    from app.middleware.rate_limiter import RateLimitMiddleware
+    application.add_middleware(RateLimitMiddleware)
+
+    # CORS
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins_list,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
+
+    # Trusted hosts (production)
+    if settings.ENVIRONMENT == "production":
+        application.add_middleware(
+            TrustedHostMiddleware,
+            allowed_hosts=["api.flooreye.com", "*.flooreye.com"],
+        )
 
     @application.get("/api/v1/health", tags=["health"])
     async def health_check():
