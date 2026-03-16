@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.inference_service import run_roboflow_inference, compute_detection_summary
 from app.services.validation_pipeline import run_validation_pipeline
+from app.services.detection_control_service import resolve_effective_settings
 
 
 async def run_manual_detection(
@@ -52,9 +53,27 @@ async def run_manual_detection(
     # Compute summary
     summary = compute_detection_summary(predictions)
 
-    # Run validation pipeline
+    # Resolve effective detection control settings for this camera
+    try:
+        effective, _ = await resolve_effective_settings(db, org_id, camera_id)
+    except Exception:
+        effective = {}
+
+    # Run validation pipeline with effective settings
     validation = await run_validation_pipeline(
-        db, camera_id, predictions, frame_base64
+        db,
+        camera_id,
+        predictions,
+        frame_base64,
+        layer1_confidence=effective.get("layer1_confidence", 0.70),
+        layer2_min_area=effective.get("layer2_min_area_percent", 0.5),
+        layer3_k=effective.get("layer3_k", 3),
+        layer3_m=effective.get("layer3_m", 5),
+        layer4_delta=effective.get("layer4_delta_threshold", 0.15),
+        layer1_enabled=effective.get("layer1_enabled", True),
+        layer2_enabled=effective.get("layer2_enabled", True),
+        layer3_enabled=effective.get("layer3_enabled", True),
+        layer4_enabled=effective.get("layer4_enabled", True),
     )
 
     # Create detection log
