@@ -9,6 +9,7 @@ from app.dependencies import get_current_user, get_db
 router = APIRouter(prefix="/api/v1/storage", tags=["storage"])
 
 
+@router.get("/settings")
 @router.get("/config")
 async def get_storage_config(
     db: AsyncIOMotorDatabase = Depends(get_db),

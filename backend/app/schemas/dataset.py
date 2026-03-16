@@ -22,16 +22,16 @@ class DatasetFrameResponse(BaseModel):
     org_id: Optional[str] = None
     camera_id: Optional[str] = None
     store_id: Optional[str] = None
-    frame_path: str
+    frame_path: Optional[str] = None
     thumbnail_path: Optional[str] = None
     label_class: Optional[str] = None
     floor_type: Optional[str] = None
-    label_source: str
+    label_source: Optional[str] = None
     teacher_confidence: Optional[float] = None
-    roboflow_sync_status: str
-    split: str
-    included: bool
-    created_at: datetime
+    roboflow_sync_status: Optional[str] = None
+    split: Optional[str] = None
+    included: Optional[bool] = True
+    created_at: Optional[datetime] = None
 
 
 class DatasetStatsResponse(BaseModel):
@@ -52,6 +52,6 @@ class AnnotationResponse(BaseModel):
     frame_id: str
     org_id: Optional[str] = None
     bboxes: list[dict] = []
-    annotated_by: str
-    source: str
-    created_at: datetime
+    annotated_by: Optional[str] = None
+    source: Optional[str] = None
+    created_at: Optional[datetime] = None

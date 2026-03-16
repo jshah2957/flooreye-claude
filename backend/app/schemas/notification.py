@@ -55,12 +55,12 @@ class NotificationRuleResponse(BaseModel):
     quiet_hours_start: Optional[str] = None
     quiet_hours_end: Optional[str] = None
     quiet_hours_timezone: Optional[str] = None
-    is_active: bool
+    is_active: Optional[bool] = True
     webhook_method: Optional[str] = None
     push_title_template: Optional[str] = None
     push_body_template: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class DeliveryResponse(BaseModel):
@@ -72,9 +72,9 @@ class DeliveryResponse(BaseModel):
     incident_id: Optional[str] = None
     detection_id: Optional[str] = None
     status: str
-    attempts: int
+    attempts: Optional[int] = 0
     error_message: Optional[str] = None
-    sent_at: datetime
+    sent_at: Optional[datetime] = None
 
 
 class DeviceCreate(BaseModel):
