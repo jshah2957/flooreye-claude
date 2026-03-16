@@ -17,6 +17,8 @@ import IncidentsPage from "@/pages/detection/IncidentsPage";
 import DetectionControlPage from "@/pages/detection-control/DetectionControlPage";
 import ApiManagerPage from "@/pages/integrations/ApiManagerPage";
 import EdgeManagementPage from "@/pages/edge/EdgeManagementPage";
+import NotificationsPage from "@/pages/config/NotificationsPage";
+import DevicesPage from "@/pages/config/DevicesPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -127,8 +129,8 @@ export default function AppRoutes() {
         <Route path="/cameras" element={<CamerasPage />} />
         <Route path="/cameras/wizard" element={<CameraWizardPage />} />
         <Route path="/cameras/:id" element={<CameraDetailPage />} />
-        <Route path="/devices" element={<Placeholder title="Device Control" />} />
-        <Route path="/notifications" element={<Placeholder title="Notification Settings" />} />
+        <Route path="/devices" element={<DevicesPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/settings/storage" element={<Placeholder title="Storage Settings" />} />
 
         {/* Detection Control */}
