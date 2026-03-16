@@ -29,6 +29,12 @@ import UsersPage from "@/pages/admin/UsersPage";
 import RoboflowPage from "@/pages/integrations/RoboflowPage";
 import StoragePage from "@/pages/config/StoragePage";
 import TestInferencePage from "@/pages/ml/TestInferencePage";
+import AnnotationPage from "@/pages/ml/AnnotationPage";
+import AutoLabelPage from "@/pages/ml/AutoLabelPage";
+import TrainingExplorerPage from "@/pages/ml/TrainingExplorerPage";
+import ClassManagerPage from "@/pages/detection-control/ClassManagerPage";
+import ApiTesterPage from "@/pages/integrations/ApiTesterPage";
+import ManualPage from "@/pages/admin/ManualPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -126,9 +132,9 @@ export default function AppRoutes() {
 
         {/* ML & Training */}
         <Route path="/dataset" element={<DatasetPage />} />
-        <Route path="/dataset/annotate/:id" element={<Placeholder title="Annotation Tool" />} />
-        <Route path="/dataset/auto-label" element={<Placeholder title="Auto-Labeling" />} />
-        <Route path="/training/explorer" element={<Placeholder title="Training Data Explorer" />} />
+        <Route path="/dataset/annotate/:id" element={<AnnotationPage />} />
+        <Route path="/dataset/auto-label" element={<AutoLabelPage />} />
+        <Route path="/training/explorer" element={<TrainingExplorerPage />} />
         <Route path="/training/jobs" element={<TrainingJobsPage />} />
         <Route path="/models" element={<ModelRegistryPage />} />
         <Route path="/ml/test-inference" element={<TestInferencePage />} />
@@ -145,11 +151,11 @@ export default function AppRoutes() {
 
         {/* Detection Control */}
         <Route path="/detection-control" element={<DetectionControlPage />} />
-        <Route path="/detection-control/classes" element={<Placeholder title="Class Manager" />} />
+        <Route path="/detection-control/classes" element={<ClassManagerPage />} />
 
         {/* Integrations */}
         <Route path="/integrations/api-manager" element={<ApiManagerPage />} />
-        <Route path="/integrations/api-tester" element={<Placeholder title="API Testing Console" />} />
+        <Route path="/integrations/api-tester" element={<ApiTesterPage />} />
         <Route path="/integrations/roboflow" element={<RoboflowPage />} />
 
         {/* Edge */}
@@ -158,7 +164,7 @@ export default function AppRoutes() {
         {/* Administration */}
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/logs" element={<LogsPage />} />
-        <Route path="/docs" element={<Placeholder title="User Manual" />} />
+        <Route path="/docs" element={<ManualPage />} />
       </Route>
 
       {/* Fallback */}
