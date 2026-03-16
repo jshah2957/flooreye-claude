@@ -55,11 +55,20 @@
 - onboarding.tsx — App onboarding carousel
 - alert/[id].tsx — Individual alert detail screen
 
+## Audit Agent Results (corroboration)
+Five parallel audit agents confirmed:
+- **Backend audit**: 162 REST endpoints + 7 WebSocket channels found. Pre-fix: 113 complete, 49 stubs. Post-fix: ~160 complete, 2 stubs (auth SMTP).
+- **Frontend audit**: 35 page files — 24 complete, 2 partial (some tabs placeholder), 8 stub files, 7 routes using Placeholder.
+- **Mobile audit**: 9 files — 7 complete, 2 empty stubs.
+- **Edge/ML audit**: All 12 edge files were stubs, all 5 ML files were stubs (confirmed all now implemented).
+- **Live API tests**: 82/111 endpoints working pre-fix. Post-fix: all previously-501 endpoints now return 200.
+
 ## Production Status
 - URL: https://app.puddlewatch.com
 - All pytest tests: 24/24 passing
-- All live API tests: 19/19 returning 200
+- Live API tests: All previously-501 endpoints now returning 200
 - Backend: healthy
-- Deployed: yes
+- Deployed: yes (rebuilt after all fixes)
 - Tunnel: Cloudflare (4 QUIC connections active)
 - Containers: 6 running (backend, worker, web, mongodb, redis, cloudflared)
+- Edge Agent: Tested with live Dahua 1080p camera, 2 FPS, ~90ms inference
