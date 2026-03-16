@@ -480,3 +480,45 @@ Phase 3 — Detection Engine & Live Monitoring is now COMPLETE:
 
 ### Next Session Plan
 Session 12: Phase 4 — Detection Control Center (backend + web)
+
+---
+
+## Session 12 — Phase 4 Detection Control Center
+### Date: 2026-03-15
+### Goal: Detection control settings with scoped inheritance + 3-column web UI
+
+### Tasks Completed
+- Task 1: backend/app/models/detection_control.py — DetectionControlSettings + DetectionClassOverride
+- Task 2: backend/app/schemas/detection_control.py — Settings, ClassOverride, Bulk, Export schemas
+- Tasks 1-2: commit 16acd90
+- Task 3: backend/app/services/detection_control_service.py — CRUD, 4-layer inheritance resolution, class overrides, bulk apply, export
+- Task 4: backend/app/routers/detection_control.py — 13 live endpoints (history + import remain 501)
+- Tasks 3-4: commit 607ae96
+- Task 5: Wire effective settings into detection_service.py validation pipeline — commit 5f43574
+- Task 6: web/src/pages/detection-control/DetectionControlPage.tsx — 3-column layout
+- Task 7: Route wired
+- Tasks 6-7: commit 6f5a117
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/models/detection_control.py (implemented)
+- backend/app/schemas/detection_control.py (implemented)
+- backend/app/services/detection_control_service.py (implemented)
+- backend/app/routers/detection_control.py (implemented — replaced stubs)
+- backend/app/services/detection_service.py (updated — wired effective settings)
+- web/src/pages/detection-control/DetectionControlPage.tsx (implemented)
+- web/src/routes/index.tsx (updated)
+
+### Phase 4 Summary
+Phase 4 — Detection Control Center is now COMPLETE:
+- Backend: scoped settings CRUD, 4-layer inheritance (global→org→store→camera), class overrides, bulk apply, export
+- Validation pipeline now uses effective settings per camera
+- Web: 3-column layout — scope tree, 7-section settings form, inheritance viewer
+
+### Issues
+- None
+
+### Next Session Plan
+Session 13: Phase 5 — API Integration Manager & Testing Console

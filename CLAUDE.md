@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 11 — Phase 3 COMPLETE
+Session 12 — Phase 4 COMPLETE
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -34,6 +34,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Phase 1 — Authentication & RBAC: COMPLETE (Sessions 5-7)
 - Phase 2 — Stores, Cameras & Onboarding: COMPLETE (Sessions 8-9)
 - Phase 3 — Detection Engine & Live Monitoring: COMPLETE (Sessions 10-11)
+- Phase 4 — Detection Control Center: COMPLETE (Session 12)
 
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
@@ -47,13 +48,15 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 9: Shared components, StoresPage, StoreDetailPage, CamerasPage, CameraDetailPage, ROI tool, Camera Wizard — Phase 2 COMPLETE
 - Session 10: DetectionLog/Event models, inference service, 4-layer validation, detection/incident services, detection/events/live routers, Celery worker, WebSocket hub — Phase 3 backend
 - Session 11: useWebSocket hook, Dashboard, Detection History, Incident Management, LiveFrameViewer — Phase 3 COMPLETE
+- Session 12: DetectionControl models/schemas/service/router, inheritance chain, Detection Control Center page — Phase 4 COMPLETE
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
 - Phase 1 — Authentication & RBAC: COMPLETE
 - Phase 2 — Stores, Cameras & Onboarding: COMPLETE
 - Phase 3 — Detection Engine & Live Monitoring: COMPLETE
-- Phase 4 through 11: not started
+- Phase 4 — Detection Control Center: COMPLETE
+- Phase 5 through 11: not started
 
 ## Dependency Log
 No libraries installed yet. All versions pinned in:
@@ -82,4 +85,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 12 — Phase 4: Detection Control Center (backend + web)
+Session 13 — Phase 5: API Integration Manager & Testing Console
