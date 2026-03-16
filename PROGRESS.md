@@ -648,3 +648,46 @@ Phase 7 — Notifications, Push, Devices is now COMPLETE:
 
 ### Next Session Plan
 Session 16: Phase 8 — Mobile App (Store Owner)
+
+---
+
+## Session 16 — Phase 8 Mobile App
+### Date: 2026-03-15
+### Goal: Mobile backend API + all React Native screens for store owner
+
+### Tasks Completed
+- Task 1: backend/app/services/mobile_service.py — dashboard, stores, alerts, analytics, heatmap, camera frame
+- Task 2: backend/app/routers/mobile.py — 11 live endpoints (report/generate 501)
+- Tasks 1-2: commit 36a1c78
+- Task 3: mobile/app/(tabs)/index.tsx — Home dashboard (stats, incidents, cameras, detections)
+- Task 4: mobile/app/(tabs)/live.tsx — Live View with camera selector + refresh rate
+- Task 5: mobile/app/(tabs)/alerts.tsx — Alert list with acknowledge
+- Task 5b: mobile/app/incident/[id].tsx — Incident detail screen
+- Task 6: mobile/app/(tabs)/analytics.tsx — Metrics cards + 7x24 heatmap
+- Task 7: mobile/app/(tabs)/settings.tsx — Profile, stores, notification prefs, logout
+- Tasks 3-7: commit 34ba974
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/services/mobile_service.py (implemented)
+- backend/app/routers/mobile.py (implemented — replaced stubs)
+- mobile/app/(tabs)/index.tsx (implemented)
+- mobile/app/(tabs)/live.tsx (implemented)
+- mobile/app/(tabs)/alerts.tsx (implemented)
+- mobile/app/(tabs)/analytics.tsx (implemented)
+- mobile/app/(tabs)/settings.tsx (implemented)
+- mobile/app/incident/[id].tsx (implemented)
+
+### Phase 8 Summary
+Phase 8 — Mobile App is now COMPLETE:
+- Backend: 11 mobile-optimized endpoints (dashboard, stores, camera frame, alerts, analytics, heatmap, incident detail, notification prefs)
+- Mobile: 5 tab screens (Home, Live, Alerts, Analytics, Settings) + Incident Detail
+- Pull-to-refresh, configurable frame polling, acknowledge from mobile, notification pref toggles
+
+### Issues
+- None
+
+### Next Session Plan
+Session 17: Phase 9 — ML Pipeline (Training & Model Registry)
