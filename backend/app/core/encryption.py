@@ -23,8 +23,13 @@ def _get_key() -> bytes:
             raise ValueError(f"Encryption key must be 32 bytes, got {len(key)}")
         return key
     except Exception:
-        # Fallback: use SHA-256 hash of the key string for dev environments
+        # Fallback: use SHA-256 hash of the key string — DEV ONLY
         import hashlib
+        import logging
+        logging.getLogger(__name__).warning(
+            "ENCRYPTION_KEY is not a valid 32-byte base64 key. "
+            "Using SHA-256 fallback. Set a proper key for production!"
+        )
         return hashlib.sha256(key_b64.encode()).digest()
 
 

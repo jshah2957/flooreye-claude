@@ -1,4 +1,15 @@
+import logging
+import sys
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+log = logging.getLogger(__name__)
+
+_INSECURE_DEFAULTS = {
+    "CHANGE_ME_256_BIT_SECRET",
+    "CHANGE_ME_EDGE_SECRET",
+    "CHANGE_ME_BASE64_32_BYTE_KEY",
+}
 
 
 class Settings(BaseSettings):
@@ -76,3 +87,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# SEC-1 + SEC-2: Block production startup with insecure default secrets
+if settings.ENVIRONMENT == "production":
+    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY"):
+        if getattr(settings, attr) in _INSECURE_DEFAULTS:
+            log.critical(
+                f"FATAL: {attr} is set to an insecure default. "
+                f"Set a strong value in .env before running in production."
+            )
+            sys.exit(1)
