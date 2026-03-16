@@ -11,7 +11,7 @@ REFRESH_COOKIE_NAME = "flooreye_refresh"
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=10)).decode()
 
 
 def verify_password(password: str, password_hash: str) -> bool:

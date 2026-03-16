@@ -403,7 +403,8 @@ async def capture_dry_reference(
 
             # Brief pause between captures
             if i < num_frames - 1:
-                time.sleep(0.5)
+                import asyncio
+                await asyncio.sleep(0.5)
 
         cap.release()
 
