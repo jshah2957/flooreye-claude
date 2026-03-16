@@ -159,5 +159,12 @@ Security: JWT query param validation, org-scoped channels
 10. ota_worker.py — OTA model update push task
 11. sync_worker.py — Roboflow dataset sync task
 
+### Critical Security Fixes (5 bugs)
+1. live_stream.py: Added org_id filter to stop_stream, stop_recording, recording_status — prevented cross-org access
+2. auth_service.py: Added org_id filter to update_user and deactivate_user — prevented cross-org user modification
+3. auth_service.py: Enforce org_id match on user creation — prevent org_admin creating users in other orgs
+4. dataset.py + annotations.py: Fixed COCO export boxes→bboxes field mismatch — exports were empty
+5. annotations.py: Added org_id filter to COCO export frame query — prevented cross-org data leak
+
 ### Cleanup
 - Removed unused NOT_IMPLEMENTED constant from detection.py
