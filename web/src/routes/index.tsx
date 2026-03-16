@@ -19,6 +19,9 @@ import ApiManagerPage from "@/pages/integrations/ApiManagerPage";
 import EdgeManagementPage from "@/pages/edge/EdgeManagementPage";
 import NotificationsPage from "@/pages/config/NotificationsPage";
 import DevicesPage from "@/pages/config/DevicesPage";
+import DatasetPage from "@/pages/ml/DatasetPage";
+import ModelRegistryPage from "@/pages/ml/ModelRegistryPage";
+import TrainingJobsPage from "@/pages/ml/TrainingJobsPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -115,12 +118,12 @@ export default function AppRoutes() {
         <Route path="/review" element={<Placeholder title="Review Queue" />} />
 
         {/* ML & Training */}
-        <Route path="/dataset" element={<Placeholder title="Dataset Management" />} />
+        <Route path="/dataset" element={<DatasetPage />} />
         <Route path="/dataset/annotate/:id" element={<Placeholder title="Annotation Tool" />} />
         <Route path="/dataset/auto-label" element={<Placeholder title="Auto-Labeling" />} />
         <Route path="/training/explorer" element={<Placeholder title="Training Data Explorer" />} />
-        <Route path="/training/jobs" element={<Placeholder title="Distillation Jobs" />} />
-        <Route path="/models" element={<Placeholder title="Model Registry" />} />
+        <Route path="/training/jobs" element={<TrainingJobsPage />} />
+        <Route path="/models" element={<ModelRegistryPage />} />
         <Route path="/ml/test-inference" element={<Placeholder title="Test Inference" />} />
 
         {/* Configuration */}
