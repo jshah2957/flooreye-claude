@@ -6,6 +6,11 @@ import AppLayout from "@/components/layout/AppLayout";
 import LoginPage from "@/pages/auth/LoginPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
+import StoresPage from "@/pages/stores/StoresPage";
+import StoreDetailPage from "@/pages/stores/StoreDetailPage";
+import CamerasPage from "@/pages/cameras/CamerasPage";
+import CameraDetailPage from "@/pages/cameras/CameraDetailPage";
+import CameraWizardPage from "@/pages/cameras/CameraWizardPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -111,11 +116,11 @@ export default function AppRoutes() {
         <Route path="/ml/test-inference" element={<Placeholder title="Test Inference" />} />
 
         {/* Configuration */}
-        <Route path="/stores" element={<Placeholder title="Stores" />} />
-        <Route path="/stores/:id" element={<Placeholder title="Store Detail" />} />
-        <Route path="/cameras" element={<Placeholder title="Cameras" />} />
-        <Route path="/cameras/:id" element={<Placeholder title="Camera Detail" />} />
-        <Route path="/cameras/wizard" element={<Placeholder title="Camera Wizard" />} />
+        <Route path="/stores" element={<StoresPage />} />
+        <Route path="/stores/:id" element={<StoreDetailPage />} />
+        <Route path="/cameras" element={<CamerasPage />} />
+        <Route path="/cameras/wizard" element={<CameraWizardPage />} />
+        <Route path="/cameras/:id" element={<CameraDetailPage />} />
         <Route path="/devices" element={<Placeholder title="Device Control" />} />
         <Route path="/notifications" element={<Placeholder title="Notification Settings" />} />
         <Route path="/settings/storage" element={<Placeholder title="Storage Settings" />} />
