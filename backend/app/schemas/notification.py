@@ -48,10 +48,10 @@ class NotificationRuleResponse(BaseModel):
     recipients: list[str] = []
     store_id: Optional[str] = None
     camera_id: Optional[str] = None
-    min_severity: str
-    min_confidence: float
-    min_wet_area_percent: float
-    quiet_hours_enabled: bool
+    min_severity: Optional[str] = None
+    min_confidence: Optional[float] = None
+    min_wet_area_percent: Optional[float] = None
+    quiet_hours_enabled: Optional[bool] = False
     quiet_hours_start: Optional[str] = None
     quiet_hours_end: Optional[str] = None
     quiet_hours_timezone: Optional[str] = None
@@ -104,10 +104,10 @@ class DeviceResponse(BaseModel):
     store_id: str
     name: str
     device_type: str
-    control_method: str
+    control_method: Optional[str] = "http"
     control_url: Optional[str] = None
     mqtt_topic: Optional[str] = None
-    status: str
+    status: Optional[str] = "idle"
     last_triggered: Optional[datetime] = None
     is_active: bool
     created_at: datetime
