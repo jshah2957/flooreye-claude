@@ -115,4 +115,49 @@ See Session 3 below.
 - None
 
 ### Next Session Plan
-Session 4: database.py, indexes.py, dependencies.py, stub all 22 routers, constants.py — complete Phase 0
+See Session 4 below.
+
+---
+
+## Session 4 — Phase 0 Completion
+### Date: 2026-03-15
+### Goal: Database connection, stub all routers, complete Phase 0
+
+### Tasks Completed
+- Task 1: backend/app/db/database.py — Motor async client, connect/close/get_db — commit 9151392
+- Task 2: backend/app/db/indexes.py — ensure_indexes for all 21 collections — commit cd6dd69
+- Task 3: backend/app/dependencies.py — get_db and get_current_user stub — commit d2bca5b
+- Task 4: All 23 router files stubbed with 501 responses (978 lines) — commit 4a27f29
+- Task 5: main.py updated — all 23 routers wired + DB lifecycle — commit 2c14bb9
+- Task 6: backend/app/core/constants.py — all role/status/enum constants — commit afb4a51
+- Task 7: CLAUDE.md updated — Phase 0 marked COMPLETE
+- Task 8: PROGRESS.md updated — this commit
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/db/database.py
+- backend/app/db/indexes.py
+- backend/app/dependencies.py
+- backend/app/core/constants.py
+- backend/app/main.py (updated with all routers + DB lifecycle)
+- All 23 router files in backend/app/routers/
+
+### Phase 0 Summary
+Phase 0 — Scaffold is now COMPLETE. All infrastructure in place:
+- 228+ files in monorepo structure
+- All docs extracted from SRD
+- All dependency manifests with pinned versions
+- All Dockerfiles + docker-compose.dev.yml
+- FastAPI app factory with health endpoint
+- Motor DB connection with indexes for 21 collections
+- All 23 routers stubbed (501) with correct route prefixes
+- 7 WebSocket channels stubbed
+- All enum constants defined
+
+### Issues
+- None
+
+### Next Session Plan
+Session 5: Phase 1 — Authentication & RBAC backend (JWT, bcrypt, login, refresh, RBAC)
