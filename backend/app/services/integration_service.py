@@ -97,6 +97,7 @@ async def save_integration(
     if existing:
         updates = {
             "config_encrypted": encrypted,
+            "status": "configured",
             "updated_by": user_id,
             "updated_at": now,
         }
@@ -110,7 +111,7 @@ async def save_integration(
             "org_id": org_id,
             "service": service,
             "config_encrypted": encrypted,
-            "status": "not_configured",
+            "status": "configured",
             "last_tested": None,
             "last_test_result": None,
             "last_test_response_ms": None,
