@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 2 — all config and dependency files complete
+Session 3 — Dockerfiles, docker-compose, config.py, main.py complete
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -35,15 +35,14 @@ Tagline: "See Every Drop. Stop Every Slip."
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
 - Session 2: .gitignore, requirements.txt, package.json, .env.example, all config files
+- Session 3: Dockerfiles (backend, worker, web, edge), docker-compose.dev.yml, nginx.conf, config.py, main.py
 
 ## Phase Progress
-- Phase 0 — Scaffold: 80% done
-  DONE: folder structure, docs, .gitignore, requirements.txt, requirements-dev.txt,
-        requirements-training.txt, package.json (web + mobile), tsconfig.json (web + mobile),
-        vite.config.ts, tailwind.config.ts, postcss.config.js, app.json, eas.json,
-        .env.example (backend + edge-agent)
-  PENDING: Dockerfiles, docker-compose.dev.yml, config.py, main.py, database.py,
-           stub routers, constants.py
+- Phase 0 — Scaffold: 90% done
+  DONE: folder structure, docs, .gitignore, all requirements/package.json, all config files,
+        .env.example (backend + edge-agent), Dockerfiles (backend, worker, web, edge-agent,
+        inference), docker-compose.dev.yml, nginx.conf, config.py, main.py (app factory + health)
+  PENDING: database.py, indexes.py, dependencies.py, stub all routers, constants.py
 - Phase 1 through 11: not started
 
 ## Dependency Log
@@ -73,4 +72,4 @@ None.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 3 — Dockerfiles, docker-compose.dev.yml, config.py, main.py
+Session 4 — database.py, indexes.py, stub all 22 routers, constants.py, complete Phase 0

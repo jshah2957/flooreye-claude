@@ -77,4 +77,42 @@ See Session 2 below.
 - None
 
 ### Next Session Plan
-Session 3: Dockerfiles, docker-compose.dev.yml, config.py, main.py, health endpoint
+See Session 3 below.
+
+---
+
+## Session 3 — Phase 0 Dockerfiles & App Factory
+### Date: 2026-03-15
+### Goal: Create Dockerfiles, docker-compose, config.py, main.py with health endpoint
+
+### Tasks Completed
+- Task 1: backend/Dockerfile — Python 3.11, uvicorn entrypoint — commit 58b1d72
+- Task 2: backend/Dockerfile.worker — Celery worker entrypoint — commit 5ceddc9
+- Task 3: web/Dockerfile — Node 20 build, nginx serve — commit ccaef56
+- Task 4: edge-agent/Dockerfile.agent + Dockerfile.inference + requirements — commit 516c3ea
+- Task 5: docker-compose.dev.yml — backend, MongoDB 7.0, Redis 7.2 — commit c45be62
+- Task 6: nginx.conf — reverse proxy for API, WebSocket, SPA — commit 9fe6697
+- Task 7: backend/app/core/config.py — Pydantic Settings with all env vars — commit 6522ded
+- Task 8: backend/app/main.py — FastAPI app factory, CORS, health endpoint — commit f98e0f3
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/Dockerfile
+- backend/Dockerfile.worker
+- web/Dockerfile
+- edge-agent/Dockerfile.agent
+- edge-agent/Dockerfile.inference
+- edge-agent/requirements.txt
+- edge-agent/requirements-inference.txt
+- docker-compose.dev.yml
+- nginx.conf
+- backend/app/core/config.py
+- backend/app/main.py
+
+### Issues
+- None
+
+### Next Session Plan
+Session 4: database.py, indexes.py, dependencies.py, stub all 22 routers, constants.py — complete Phase 0
