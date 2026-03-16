@@ -38,7 +38,7 @@ async def create_store(
 
 async def get_store(db: AsyncIOMotorDatabase, store_id: str, org_id: str) -> dict:
     query = {"id": store_id, **_org_filter(org_id)}
-    store = await db.stores.find_one(query)
+    store = await db.stores.find_one(query, max_time_ms=5000)
     if not store:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Store not found"
@@ -59,8 +59,13 @@ async def list_stores(
     if user_store_access is not None and len(user_store_access) > 0:
         query["id"] = {"$in": user_store_access}
 
-    total = await db.stores.count_documents(query)
-    cursor = db.stores.find(query).skip(offset).limit(limit).sort("created_at", -1)
+    total = await db.stores.count_documents(query, maxTimeMS=5000)
+    cursor = (
+        db.stores.find(query, max_time_ms=5000)
+        .skip(offset)
+        .limit(limit)
+        .sort("created_at", -1)
+    )
     stores = await cursor.to_list(length=limit)
     return stores, total
 

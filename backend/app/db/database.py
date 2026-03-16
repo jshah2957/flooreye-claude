@@ -10,10 +10,12 @@ async def connect_db() -> None:
     global _client, _db
     _client = AsyncIOMotorClient(
         settings.MONGODB_URI,
-        maxPoolSize=50,
-        minPoolSize=5,
+        maxPoolSize=100,
+        minPoolSize=10,
         serverSelectionTimeoutMS=5000,
         connectTimeoutMS=10000,
+        waitQueueTimeoutMS=5000,
+        socketTimeoutMS=30000,
     )
     _db = _client[settings.MONGODB_DB]
 

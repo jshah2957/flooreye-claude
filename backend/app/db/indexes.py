@@ -21,6 +21,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     # stores
     await db.stores.create_indexes([
         IndexModel([("org_id", ASCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("is_active", ASCENDING)]),
     ])
 
     # cameras

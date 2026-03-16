@@ -1,10 +1,27 @@
+import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
+
+
+class TimeoutMiddleware(BaseHTTPMiddleware):
+    """Return 504 if any request takes longer than 30 seconds."""
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await asyncio.wait_for(call_next(request), timeout=30.0)
+        except asyncio.TimeoutError:
+            return JSONResponse(
+                {"detail": "Request timeout"}, status_code=504
+            )
+
+
 from app.db.database import connect_db, close_db
 from app.db.indexes import ensure_indexes
 from app.db.database import get_db
@@ -54,6 +71,9 @@ def create_app() -> FastAPI:
         openapi_url="/api/v1/openapi.json",
         lifespan=lifespan,
     )
+
+    # Request timeout (outermost — must be added first so it wraps everything)
+    application.add_middleware(TimeoutMiddleware)
 
     # Rate limiting
     from app.middleware.rate_limiter import RateLimitMiddleware
