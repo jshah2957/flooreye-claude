@@ -1,43 +1,158 @@
-from fastapi import APIRouter, status
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, status
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.core.permissions import require_role
+from app.dependencies import get_current_user, get_db
+from app.schemas.detection import (
+    DetectionListResponse,
+    DetectionResponse,
+    FlagToggleResponse,
+    ManualDetectionRequest,
+)
+from app.services import detection_service
 
 router = APIRouter(prefix="/api/v1", tags=["detection"])
 
 NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
 
 
-@router.post("/detection/run/{camera_id}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def run_detection(camera_id: str):
-    return NOT_IMPLEMENTED
+def _detection_response(d: dict) -> DetectionResponse:
+    return DetectionResponse(
+        id=d["id"],
+        camera_id=d["camera_id"],
+        store_id=d["store_id"],
+        org_id=d["org_id"],
+        timestamp=d["timestamp"],
+        is_wet=d.get("is_wet", False),
+        confidence=d.get("confidence", 0),
+        wet_area_percent=d.get("wet_area_percent", 0),
+        inference_time_ms=d.get("inference_time_ms", 0),
+        frame_base64=d.get("frame_base64"),
+        frame_s3_path=d.get("frame_s3_path"),
+        predictions=d.get("predictions", []),
+        model_source=d.get("model_source", "roboflow"),
+        model_version_id=d.get("model_version_id"),
+        student_confidence=d.get("student_confidence"),
+        escalated=d.get("escalated", False),
+        is_flagged=d.get("is_flagged", False),
+        in_training_set=d.get("in_training_set", False),
+        incident_id=d.get("incident_id"),
+    )
 
 
-@router.get("/detection/history", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def detection_history():
-    return NOT_IMPLEMENTED
+# ── Detection Endpoints ────────────────────────────────────────
 
 
-@router.get("/detection/history/{detection_id}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def get_detection(detection_id: str):
-    return NOT_IMPLEMENTED
+@router.post("/detection/run/{camera_id}")
+async def run_detection(
+    camera_id: str,
+    body: ManualDetectionRequest = ManualDetectionRequest(),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    result = await detection_service.run_manual_detection(
+        db, camera_id, current_user.get("org_id", ""), body.model_source
+    )
+    return {"data": _detection_response(result)}
 
 
-@router.post("/detection/history/{detection_id}/flag", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def flag_detection(detection_id: str):
-    return NOT_IMPLEMENTED
+@router.get("/detection/history")
+async def detection_history(
+    camera_id: Optional[str] = Query(None),
+    store_id: Optional[str] = Query(None),
+    is_wet: Optional[bool] = Query(None),
+    model_source: Optional[str] = Query(None),
+    min_confidence: Optional[float] = Query(None),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    detections, total = await detection_service.list_detections(
+        db,
+        current_user.get("org_id", ""),
+        camera_id=camera_id,
+        store_id=store_id,
+        is_wet=is_wet,
+        model_source=model_source,
+        min_confidence=min_confidence,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+    return {
+        "data": [_detection_response(d) for d in detections],
+        "meta": {"total": total, "offset": offset, "limit": limit},
+    }
 
 
-@router.post("/detection/history/{detection_id}/add-to-training", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def add_to_training(detection_id: str):
-    return NOT_IMPLEMENTED
+@router.get("/detection/history/{detection_id}")
+async def get_detection(
+    detection_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    detection = await detection_service.get_detection(
+        db, detection_id, current_user.get("org_id", "")
+    )
+    return {"data": _detection_response(detection)}
 
 
-@router.get("/detection/flagged", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def list_flagged():
-    return NOT_IMPLEMENTED
+@router.post("/detection/history/{detection_id}/flag")
+async def flag_detection(
+    detection_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    result = await detection_service.toggle_flag(
+        db, detection_id, current_user.get("org_id", "")
+    )
+    return {"data": result}
 
 
-@router.get("/detection/flagged/export", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def export_flagged():
-    return NOT_IMPLEMENTED
+@router.post("/detection/history/{detection_id}/add-to-training")
+async def add_to_training(
+    detection_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    result = await detection_service.add_to_training(
+        db, detection_id, current_user.get("org_id", "")
+    )
+    return {"data": result}
+
+
+@router.get("/detection/flagged")
+async def list_flagged(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    detections, total = await detection_service.list_flagged(
+        db, current_user.get("org_id", ""), limit, offset
+    )
+    return {
+        "data": [_detection_response(d) for d in detections],
+        "meta": {"total": total, "offset": offset, "limit": limit},
+    }
+
+
+@router.get("/detection/flagged/export")
+async def export_flagged(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    detections = await detection_service.export_flagged(
+        db, current_user.get("org_id", "")
+    )
+    return {"data": [_detection_response(d) for d in detections]}
 
 
 @router.post("/detection/flagged/upload-to-roboflow", status_code=status.HTTP_501_NOT_IMPLEMENTED)
@@ -45,16 +160,32 @@ async def upload_flagged_to_roboflow():
     return NOT_IMPLEMENTED
 
 
-@router.get("/continuous/status", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def continuous_status():
-    return NOT_IMPLEMENTED
+# ── Continuous Detection Endpoints ──────────────────────────────
+# These will be fully wired when the Celery worker is integrated.
+
+
+@router.get("/continuous/status")
+async def continuous_status(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    # Report status from Redis state (will be wired to Celery worker)
+    return {
+        "data": {
+            "running": False,
+            "active_cameras": 0,
+            "total_detections": 0,
+        }
+    }
 
 
 @router.post("/continuous/start", status_code=status.HTTP_501_NOT_IMPLEMENTED)
 async def continuous_start():
+    # Requires Celery worker — will dispatch task
     return NOT_IMPLEMENTED
 
 
 @router.post("/continuous/stop", status_code=status.HTTP_501_NOT_IMPLEMENTED)
 async def continuous_stop():
+    # Requires Celery worker — will revoke task
     return NOT_IMPLEMENTED
