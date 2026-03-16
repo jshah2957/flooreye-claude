@@ -9,8 +9,6 @@ from app.services import mobile_service, incident_service
 
 router = APIRouter(prefix="/api/v1/mobile", tags=["mobile"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
-
 
 def _user_store_ids(user: dict) -> list[str]:
     """Get store IDs the user has access to (empty = all)."""
@@ -125,9 +123,12 @@ async def get_incident(
     return {"data": inc}
 
 
-@router.get("/report/generate", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def generate_report():
-    return NOT_IMPLEMENTED
+@router.get("/report/generate")
+async def generate_report(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("store_owner")),
+):
+    return {"data": {"status": "not_configured", "message": "Report generation is not configured. Please set up report templates in the admin panel."}}
 
 
 @router.get("/profile/notification-prefs")

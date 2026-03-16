@@ -20,8 +20,6 @@ from app.services import detection_control_service
 
 router = APIRouter(prefix="/api/v1/detection-control", tags=["detection-control"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
-
 
 def _settings_response(doc: dict) -> SettingsResponse:
     return SettingsResponse(**{k: doc.get(k) for k in SettingsResponse.model_fields})
@@ -213,9 +211,27 @@ async def save_class_overrides(
 # ── History, Bulk, Export/Import ─────────────────────────────────
 
 
-@router.get("/history", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def get_change_history():
-    return NOT_IMPLEMENTED
+@router.get("/history")
+async def get_change_history(
+    scope: Optional[str] = Query(None),
+    scope_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    org_id = current_user.get("org_id", "")
+    query = {"org_id": org_id}
+    if scope:
+        query["scope"] = scope
+    if scope_id:
+        query["scope_id"] = scope_id
+    total = await db.detection_control_history.count_documents(query)
+    cursor = db.detection_control_history.find(query).sort("created_at", -1).skip(offset).limit(limit)
+    docs = await cursor.to_list(length=limit)
+    for d in docs:
+        d.pop("_id", None)
+    return {"data": docs, "meta": {"total": total, "offset": offset, "limit": limit}}
 
 
 @router.post("/bulk-apply")
@@ -244,6 +260,43 @@ async def export_config(
     return {"data": result}
 
 
-@router.post("/import", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def import_config():
-    return NOT_IMPLEMENTED
+@router.post("/import")
+async def import_config(
+    body: dict,
+    scope: str = Query(...),
+    scope_id: Optional[str] = Query(None),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    org_id = current_user.get("org_id", "")
+    now = datetime.now(timezone.utc)
+    settings_data = body.get("settings")
+    if settings_data:
+        settings_data["org_id"] = org_id
+        settings_data["scope"] = scope
+        settings_data["scope_id"] = scope_id
+        settings_data["updated_at"] = now
+        settings_data["updated_by"] = current_user["id"]
+        if not settings_data.get("id"):
+            settings_data["id"] = str(uuid.uuid4())
+            settings_data["created_at"] = now
+        await db.detection_control_settings.find_one_and_update(
+            {"org_id": org_id, "scope": scope, "scope_id": scope_id},
+            {"$set": settings_data},
+            upsert=True,
+        )
+    overrides = body.get("class_overrides", [])
+    for override in overrides:
+        override["org_id"] = org_id
+        override["scope"] = scope
+        override["scope_id"] = scope_id
+        override["updated_at"] = now
+        if not override.get("id"):
+            override["id"] = str(uuid.uuid4())
+            override["created_at"] = now
+        await db.detection_class_overrides.find_one_and_update(
+            {"org_id": org_id, "scope": scope, "scope_id": scope_id, "class_id": override.get("class_id")},
+            {"$set": override},
+            upsert=True,
+        )
+    return {"data": {"ok": True, "imported_settings": bool(settings_data), "imported_overrides": len(overrides)}}

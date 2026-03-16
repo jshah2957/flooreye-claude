@@ -25,8 +25,6 @@ from app.services import edge_service
 
 router = APIRouter(prefix="/api/v1/edge", tags=["edge"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
-
 
 # ── Edge Token Auth Dependency ──────────────────────────────────
 
@@ -262,11 +260,28 @@ async def current_model(
     return {"data": {"model_version_id": agent.get("current_model_version")}}
 
 
-@router.get("/model/download/{version_id}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def download_model(version_id: str):
-    return NOT_IMPLEMENTED
+@router.get("/model/download/{version_id}")
+async def download_model(
+    version_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    agent: dict = Depends(get_edge_agent),
+):
+    model = await db.model_versions.find_one({"id": version_id, "org_id": agent["org_id"]})
+    if not model:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model version not found")
+    download_url = model.get("onnx_s3_path") or model.get("artifact_path", "")
+    return {"data": {"version_id": version_id, "download_url": download_url, "format": "onnx"}}
 
 
-@router.put("/config", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def push_config():
-    return NOT_IMPLEMENTED
+@router.put("/config")
+async def push_config(
+    body: dict,
+    agent: dict = Depends(get_edge_agent),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    now = datetime.now(timezone.utc)
+    await db.edge_agents.update_one(
+        {"id": agent["id"]},
+        {"$set": {"config": body, "config_updated_at": now, "updated_at": now}},
+    )
+    return {"data": {"ok": True}}

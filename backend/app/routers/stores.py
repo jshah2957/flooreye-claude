@@ -13,8 +13,6 @@ from app.services import store_service
 
 router = APIRouter(prefix="/api/v1/stores", tags=["stores"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
-
 
 def _store_response(store: dict) -> StoreResponse:
     return StoreResponse(
@@ -68,9 +66,22 @@ async def create_store(
     return {"data": _store_response(store)}
 
 
-@router.get("/stats", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def store_stats():
-    return NOT_IMPLEMENTED
+@router.get("/stats")
+async def store_stats(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    org_id = current_user.get("org_id", "")
+    total_stores = await db.stores.count_documents({"org_id": org_id})
+    active_stores = await db.stores.count_documents({"org_id": org_id, "is_active": True})
+    total_cameras = await db.cameras.count_documents({"org_id": org_id})
+    active_incidents = await db.incidents.count_documents({"org_id": org_id, "status": "active"})
+    return {"data": {
+        "total_stores": total_stores,
+        "active_stores": active_stores,
+        "total_cameras": total_cameras,
+        "active_incidents": active_incidents,
+    }}
 
 
 @router.get("/{store_id}")
@@ -106,6 +117,23 @@ async def delete_store(
     return {"data": {"ok": True}}
 
 
-@router.get("/{store_id}/edge-status", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def store_edge_status(store_id: str):
-    return NOT_IMPLEMENTED
+@router.get("/{store_id}/edge-status")
+async def store_edge_status(
+    store_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    org_id = current_user.get("org_id", "")
+    agents = await db.edge_agents.find({"store_id": store_id, "org_id": org_id}).to_list(length=100)
+    result = []
+    for a in agents:
+        a.pop("_id", None)
+        result.append({
+            "agent_id": a.get("id"),
+            "name": a.get("name", ""),
+            "status": a.get("status", "unknown"),
+            "last_heartbeat": a.get("last_heartbeat"),
+            "agent_version": a.get("agent_version", ""),
+            "current_model_version": a.get("current_model_version"),
+        })
+    return {"data": result}

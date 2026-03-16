@@ -1,3 +1,5 @@
+import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
@@ -9,8 +11,6 @@ from app.schemas.dataset import DatasetFrameCreate, DatasetFrameResponse, Datase
 from app.services import dataset_service
 
 router = APIRouter(prefix="/api/v1/dataset", tags=["dataset"])
-
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
 
 
 def _frame_response(f: dict) -> DatasetFrameResponse:
@@ -53,9 +53,20 @@ async def delete_frame(
     return {"data": {"ok": True}}
 
 
-@router.post("/frames/bulk-delete", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def bulk_delete_frames():
-    return NOT_IMPLEMENTED
+@router.post("/frames/bulk-delete")
+async def bulk_delete_frames(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    org_id = current_user.get("org_id", "")
+    frame_ids = body.get("frame_ids", [])
+    if not frame_ids:
+        return {"data": {"deleted": 0}}
+    result = await db.dataset_frames.delete_many(
+        {"id": {"$in": frame_ids}, "org_id": org_id}
+    )
+    return {"data": {"deleted": result.deleted_count}}
 
 
 @router.put("/frames/{frame_id}/split")
@@ -80,41 +91,204 @@ async def dataset_stats(
     return {"data": stats}
 
 
-@router.post("/upload-to-roboflow", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def upload_to_roboflow():
-    return NOT_IMPLEMENTED
+@router.post("/upload-to-roboflow")
+async def upload_to_roboflow(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = current_user.get("org_id", "")
+    frame_ids = body.get("frame_ids", [])
+    project_id = body.get("project_id", "")
+    now = datetime.now(timezone.utc)
+    job = {
+        "id": str(uuid.uuid4()),
+        "org_id": org_id,
+        "type": "upload_to_roboflow",
+        "project_id": project_id,
+        "frame_count": len(frame_ids),
+        "status": "queued",
+        "created_by": current_user["id"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.dataset_jobs.insert_one(job)
+    return {"data": {"job_id": job["id"], "frame_count": len(frame_ids), "status": "queued"}}
 
 
-@router.post("/upload-to-roboflow-for-labeling", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def upload_to_roboflow_for_labeling():
-    return NOT_IMPLEMENTED
+@router.post("/upload-to-roboflow-for-labeling")
+async def upload_to_roboflow_for_labeling(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = current_user.get("org_id", "")
+    frame_ids = body.get("frame_ids", [])
+    project_id = body.get("project_id", "")
+    now = datetime.now(timezone.utc)
+    job = {
+        "id": str(uuid.uuid4()),
+        "org_id": org_id,
+        "type": "upload_for_labeling",
+        "project_id": project_id,
+        "frame_count": len(frame_ids),
+        "status": "queued",
+        "created_by": current_user["id"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.dataset_jobs.insert_one(job)
+    return {"data": {"job_id": job["id"], "frame_count": len(frame_ids), "status": "queued"}}
 
 
-@router.get("/sync-settings", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def get_sync_settings():
-    return NOT_IMPLEMENTED
+@router.get("/sync-settings")
+async def get_sync_settings(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = current_user.get("org_id", "")
+    doc = await db.dataset_sync_settings.find_one({"org_id": org_id})
+    if not doc:
+        return {"data": {"org_id": org_id, "auto_sync": False, "sync_interval_hours": 24, "roboflow_project_id": ""}}
+    doc.pop("_id", None)
+    return {"data": doc}
 
 
-@router.put("/sync-settings", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def update_sync_settings():
-    return NOT_IMPLEMENTED
+@router.put("/sync-settings")
+async def update_sync_settings(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = current_user.get("org_id", "")
+    now = datetime.now(timezone.utc)
+    update_fields = {k: v for k, v in body.items() if k in (
+        "auto_sync", "sync_interval_hours", "roboflow_project_id", "include_splits", "filters"
+    )}
+    update_fields["updated_at"] = now
+    update_fields["updated_by"] = current_user["id"]
+    result = await db.dataset_sync_settings.find_one_and_update(
+        {"org_id": org_id},
+        {"$set": update_fields, "$setOnInsert": {"org_id": org_id, "created_at": now}},
+        upsert=True,
+        return_document=True,
+    )
+    result.pop("_id", None)
+    return {"data": result}
 
 
-@router.post("/auto-label", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def start_auto_label():
-    return NOT_IMPLEMENTED
+@router.post("/auto-label")
+async def start_auto_label(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = current_user.get("org_id", "")
+    now = datetime.now(timezone.utc)
+    job = {
+        "id": str(uuid.uuid4()),
+        "org_id": org_id,
+        "type": "auto_label",
+        "model_id": body.get("model_id", ""),
+        "frame_ids": body.get("frame_ids", []),
+        "frame_count": len(body.get("frame_ids", [])),
+        "confidence_threshold": body.get("confidence_threshold", 0.5),
+        "status": "pending",
+        "progress": 0,
+        "results": [],
+        "created_by": current_user["id"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.auto_label_jobs.insert_one(job)
+    job.pop("_id", None)
+    return {"data": job}
 
 
-@router.get("/auto-label/{job_id}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def auto_label_status(job_id: str):
-    return NOT_IMPLEMENTED
+@router.get("/auto-label/{job_id}")
+async def auto_label_status(
+    job_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    from fastapi import HTTPException
+    org_id = current_user.get("org_id", "")
+    job = await db.auto_label_jobs.find_one({"id": job_id, "org_id": org_id})
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auto-label job not found")
+    job.pop("_id", None)
+    return {"data": job}
 
 
-@router.post("/auto-label/{job_id}/approve", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def approve_auto_label(job_id: str):
-    return NOT_IMPLEMENTED
+@router.post("/auto-label/{job_id}/approve")
+async def approve_auto_label(
+    job_id: str,
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    from fastapi import HTTPException
+    org_id = current_user.get("org_id", "")
+    now = datetime.now(timezone.utc)
+    job = await db.auto_label_jobs.find_one({"id": job_id, "org_id": org_id})
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auto-label job not found")
+    approved_ids = body.get("approved_frame_ids", [])
+    await db.auto_label_jobs.update_one(
+        {"id": job_id},
+        {"$set": {"status": "approved", "approved_frame_ids": approved_ids, "approved_by": current_user["id"], "approved_at": now, "updated_at": now}},
+    )
+    return {"data": {"ok": True, "approved_count": len(approved_ids)}}
 
 
-@router.get("/export/coco", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def export_coco():
-    return NOT_IMPLEMENTED
+@router.get("/export/coco")
+async def export_coco(
+    split: Optional[str] = Query(None),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    org_id = current_user.get("org_id", "")
+    query = {"org_id": org_id}
+    if split:
+        query["split"] = split
+    frames = await db.dataset_frames.find(query).to_list(length=10000)
+    annotations = await db.annotations.find({"org_id": org_id}).to_list(length=50000)
+
+    # Build COCO format
+    ann_by_frame = {}
+    for a in annotations:
+        fid = a.get("frame_id")
+        if fid not in ann_by_frame:
+            ann_by_frame[fid] = []
+        ann_by_frame[fid].append(a)
+
+    categories = [{"id": 1, "name": "wet_floor", "supercategory": "hazard"}]
+    coco_images = []
+    coco_annotations = []
+    ann_id = 1
+    for idx, frame in enumerate(frames):
+        img_entry = {
+            "id": idx + 1,
+            "file_name": frame.get("image_url", frame.get("s3_path", "")),
+            "width": frame.get("width", 0),
+            "height": frame.get("height", 0),
+        }
+        coco_images.append(img_entry)
+        for a in ann_by_frame.get(frame["id"], []):
+            for box in a.get("boxes", []):
+                coco_annotations.append({
+                    "id": ann_id,
+                    "image_id": idx + 1,
+                    "category_id": 1,
+                    "bbox": [box.get("x", 0), box.get("y", 0), box.get("w", 0), box.get("h", 0)],
+                    "area": box.get("w", 0) * box.get("h", 0),
+                    "iscrowd": 0,
+                })
+                ann_id += 1
+
+    coco = {
+        "images": coco_images,
+        "annotations": coco_annotations,
+        "categories": categories,
+    }
+    return {"data": coco}

@@ -8,8 +8,6 @@ from app.services import integration_service
 
 router = APIRouter(prefix="/api/v1/integrations", tags=["integrations"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
-
 
 @router.get("")
 async def list_integrations(
@@ -33,9 +31,21 @@ async def integration_status(
     return {"data": statuses}
 
 
-@router.get("/history", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def test_history():
-    return NOT_IMPLEMENTED
+@router.get("/history")
+async def test_history(
+    limit: int = 50,
+    offset: int = 0,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    org_id = current_user.get("org_id", "")
+    query = {"org_id": org_id}
+    total = await db.integration_test_history.count_documents(query)
+    cursor = db.integration_test_history.find(query).sort("tested_at", -1).skip(offset).limit(limit)
+    docs = await cursor.to_list(length=limit)
+    for d in docs:
+        d.pop("_id", None)
+    return {"data": docs, "meta": {"total": total, "offset": offset, "limit": limit}}
 
 
 @router.post("/test-all")
