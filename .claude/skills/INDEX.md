@@ -22,7 +22,8 @@
 | superpowers | obra/superpowers | 53 | Agentic methodology | Complex multi-step tasks, parallel agents, TDD |
 | get-shit-done | gsd-build/get-shit-done | 170 | Spec-driven dev | Feature planning, milestones, autonomous execution |
 | anthropic-skills | anthropics/skills | 372 | Official agent skills | Document generation, API integration, web apps |
-| context-mode | mksglu/context-mode | 36 | Privacy context layer | Credential protection, log analysis, context savings |
+| context-mode | mksglu/context-mode | 37 | Privacy context layer | Credential protection, log analysis, context savings |
+| agentwise | VibeCodingWithPhil/agentwise | 77 | Multi-agent orchestration | Parallel agents, token savings, auto-verification |
 
 ## Superpowers Skills (obra/superpowers)
 | Skill | Description |
@@ -110,6 +111,43 @@
 | ctx-cloud-setup | Cloud deployment configuration |
 | ctx-cloud-status | Cloud service status |
 
+## Agentwise Agents (VibeCodingWithPhil/agentwise)
+| Agent | Description |
+|-------|-------------|
+| backend-specialist | Backend/API implementation |
+| frontend-specialist | React/UI component development |
+| database-specialist | Database design and queries |
+| testing-specialist | Test writing and verification |
+| code-review-specialist | Code quality review |
+| design-review-specialist | Architecture and design review |
+| designer-specialist | UI/UX design decisions |
+| devops-specialist | CI/CD, Docker, infrastructure |
+| deployment-specialist | Production deployment |
+| research-specialist | Technical research and analysis |
+| rust-ide-specialist | Rust-specific development |
+
+## Agentwise Commands (50+)
+| Command | Description |
+|---------|-------------|
+| /create | Create a new project |
+| /create-plan | Create implementation plan |
+| /task | Execute a task with agent routing |
+| /task-plan | Plan task execution |
+| /task-dynamic | Dynamic task distribution |
+| /monitor | Real-time agent monitoring dashboard |
+| /configure-agentwise | Configure agentwise settings |
+| /generate-agent | Generate a new specialist agent |
+| /deploy | Deploy to production |
+| /rollback | Rollback deployment |
+| /security-review | Run security analysis |
+| /security-report | Generate security report |
+| /requirements | Manage project requirements |
+| /project-status | View project status |
+| /database-wizard | Interactive database setup |
+| /visual-test | Visual regression testing |
+| /github-setup | Configure GitHub integration |
+| /update-agentwise | Update framework |
+
 ## Quick Reference
 - When building a new feature: use **get-shit-done** (/gsd plan-phase, /gsd execute-phase)
 - When doing complex agentic work: use **superpowers** (/write-plan, /execute-plan)
@@ -117,3 +155,6 @@
 - When following standard patterns: use **anthropic-skills** (pdf, docx, claude-api)
 - When debugging: use **superpowers** systematic-debugging or **get-shit-done** /gsd debug
 - When testing: use **smart-tester** (chunked) or **superpowers** TDD
+- When running multi-agent sessions: use **agentwise** (/task, /monitor)
+- When token budget is tight: use **agentwise** token optimization
+- When you need automatic verification: use **agentwise** TaskCompletionValidator

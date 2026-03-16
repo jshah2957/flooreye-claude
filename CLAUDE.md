@@ -97,6 +97,7 @@ None yet. All field names must come from docs/schemas.md.
 - **gsd-build/get-shit-done** (170 files): Spec-driven development by TÂCHES — milestone planning, phase execution, autonomous mode, codebase mapping. Location: .claude/skills/get-shit-done/
 - **anthropics/skills** (372 files): Official Anthropic agent skills — PDF/DOCX/PPTX/XLSX generation, Claude API, MCP builder, webapp testing, frontend design. Location: .claude/skills/anthropic-skills/
 - **mksglu/context-mode** (36 files): Privacy-first MCP context virtualization — sandboxed execution, context savings (98%), session continuity, credential protection. Location: .claude/skills/context-mode/
+- **VibeCodingWithPhil/agentwise** (77 files): Multi-agent orchestration — 11 specialist agents, 50+ commands, token optimization (15-30%), automatic verification, hallucination detection. Location: .claude/skills/agentwise/
 - Use these frameworks when they add value to tasks. See .claude/skills/INDEX.md for full command reference.
 
 ## Rules — Follow These Always

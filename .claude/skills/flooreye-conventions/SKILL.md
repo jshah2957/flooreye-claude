@@ -55,3 +55,12 @@ When working with sensitive FloorEye data use context-mode:
 - **gsd-build/get-shit-done**: Spec-driven development — use for feature planning, milestone tracking, autonomous execution
 - **anthropics/skills**: Official Anthropic skills — use for standard workflows, document generation, API integration
 - **mksglu/context-mode**: Privacy-first context optimization — use for credential protection, log analysis, large output handling
+- **VibeCodingWithPhil/agentwise**: Multi-agent orchestration — use for parallel agent coordination, token optimization, automatic verification
+
+## Agentwise Integration
+Use agentwise orchestration for:
+- Multi-agent review sessions (11 specialist agents available)
+- Complex feature implementation (TaskDistributor routes to best agent)
+- Automated verification after fixes (TaskCompletionValidator, CodeValidator)
+- Token-efficient long sessions (15-30% savings via context sharing)
+- See .claude/skills/agentwise/flooreye-config.md for FloorEye-specific agent mapping
