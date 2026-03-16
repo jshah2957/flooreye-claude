@@ -26,7 +26,7 @@ export default function TrainingJobsPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
-  const [arch, setArch] = useState("yolov8n");
+  const [arch, setArch] = useState("yolo26n");
   const [epochs, setEpochs] = useState(100);
   const [augmentation, setAugmentation] = useState("standard");
 
@@ -129,9 +129,9 @@ export default function TrainingJobsPage() {
               )}
 
               <div className="mt-2 text-[10px] text-[#78716C]">
-                Augmentation: {(job.config as any).augmentation_preset ?? "standard"} ·
-                Image size: {(job.config as any).image_size ?? 640} ·
-                Max epochs: {(job.config as any).max_epochs ?? 100}
+                Augmentation: {(job.config as any)?.augmentation_preset ?? "standard"} ·
+                Image size: {(job.config as any)?.image_size ?? 640} ·
+                Max epochs: {(job.config as any)?.max_epochs ?? 100}
               </div>
             </div>
           ))}
@@ -151,9 +151,12 @@ export default function TrainingJobsPage() {
                 <label className="mb-1 block text-sm font-medium text-[#1C1917]">Architecture</label>
                 <select value={arch} onChange={(e) => setArch(e.target.value)}
                   className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-                  <option value="yolov8n">YOLOv8n (Nano)</option>
-                  <option value="yolov8s">YOLOv8s (Small)</option>
-                  <option value="yolov8m">YOLOv8m (Medium)</option>
+                  <option value="yolo26n">YOLO26n (Nano - Recommended)</option>
+                  <option value="yolo26s">YOLO26s (Small)</option>
+                  <option value="yolo11n">YOLO11n (Nano)</option>
+                  <option value="yolov8n">YOLOv8n (Legacy Nano)</option>
+                  <option value="yolov8s">YOLOv8s (Legacy Small)</option>
+                  <option value="yolov8m">YOLOv8m (Legacy Medium)</option>
                 </select>
               </div>
               <div>

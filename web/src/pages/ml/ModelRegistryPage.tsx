@@ -127,13 +127,13 @@ export default function ModelRegistryPage() {
                   {models.map((m) => (
                     <tr key={m.id} onClick={() => setSelectedModel(m)}
                       className={`border-b border-[#E7E5E0] cursor-pointer hover:bg-[#F8F7F4] ${selectedModel?.id === m.id ? "bg-[#CCFBF1]" : ""}`}>
-                      <td className="px-4 py-2 font-medium text-[#0D9488]">{m.version_str}</td>
+                      <td className="px-4 py-2 font-medium text-[#0D9488]">{m.version_str ?? (m as any).name ?? '—'}</td>
                       <td className="px-4 py-2 text-[#78716C]">{m.architecture ?? 'unknown'}</td>
                       <td className="px-4 py-2"><StatusBadge status={m.status} /></td>
-                      <td className="px-4 py-2 text-[#78716C]">{m.frame_count}</td>
+                      <td className="px-4 py-2 text-[#78716C]">{m.frame_count ?? 0}</td>
                       <td className="px-4 py-2 text-[#78716C]">{m.map_50 != null ? `${(m.map_50 * 100).toFixed(1)}%` : "—"}</td>
                       <td className="px-4 py-2 text-[#78716C]">{m.f1 != null ? `${(m.f1 * 100).toFixed(1)}%` : "—"}</td>
-                      <td className="px-4 py-2 text-[#78716C]">{new Date(m.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-2 text-[#78716C]">{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -146,11 +146,11 @@ export default function ModelRegistryPage() {
         <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
           {selectedModel ? (
             <>
-              <h3 className="mb-3 text-base font-semibold text-[#1C1917]">{selectedModel.version_str}</h3>
+              <h3 className="mb-3 text-base font-semibold text-[#1C1917]">{selectedModel.version_str ?? (selectedModel as any).name ?? '—'}</h3>
               <dl className="space-y-2 text-xs">
                 <div className="flex justify-between"><dt className="text-[#78716C]">Architecture</dt><dd className="text-[#1C1917]">{selectedModel?.architecture ?? 'unknown'}</dd></div>
                 <div className="flex justify-between"><dt className="text-[#78716C]">Status</dt><dd><StatusBadge status={selectedModel.status} /></dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Frames</dt><dd className="text-[#1C1917]">{selectedModel.frame_count}</dd></div>
+                <div className="flex justify-between"><dt className="text-[#78716C]">Frames</dt><dd className="text-[#1C1917]">{selectedModel.frame_count ?? 0}</dd></div>
                 {selectedModel.map_50 != null && <div className="flex justify-between"><dt className="text-[#78716C]">mAP@50</dt><dd className="text-[#1C1917]">{(selectedModel.map_50 * 100).toFixed(1)}%</dd></div>}
                 {selectedModel.precision != null && <div className="flex justify-between"><dt className="text-[#78716C]">Precision</dt><dd className="text-[#1C1917]">{(selectedModel.precision * 100).toFixed(1)}%</dd></div>}
                 {selectedModel.recall != null && <div className="flex justify-between"><dt className="text-[#78716C]">Recall</dt><dd className="text-[#1C1917]">{(selectedModel.recall * 100).toFixed(1)}%</dd></div>}

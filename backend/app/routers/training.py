@@ -11,8 +11,22 @@ from app.services import training_service
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
 
+_DEFAULT_CONFIG = {
+    "architecture": "yolo26n",
+    "augmentation_preset": "standard",
+    "max_epochs": 100,
+    "image_size": 640,
+    "distillation_temperature": 4.0,
+    "distillation_alpha": 0.3,
+}
+
+
 def _job_response(j: dict) -> TrainingJobResponse:
-    return TrainingJobResponse(**{k: j.get(k) for k in TrainingJobResponse.model_fields})
+    data = {k: j.get(k) for k in TrainingJobResponse.model_fields}
+    # Ensure config is never null
+    if not data.get("config"):
+        data["config"] = _DEFAULT_CONFIG
+    return TrainingJobResponse(**data)
 
 
 @router.get("/jobs")
