@@ -1,75 +1,189 @@
-from fastapi import APIRouter, status
+from typing import Optional
+
+from fastapi import APIRouter, Cookie, Depends, Query, Response, status
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.core.permissions import require_role
+from app.core.security import (
+    REFRESH_COOKIE_NAME,
+    clear_refresh_cookie,
+    set_refresh_cookie,
+)
+from app.dependencies import get_current_user, get_db
+from app.schemas.auth import (
+    DeviceTokenRequest,
+    ForgotPasswordRequest,
+    LoginRequest,
+    PaginatedUsersResponse,
+    ProfileUpdate,
+    ResetPasswordRequest,
+    TokenResponse,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
+from app.services import auth_service
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
+
+def _user_response(user: dict) -> UserResponse:
+    return UserResponse(
+        id=user["id"],
+        email=user["email"],
+        name=user["name"],
+        role=user["role"],
+        org_id=user.get("org_id"),
+        store_access=user.get("store_access", []),
+        is_active=user.get("is_active", True),
+        last_login=user.get("last_login"),
+        created_at=user["created_at"],
+        updated_at=user["updated_at"],
+    )
 
 
-@router.post("/login", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def login():
-    return NOT_IMPLEMENTED
+@router.post("/login")
+async def login(
+    body: LoginRequest,
+    response: Response,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    user = await auth_service.authenticate_user(db, body.email, body.password)
+    access_token, refresh_token = auth_service.generate_tokens(user)
+    set_refresh_cookie(response, refresh_token)
+    return {"data": TokenResponse(access_token=access_token, user=_user_response(user))}
 
 
-@router.post("/refresh", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def refresh():
-    return NOT_IMPLEMENTED
+@router.post("/refresh")
+async def refresh(
+    response: Response,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    flooreye_refresh: Optional[str] = Cookie(None, alias=REFRESH_COOKIE_NAME),
+):
+    if not flooreye_refresh:
+        return Response(status_code=status.HTTP_401_UNAUTHORIZED)
+    access_token, user = await auth_service.refresh_access_token(db, flooreye_refresh)
+    return {"data": {"access_token": access_token, "token_type": "bearer"}}
 
 
-@router.post("/logout", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def logout():
-    return NOT_IMPLEMENTED
+@router.post("/logout")
+async def logout(response: Response):
+    clear_refresh_cookie(response)
+    return {"data": {"ok": True}}
 
 
-@router.post("/register", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def register():
-    return NOT_IMPLEMENTED
+@router.post("/register")
+async def register(
+    body: UserCreate,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    user = await auth_service.create_user(db, body)
+    return {"data": _user_response(user)}
 
 
 @router.post("/forgot-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def forgot_password():
-    return NOT_IMPLEMENTED
+async def forgot_password(body: ForgotPasswordRequest):
+    # Email sending requires SMTP integration (Phase 5)
+    return {"detail": "Not implemented — requires SMTP integration"}
 
 
 @router.post("/reset-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def reset_password():
-    return NOT_IMPLEMENTED
+async def reset_password(body: ResetPasswordRequest):
+    # Requires forgot-password token validation
+    return {"detail": "Not implemented — requires SMTP integration"}
 
 
-@router.get("/me", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def get_me():
-    return NOT_IMPLEMENTED
+@router.get("/me")
+async def get_me(current_user: dict = Depends(get_current_user)):
+    return {"data": _user_response(current_user)}
 
 
-@router.put("/me", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def update_me():
-    return NOT_IMPLEMENTED
+@router.put("/me")
+async def update_me(
+    body: ProfileUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    updated = await auth_service.update_profile(db, current_user["id"], body)
+    return {"data": _user_response(updated)}
 
 
-@router.post("/device-token", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def register_device_token():
-    return NOT_IMPLEMENTED
+@router.post("/device-token")
+async def register_device_token(
+    body: DeviceTokenRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    await auth_service.register_device_token(
+        db,
+        user_id=current_user["id"],
+        org_id=current_user.get("org_id", ""),
+        token=body.token,
+        platform=body.platform,
+        app_version=body.app_version,
+        device_model=body.device_model,
+    )
+    return {"data": {"ok": True}}
 
 
-@router.delete("/device-token", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def remove_device_token():
-    return NOT_IMPLEMENTED
+@router.delete("/device-token")
+async def remove_device_token(
+    token: str = Query(...),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    await auth_service.remove_device_token(db, current_user["id"], token)
+    return {"data": {"ok": True}}
 
 
-@router.get("/users", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def list_users():
-    return NOT_IMPLEMENTED
+@router.get("/users")
+async def list_users(
+    role: Optional[str] = Query(None),
+    org_id: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    # Scope to user's org unless super_admin
+    effective_org_id = org_id
+    if current_user["role"] != "super_admin":
+        effective_org_id = current_user.get("org_id")
+
+    users, total = await auth_service.list_users(db, effective_org_id, role, limit, offset)
+    return {
+        "data": [_user_response(u) for u in users],
+        "meta": {"total": total, "offset": offset, "limit": limit},
+    }
 
 
-@router.post("/users", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def create_user():
-    return NOT_IMPLEMENTED
+@router.post("/users")
+async def create_user(
+    body: UserCreate,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    user = await auth_service.create_user(db, body)
+    return {"data": _user_response(user)}
 
 
-@router.put("/users/{user_id}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def update_user(user_id: str):
-    return NOT_IMPLEMENTED
+@router.put("/users/{user_id}")
+async def update_user(
+    user_id: str,
+    body: UserUpdate,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    updated = await auth_service.update_user(db, user_id, body)
+    return {"data": _user_response(updated)}
 
 
-@router.delete("/users/{user_id}", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-async def deactivate_user(user_id: str):
-    return NOT_IMPLEMENTED
+@router.delete("/users/{user_id}")
+async def deactivate_user(
+    user_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    await auth_service.deactivate_user(db, user_id)
+    return {"data": {"ok": True}}
