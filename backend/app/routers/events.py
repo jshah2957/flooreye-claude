@@ -36,7 +36,7 @@ def _event_response(e: dict) -> EventResponse:
         devices_triggered=e.get("devices_triggered", []),
         notes=e.get("notes"),
         roboflow_sync_status=e.get("roboflow_sync_status", "not_sent"),
-        created_at=e["created_at"],
+        created_at=e.get("created_at", e.get("start_time")),
     )
 
 
