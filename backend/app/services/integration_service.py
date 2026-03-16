@@ -12,6 +12,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.encryption import decrypt_config, encrypt_config, mask_secrets
 
+def _strip_oid(doc: dict) -> dict:
+    """Remove MongoDB _id from document."""
+    doc.pop("_id", None)
+    return doc
+
+
 VALID_SERVICES = {
     "roboflow", "smtp", "webhook", "sms", "fcm",
     "s3", "minio", "r2", "mqtt",
@@ -42,7 +48,7 @@ async def list_integrations(db: AsyncIOMotorDatabase, org_id: str) -> list[dict]
         except Exception:
             decrypted = {}
         c["config"] = mask_secrets(decrypted)
-        result.append(c)
+        result.append(_strip_oid(c))
 
     # Add not_configured entries for missing services
     configured = {c["service"] for c in configs}
@@ -74,7 +80,7 @@ async def get_integration(
     except Exception:
         decrypted = {}
     doc["config"] = mask_secrets(decrypted)
-    return doc
+    return _strip_oid(doc)
 
 
 async def save_integration(
@@ -96,7 +102,7 @@ async def save_integration(
         await db.integration_configs.update_one(query, {"$set": updates})
         existing.update(updates)
         existing["config"] = mask_secrets(config)
-        return existing
+        return _strip_oid(existing)
     else:
         doc = {
             "id": str(uuid.uuid4()),
@@ -114,7 +120,7 @@ async def save_integration(
         }
         await db.integration_configs.insert_one(doc)
         doc["config"] = mask_secrets(config)
-        return doc
+        return _strip_oid(doc)
 
 
 async def delete_integration(

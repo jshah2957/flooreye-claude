@@ -1,7 +1,7 @@
 """Tests for authentication endpoints."""
 
 import pytest
-from tests.conftest import auth_headers
+from conftest import auth_headers
 
 
 @pytest.mark.asyncio
@@ -51,9 +51,11 @@ async def test_list_users_admin(client, admin_user):
 
 @pytest.mark.asyncio
 async def test_create_user(client, admin_user):
+    import uuid
     _, token = admin_user
+    unique_email = f"newuser_{uuid.uuid4().hex[:8]}@test.com"
     resp = await client.post("/api/v1/auth/users", headers=auth_headers(token), json={
-        "email": "newuser@test.com", "name": "New User", "password": "securepass123", "role": "viewer",
+        "email": unique_email, "name": "New User", "password": "securepass123", "role": "viewer",
     })
     assert resp.status_code == 200
-    assert resp.json()["data"]["email"] == "newuser@test.com"
+    assert resp.json()["data"]["email"] == unique_email

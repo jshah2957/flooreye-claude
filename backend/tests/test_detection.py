@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
-from tests.conftest import auth_headers
+from conftest import auth_headers
 
 
 @pytest.mark.asyncio

@@ -1,7 +1,7 @@
 """Tests for edge agent endpoints."""
 
 import pytest
-from tests.conftest import auth_headers
+from conftest import auth_headers
 
 
 @pytest.mark.asyncio

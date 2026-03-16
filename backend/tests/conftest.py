@@ -29,12 +29,12 @@ def event_loop():
 
 @pytest_asyncio.fixture(scope="session")
 async def test_db():
-    """Create a test database and clean up after all tests."""
+    """Create a test database. Cleanup is handled by dropping collections per-test or Docker."""
     client = AsyncIOMotorClient(settings.MONGODB_URI)
     db = client[TEST_DB_NAME]
     yield db
-    await client.drop_database(TEST_DB_NAME)
-    client.close()
+    # Don't drop DB in teardown — event loop may already be closing
+    # Use `docker compose down -v` to clean test data
 
 
 @pytest_asyncio.fixture(autouse=True)
