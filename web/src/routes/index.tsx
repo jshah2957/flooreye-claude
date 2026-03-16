@@ -14,6 +14,7 @@ import CameraWizardPage from "@/pages/cameras/CameraWizardPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 import DetectionHistoryPage from "@/pages/detection/DetectionHistoryPage";
 import IncidentsPage from "@/pages/detection/IncidentsPage";
+import DetectionControlPage from "@/pages/detection-control/DetectionControlPage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -129,7 +130,7 @@ export default function AppRoutes() {
         <Route path="/settings/storage" element={<Placeholder title="Storage Settings" />} />
 
         {/* Detection Control */}
-        <Route path="/detection-control" element={<Placeholder title="Detection Control Center" />} />
+        <Route path="/detection-control" element={<DetectionControlPage />} />
         <Route path="/detection-control/classes" element={<Placeholder title="Class Manager" />} />
 
         {/* Integrations */}
