@@ -128,6 +128,7 @@ export default function AppRoutes() {
         {/* Detection & Review */}
         <Route path="/detection/history" element={<DetectionHistoryPage />} />
         <Route path="/incidents" element={<IncidentsPage />} />
+        <Route path="/incidents/:id" element={<IncidentsPage />} />
         <Route path="/review" element={<ReviewQueuePage />} />
 
         {/* ML & Training */}

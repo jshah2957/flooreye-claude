@@ -157,3 +157,30 @@ async def send_push_batch(
         "sent": total_sent,
         "failed": total_failed,
     }
+
+
+def send_push_sync(token: str, title: str, body: str, data: dict | None = None) -> dict:
+    """Synchronous wrapper for send_push — used by Celery workers."""
+    server_key = _get_server_key()
+    if not server_key:
+        return {"success": False, "error": "FCM not configured"}
+
+    payload: dict = {"to": token, "notification": {"title": title, "body": body}}
+    if data:
+        payload["data"] = data
+
+    headers = {"Authorization": f"key={server_key}", "Content-Type": "application/json"}
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(FCM_SEND_URL, json=payload, headers=headers)
+        if resp.status_code != 200:
+            return {"success": False, "error": f"FCM HTTP {resp.status_code}"}
+        result = resp.json()
+        if result.get("success", 0) >= 1:
+            msg_id = (result.get("results") or [{}])[0].get("message_id")
+            return {"success": True, "message_id": msg_id}
+        error = (result.get("results") or [{}])[0].get("error", "unknown")
+        return {"success": False, "error": error}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
