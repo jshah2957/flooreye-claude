@@ -221,7 +221,8 @@ export default function ApiTesterPage() {
 
   function updateHeader(index: number, field: "key" | "value", val: string) {
     const updated = [...headers];
-    updated[index] = { ...updated[index], [field]: val };
+    const existing = updated[index]!;
+    updated[index] = { key: existing.key, value: existing.value, [field]: val };
     setHeaders(updated);
   }
 

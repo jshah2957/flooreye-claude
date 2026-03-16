@@ -45,7 +45,7 @@ export default function AnnotationPage() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  const [selectedClass, setSelectedClass] = useState(CLASSES[0].id);
+  const [selectedClass, setSelectedClass] = useState(CLASSES[0]!.id);
   const [tool, setTool] = useState<"rect" | "polygon">("rect");
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [undoStack, setUndoStack] = useState<Annotation[][]>([]);
@@ -108,18 +108,18 @@ export default function AnnotationPage() {
 
   const handleUndo = useCallback(() => {
     if (undoStack.length === 0) return;
-    const prev = undoStack[undoStack.length - 1];
+    const prev = undoStack[undoStack.length - 1]!;
     setRedoStack((r) => [...r, annotations]);
     setUndoStack((u) => u.slice(0, -1));
-    setAnnotations(prev);
+    setAnnotations([...prev]);
   }, [undoStack, annotations]);
 
   const handleRedo = useCallback(() => {
     if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
+    const next = redoStack[redoStack.length - 1]!;
     setUndoStack((u) => [...u, annotations]);
     setRedoStack((r) => r.slice(0, -1));
-    setAnnotations(next);
+    setAnnotations([...next]);
   }, [redoStack, annotations]);
 
   // Mouse events for bounding box drawing
@@ -163,7 +163,7 @@ export default function AnnotationPage() {
     if (w > 0.005 && h > 0.005) {
       const cx = Math.min(startX, currentX) + w / 2;
       const cy = Math.min(startY, currentY) + h / 2;
-      const cls = CLASSES.find((c) => c.id === selectedClass) ?? CLASSES[0];
+      const cls = CLASSES.find((c) => c.id === selectedClass) ?? CLASSES[0]!;
 
       pushUndo();
       setAnnotations((prev) => [
