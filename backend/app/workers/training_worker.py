@@ -72,7 +72,7 @@ async def _async_train(job_id: str, org_id: str) -> dict:
         await db.model_versions.insert_one({
             "id": model_id, "org_id": org_id,
             "version_str": f"v{now.strftime('%Y%m%d%H%M')}",
-            "architecture": config.get("architecture", "yolov8n"),
+            "architecture": config.get("architecture", "yolo26n"),
             "param_count": None, "status": "draft", "training_job_id": job_id,
             "frame_count": frames_used,
             "map_50": None, "map_50_95": None, "precision": None, "recall": None, "f1": None,

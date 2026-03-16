@@ -40,6 +40,10 @@ class EdgeConfig:
     MQTT_USERNAME: str = os.getenv("MQTT_USERNAME", "")
     MQTT_PASSWORD: str = os.getenv("MQTT_PASSWORD", "")
 
+    # Parallelism
+    MAX_CONCURRENT_INFERENCES: int = int(os.getenv("MAX_CONCURRENT_INFERENCES", "4"))
+    CAPTURE_THREAD_TIMEOUT: int = int(os.getenv("CAPTURE_THREAD_TIMEOUT", "10"))
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 

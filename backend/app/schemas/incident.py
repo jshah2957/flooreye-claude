@@ -19,6 +19,8 @@ class EventResponse(BaseModel):
     acknowledged_at: Optional[datetime] = None
     resolved_by: Optional[str] = None
     resolved_at: Optional[datetime] = None
+    cleanup_verified_at: Optional[datetime] = None
+    cleanup_verified_by: Optional[str] = None
     detection_count: int
     devices_triggered: list[str] = []
     notes: Optional[str] = None

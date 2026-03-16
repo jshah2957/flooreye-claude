@@ -2,12 +2,12 @@
 torch>=2.4.0
 torchvision>=0.19.0
 
-# YOLO
-ultralytics==8.3.57
+# YOLO (>=8.3.0 required for YOLO26 architecture support)
+ultralytics>=8.3.0
 
 # ONNX Export
-onnx==1.17.0
-onnxruntime==1.20.1
+onnx>=1.17.0
+onnxruntime>=1.18.0
 
 # Data & Evaluation
 numpy>=1.26.0

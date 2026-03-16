@@ -35,6 +35,7 @@ import TrainingExplorerPage from "@/pages/ml/TrainingExplorerPage";
 import ClassManagerPage from "@/pages/detection-control/ClassManagerPage";
 import ApiTesterPage from "@/pages/integrations/ApiTesterPage";
 import ManualPage from "@/pages/admin/ManualPage";
+import CompliancePage from "@/pages/compliance/CompliancePage";
 
 // Placeholder for pages not yet implemented
 function Placeholder({ title }: { title: string }) {
@@ -124,6 +125,7 @@ export default function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/monitoring" element={<Placeholder title="Live Monitoring" />} />
         <Route path="/clips" element={<ClipsPage />} />
+        <Route path="/compliance" element={<CompliancePage />} />
 
         {/* Detection & Review */}
         <Route path="/detection/history" element={<DetectionHistoryPage />} />

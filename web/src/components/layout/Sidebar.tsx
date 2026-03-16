@@ -24,6 +24,7 @@ import {
   Users,
   FileText,
   BookOpen,
+  ShieldCheck,
 } from "lucide-react";
 import type { UserRole } from "@/types";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, minRole: ALL_ROLES },
       { label: "Live Monitoring", path: "/monitoring", icon: Monitor, minRole: OPERATOR_PLUS },
       { label: "Recorded Clips", path: "/clips", icon: Film, minRole: ALL_ROLES },
+      { label: "Compliance Report", path: "/compliance", icon: ShieldCheck, minRole: ALL_ROLES },
     ],
   },
   {

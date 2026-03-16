@@ -235,6 +235,10 @@ async def resolve_incident(
         "resolved_at": now,
         "end_time": now,
     }
+    # Set cleanup verification fields when resolving (not false_positive)
+    if resolve_status == "resolved":
+        updates["cleanup_verified_at"] = now
+        updates["cleanup_verified_by"] = user_id
     if notes:
         updates["notes"] = notes
 

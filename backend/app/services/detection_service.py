@@ -1,4 +1,5 @@
 import uuid
+import random
 import time
 import base64
 from datetime import datetime, timezone
@@ -11,6 +12,9 @@ from app.services.inference_service import run_roboflow_inference, compute_detec
 from app.services.validation_pipeline import run_validation_pipeline
 from app.core.org_filter import org_query
 from app.services.detection_control_service import resolve_effective_settings
+
+# Projection to exclude heavy fields from list queries
+_LIST_PROJECTION = {"frame_base64": 0, "_id": 0}
 
 
 async def run_manual_detection(
@@ -102,6 +106,9 @@ async def run_manual_detection(
     }
     await db.detection_logs.insert_one(detection_doc)
 
+    # Auto-collect frames for dataset pipeline
+    await _auto_collect_frame(db, detection_doc, frame_base64)
+
     # Broadcast detection via WebSocket (all detections, not just wet)
     try:
         from app.routers.websockets import publish_detection
@@ -125,6 +132,63 @@ async def run_manual_detection(
             )
 
     return detection_doc
+
+
+async def _auto_collect_frame(
+    db: AsyncIOMotorDatabase, detection_doc: dict, frame_base64: str,
+) -> None:
+    """Auto-save detection frames to dataset_frames for training pipeline.
+
+    Wet frames with confidence > 0.7 are always saved.
+    Dry frames are saved at 1-in-10 rate (based on detection count modulo 10).
+    Split assignment: 80% train, 10% val, 10% test.
+    """
+    try:
+        is_wet = detection_doc.get("is_wet", False)
+        confidence = detection_doc.get("confidence", 0)
+
+        should_save = False
+        label = "dry"
+
+        if is_wet and confidence > 0.7:
+            should_save = True
+            label = "wet"
+        else:
+            # For dry frames, save 1 in 10 based on org detection count
+            org_id = detection_doc.get("org_id", "")
+            count = await db.detection_logs.count_documents(org_query(org_id))
+            if count % 10 == 0:
+                should_save = True
+
+        if not should_save or not frame_base64:
+            return
+
+        # Assign split: 80% train, 10% val, 10% test
+        r = random.random()
+        if r < 0.8:
+            split = "train"
+        elif r < 0.9:
+            split = "val"
+        else:
+            split = "test"
+
+        now = datetime.now(timezone.utc)
+        frame_doc = {
+            "id": str(uuid.uuid4()),
+            "org_id": detection_doc.get("org_id"),
+            "store_id": detection_doc.get("store_id"),
+            "camera_id": detection_doc.get("camera_id"),
+            "detection_id": detection_doc.get("id"),
+            "frame_base64": frame_base64,
+            "label": label,
+            "label_source": "auto",
+            "split": split,
+            "confidence": confidence,
+            "created_at": now,
+        }
+        await db.dataset_frames.insert_one(frame_doc)
+    except Exception:
+        pass  # Non-critical — don't break detection flow
 
 
 async def get_detection(db: AsyncIOMotorDatabase, detection_id: str, org_id: str) -> dict:
@@ -168,7 +232,7 @@ async def list_detections(
 
     total = await db.detection_logs.count_documents(query)
     cursor = (
-        db.detection_logs.find(query)
+        db.detection_logs.find(query, _LIST_PROJECTION)
         .sort("timestamp", -1)
         .skip(offset)
         .limit(limit)
@@ -205,7 +269,7 @@ async def list_flagged(
     query = {**org_query(org_id), "is_flagged": True}
     total = await db.detection_logs.count_documents(query)
     cursor = (
-        db.detection_logs.find(query)
+        db.detection_logs.find(query, _LIST_PROJECTION)
         .sort("timestamp", -1)
         .skip(offset)
         .limit(limit)
@@ -217,6 +281,6 @@ async def list_flagged(
 async def export_flagged(db: AsyncIOMotorDatabase, org_id: str) -> list[dict]:
     """Export all flagged detections for this org."""
     cursor = db.detection_logs.find(
-        {**org_query(org_id), "is_flagged": True}
+        {**org_query(org_id), "is_flagged": True}, _LIST_PROJECTION
     ).sort("timestamp", -1)
     return await cursor.to_list(length=10000)

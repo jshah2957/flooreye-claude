@@ -25,13 +25,23 @@ class ModelLoader:
         candidates = sorted(glob.glob(os.path.join(self.models_dir, "*.onnx")))
         return candidates[-1] if candidates else None
 
+    @staticmethod
+    def _build_session_options() -> ort.SessionOptions:
+        """Build optimized ONNX Runtime session options for parallel execution."""
+        sess_options = ort.SessionOptions()
+        sess_options.intra_op_num_threads = 4
+        sess_options.inter_op_num_threads = 2
+        sess_options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
+        return sess_options
+
     def load(self, path: str) -> bool:
         """Load an ONNX model into an inference session."""
         log.info(f"Loading ONNX model from {path}")
         t0 = time.time()
         try:
+            sess_options = self._build_session_options()
             self.session = ort.InferenceSession(
-                path, providers=["CPUExecutionProvider"]
+                path, sess_options=sess_options, providers=["CPUExecutionProvider"]
             )
             self.model_path = path
             self.model_version = os.path.basename(path).replace(".onnx", "")

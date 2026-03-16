@@ -7,7 +7,10 @@ log = logging.getLogger("training.evaluator")
 
 
 class ModelEvaluator:
-    """Evaluates a trained YOLOv8 model on validation data."""
+    """Evaluates a trained YOLO model on validation data.
+
+    Supports YOLOv8, YOLO11, and YOLO26 architectures.
+    """
 
     def __init__(self, model_path: str, data_yaml: str, imgsz: int = 640):
         self.model_path = model_path

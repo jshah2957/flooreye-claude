@@ -9,11 +9,15 @@ log = logging.getLogger("training.exporter")
 
 
 class ModelExporter:
-    """Exports trained YOLOv8 model to ONNX for edge inference."""
+    """Exports trained YOLO model to ONNX for edge inference.
 
-    def __init__(self, model_path: str, output_dir: str = "/app/models"):
+    Supports YOLOv8, YOLO11, and YOLO26 architectures.
+    """
+
+    def __init__(self, model_path: str, output_dir: str = "/app/models", architecture: str = "yolo26n"):
         self.model_path = model_path
         self.output_dir = Path(output_dir)
+        self.architecture = architecture
 
     def export_onnx(
         self,
@@ -47,6 +51,7 @@ class ModelExporter:
             "file_size_mb": round(size_mb, 2),
             "opset": opset,
             "version": version,
+            "architecture": self.architecture,
         }
 
     def export_torchscript(self, version: str = "v1.0", imgsz: int = 640) -> dict:

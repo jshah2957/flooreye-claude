@@ -8,12 +8,27 @@ log = logging.getLogger("training.distillation")
 
 
 class DistillationTrainer:
-    """Trains a YOLOv8 student model using knowledge distillation from teacher."""
+    """Trains a YOLO student model using knowledge distillation from teacher.
+
+    Supports YOLOv8n, YOLO11n, and YOLO26n architectures.
+    Default architecture is YOLO26n for improved accuracy and efficiency.
+    """
+
+    # Supported architectures and their pretrained weight files
+    SUPPORTED_ARCHITECTURES = {
+        "yolov8n": "yolov8n.pt",
+        "yolov8s": "yolov8s.pt",
+        "yolov8m": "yolov8m.pt",
+        "yolo11n": "yolo11n.pt",
+        "yolo26n": "yolo26n.pt",
+        "yolo26s": "yolo26s.pt",
+    }
 
     def __init__(
         self,
         data_yaml: str,
-        student_weights: str = "yolov8n.pt",
+        student_weights: str = "yolo26n.pt",
+        architecture: str = "yolo26n",
         epochs: int = 50,
         batch_size: int = 16,
         imgsz: int = 640,
@@ -23,6 +38,7 @@ class DistillationTrainer:
     ):
         self.data_yaml = data_yaml
         self.student_weights = student_weights
+        self.architecture = architecture
         self.epochs = epochs
         self.batch_size = batch_size
         self.imgsz = imgsz
@@ -39,7 +55,7 @@ class DistillationTrainer:
 
         log.info(f"Starting distillation training job {job_id}")
         log.info(f"Data: {self.data_yaml}")
-        log.info(f"Student: {self.student_weights}")
+        log.info(f"Architecture: {self.architecture}, Student: {self.student_weights}")
         log.info(f"Epochs: {self.epochs}, Batch: {self.batch_size}, ImgSz: {self.imgsz}")
         log.info(f"KD alpha={self.alpha}, T={self.temperature}")
 
@@ -50,6 +66,14 @@ class DistillationTrainer:
         # custom trainer subclass — for initial version, use standard training
         # with teacher-labeled data as ground truth, which achieves similar
         # results when teacher labels are high quality)
+        #
+        # Data augmentation tuned for wet floor / spill detection:
+        # - mosaic=1.0: combine 4 images for varied spatial context
+        # - mixup=0.15: blend images to improve generalization
+        # - copy_paste=0.1: paste wet floor samples onto clean backgrounds
+        # - hsv_h/s/v: color jitter for varied lighting conditions
+        # - degrees=5.0: slight rotation for camera angle variation
+        # - perspective=0.0005: perspective transform for different viewpoints
         results = model.train(
             data=self.data_yaml,
             epochs=self.epochs,
@@ -59,6 +83,15 @@ class DistillationTrainer:
             name=job_id,
             exist_ok=True,
             verbose=True,
+            # Data augmentation
+            mosaic=1.0,
+            mixup=0.15,
+            copy_paste=0.1,
+            hsv_h=0.015,
+            hsv_s=0.7,
+            hsv_v=0.4,
+            degrees=5.0,
+            perspective=0.0005,
         )
 
         # Extract metrics

@@ -43,6 +43,7 @@ from app.routers import (
     mobile,
     models,
     notifications,
+    reports,
     roboflow,
     storage,
     stores,
@@ -125,6 +126,7 @@ def create_app() -> FastAPI:
     application.include_router(devices.router)
     application.include_router(logs.router)
     application.include_router(storage.router)
+    application.include_router(reports.router)
     application.include_router(validation.router)
     application.include_router(websockets.router)
 

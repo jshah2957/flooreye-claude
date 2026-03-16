@@ -32,6 +32,8 @@ def _event_response(e: dict) -> EventResponse:
         acknowledged_at=e.get("acknowledged_at"),
         resolved_by=e.get("resolved_by"),
         resolved_at=e.get("resolved_at"),
+        cleanup_verified_at=e.get("cleanup_verified_at"),
+        cleanup_verified_by=e.get("cleanup_verified_by"),
         detection_count=e.get("detection_count", 1),
         devices_triggered=e.get("devices_triggered", []),
         notes=e.get("notes"),

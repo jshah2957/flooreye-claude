@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class ModelVersionCreate(BaseModel):
     version_str: str
-    architecture: Literal["yolov8n", "yolov8s", "yolov8m"]
+    architecture: Literal["yolov8n", "yolov8s", "yolov8m", "yolo11n", "yolo26n", "yolo26s"]
     training_job_id: Optional[str] = None
 
 

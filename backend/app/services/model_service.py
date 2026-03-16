@@ -84,7 +84,41 @@ async def promote_model(
     )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
+
+    # Auto-deploy to all online edge agents when promoted to production
+    if target == "production":
+        await _deploy_model_to_agents(db, org_id, model_id, user_id)
+
     return result
+
+
+async def _deploy_model_to_agents(
+    db: AsyncIOMotorDatabase, org_id: str, model_version_id: str, user_id: str,
+) -> None:
+    """Create deploy_model commands for all online edge agents in the org."""
+    try:
+        agents = await db.edge_agents.find(
+            {**org_query(org_id), "status": "online"}
+        ).to_list(length=1000)
+
+        now = datetime.now(timezone.utc)
+        for agent in agents:
+            cmd = {
+                "id": str(uuid.uuid4()),
+                "agent_id": agent["id"],
+                "org_id": org_id,
+                "command_type": "deploy_model",
+                "payload": {"model_version_id": model_version_id},
+                "status": "pending",
+                "sent_by": user_id,
+                "sent_at": now,
+                "acked_at": None,
+                "result": None,
+                "error": None,
+            }
+            await db.edge_commands.insert_one(cmd)
+    except Exception:
+        pass  # Non-critical — agents will pick up model on next heartbeat
 
 
 async def delete_model(db: AsyncIOMotorDatabase, model_id: str, org_id: str) -> None:
