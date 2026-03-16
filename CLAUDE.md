@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 4 — Phase 0 COMPLETE
+Session 5 — Phase 1 backend auth complete
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -37,10 +37,13 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 2: .gitignore, requirements.txt, package.json, .env.example, all config files
 - Session 3: Dockerfiles (backend, worker, web, edge), docker-compose.dev.yml, nginx.conf, config.py, main.py
 - Session 4: database.py, indexes.py, dependencies.py, 23 router stubs, constants.py — Phase 0 COMPLETE
+- Session 5: User model, security.py (JWT/bcrypt), auth schemas, auth_service, auth router, permissions, get_current_user
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
-- Phase 1 — Authentication & RBAC: not started
+- Phase 1 — Authentication & RBAC: IN PROGRESS
+  DONE: backend auth (JWT, bcrypt, login, refresh, logout, user CRUD, RBAC, device tokens)
+  PENDING: web login page, auth context, protected routes, forgot/reset password, mobile login
 - Phase 2 through 11: not started
 
 ## Dependency Log
@@ -55,7 +58,7 @@ No libraries installed yet. All versions pinned in:
 None yet. All field names must come from docs/schemas.md.
 
 ## Blocked Items
-None.
+- forgot-password / reset-password endpoints return 501 — require SMTP integration (Phase 5)
 
 ## Rules — Follow These Always
 1. NEVER use mock data, fake responses, or hardcoded dummy values in implementation
@@ -70,4 +73,4 @@ None.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 5 — Phase 1: Authentication & RBAC backend (JWT, bcrypt, login, refresh, RBAC)
+Session 6 — Phase 1: Web login page, auth context, protected routes, role-based sidebar

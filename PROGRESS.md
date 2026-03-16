@@ -160,4 +160,48 @@ Phase 0 — Scaffold is now COMPLETE. All infrastructure in place:
 - None
 
 ### Next Session Plan
-Session 5: Phase 1 — Authentication & RBAC backend (JWT, bcrypt, login, refresh, RBAC)
+See Session 5 below.
+
+---
+
+## Session 5 — Phase 1 Backend Auth
+### Date: 2026-03-15
+### Goal: Implement backend auth — JWT, bcrypt, login, token refresh, RBAC
+
+### Tasks Completed
+- Task 1: backend/app/models/user.py — User + UserDevice models + .gitignore fix — commit 6503157
+- Task 2: backend/app/core/security.py — JWT create/verify, bcrypt, cookie helpers — commit 587ed15
+- Task 3: backend/app/schemas/auth.py — all auth request/response schemas — commit db8fcc2
+- Task 4: backend/app/services/auth_service.py — login, register, refresh, CRUD, device tokens — commit 5ce0704
+- Task 5: backend/app/routers/auth.py — full implementation (14 endpoints) — commit 572342d
+- Task 6: backend/app/core/permissions.py — require_role with hierarchy check — commit 7a9b5a3
+- Task 7: backend/app/dependencies.py — get_current_user from JWT — commit f6c667f
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/models/user.py (new)
+- backend/app/core/security.py (implemented)
+- backend/app/schemas/auth.py (implemented)
+- backend/app/services/auth_service.py (implemented)
+- backend/app/routers/auth.py (implemented — replaced stubs)
+- backend/app/core/permissions.py (implemented)
+- backend/app/dependencies.py (implemented — real JWT auth)
+- .gitignore (fixed models/ pattern)
+
+### Auth Implementation Summary
+- JWT HS256 access tokens (15-min expiry)
+- JWT HS256 refresh tokens (7-day expiry, httpOnly cookie)
+- bcrypt password hashing
+- Role hierarchy: viewer < store_owner < operator < ml_engineer < org_admin < super_admin
+- require_role() dependency for endpoint-level RBAC
+- User CRUD (admin-only)
+- Device token registration for mobile push
+- forgot-password/reset-password remain 501 (need SMTP — Phase 5)
+
+### Issues
+- forgot-password/reset-password endpoints return 501 — blocked on SMTP integration (Phase 5)
+
+### Next Session Plan
+Session 6: Web login page, auth context, protected routes, role-based sidebar
