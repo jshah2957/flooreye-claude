@@ -1,1 +1,66 @@
-# TODO: implement
+"""FloorEye Inference Server — ONNX YOLOv8 model serving via FastAPI."""
+
+import logging
+import os
+
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+from model_loader import ModelLoader
+from predict import run_inference
+
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+log = logging.getLogger("inference-server")
+
+app = FastAPI(title="FloorEye Inference Server")
+loader = ModelLoader(os.getenv("MODELS_DIR", "/models"))
+
+
+class InferRequest(BaseModel):
+    image_base64: str
+    confidence: float = 0.5
+    roi: list | None = None
+
+
+class LoadModelRequest(BaseModel):
+    model_path: str
+
+
+@app.on_event("startup")
+def startup():
+    loader.load_latest()
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "model_loaded": loader.is_loaded,
+        "model_version": loader.model_version,
+        "device": "cpu",
+    }
+
+
+@app.post("/infer")
+def infer(req: InferRequest):
+    if not loader.is_loaded:
+        return {"error": "No model loaded"}, 503
+
+    result = run_inference(loader.session, req.image_base64, req.confidence)
+    result["model_version"] = loader.model_version
+    return result
+
+
+@app.post("/load-model")
+def load_model_endpoint(req: LoadModelRequest):
+    success = loader.load(req.model_path)
+    return {
+        "loaded": success,
+        "version": loader.model_version,
+        "load_time_ms": loader.load_time_ms,
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)
