@@ -1,0 +1,62 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    env_file:
+      - ./backend/.env
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run flooreye
+    volumes:
+      - ${USERPROFILE}/.cloudflared:/etc/cloudflared:ro
+    environment:
+      - TUNNEL_CONFIG=/etc/cloudflared/config.yml
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  redis_data:
+  backend_data:

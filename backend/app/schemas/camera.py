@@ -37,7 +37,7 @@ class CameraUpdate(BaseModel):
 class CameraResponse(BaseModel):
     id: str
     store_id: str
-    org_id: str
+    org_id: Optional[str] = None
     name: str
     stream_type: str
     stream_url: str
@@ -86,7 +86,7 @@ class ROICreate(BaseModel):
 class ROIResponse(BaseModel):
     id: str
     camera_id: str
-    org_id: str
+    org_id: Optional[str] = None
     version: int
     polygon_points: list[ROIPointSchema]
     mask_outside: bool
@@ -108,7 +108,7 @@ class DryReferenceFrameResponse(BaseModel):
 class DryReferenceResponse(BaseModel):
     id: str
     camera_id: str
-    org_id: str
+    org_id: Optional[str] = None
     version: int
     frames: list[DryReferenceFrameResponse]
     is_active: bool

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.schemas.camera import (
     CameraCreate,
     CameraUpdate,
@@ -19,7 +20,7 @@ async def create_camera(
     db: AsyncIOMotorDatabase, data: CameraCreate, org_id: str
 ) -> dict:
     # Verify the store exists and belongs to this org
-    store = await db.stores.find_one({"id": data.store_id, "org_id": org_id, "is_active": True})
+    store = await db.stores.find_one({**org_query(org_id), "id": data.store_id, "is_active": True})
     if not store:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Store not found"
@@ -55,7 +56,7 @@ async def create_camera(
 
 
 async def get_camera(db: AsyncIOMotorDatabase, camera_id: str, org_id: str) -> dict:
-    camera = await db.cameras.find_one({"id": camera_id, "org_id": org_id})
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
@@ -71,7 +72,7 @@ async def list_cameras(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if store_id:
         query["store_id"] = store_id
     if status_filter:
@@ -93,7 +94,7 @@ async def update_camera(
     updates["updated_at"] = datetime.now(timezone.utc)
 
     result = await db.cameras.find_one_and_update(
-        {"id": camera_id, "org_id": org_id},
+        {**org_query(org_id), "id": camera_id},
         {"$set": updates},
         return_document=True,
     )
@@ -107,7 +108,7 @@ async def update_camera(
 async def delete_camera(
     db: AsyncIOMotorDatabase, camera_id: str, org_id: str
 ) -> None:
-    result = await db.cameras.delete_one({"id": camera_id, "org_id": org_id})
+    result = await db.cameras.delete_one({**org_query(org_id), "id": camera_id})
     if result.deleted_count == 0:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
@@ -276,7 +277,7 @@ async def update_inference_mode(
         updates["edge_agent_id"] = data.edge_agent_id
 
     result = await db.cameras.find_one_and_update(
-        {"id": camera_id, "org_id": org_id},
+        {**org_query(org_id), "id": camera_id},
         {"$set": updates},
         return_document=True,
     )

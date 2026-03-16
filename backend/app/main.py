@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
     if settings.ENVIRONMENT == "production":
         application.add_middleware(
             TrustedHostMiddleware,
-            allowed_hosts=["api.flooreye.com", "*.flooreye.com"],
+            allowed_hosts=[settings.SUBDOMAIN, settings.DOMAIN, f"*.{settings.DOMAIN}", "localhost", "backend"],
         )
 
     @application.get("/api/v1/health", tags=["health"])

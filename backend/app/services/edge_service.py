@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.org_filter import org_query
 from app.core.security import hash_password
 
 
@@ -24,7 +25,7 @@ async def provision_agent(
 ) -> dict:
     """Generate edge agent token and create agent record."""
     # Verify store exists
-    store = await db.stores.find_one({"id": store_id, "org_id": org_id, "is_active": True})
+    store = await db.stores.find_one({**org_query(org_id), "id": store_id, "is_active": True})
     if not store:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
 
@@ -188,7 +189,7 @@ async def send_command(
     payload: dict,
     user_id: str,
 ) -> dict:
-    agent = await db.edge_agents.find_one({"id": agent_id, "org_id": org_id})
+    agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
 
@@ -253,7 +254,7 @@ async def list_agents(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if store_id:
         query["store_id"] = store_id
 
@@ -264,14 +265,14 @@ async def list_agents(
 
 
 async def get_agent(db: AsyncIOMotorDatabase, agent_id: str, org_id: str) -> dict:
-    agent = await db.edge_agents.find_one({"id": agent_id, "org_id": org_id})
+    agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     return agent
 
 
 async def delete_agent(db: AsyncIOMotorDatabase, agent_id: str, org_id: str) -> None:
-    result = await db.edge_agents.delete_one({"id": agent_id, "org_id": org_id})
+    result = await db.edge_agents.delete_one({**org_query(org_id), "id": agent_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     await db.edge_commands.delete_many({"agent_id": agent_id})

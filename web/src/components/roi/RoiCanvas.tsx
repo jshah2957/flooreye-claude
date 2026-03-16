@@ -167,7 +167,7 @@ export default function RoiCanvas({
 
     // Close polygon if clicking near first point
     if (points.length >= 3) {
-      const first = points[0];
+      const first = points[0]!;
       if (Math.abs(p.x - first.x) < 0.02 && Math.abs(p.y - first.y) < 0.02) {
         setClosed(true);
         return;

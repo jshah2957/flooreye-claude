@@ -3,38 +3,30 @@ Test fixtures — async Motor test client, auth helpers, cleanup.
 Uses a separate test database to avoid polluting dev data.
 """
 
-import asyncio
 import uuid
 from datetime import datetime, timezone
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password
-from app.db.database import get_db
 from app.main import app
 
 TEST_DB_NAME = "flooreye_test"
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def test_db():
-    """Create a test database. Cleanup is handled by dropping collections per-test or Docker."""
+    """Create a test database connection per test."""
     client = AsyncIOMotorClient(settings.MONGODB_URI)
     db = client[TEST_DB_NAME]
     yield db
-    # Don't drop DB in teardown — event loop may already be closing
-    # Use `docker compose down -v` to clean test data
+    # Clean up test data after each test
+    for name in await db.list_collection_names():
+        await db[name].delete_many({})
+    client.close()
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -51,7 +43,7 @@ async def override_db(test_db):
 async def client():
     """Async HTTP test client."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http://localhost") as ac:
         yield ac
 
 

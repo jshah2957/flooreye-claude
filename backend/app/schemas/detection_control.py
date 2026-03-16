@@ -53,7 +53,7 @@ class SettingsUpsert(BaseModel):
 
 class SettingsResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     scope: str
     scope_id: Optional[str] = None
     # All setting fields
@@ -125,7 +125,7 @@ class ClassOverrideUpsert(BaseModel):
 
 class ClassOverrideResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     scope: str
     scope_id: Optional[str] = None
     class_id: str

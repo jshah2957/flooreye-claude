@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
+
 
 # Default grouping window: 5 minutes
 INCIDENT_GROUPING_WINDOW_SECONDS = 300
@@ -27,8 +29,8 @@ async def create_or_update_incident(
     # Look for an existing open incident for this camera
     existing = await db.events.find_one(
         {
+            **org_query(org_id),
             "camera_id": camera_id,
-            "org_id": org_id,
             "status": {"$in": ["new", "acknowledged"]},
         },
         sort=[("start_time", -1)],
@@ -108,7 +110,7 @@ def _classify_incident_severity(
 
 
 async def get_incident(db: AsyncIOMotorDatabase, event_id: str, org_id: str) -> dict:
-    incident = await db.events.find_one({"id": event_id, "org_id": org_id})
+    incident = await db.events.find_one({**org_query(org_id), "id": event_id})
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     return incident
@@ -124,7 +126,7 @@ async def list_incidents(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if store_id:
         query["store_id"] = store_id
     if camera_id:
@@ -162,7 +164,7 @@ async def acknowledge_incident(
         updates["notes"] = notes
 
     result = await db.events.find_one_and_update(
-        {"id": event_id, "org_id": org_id},
+        {**org_query(org_id), "id": event_id},
         {"$set": updates},
         return_document=True,
     )
@@ -190,7 +192,7 @@ async def resolve_incident(
         updates["notes"] = notes
 
     result = await db.events.find_one_and_update(
-        {"id": event_id, "org_id": org_id},
+        {**org_query(org_id), "id": event_id},
         {"$set": updates},
         return_document=True,
     )

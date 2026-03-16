@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.schemas.model_version import ModelVersionCreate, ModelVersionUpdate
 
 
@@ -35,7 +36,7 @@ async def list_models(
     db: AsyncIOMotorDatabase, org_id: str,
     status_filter: str | None = None, limit: int = 20, offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if status_filter: query["status"] = status_filter
     total = await db.model_versions.count_documents(query)
     cursor = db.model_versions.find(query).sort("created_at", -1).skip(offset).limit(limit)
@@ -44,7 +45,7 @@ async def list_models(
 
 
 async def get_model(db: AsyncIOMotorDatabase, model_id: str, org_id: str) -> dict:
-    model = await db.model_versions.find_one({"id": model_id, "org_id": org_id})
+    model = await db.model_versions.find_one({**org_query(org_id), "id": model_id})
     if not model:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
     return model
@@ -55,7 +56,7 @@ async def update_model(db: AsyncIOMotorDatabase, model_id: str, org_id: str, dat
     if not updates:
         return await get_model(db, model_id, org_id)
     result = await db.model_versions.find_one_and_update(
-        {"id": model_id, "org_id": org_id}, {"$set": updates}, return_document=True,
+        {**org_query(org_id), "id": model_id}, {"$set": updates}, return_document=True,
     )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
@@ -74,12 +75,12 @@ async def promote_model(
         updates["promoted_to_production_at"] = now
         updates["promoted_to_production_by"] = user_id
         await db.model_versions.update_many(
-            {"org_id": org_id, "status": "production", "id": {"$ne": model_id}},
+            {**org_query(org_id), "status": "production", "id": {"$ne": model_id}},
             {"$set": {"status": "retired"}},
         )
 
     result = await db.model_versions.find_one_and_update(
-        {"id": model_id, "org_id": org_id}, {"$set": updates}, return_document=True,
+        {**org_query(org_id), "id": model_id}, {"$set": updates}, return_document=True,
     )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
@@ -87,6 +88,6 @@ async def promote_model(
 
 
 async def delete_model(db: AsyncIOMotorDatabase, model_id: str, org_id: str) -> None:
-    result = await db.model_versions.delete_one({"id": model_id, "org_id": org_id})
+    result = await db.model_versions.delete_one({**org_query(org_id), "id": model_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")

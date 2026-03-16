@@ -42,7 +42,7 @@ class NotificationRuleUpdate(BaseModel):
 
 class NotificationRuleResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     name: Optional[str] = None
     channel: str
     recipients: list[str] = []
@@ -65,7 +65,7 @@ class NotificationRuleResponse(BaseModel):
 
 class DeliveryResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     rule_id: str
     channel: str
     recipient: str
@@ -100,7 +100,7 @@ class DeviceUpdate(BaseModel):
 
 class DeviceResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     store_id: str
     name: str
     device_type: str

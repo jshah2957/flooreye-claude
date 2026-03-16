@@ -7,13 +7,20 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.schemas.store import StoreCreate, StoreUpdate
 
 
+def _org_filter(org_id: str | None) -> dict:
+    """Build org_id filter. Empty/None means super_admin — no org filter."""
+    if org_id:
+        return {"org_id": org_id}
+    return {}
+
+
 async def create_store(
     db: AsyncIOMotorDatabase, data: StoreCreate, org_id: str
 ) -> dict:
     now = datetime.now(timezone.utc)
     store_doc = {
         "id": str(uuid.uuid4()),
-        "org_id": org_id,
+        "org_id": org_id or None,
         "name": data.name,
         "address": data.address,
         "city": data.city,
@@ -30,7 +37,8 @@ async def create_store(
 
 
 async def get_store(db: AsyncIOMotorDatabase, store_id: str, org_id: str) -> dict:
-    store = await db.stores.find_one({"id": store_id, "org_id": org_id})
+    query = {"id": store_id, **_org_filter(org_id)}
+    store = await db.stores.find_one(query)
     if not store:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Store not found"
@@ -45,7 +53,7 @@ async def list_stores(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id, "is_active": True}
+    query: dict = {**_org_filter(org_id), "is_active": True}
 
     # If user has restricted store_access, filter to those stores
     if user_store_access is not None and len(user_store_access) > 0:
@@ -66,8 +74,9 @@ async def update_store(
 
     updates["updated_at"] = datetime.now(timezone.utc)
 
+    query = {"id": store_id, **_org_filter(org_id)}
     result = await db.stores.find_one_and_update(
-        {"id": store_id, "org_id": org_id},
+        query,
         {"$set": updates},
         return_document=True,
     )
@@ -81,8 +90,9 @@ async def update_store(
 async def delete_store(
     db: AsyncIOMotorDatabase, store_id: str, org_id: str
 ) -> None:
+    query = {"id": store_id, **_org_filter(org_id)}
     result = await db.stores.update_one(
-        {"id": store_id, "org_id": org_id},
+        query,
         {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc)}},
     )
     if result.matched_count == 0:
@@ -91,7 +101,8 @@ async def delete_store(
         )
 
     # Disable all cameras in this store
+    cam_query = {"store_id": store_id, **_org_filter(org_id)}
     await db.cameras.update_many(
-        {"store_id": store_id, "org_id": org_id},
+        cam_query,
         {"$set": {"detection_enabled": False, "updated_at": datetime.now(timezone.utc)}},
     )

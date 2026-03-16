@@ -47,7 +47,9 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Never retry the refresh call itself — prevents infinite loop
+    const isRefreshRequest = originalRequest.url?.includes("/auth/refresh");
+    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({
@@ -77,7 +79,8 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         setAccessToken(null);
-        window.location.href = "/login";
+        // Don't use window.location.href — it causes a full page reload loop.
+        // Let the auth hook handle redirect via React Router.
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

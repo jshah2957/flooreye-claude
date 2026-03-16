@@ -7,13 +7,14 @@ import httpx
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.schemas.notification import DeviceCreate, DeviceUpdate
 
 
 async def create_device(
     db: AsyncIOMotorDatabase, org_id: str, data: DeviceCreate
 ) -> dict:
-    store = await db.stores.find_one({"id": data.store_id, "org_id": org_id, "is_active": True})
+    store = await db.stores.find_one({**org_query(org_id), "id": data.store_id, "is_active": True})
     if not store:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
 
@@ -33,7 +34,7 @@ async def create_device(
 
 
 async def get_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> dict:
-    device = await db.devices.find_one({"id": device_id, "org_id": org_id})
+    device = await db.devices.find_one({**org_query(org_id), "id": device_id})
     if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
     return device
@@ -43,7 +44,7 @@ async def list_devices(
     db: AsyncIOMotorDatabase, org_id: str, store_id: str | None = None,
     limit: int = 50, offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if store_id:
         query["store_id"] = store_id
     total = await db.devices.count_documents(query)
@@ -60,7 +61,7 @@ async def update_device(
         return await get_device(db, device_id, org_id)
     updates["updated_at"] = datetime.now(timezone.utc)
     result = await db.devices.find_one_and_update(
-        {"id": device_id, "org_id": org_id},
+        {**org_query(org_id), "id": device_id},
         {"$set": updates},
         return_document=True,
     )
@@ -70,7 +71,7 @@ async def update_device(
 
 
 async def delete_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> None:
-    result = await db.devices.delete_one({"id": device_id, "org_id": org_id})
+    result = await db.devices.delete_one({**org_query(org_id), "id": device_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
 

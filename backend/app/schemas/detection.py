@@ -25,7 +25,7 @@ class DetectionResponse(BaseModel):
     id: str
     camera_id: str
     store_id: str
-    org_id: str
+    org_id: Optional[str] = None
     timestamp: datetime
     is_wet: bool
     confidence: float

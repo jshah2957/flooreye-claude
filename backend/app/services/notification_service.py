@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.schemas.notification import NotificationRuleCreate, NotificationRuleUpdate
 
 
@@ -36,14 +37,14 @@ async def update_rule(
 ) -> dict:
     updates = data.model_dump(exclude_unset=True)
     if not updates:
-        rule = await db.notification_rules.find_one({"id": rule_id, "org_id": org_id})
+        rule = await db.notification_rules.find_one({**org_query(org_id), "id": rule_id})
         if not rule:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
         return rule
 
     updates["updated_at"] = datetime.now(timezone.utc)
     result = await db.notification_rules.find_one_and_update(
-        {"id": rule_id, "org_id": org_id},
+        {**org_query(org_id), "id": rule_id},
         {"$set": updates},
         return_document=True,
     )
@@ -53,7 +54,7 @@ async def update_rule(
 
 
 async def delete_rule(db: AsyncIOMotorDatabase, org_id: str, rule_id: str) -> None:
-    result = await db.notification_rules.delete_one({"id": rule_id, "org_id": org_id})
+    result = await db.notification_rules.delete_one({**org_query(org_id), "id": rule_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rule not found")
 
@@ -61,7 +62,7 @@ async def delete_rule(db: AsyncIOMotorDatabase, org_id: str, rule_id: str) -> No
 async def list_rules(
     db: AsyncIOMotorDatabase, org_id: str, limit: int = 50, offset: int = 0
 ) -> tuple[list[dict], int]:
-    query = {"org_id": org_id}
+    query = org_query(org_id)
     total = await db.notification_rules.count_documents(query)
     cursor = db.notification_rules.find(query).sort("created_at", -1).skip(offset).limit(limit)
     rules = await cursor.to_list(length=limit)
@@ -75,7 +76,7 @@ async def list_deliveries(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if rule_id:
         query["rule_id"] = rule_id
     total = await db.notification_deliveries.count_documents(query)
@@ -105,7 +106,7 @@ async def dispatch_notifications(
 
     # Find active rules that match this incident
     query = {
-        "org_id": org_id,
+        **org_query(org_id),
         "is_active": True,
         "min_severity": {"$in": _severity_at_or_below(severity)},
     }

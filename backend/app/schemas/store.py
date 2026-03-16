@@ -27,7 +27,7 @@ class StoreUpdate(BaseModel):
 
 class StoreResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     name: str
     address: str
     city: Optional[str] = None

@@ -10,26 +10,28 @@ import cv2
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
+
 
 async def get_dashboard(db: AsyncIOMotorDatabase, org_id: str, store_ids: list[str]) -> dict:
     """Home screen data: stats + recent detections + active incidents + camera status."""
-    store_query = {"org_id": org_id, "is_active": True}
+    store_query = {**org_query(org_id), "is_active": True}
     if store_ids:
         store_query["id"] = {"$in": store_ids}
 
     stores = await db.stores.find(store_query).to_list(length=100)
     store_id_list = [s["id"] for s in stores]
 
-    cam_query = {"org_id": org_id, "store_id": {"$in": store_id_list}}
+    cam_query = {**org_query(org_id), "store_id": {"$in": store_id_list}}
     cameras = await db.cameras.find(cam_query).to_list(length=500)
     online = sum(1 for c in cameras if c.get("status") in ("online", "active"))
 
     active_incidents = await db.events.find(
-        {"org_id": org_id, "store_id": {"$in": store_id_list}, "status": {"$in": ["new", "acknowledged"]}}
+        {**org_query(org_id), "store_id": {"$in": store_id_list}, "status": {"$in": ["new", "acknowledged"]}}
     ).sort("start_time", -1).to_list(length=10)
 
     recent_detections = await db.detection_logs.find(
-        {"org_id": org_id, "store_id": {"$in": store_id_list}, "is_wet": True}
+        {**org_query(org_id), "store_id": {"$in": store_id_list}, "is_wet": True}
     ).sort("timestamp", -1).to_list(length=10)
 
     # Strip frame_base64 from detections for mobile efficiency
@@ -61,7 +63,7 @@ async def get_dashboard(db: AsyncIOMotorDatabase, org_id: str, store_ids: list[s
 
 async def get_stores(db: AsyncIOMotorDatabase, org_id: str, store_ids: list[str]) -> list[dict]:
     """Simplified store list for selector."""
-    query: dict = {"org_id": org_id, "is_active": True}
+    query: dict = {**org_query(org_id), "is_active": True}
     if store_ids:
         query["id"] = {"$in": store_ids}
 
@@ -84,7 +86,7 @@ async def get_stores(db: AsyncIOMotorDatabase, org_id: str, store_ids: list[str]
 
 
 async def get_store_status(db: AsyncIOMotorDatabase, store_id: str, org_id: str) -> dict:
-    store = await db.stores.find_one({"id": store_id, "org_id": org_id})
+    store = await db.stores.find_one({**org_query(org_id), "id": store_id})
     if not store:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
 
@@ -104,7 +106,7 @@ async def get_store_status(db: AsyncIOMotorDatabase, store_id: str, org_id: str)
 
 async def get_camera_frame(db: AsyncIOMotorDatabase, camera_id: str, org_id: str) -> dict:
     """Get latest live frame, compressed for mobile."""
-    camera = await db.cameras.find_one({"id": camera_id, "org_id": org_id})
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
@@ -134,7 +136,7 @@ async def get_alerts(
     db: AsyncIOMotorDatabase, org_id: str, store_ids: list[str],
     limit: int = 20, offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if store_ids:
         query["store_id"] = {"$in": store_ids}
 
@@ -154,14 +156,14 @@ async def get_analytics(
     from datetime import timedelta
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    query: dict = {"org_id": org_id, "timestamp": {"$gte": cutoff}}
+    query: dict = {**org_query(org_id), "timestamp": {"$gte": cutoff}}
     if store_ids:
         query["store_id"] = {"$in": store_ids}
 
     total_detections = await db.detection_logs.count_documents(query)
     wet_detections = await db.detection_logs.count_documents({**query, "is_wet": True})
 
-    incident_query: dict = {"org_id": org_id, "start_time": {"$gte": cutoff}}
+    incident_query: dict = {**org_query(org_id), "start_time": {"$gte": cutoff}}
     if store_ids:
         incident_query["store_id"] = {"$in": store_ids}
     total_incidents = await db.events.count_documents(incident_query)
@@ -184,7 +186,7 @@ async def get_analytics_heatmap(
     from datetime import timedelta
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-    query: dict = {"org_id": org_id, "timestamp": {"$gte": cutoff}, "is_wet": True}
+    query: dict = {**org_query(org_id), "timestamp": {"$gte": cutoff}, "is_wet": True}
     if store_ids:
         query["store_id"] = {"$in": store_ids}
 

@@ -11,7 +11,7 @@ class IntegrationSaveRequest(BaseModel):
 
 class IntegrationResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     service: str
     config: dict  # Secrets masked
     status: str

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.schemas.detection_control import SettingsUpsert
 
 
@@ -75,7 +76,7 @@ GLOBAL_DEFAULTS: dict = {
 async def get_settings(
     db: AsyncIOMotorDatabase, org_id: str, scope: str, scope_id: str | None
 ) -> dict | None:
-    query = {"org_id": org_id, "scope": scope, "scope_id": scope_id}
+    query = {**org_query(org_id), "scope": scope, "scope_id": scope_id}
     return await db.detection_control_settings.find_one(query)
 
 
@@ -86,7 +87,7 @@ async def upsert_settings(
     user_id: str,
 ) -> dict:
     now = datetime.now(timezone.utc)
-    query = {"org_id": org_id, "scope": data.scope, "scope_id": data.scope_id}
+    query = {**org_query(org_id), "scope": data.scope, "scope_id": data.scope_id}
 
     updates = data.model_dump(exclude_unset=True, exclude={"scope", "scope_id"})
     updates["updated_by"] = user_id
@@ -115,7 +116,7 @@ async def delete_settings(
     db: AsyncIOMotorDatabase, org_id: str, scope: str, scope_id: str | None
 ) -> None:
     result = await db.detection_control_settings.delete_one(
-        {"org_id": org_id, "scope": scope, "scope_id": scope_id}
+        {**org_query(org_id), "scope": scope, "scope_id": scope_id}
     )
     if result.deleted_count == 0:
         raise HTTPException(
@@ -136,7 +137,7 @@ async def resolve_effective_settings(
     Returns (effective_settings, provenance_map).
     provenance_map: { field_name: "global" | "org" | "store" | "camera" }
     """
-    camera = await db.cameras.find_one({"id": camera_id, "org_id": org_id})
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
@@ -178,7 +179,7 @@ async def get_inheritance_chain(
     db: AsyncIOMotorDatabase, org_id: str, camera_id: str
 ) -> dict:
     """Return the full inheritance chain for a camera."""
-    camera = await db.cameras.find_one({"id": camera_id, "org_id": org_id})
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
@@ -212,7 +213,7 @@ async def get_inheritance_chain(
 async def get_class_overrides(
     db: AsyncIOMotorDatabase, org_id: str, scope: str, scope_id: str | None
 ) -> list[dict]:
-    query = {"org_id": org_id, "scope": scope, "scope_id": scope_id}
+    query = {**org_query(org_id), "scope": scope, "scope_id": scope_id}
     cursor = db.detection_class_overrides.find(query)
     return await cursor.to_list(length=1000)
 
@@ -230,7 +231,7 @@ async def upsert_class_overrides(
 
     for ov in overrides:
         query = {
-            "org_id": org_id,
+            **org_query(org_id),
             "scope": scope,
             "scope_id": scope_id,
             "class_id": ov["class_id"],
@@ -290,7 +291,7 @@ async def bulk_apply(
 
     for cam_id in target_camera_ids:
         # Verify camera exists
-        cam = await db.cameras.find_one({"id": cam_id, "org_id": org_id})
+        cam = await db.cameras.find_one({**org_query(org_id), "id": cam_id})
         if not cam:
             continue
 
@@ -298,7 +299,7 @@ async def bulk_apply(
         updates["updated_by"] = user_id
         updates["updated_at"] = now
 
-        query = {"org_id": org_id, "scope": "camera", "scope_id": cam_id}
+        query = {**org_query(org_id), "scope": "camera", "scope_id": cam_id}
         existing = await db.detection_control_settings.find_one(query)
         if existing:
             await db.detection_control_settings.update_one(query, {"$set": updates})

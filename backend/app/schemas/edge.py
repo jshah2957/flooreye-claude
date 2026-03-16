@@ -65,7 +65,7 @@ class SendCommandRequest(BaseModel):
 
 class EdgeAgentResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     store_id: str
     name: str
     agent_version: Optional[str] = None

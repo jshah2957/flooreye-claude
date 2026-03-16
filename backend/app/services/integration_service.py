@@ -11,6 +11,7 @@ from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.encryption import decrypt_config, encrypt_config, mask_secrets
+from app.core.org_filter import org_query
 
 def _strip_oid(doc: dict) -> dict:
     """Remove MongoDB _id from document."""
@@ -38,7 +39,7 @@ def _validate_service(service: str) -> None:
 
 async def list_integrations(db: AsyncIOMotorDatabase, org_id: str) -> list[dict]:
     """List all integrations with masked configs."""
-    cursor = db.integration_configs.find({"org_id": org_id})
+    cursor = db.integration_configs.find(org_query(org_id))
     configs = await cursor.to_list(length=100)
 
     result = []
@@ -69,7 +70,7 @@ async def get_integration(
     db: AsyncIOMotorDatabase, org_id: str, service: str
 ) -> dict:
     _validate_service(service)
-    doc = await db.integration_configs.find_one({"org_id": org_id, "service": service})
+    doc = await db.integration_configs.find_one({**org_query(org_id), "service": service})
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -90,7 +91,7 @@ async def save_integration(
     now = datetime.now(timezone.utc)
     encrypted = encrypt_config(config)
 
-    query = {"org_id": org_id, "service": service}
+    query = {**org_query(org_id), "service": service}
     existing = await db.integration_configs.find_one(query)
 
     if existing:
@@ -127,7 +128,7 @@ async def delete_integration(
     db: AsyncIOMotorDatabase, org_id: str, service: str
 ) -> None:
     _validate_service(service)
-    result = await db.integration_configs.delete_one({"org_id": org_id, "service": service})
+    result = await db.integration_configs.delete_one({**org_query(org_id), "service": service})
     if result.deleted_count == 0:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -144,7 +145,7 @@ async def test_integration(
     """Test a configured integration and update its status."""
     _validate_service(service)
 
-    doc = await db.integration_configs.find_one({"org_id": org_id, "service": service})
+    doc = await db.integration_configs.find_one({**org_query(org_id), "service": service})
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -172,7 +173,7 @@ async def test_all_integrations(
     db: AsyncIOMotorDatabase, org_id: str
 ) -> list[dict]:
     """Test all configured integrations."""
-    cursor = db.integration_configs.find({"org_id": org_id})
+    cursor = db.integration_configs.find(org_query(org_id))
     configs = await cursor.to_list(length=100)
     results = []
     for c in configs:
@@ -185,7 +186,7 @@ async def get_integration_status(
     db: AsyncIOMotorDatabase, org_id: str
 ) -> list[dict]:
     """Quick health summary — status only, no secrets."""
-    cursor = db.integration_configs.find({"org_id": org_id})
+    cursor = db.integration_configs.find(org_query(org_id))
     configs = await cursor.to_list(length=100)
     result = []
     configured = set()
@@ -221,7 +222,7 @@ async def _record_test_result(
         "last_test_error": error if not success else None,
     }
     await db.integration_configs.update_one(
-        {"org_id": org_id, "service": service},
+        {**org_query(org_id), "service": service},
         {"$set": updates},
     )
     return {

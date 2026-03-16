@@ -8,7 +8,7 @@ class EventResponse(BaseModel):
     id: str
     store_id: str
     camera_id: str
-    org_id: str
+    org_id: Optional[str] = None
     start_time: datetime
     end_time: Optional[datetime] = None
     max_confidence: float

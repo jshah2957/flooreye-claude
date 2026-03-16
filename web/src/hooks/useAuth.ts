@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+import React from "react";
 
 import api, { setAccessToken } from "@/lib/api";
 import type { User } from "@/types";
@@ -8,6 +10,12 @@ interface AuthState {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+}
+
+interface AuthContextValue extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  bootstrap: () => Promise<void>;
 }
 
 const ROLE_REDIRECTS: Record<string, string> = {
@@ -19,7 +27,9 @@ const ROLE_REDIRECTS: Record<string, string> = {
   viewer: "/detection/history",
 };
 
-export function useAuth() {
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     isLoading: true,
@@ -70,5 +80,20 @@ export function useAuth() {
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  return { ...state, login, logout, bootstrap };
+  const value: AuthContextValue = {
+    ...state,
+    login,
+    logout,
+    bootstrap,
+  };
+
+  return React.createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return ctx;
 }

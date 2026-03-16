@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.inference_service import run_roboflow_inference, compute_detection_summary
 from app.services.validation_pipeline import run_validation_pipeline
+from app.core.org_filter import org_query
 from app.services.detection_control_service import resolve_effective_settings
 
 
@@ -19,7 +20,7 @@ async def run_manual_detection(
     model_source: str | None = None,
 ) -> dict:
     """Run a single detection on a camera — capture frame, infer, validate, log."""
-    camera = await db.cameras.find_one({"id": camera_id, "org_id": org_id})
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
@@ -116,7 +117,7 @@ async def run_manual_detection(
 
 
 async def get_detection(db: AsyncIOMotorDatabase, detection_id: str, org_id: str) -> dict:
-    detection = await db.detection_logs.find_one({"id": detection_id, "org_id": org_id})
+    detection = await db.detection_logs.find_one({**org_query(org_id), "id": detection_id})
     if not detection:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Detection not found")
     return detection
@@ -135,7 +136,7 @@ async def list_detections(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if camera_id:
         query["camera_id"] = camera_id
     if store_id:
@@ -190,7 +191,7 @@ async def list_flagged(
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query = {"org_id": org_id, "is_flagged": True}
+    query = {**org_query(org_id), "is_flagged": True}
     total = await db.detection_logs.count_documents(query)
     cursor = (
         db.detection_logs.find(query)
@@ -205,6 +206,6 @@ async def list_flagged(
 async def export_flagged(db: AsyncIOMotorDatabase, org_id: str) -> list[dict]:
     """Export all flagged detections for this org."""
     cursor = db.detection_logs.find(
-        {"org_id": org_id, "is_flagged": True}
+        {**org_query(org_id), "is_flagged": True}
     ).sort("timestamp", -1)
     return await cursor.to_list(length=10000)

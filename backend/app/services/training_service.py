@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import org_query
 from app.schemas.training import TrainingJobCreate
 
 
@@ -45,7 +46,7 @@ async def list_jobs(
     db: AsyncIOMotorDatabase, org_id: str,
     status_filter: str | None = None, limit: int = 20, offset: int = 0,
 ) -> tuple[list[dict], int]:
-    query: dict = {"org_id": org_id}
+    query: dict = org_query(org_id)
     if status_filter: query["status"] = status_filter
     total = await db.training_jobs.count_documents(query)
     cursor = db.training_jobs.find(query).sort("created_at", -1).skip(offset).limit(limit)
@@ -54,7 +55,7 @@ async def list_jobs(
 
 
 async def get_job(db: AsyncIOMotorDatabase, job_id: str, org_id: str) -> dict:
-    job = await db.training_jobs.find_one({"id": job_id, "org_id": org_id})
+    job = await db.training_jobs.find_one({**org_query(org_id), "id": job_id})
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Training job not found")
     return job
@@ -62,7 +63,7 @@ async def get_job(db: AsyncIOMotorDatabase, job_id: str, org_id: str) -> dict:
 
 async def cancel_job(db: AsyncIOMotorDatabase, job_id: str, org_id: str) -> dict:
     result = await db.training_jobs.find_one_and_update(
-        {"id": job_id, "org_id": org_id, "status": {"$in": ["queued", "running"]}},
+        {**org_query(org_id), "id": job_id, "status": {"$in": ["queued", "running"]}},
         {"$set": {"status": "cancelled", "completed_at": datetime.now(timezone.utc)}},
         return_document=True,
     )

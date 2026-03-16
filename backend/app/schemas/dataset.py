@@ -19,7 +19,7 @@ class DatasetFrameCreate(BaseModel):
 
 class DatasetFrameResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     camera_id: Optional[str] = None
     store_id: Optional[str] = None
     frame_path: str
@@ -50,7 +50,7 @@ class AnnotationCreate(BaseModel):
 class AnnotationResponse(BaseModel):
     id: str
     frame_id: str
-    org_id: str
+    org_id: Optional[str] = None
     bboxes: list[dict] = []
     annotated_by: str
     source: str

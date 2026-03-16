@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
     LOCAL_STORAGE_PATH: str = "/app/data"
 
+    # Domain
+    DOMAIN: str = "localhost"
+    SUBDOMAIN: str = "localhost"
+
     # Cloudflare Tunnel
     CF_ACCOUNT_ID: str = ""
     CF_API_TOKEN: str = ""

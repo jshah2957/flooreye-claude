@@ -18,7 +18,7 @@ class TrainingJobCreate(BaseModel):
 
 class TrainingJobResponse(BaseModel):
     id: str
-    org_id: str
+    org_id: Optional[str] = None
     status: str
     config: dict
     triggered_by: str
