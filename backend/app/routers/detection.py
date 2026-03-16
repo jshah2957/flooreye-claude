@@ -16,7 +16,6 @@ from app.services import detection_service
 
 router = APIRouter(prefix="/api/v1", tags=["detection"])
 
-NOT_IMPLEMENTED = {"detail": "Not implemented", "status": status.HTTP_501_NOT_IMPLEMENTED}
 
 
 def _detection_response(d: dict) -> DetectionResponse:
