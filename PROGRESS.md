@@ -691,3 +691,37 @@ Phase 8 — Mobile App is now COMPLETE:
 
 ### Next Session Plan
 Session 17: Phase 9 — ML Pipeline (Training & Model Registry)
+
+---
+
+## Session 17 — Phase 9 ML Pipeline
+### Date: 2026-03-15
+### Goal: Dataset, annotation, model registry, training job infrastructure
+
+### Tasks Completed
+- Task 1: 4 models — DatasetFrame, Annotation, ModelVersion, TrainingJob
+- Task 2: 3 schema files — dataset, model_version, training
+- Tasks 1-2: commit 542e24d
+- Task 3: dataset_service — frame CRUD, split assign, stats, annotation upsert
+- Task 4: model_service — CRUD, promote to staging/production
+- Task 5: training_service + training_worker — job create/list/cancel, Celery epoch loop
+- Tasks 3-5: commit 90e4b92
+- Task 6: 4 routers — dataset (7 live), annotations (3 live), models (6 live), training (4 live)
+- Task 6: commit 7b54c2b
+- Task 7: 3 web pages — DatasetPage, ModelRegistryPage, TrainingJobsPage
+- Task 8: Routes wired
+- Tasks 7-8: commit cf08ba3
+
+### GitHub
+- All commits pushed to origin/main
+
+### Phase 9 Summary
+Phase 9 — ML Pipeline is now COMPLETE:
+- Backend: dataset frames CRUD, annotations, model registry with promotion workflow, training jobs with Celery worker
+- Web: Dataset Management (table + stats), Model Registry (table + detail + promote), Training Jobs (progress bars + create + cancel)
+
+### Issues
+- None
+
+### Next Session Plan
+Session 18: Phase 10 — Review Queue, Clips, Logs, Users, Manual

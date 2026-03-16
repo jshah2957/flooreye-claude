@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 16 — Phase 8 COMPLETE
+Session 17 — Phase 9 COMPLETE
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -39,6 +39,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Phase 6 — Edge Agent Stack: COMPLETE (Session 14)
 - Phase 7 — Notifications, Push, Devices: COMPLETE (Session 15)
 - Phase 8 — Mobile App (Store Owner): COMPLETE (Session 16)
+- Phase 9 — ML Pipeline (Training & Model Registry): COMPLETE (Session 17)
 
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
@@ -57,6 +58,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 14: EdgeAgent model/service/router, edge token auth, provision, heartbeat, commands, Edge Management page — Phase 6 COMPLETE
 - Session 15: Notification rules/delivery/workers, Device CRUD/trigger, Notifications + Devices pages — Phase 7 COMPLETE
 - Session 16: Mobile backend API (11 endpoints), all 5 mobile screens + incident detail — Phase 8 COMPLETE
+- Session 17: ML models/schemas/services/routers (dataset, annotations, model registry, training), training worker, Dataset/Models/Training web pages — Phase 9 COMPLETE
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
@@ -68,7 +70,8 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Phase 6 — Edge Agent Stack: COMPLETE
 - Phase 7 — Notifications, Push, Devices: COMPLETE
 - Phase 8 — Mobile App: COMPLETE
-- Phase 9 through 11: not started
+- Phase 9 — ML Pipeline: COMPLETE
+- Phase 10 through 11: not started
 
 ## Dependency Log
 No libraries installed yet. All versions pinned in:
@@ -97,4 +100,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 17 — Phase 9: ML Pipeline (Training & Model Registry)
+Session 18 — Phase 10: Review Queue, Clips, Logs, Users, Manual
