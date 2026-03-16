@@ -15,6 +15,7 @@ import {
 
 import api from "@/lib/api";
 import type { Store, Camera as CameraType, PaginatedResponse } from "@/types";
+import { useToast } from "@/components/ui/Toast";
 
 type Scope = "global" | "org" | "store" | "camera";
 
@@ -27,6 +28,7 @@ interface ScopeNode {
 
 export default function DetectionControlPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [selectedScope, setSelectedScope] = useState<Scope>("global");
   const [selectedScopeId, setSelectedScopeId] = useState<string | null>(null);
   const [selectedLabel, setSelectedLabel] = useState("Global Defaults");
@@ -100,6 +102,10 @@ export default function DetectionControlPage() {
       queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
       queryClient.invalidateQueries({ queryKey: ["dc-inheritance"] });
       setFormDirty(false);
+      success("Settings saved");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to save settings");
     },
   });
 
@@ -113,6 +119,10 @@ export default function DetectionControlPage() {
       queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
       setFormData({});
       setFormDirty(false);
+      success("Settings reset to inherited");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to reset settings");
     },
   });
 

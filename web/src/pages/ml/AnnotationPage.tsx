@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 const CLASSES = [
   { id: "wet_floor", name: "wet_floor", color: "#DC2626" },
@@ -42,6 +43,7 @@ interface DrawState {
 export default function AnnotationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
   const canvasRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -87,6 +89,12 @@ export default function AnnotationPage() {
         annotations,
       });
       return res.data;
+    },
+    onSuccess: () => {
+      success("Annotations saved");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to save annotations");
     },
   });
 

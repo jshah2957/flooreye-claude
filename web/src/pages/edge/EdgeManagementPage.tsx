@@ -18,6 +18,7 @@ import type { Store, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 
 interface EdgeAgent {
   id: string;
@@ -42,6 +43,7 @@ interface EdgeAgent {
 
 export default function EdgeManagementPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [provisionOpen, setProvisionOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<EdgeAgent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EdgeAgent | null>(null);
@@ -76,6 +78,10 @@ export default function EdgeManagementPage() {
     onSuccess: (data) => {
       setProvResult(data);
       queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
+      success("Agent provisioned");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to provision agent");
     },
   });
 
@@ -85,13 +91,23 @@ export default function EdgeManagementPage() {
       queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
       setDeleteTarget(null);
       if (selectedAgent?.id === deleteTarget?.id) setSelectedAgent(null);
+      success("Agent removed");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to remove agent");
     },
   });
 
   const commandMutation = useMutation({
     mutationFn: ({ agentId, type }: { agentId: string; type: string }) =>
       api.post(`/edge/agents/${agentId}/command`, { command_type: type, payload: {} }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["edge-agents"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
+      success("Command sent");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to send command");
+    },
   });
 
   const agents = agentsData?.data ?? [];

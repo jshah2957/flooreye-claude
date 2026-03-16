@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import type { Store, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 interface Device {
   id: string;
@@ -20,6 +21,7 @@ interface Device {
 
 export default function DevicesPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
@@ -52,17 +54,33 @@ export default function DevicesPage() {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       setDrawerOpen(false);
       setName(""); setControlUrl("");
+      success("Device added");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to add device");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/devices/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["devices"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      success("Device deleted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to delete device");
+    },
   });
 
   const triggerMutation = useMutation({
     mutationFn: (id: string) => api.post(`/devices/${id}/trigger`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["devices"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      success("Device triggered");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to trigger device");
+    },
   });
 
   const devices = devicesData?.data ?? [];

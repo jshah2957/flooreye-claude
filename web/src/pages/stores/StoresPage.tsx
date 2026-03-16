@@ -10,10 +10,12 @@ import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonCard from "@/components/shared/SkeletonCard";
 import StoreDrawer from "./StoreDrawer";
+import { useToast } from "@/components/ui/Toast";
 
 export default function StoresPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [page, setPage] = useState(0);
@@ -41,6 +43,10 @@ export default function StoresPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stores"] });
       setDeleteTarget(null);
+      success("Store deleted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to delete store");
     },
   });
 

@@ -4,6 +4,7 @@ import { X, Loader2 } from "lucide-react";
 
 import api from "@/lib/api";
 import type { Store } from "@/types";
+import { useToast } from "@/components/ui/Toast";
 
 interface StoreDrawerProps {
   open: boolean;
@@ -32,6 +33,7 @@ const TIMEZONES = [
 
 export default function StoreDrawer({ open, store, onClose }: StoreDrawerProps) {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const isEdit = !!store;
 
   const [name, setName] = useState("");
@@ -69,8 +71,12 @@ export default function StoreDrawer({ open, store, onClose }: StoreDrawerProps) 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stores"] });
       onClose();
+      success("Store created");
     },
-    onError: () => setError("Failed to create store"),
+    onError: (err: any) => {
+      setError("Failed to create store");
+      showError(err?.response?.data?.detail || "Failed to create store");
+    },
   });
 
   const updateMutation = useMutation({
@@ -79,8 +85,12 @@ export default function StoreDrawer({ open, store, onClose }: StoreDrawerProps) 
       queryClient.invalidateQueries({ queryKey: ["stores"] });
       queryClient.invalidateQueries({ queryKey: ["store", store!.id] });
       onClose();
+      success("Store updated");
     },
-    onError: () => setError("Failed to update store"),
+    onError: (err: any) => {
+      setError("Failed to update store");
+      showError(err?.response?.data?.detail || "Failed to update store");
+    },
   });
 
   const loading = createMutation.isPending || updateMutation.isPending;

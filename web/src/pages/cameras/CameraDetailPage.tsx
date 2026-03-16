@@ -15,6 +15,7 @@ import api from "@/lib/api";
 import type { Camera } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import RoiCanvas from "@/components/roi/RoiCanvas";
+import { useToast } from "@/components/ui/Toast";
 
 interface ROIData {
   id: string;
@@ -59,6 +60,7 @@ type Tab = (typeof TABS)[number];
 export default function CameraDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showUrl, setShowUrl] = useState(false);
 
@@ -93,6 +95,10 @@ export default function CameraDetailPage() {
     mutationFn: () => api.post(`/cameras/${id}/test`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["camera", id] });
+      success("Camera test successful");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Camera test failed");
     },
   });
 
@@ -100,6 +106,10 @@ export default function CameraDetailPage() {
     mutationFn: () => api.post(`/cameras/${id}/dry-reference`, null, { params: { num_frames: 5 } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["camera-dry-ref", id] });
+      success("Dry reference captured");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to capture dry reference");
     },
   });
 

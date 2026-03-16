@@ -15,11 +15,13 @@ import api from "@/lib/api";
 import type { Detection, Store, Camera, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 type ViewMode = "gallery" | "table";
 
 export default function DetectionHistoryPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [view, setView] = useState<ViewMode>("gallery");
   const [page, setPage] = useState(0);
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null);
@@ -66,12 +68,24 @@ export default function DetectionHistoryPage() {
 
   const flagMutation = useMutation({
     mutationFn: (id: string) => api.post(`/detection/history/${id}/flag`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["detections"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["detections"] });
+      success("Detection flagged");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to flag detection");
+    },
   });
 
   const trainingMutation = useMutation({
     mutationFn: (id: string) => api.post(`/detection/history/${id}/add-to-training`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["detections"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["detections"] });
+      success("Added to training set");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to add to training set");
+    },
   });
 
   const detections = data?.data ?? [];

@@ -5,6 +5,7 @@ import { Plus, Bell, Trash2, Loader2, X } from "lucide-react";
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 interface NotificationRule {
   id: string;
@@ -20,6 +21,7 @@ interface NotificationRule {
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState<"rules" | "history">("rules");
 
@@ -59,12 +61,22 @@ export default function NotificationsPage() {
       queryClient.invalidateQueries({ queryKey: ["notification-rules"] });
       setDrawerOpen(false);
       setName(""); setRecipients("");
+      success("Notification rule created");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to create rule");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/notifications/rules/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notification-rules"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notification-rules"] });
+      success("Notification rule deleted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to delete rule");
+    },
   });
 
   const rules = rulesData?.data ?? [];

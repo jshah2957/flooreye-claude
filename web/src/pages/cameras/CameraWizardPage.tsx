@@ -14,6 +14,7 @@ import {
 import api from "@/lib/api";
 import type { Store, PaginatedResponse } from "@/types";
 import RoiCanvas from "@/components/roi/RoiCanvas";
+import { useToast } from "@/components/ui/Toast";
 
 type InferenceMode = "cloud" | "edge" | "hybrid";
 
@@ -61,6 +62,7 @@ const STEPS = ["Connect", "Configure", "Inference", "ROI", "Reference", "Confirm
 
 export default function CameraWizardPage() {
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(INITIAL);
   const [testResult, setTestResult] = useState<{
@@ -106,12 +108,14 @@ export default function CameraWizardPage() {
       setState((s) => ({ ...s, resolution: data.resolution ?? "" }));
       // Delete temp camera
       api.delete(`/cameras/${data.camId}`).catch(() => {});
+      success("Connection test successful");
     },
     onError: (err: any) => {
       setTestResult({
         connected: false,
         error: err?.response?.data?.detail ?? "Connection failed",
       });
+      showError(err?.response?.data?.detail || "Connection test failed");
     },
   });
 
@@ -157,7 +161,11 @@ export default function CameraWizardPage() {
       return camId;
     },
     onSuccess: (camId) => {
+      success("Camera created successfully");
       navigate(`/cameras/${camId}`);
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to create camera");
     },
   });
 

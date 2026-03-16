@@ -6,9 +6,11 @@ import api from "@/lib/api";
 import type { Incident, Store, Camera, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export default function IncidentsPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
@@ -49,6 +51,10 @@ export default function IncidentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       setSelected(null);
+      success("Incident acknowledged");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to acknowledge incident");
     },
   });
 
@@ -58,6 +64,10 @@ export default function IncidentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] });
       setSelected(null);
+      success("Incident resolved");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to resolve incident");
     },
   });
 

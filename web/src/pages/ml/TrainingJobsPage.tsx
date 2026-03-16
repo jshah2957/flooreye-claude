@@ -5,6 +5,7 @@ import { Cpu, Loader2, Plus, X, XCircle } from "lucide-react";
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 interface TrainingJob {
   id: string;
@@ -23,6 +24,7 @@ interface TrainingJob {
 
 export default function TrainingJobsPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [arch, setArch] = useState("yolov8n");
   const [epochs, setEpochs] = useState(100);
@@ -44,12 +46,22 @@ export default function TrainingJobsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["training-jobs"] });
       setCreateOpen(false);
+      success("Training job started");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to start training job");
     },
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => api.post(`/training/jobs/${id}/cancel`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["training-jobs"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["training-jobs"] });
+      success("Training job cancelled");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to cancel training job");
+    },
   });
 
   const jobs = (data?.data ?? []) as TrainingJob[];

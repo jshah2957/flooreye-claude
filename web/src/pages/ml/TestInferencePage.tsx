@@ -5,8 +5,10 @@ import { Play, Upload, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 import type { Camera, Store, PaginatedResponse } from "@/types";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/Toast";
 
 export default function TestInferencePage() {
+  const { success, error: showError } = useToast();
   const [selectedCamera, setSelectedCamera] = useState("");
   const [result, setResult] = useState<any>(null);
 
@@ -23,7 +25,13 @@ export default function TestInferencePage() {
       const res = await api.post(`/detection/run/${selectedCamera}`);
       return res.data.data;
     },
-    onSuccess: (data) => setResult(data),
+    onSuccess: (data) => {
+      setResult(data);
+      success("Inference completed");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Inference failed");
+    },
   });
 
   return (

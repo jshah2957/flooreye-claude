@@ -4,9 +4,11 @@ import { Cloud, Loader2, Play, CheckCircle2, XCircle } from "lucide-react";
 
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
+import { useToast } from "@/components/ui/Toast";
 
 export default function RoboflowPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [apiKey, setApiKey] = useState("");
   const [modelId, setModelId] = useState("");
   const [apiUrl, setApiUrl] = useState("https://detect.roboflow.com");
@@ -25,12 +27,24 @@ export default function RoboflowPage() {
     mutationFn: () => api.put("/integrations/roboflow", {
       config: { api_key: apiKey, model_id: modelId, api_url: apiUrl },
     }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["integration-roboflow"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integration-roboflow"] });
+      success("Roboflow config saved");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to save Roboflow config");
+    },
   });
 
   const testMutation = useMutation({
     mutationFn: () => api.post("/integrations/roboflow/test"),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["integration-roboflow"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integration-roboflow"] });
+      success("Roboflow test passed");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Roboflow test failed");
+    },
   });
 
   return (

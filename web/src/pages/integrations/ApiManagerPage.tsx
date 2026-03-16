@@ -19,6 +19,7 @@ import {
 
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
+import { useToast } from "@/components/ui/Toast";
 
 interface Integration {
   service: string;
@@ -96,6 +97,7 @@ const SERVICE_META: Record<string, { label: string; icon: React.ElementType; col
 
 export default function ApiManagerPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [drawerService, setDrawerService] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
@@ -115,18 +117,34 @@ export default function ApiManagerPage() {
       queryClient.invalidateQueries({ queryKey: ["integrations"] });
       setDrawerService(null);
       setError("");
+      success("Integration saved");
     },
-    onError: () => setError("Failed to save config"),
+    onError: (err: any) => {
+      setError("Failed to save config");
+      showError(err?.response?.data?.detail || "Failed to save config");
+    },
   });
 
   const testMutation = useMutation({
     mutationFn: (service: string) => api.post(`/integrations/${service}/test`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["integrations"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
+      success("Integration test passed");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Integration test failed");
+    },
   });
 
   const testAllMutation = useMutation({
     mutationFn: () => api.post("/integrations/test-all"),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["integrations"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations"] });
+      success("All integrations tested");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Test all failed");
+    },
   });
 
   function openDrawer(service: string) {

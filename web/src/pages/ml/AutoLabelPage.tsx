@@ -5,6 +5,7 @@ import { Bot, CheckCircle, Loader2, Play, X, XCircle } from "lucide-react";
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 interface AutoLabelJob {
   id: string;
@@ -20,6 +21,7 @@ interface AutoLabelJob {
 
 export default function AutoLabelPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [approveJobId, setApproveJobId] = useState<string | null>(null);
 
@@ -103,6 +105,10 @@ export default function AutoLabelPage() {
       queryClient.invalidateQueries({ queryKey: ["auto-label-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["unlabeled-frames"] });
       setCreateOpen(false);
+      success("Auto-label job started");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to start auto-label job");
     },
   });
 
@@ -112,12 +118,22 @@ export default function AutoLabelPage() {
       queryClient.invalidateQueries({ queryKey: ["auto-label-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["dataset-stats"] });
       setApproveJobId(null);
+      success("Labels approved");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to approve labels");
     },
   });
 
   const cancelMutation = useMutation({
     mutationFn: (jobId: string) => api.post(`/dataset/auto-label/${jobId}/cancel`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["auto-label-jobs"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auto-label-jobs"] });
+      success("Auto-label job cancelled");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to cancel job");
+    },
   });
 
   function progressPercent(job: AutoLabelJob): number {

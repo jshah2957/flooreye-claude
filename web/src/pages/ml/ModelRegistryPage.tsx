@@ -5,6 +5,7 @@ import { Box, Loader2, ArrowUpCircle, Trash2, Plus, X } from "lucide-react";
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 interface ModelVersion {
   id: string;
@@ -23,6 +24,7 @@ interface ModelVersion {
 
 export default function ModelRegistryPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedModel, setSelectedModel] = useState<ModelVersion | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -44,6 +46,10 @@ export default function ModelRegistryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       setCreateOpen(false); setNewVersion("");
+      success("Model created");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to create model");
     },
   });
 
@@ -53,6 +59,10 @@ export default function ModelRegistryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       setSelectedModel(null);
+      success("Model promoted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to promote model");
     },
   });
 
@@ -61,6 +71,10 @@ export default function ModelRegistryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["models"] });
       setSelectedModel(null);
+      success("Model deleted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to delete model");
     },
   });
 

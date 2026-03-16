@@ -7,9 +7,11 @@ import type { User, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 
 export default function UsersPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -38,6 +40,10 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setCreateOpen(false);
       setEmail(""); setName(""); setPassword("");
+      success("User created");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to create user");
     },
   });
 
@@ -46,6 +52,10 @@ export default function UsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       setDeleteTarget(null);
+      success("User deactivated");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to deactivate user");
     },
   });
 

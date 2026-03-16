@@ -6,9 +6,11 @@ import api from "@/lib/api";
 import type { Detection, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export default function ReviewQueuePage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [tab, setTab] = useState<"pending" | "flagged">("pending");
   const [page, setPage] = useState(0);
   const limit = 12;
@@ -40,12 +42,22 @@ export default function ReviewQueuePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["flagged-detections"] });
       queryClient.invalidateQueries({ queryKey: ["review-pending"] });
+      success("Detection flagged");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to flag detection");
     },
   });
 
   const trainingMutation = useMutation({
     mutationFn: (id: string) => api.post(`/detection/history/${id}/add-to-training`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["review-pending"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["review-pending"] });
+      success("Marked as correct");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to add to training set");
+    },
   });
 
   const data = tab === "flagged" ? flaggedData : recentData;

@@ -5,9 +5,11 @@ import { Database, Trash2, Loader2, BarChart3 } from "lucide-react";
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
+import { useToast } from "@/components/ui/Toast";
 
 export default function DatasetPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [page, setPage] = useState(0);
   const [splitFilter, setSplitFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -37,6 +39,10 @@ export default function DatasetPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dataset-frames"] });
       queryClient.invalidateQueries({ queryKey: ["dataset-stats"] });
+      success("Frame deleted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to delete frame");
     },
   });
 

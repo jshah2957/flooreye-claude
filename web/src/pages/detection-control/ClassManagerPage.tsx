@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 /* ── Types ── */
 
@@ -60,6 +61,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 export default function ClassManagerPage() {
   const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ClassFormData>(EMPTY_FORM);
@@ -85,6 +87,10 @@ export default function ClassManagerPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["detection-classes"] });
       closeDrawer();
+      success(editingId ? "Class updated" : "Class created");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to save class");
     },
   });
 
@@ -96,6 +102,10 @@ export default function ClassManagerPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["detection-classes"] });
       setDeleteTarget(null);
+      success("Class deleted");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to delete class");
     },
   });
 
@@ -106,6 +116,10 @@ export default function ClassManagerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["detection-classes"] });
+      success("Class toggled");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to toggle class");
     },
   });
 
@@ -116,6 +130,10 @@ export default function ClassManagerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["detection-classes"] });
+      success("Alert setting updated");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to update alert setting");
     },
   });
 
