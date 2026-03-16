@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 9 — Phase 2 COMPLETE
+Session 10 — Phase 3 Backend COMPLETE
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -44,12 +44,14 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 7: ForgotPassword, ResetPassword, mobile API client, mobile useAuth, mobile login — Phase 1 COMPLETE
 - Session 8: Store model/schemas/service/router, Camera+ROI+DryRef models/schemas/service/router — Phase 2 backend CRUD
 - Session 9: Shared components, StoresPage, StoreDetailPage, CamerasPage, CameraDetailPage, ROI tool, Camera Wizard — Phase 2 COMPLETE
+- Session 10: DetectionLog/Event models, inference service, 4-layer validation, detection/incident services, detection/events/live routers, Celery worker, WebSocket hub — Phase 3 backend
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
 - Phase 1 — Authentication & RBAC: COMPLETE
 - Phase 2 — Stores, Cameras & Onboarding: COMPLETE
-- Phase 3 through 11: not started
+- Phase 3 — Detection Engine & Live Monitoring: backend complete, web UI not started
+- Phase 4 through 11: not started
 
 ## Dependency Log
 No libraries installed yet. All versions pinned in:
@@ -78,4 +80,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 10 — Phase 3: Detection engine, live monitoring, incidents
+Session 11 — Phase 3 Web: Dashboard, detection history, incident management, live viewer, WebSocket hook

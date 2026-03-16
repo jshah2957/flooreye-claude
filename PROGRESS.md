@@ -380,3 +380,65 @@ Phase 2 — Stores, Cameras & Onboarding is now COMPLETE:
 
 ### Next Session Plan
 Session 10: Phase 3 — Detection engine, live monitoring, incidents
+
+---
+
+## Session 10 — Phase 3 Backend
+### Date: 2026-03-15
+### Goal: Detection engine, inference, validation pipeline, incidents, WebSocket hub
+
+### Tasks Completed
+- Task 1: backend/app/models/detection.py — DetectionLog, BoundingBox, Prediction
+- Task 2: backend/app/models/incident.py — Event model
+- Tasks 1-2: commit 37d3485
+- Task 3: backend/app/schemas/detection.py + backend/app/schemas/incident.py — commit 39ec0c3
+- Task 4: backend/app/services/inference_service.py — Roboflow async client, severity, summary
+- Task 5: backend/app/services/validation_pipeline.py — 4-layer (confidence, area, K-of-M, dry ref SSIM)
+- Tasks 4-5: commit acdcd69
+- Task 6: backend/app/services/detection_service.py — manual detection, CRUD, history, flag, export
+- Task 7: backend/app/services/incident_service.py — create_or_update with grouping, acknowledge, resolve
+- Tasks 6-7: commit 3a5e063
+- Task 8: backend/app/routers/detection.py — 8 live endpoints, continuous status, start/stop 501
+- Task 9: backend/app/routers/events.py — list, get, acknowledge, resolve — all 4 live
+- Task 10: backend/app/routers/live_stream.py — GET frame live, rest 501
+- Tasks 8-10: commit dea46a5
+- Task 11: backend/app/workers/celery_app.py + detection_worker.py — Celery init, detection tasks
+- Task 12: backend/app/routers/websockets.py — ConnectionManager, JWT auth, org-scoped channels
+- Tasks 11-12: commit 5aa7589
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/models/detection.py (implemented)
+- backend/app/models/incident.py (implemented)
+- backend/app/schemas/detection.py (implemented)
+- backend/app/schemas/incident.py (implemented)
+- backend/app/core/config.py (added Roboflow settings)
+- backend/app/services/inference_service.py (implemented)
+- backend/app/services/validation_pipeline.py (new)
+- backend/app/services/detection_service.py (implemented)
+- backend/app/services/incident_service.py (new)
+- backend/app/routers/detection.py (implemented — replaced stubs)
+- backend/app/routers/events.py (implemented — replaced stubs)
+- backend/app/routers/live_stream.py (implemented — GET frame live)
+- backend/app/workers/celery_app.py (implemented)
+- backend/app/workers/detection_worker.py (implemented)
+- backend/app/routers/websockets.py (implemented — real channels with JWT auth)
+
+### Implementation Summary
+- Roboflow inference: async httpx client, severity classification, area computation
+- 4-layer validation: confidence threshold, wet area filter, K-of-M voting, dry ref comparison
+- Detection service: manual trigger (capture→infer→validate→log→incident), history with filters, flag toggle
+- Incident service: grouping window (5min), severity classification, acknowledge/resolve
+- Events router: list/get/acknowledge/resolve with RBAC
+- Live stream: GET frame endpoint captures from camera via OpenCV
+- Celery: app init, single camera task, continuous dispatch task
+- WebSocket: ConnectionManager, JWT query param auth, 7 org-scoped channels, publish helpers
+- Remaining 501: continuous start/stop (need Celery Beat), upload-to-roboflow, recording endpoints
+
+### Issues
+- None
+
+### Next Session Plan
+Session 11: Phase 3 Web — Dashboard, Detection History, Incident Management, Live Viewer, WebSocket hook
