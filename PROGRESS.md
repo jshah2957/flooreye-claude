@@ -285,3 +285,50 @@ Phase 1 — Authentication & RBAC is now COMPLETE:
 
 ### Next Session Plan
 Session 8: Phase 2 — Backend stores and cameras CRUD with models and services
+
+---
+
+## Session 8 — Phase 2 Backend CRUD
+### Date: 2026-03-15
+### Goal: Backend stores and cameras CRUD with models, schemas, services, routers
+
+### Tasks Completed
+- Task 1: backend/app/models/store.py — Store model — commit 03c3fa6
+- Task 2: backend/app/schemas/store.py — StoreCreate, StoreUpdate, StoreResponse, PaginatedStoresResponse
+- Task 3: backend/app/services/store_service.py — create, get, list, update, delete (org-scoped, soft-delete)
+- Task 4: backend/app/routers/stores.py — 5 CRUD endpoints live, stats + edge-status remain 501
+- Tasks 2-4: commit 8b7a2eb
+- Task 5: backend/app/models/camera.py — Camera, ROIPoint, ROI, DryReferenceFrame, DryReference models
+- Task 6: backend/app/schemas/camera.py — Camera + ROI + DryReference schemas
+- Task 7: backend/app/services/camera_service.py — full CRUD, connection test (OpenCV), quality analysis, inference mode, ROI save/get, dry reference capture/get
+- Task 8: backend/app/routers/cameras.py — all 11 endpoints live with RBAC
+- Tasks 5-8: commit 1db04cb
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- backend/app/models/store.py (implemented)
+- backend/app/schemas/store.py (implemented)
+- backend/app/services/store_service.py (new)
+- backend/app/routers/stores.py (implemented — replaced stubs)
+- backend/app/models/camera.py (implemented)
+- backend/app/schemas/camera.py (implemented)
+- backend/app/services/camera_service.py (implemented)
+- backend/app/routers/cameras.py (implemented — replaced stubs)
+
+### Implementation Summary
+- Store CRUD: org-scoped, soft-delete cascades to disable cameras
+- Camera CRUD: org-scoped, hard delete with ROI/dry-ref cleanup
+- Connection test: OpenCV VideoCapture, snapshot capture, status update
+- Quality analysis: brightness, blur (Laplacian variance), noise metrics
+- Inference mode: cloud/edge/hybrid with threshold config
+- ROI: versioned, deactivate-old-before-create, min 3 points validation
+- Dry reference: versioned, multi-frame capture with brightness/reflection scoring
+- All endpoints use require_role() for RBAC per docs/api.md
+
+### Issues
+- None
+
+### Next Session Plan
+Session 9: Phase 2 Web — Stores page, Store Detail, Cameras page, Camera Detail, Onboarding Wizard, ROI Drawing Tool

@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 7 — Phase 1 COMPLETE
+Session 8 — Phase 2 Backend IN PROGRESS
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -41,11 +41,12 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 5: User model, security.py (JWT/bcrypt), auth schemas, auth_service, auth router, permissions, get_current_user
 - Session 6: Axios client, TanStack Query, useAuth, types, LoginPage, Sidebar, AppLayout, React Router
 - Session 7: ForgotPassword, ResetPassword, mobile API client, mobile useAuth, mobile login — Phase 1 COMPLETE
+- Session 8: Store model/schemas/service/router, Camera+ROI+DryRef models/schemas/service/router — Phase 2 backend CRUD
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
 - Phase 1 — Authentication & RBAC: COMPLETE
-- Phase 2 — Stores, Cameras & Onboarding: not started
+- Phase 2 — Stores, Cameras & Onboarding: backend CRUD complete, web UI not started
 - Phase 3 through 11: not started
 
 ## Dependency Log
@@ -75,4 +76,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 8 — Phase 2: Backend stores and cameras CRUD with models and services
+Session 9 — Phase 2: Web stores page, store detail, cameras page, camera detail, onboarding wizard, ROI tool
