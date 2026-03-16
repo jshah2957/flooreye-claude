@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 6 — web login, auth context, protected routes, sidebar
+Session 7 — Phase 1 COMPLETE
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -31,6 +31,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 
 ## Completed Phases
 - Phase 0 — Scaffold: COMPLETE (Sessions 1-4)
+- Phase 1 — Authentication & RBAC: COMPLETE (Sessions 5-7)
 
 ## Completed Sessions
 - Session 1: folder structure (228 files), all docs extracted, pushed to GitHub
@@ -39,14 +40,13 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 4: database.py, indexes.py, dependencies.py, 23 router stubs, constants.py — Phase 0 COMPLETE
 - Session 5: User model, security.py (JWT/bcrypt), auth schemas, auth_service, auth router, permissions, get_current_user
 - Session 6: Axios client, TanStack Query, useAuth, types, LoginPage, Sidebar, AppLayout, React Router
+- Session 7: ForgotPassword, ResetPassword, mobile API client, mobile useAuth, mobile login — Phase 1 COMPLETE
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
-- Phase 1 — Authentication & RBAC: IN PROGRESS
-  DONE: backend auth, web login page, auth context (useAuth), protected routes, role-based sidebar,
-        AppLayout, Header, React Router with all page placeholders, TypeScript types
-  PENDING: forgot/reset password pages (web), mobile login, Header user menu polish
-- Phase 2 through 11: not started
+- Phase 1 — Authentication & RBAC: COMPLETE
+- Phase 2 — Stores, Cameras & Onboarding: not started
+- Phase 3 through 11: not started
 
 ## Dependency Log
 No libraries installed yet. All versions pinned in:
@@ -75,4 +75,4 @@ None yet. All field names must come from docs/schemas.md.
 10. Update this file and PROGRESS.md before ending any session
 
 ## Next Session Starts At
-Session 7 — Phase 1: Forgot/reset password, mobile login, Header, complete Phase 1
+Session 8 — Phase 2: Backend stores and cameras CRUD with models and services

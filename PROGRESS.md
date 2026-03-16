@@ -245,4 +245,43 @@ See Session 6 below.
 - None
 
 ### Next Session Plan
-Session 7: Forgot/reset password pages, mobile login, Header polish — complete Phase 1
+See Session 7 below.
+
+---
+
+## Session 7 — Phase 1 Completion
+### Date: 2026-03-15
+### Goal: Forgot/reset password, mobile login, complete Phase 1
+
+### Tasks Completed
+- Task 1: web/src/pages/auth/ForgotPasswordPage.tsx — email form + success state — commit 13955df
+- Task 2: web/src/pages/auth/ResetPasswordPage.tsx — password form + strength indicator — commit 3e624df
+- Task 3: Wire ForgotPassword + ResetPassword into routes — commit b11b134
+- Task 4: (skipped — device-token endpoint already implemented in Session 5)
+- Task 5: mobile/services/api.ts — Axios client with SecureStore tokens — commit b5433e5
+- Task 6: mobile/hooks/useAuth.ts — login, logout, SecureStore bootstrap — commit 78fc9d5
+- Task 7: mobile/app/(auth)/login.tsx — mobile login screen — commit 3873ce2
+
+### GitHub
+- All commits pushed to origin/main
+
+### Files Created/Updated This Session
+- web/src/pages/auth/ForgotPasswordPage.tsx
+- web/src/pages/auth/ResetPasswordPage.tsx
+- web/src/routes/index.tsx (updated)
+- mobile/services/api.ts
+- mobile/hooks/useAuth.ts
+- mobile/app/(auth)/login.tsx
+
+### Phase 1 Summary
+Phase 1 — Authentication & RBAC is now COMPLETE:
+- Backend: JWT HS256, bcrypt, login/refresh/logout, user CRUD, RBAC, device tokens
+- Web: Login page, forgot/reset password, auth context, protected routes, role-based sidebar
+- Mobile: API client with SecureStore, useAuth hook, login screen
+- forgot-password/reset-password backend endpoints remain 501 (need SMTP — Phase 5)
+
+### Issues
+- None
+
+### Next Session Plan
+Session 8: Phase 2 — Backend stores and cameras CRUD with models and services
