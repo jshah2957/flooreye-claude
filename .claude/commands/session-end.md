@@ -1,7 +1,17 @@
-Before ending this session do these steps in order:
-1. Update CLAUDE.md - mark what was completed, update current task to next task
-2. Update PROGRESS.md - log all tasks completed, files changed, commit hashes
-3. git add CLAUDE.md PROGRESS.md
-4. git commit -m "Session progress saved"
-5. git push origin main
-6. Print: "Session saved. Next session starts at: [next task name]"
+Before closing this session:
+1. Check .claude/errors.md for any PENDING or PARTIAL — warn if found
+2. Update .claude/state.md with last completed task
+3. Update CLAUDE.md current task
+4. Update PROGRESS.md session entry
+5. Run: git add .claude/ CLAUDE.md PROGRESS.md
+6. Run: git commit -m "Session [N] end: [summary of what was done]"
+7. Run: git push origin main
+8. Print this summary:
+   ---
+   SESSION CLOSED
+   Completed: [list tasks done]
+   Errors resolved: [N]
+   Errors pending: [N] — WARNING if any
+   Pushed to GitHub: yes
+   Next session starts at: [exact task name]
+   ---

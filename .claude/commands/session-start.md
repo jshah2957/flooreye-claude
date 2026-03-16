@@ -1,8 +1,19 @@
-Read .claude/state.md last 10 lines only.
-Read CLAUDE.md section "Current Task" only.
-From these two sources report:
-- Last completed task
-- Current task
-- Any interrupted work
-Then say: "Resuming from [current task]. Start? (yes/no)"
-Do not read the full SRD. Do not re-read all docs. Proceed immediately.
+Read these files in order — stop as soon as you have enough context:
+1. .claude/state.md — last 10 lines only
+2. .claude/errors.md — look for PENDING or PARTIAL entries only
+3. CLAUDE.md — "Current Task" section only
+
+Report in this exact format:
+---
+RESUMED
+Current task: [task name]
+Last completed: [task name] — [commit]
+Unresolved errors: [N] — [list names if any]
+Interrupted work: [yes/no — describe if yes]
+---
+
+If unresolved errors exist: ask "Fix errors first or continue with current task?"
+If no errors: say "Continuing with [task]. Ready? (yes/no)"
+
+Do NOT read SRD. Do NOT re-read all docs.
+Total startup time target: under 10 seconds.
