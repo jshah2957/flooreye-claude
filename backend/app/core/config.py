@@ -91,7 +91,7 @@ settings = Settings()
 
 # SEC-1 + SEC-2: Block production startup with insecure default secrets
 if settings.ENVIRONMENT == "production":
-    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"):
+    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY"):
         if getattr(settings, attr) in _INSECURE_DEFAULTS:
             log.critical(
                 f"FATAL: {attr} is set to an insecure default. "

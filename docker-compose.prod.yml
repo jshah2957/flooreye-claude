@@ -42,9 +42,6 @@ services:
     image: mongo:7.0
     volumes:
       - mongo_data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-flooreye}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-flooreye_secret_2026}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
