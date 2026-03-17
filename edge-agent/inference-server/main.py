@@ -1,6 +1,6 @@
-"""FloorEye Inference Server — ONNX YOLO model serving via FastAPI.
+"""FloorEye Inference Server — ONNX model serving via FastAPI.
 
-Supports YOLOv8 and YOLO26 (NMS-free) model formats automatically.
+Supports YOLOv8, YOLO26 (NMS-free), and Roboflow ONNX model formats automatically.
 """
 
 import logging

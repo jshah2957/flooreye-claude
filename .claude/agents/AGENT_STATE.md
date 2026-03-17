@@ -1,16 +1,16 @@
 # FloorEye Agent State
-# Current Session: Session 28 — YOLO26n Upgrade
-# Status: DEPLOYED
+# Current Session: Session 29 — Skipped Updates Audit
+# Status: v2.3.0 DEPLOYED
 # Last Saved: 2026-03-17
 
-## Session 28 — YOLO26n Model Upgrade
-- YOLO26n exported to ONNX (9.5 MB, down from 12.3 MB YOLOv8n)
-- Inference server updated: auto-detect yolo26 vs yolov8 from output shape
-- predict.py: NMS-free postprocess for YOLO26 [1,300,6] output
-- predict.py: proper IoU-based NMS added for YOLOv8 (replaces top-K hack)
-- model_loader.py: model_type detection on load
-- Edge inference: 57-75ms (was 90-99ms) — 35% faster
-- Training pipeline: yolo26n default in schemas + distillation.py
+## Session 29 — Complete Audit + Fix
+- Scanned all code for TODO, stubs, placeholders, 501s
+- Found 8 skipped items, fixed 7 (1 remains: SMTP for forgot-password)
+- Live Monitoring page built (8.7KB, multi-camera grid)
+- 4 empty stubs implemented (change_streams, audit_log, clip, mobile)
+- 2 unused placeholder files deleted
+- 24/24 pytest, frontend builds clean, tagged v2.3.0
 
 ## Commits
-- 2a4c821: YOLO26n inference server code
+- 8069bee: Audit report
+- f8b1502: All 8 skipped items fixed

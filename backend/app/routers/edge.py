@@ -264,8 +264,23 @@ async def ack_command(
 @router.get("/model/current")
 async def current_model(
     agent: dict = Depends(get_edge_agent),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    return {"data": {"model_version_id": agent.get("current_model_version")}}
+    """Return the latest production Roboflow model for this agent's org."""
+    model = await db.model_versions.find_one(
+        {"org_id": agent["org_id"], "model_source": "roboflow", "status": "production"},
+        sort=[("created_at", -1)],
+    )
+    if not model:
+        return {"data": {"model_version_id": None}}
+    return {"data": {
+        "model_version_id": model["id"],
+        "version_str": model.get("version_str"),
+        "checksum": model.get("checksum"),
+        "download_url": model.get("onnx_s3_path") or model.get("artifact_path", ""),
+        "format": "onnx",
+        "model_source": "roboflow",
+    }}
 
 
 @router.get("/model/download/{version_id}")
@@ -277,8 +292,15 @@ async def download_model(
     model = await db.model_versions.find_one({"id": version_id, "org_id": agent["org_id"]})
     if not model:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model version not found")
+    if model.get("model_source") == "yolo_cloud":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This model is cloud-only")
     download_url = model.get("onnx_s3_path") or model.get("artifact_path", "")
-    return {"data": {"version_id": version_id, "download_url": download_url, "format": "onnx"}}
+    return {"data": {
+        "version_id": version_id,
+        "download_url": download_url,
+        "format": "onnx",
+        "checksum": model.get("checksum"),
+    }}
 
 
 @router.put("/config")

@@ -8,6 +8,7 @@ class ModelVersionCreate(BaseModel):
     version_str: str
     architecture: Literal["yolov8n", "yolov8s", "yolov8m", "yolo11n", "yolo26n", "yolo26s"]
     training_job_id: Optional[str] = None
+    model_source: Optional[str] = None  # "roboflow" or "yolo_cloud"
 
 
 class ModelVersionUpdate(BaseModel):
@@ -40,6 +41,7 @@ class ModelVersionResponse(BaseModel):
     onnx_path: Optional[str] = None
     pt_path: Optional[str] = None
     model_size_mb: Optional[float] = None
+    model_source: Optional[str] = None  # "roboflow" or "yolo_cloud"
     promoted_to_staging_at: Optional[datetime] = None
     promoted_to_production_at: Optional[datetime] = None
     created_at: Optional[datetime] = None

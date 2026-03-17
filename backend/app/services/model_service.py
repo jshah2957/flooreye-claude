@@ -23,6 +23,8 @@ async def create_model(db: AsyncIOMotorDatabase, org_id: str, data: ModelVersion
         "frame_count": 0,
         "map_50": None, "map_50_95": None, "precision": None, "recall": None, "f1": None,
         "per_class_metrics": [],
+        "model_source": data.model_source,
+        "checksum": None,
         "onnx_path": None, "pt_path": None, "trt_path": None, "model_size_mb": None,
         "promoted_to_staging_at": None, "promoted_to_staging_by": None,
         "promoted_to_production_at": None, "promoted_to_production_by": None,
@@ -79,6 +81,13 @@ async def promote_model(
             {"$set": {"status": "retired"}},
         )
 
+    # Tag YOLO models as cloud-only so edge agents never download them
+    model_doc = await db.model_versions.find_one({**org_query(org_id), "id": model_id})
+    if model_doc and target == "production":
+        arch = (model_doc.get("architecture") or "").lower()
+        if "yolo" in arch and model_doc.get("model_source") != "roboflow":
+            updates["model_source"] = "yolo_cloud"
+
     result = await db.model_versions.find_one_and_update(
         {**org_query(org_id), "id": model_id}, {"$set": updates}, return_document=True,
     )
@@ -86,7 +95,8 @@ async def promote_model(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
 
     # Auto-deploy to all online edge agents when promoted to production
-    if target == "production":
+    # but only for Roboflow models (YOLO cloud models stay server-side)
+    if target == "production" and result.get("model_source") != "yolo_cloud":
         await _deploy_model_to_agents(db, org_id, model_id, user_id)
 
     return result

@@ -31,7 +31,7 @@ async def register_with_backend(cameras: dict[str, str]) -> dict | None:
         "org_id": config.ORG_ID,
         "agent_version": "2.0.0",
         "cameras": [
-            {"name": n, "url": u, "current_mode": config.INFERENCE_MODE}
+            {"name": n, "url": u, "current_mode": "local"}
             for n, u in cameras.items()
         ],
         "hardware": {
@@ -94,7 +94,8 @@ async def camera_loop(
             continue
 
         try:
-            result = await inference.infer(frame_b64, config.HYBRID_THRESHOLD)
+            # Always use local ONNX inference (no cloud/hybrid mode)
+            result = await inference.infer(frame_b64)
 
             # Validate detection
             passed, reason = validator.validate(result, cam.name)
@@ -155,8 +156,9 @@ async def threaded_camera_loop(
 
         try:
             # Acquire semaphore to limit concurrent inferences
+            # Always use local ONNX inference (no cloud/hybrid mode)
             async with semaphore:
-                result = await inference.infer(frame_b64, config.HYBRID_THRESHOLD)
+                result = await inference.infer(frame_b64)
 
             # Validate detection
             passed, reason = validator.validate(result, cam.name)
@@ -187,6 +189,53 @@ async def threaded_camera_loop(
 
         elapsed = time.time() - t0
         await asyncio.sleep(max(0, cam.frame_interval - elapsed))
+
+
+async def check_and_download_model(inference: InferenceClient):
+    """Check for newer Roboflow ONNX model and download if available."""
+    log.info("Checking for model updates...")
+    try:
+        # Get currently loaded model version from inference server
+        health = await inference.health()
+        current_version = health.get("model_version", "unknown")
+
+        # Query backend for latest Roboflow model
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{config.BACKEND_URL}/api/v1/edge/model/current",
+                headers=config.auth_headers(),
+            )
+            if resp.status_code != 200:
+                log.warning(f"Model check failed: {resp.status_code}")
+                return
+
+            data = resp.json().get("data", {})
+            latest_version = data.get("model_version_id")
+            if not latest_version:
+                log.info("No Roboflow model available from backend")
+                return
+
+            if latest_version == current_version:
+                log.info(f"Model is up to date: {current_version}")
+                return
+
+            # Download new model via inference server
+            download_url = data.get("download_url")
+            checksum = data.get("checksum")
+            if download_url:
+                # If download_url is relative, prepend backend URL
+                if download_url.startswith("/"):
+                    download_url = f"{config.BACKEND_URL}{download_url}"
+                result = await inference.download_model_from_url(
+                    download_url, checksum, f"{latest_version}.onnx"
+                )
+                if result.get("loaded"):
+                    log.info(f"Model updated to {latest_version}")
+                else:
+                    log.warning(f"Model download/load failed: {result}")
+
+    except Exception as e:
+        log.warning(f"Model check failed (non-critical, continuing with current model): {e}")
 
 
 async def main():
@@ -223,6 +272,9 @@ async def main():
 
     # Register with backend
     await register_with_backend(cameras)
+
+    # Check for model updates before starting detection
+    await check_and_download_model(inference)
 
     # Build threaded camera capture objects
     cam_objects = {
