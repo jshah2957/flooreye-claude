@@ -178,15 +178,16 @@ async def _send_notification(
     channel: str, recipient: str, incident: dict, rule: dict
 ) -> None:
     """Dispatch notification via the appropriate channel."""
+    org_id = incident.get("org_id", "")
     if channel == "email":
         from app.workers.notification_worker import send_email_notification
-        send_email_notification.delay(recipient, incident.get("id"), incident.get("severity"))
+        send_email_notification.delay(recipient, incident.get("id"), incident.get("severity"), org_id)
     elif channel == "webhook":
         from app.workers.notification_worker import send_webhook_notification
         send_webhook_notification.delay(recipient, incident, rule.get("webhook_secret"))
     elif channel == "sms":
         from app.workers.notification_worker import send_sms_notification
-        send_sms_notification.delay(recipient, incident.get("id"), incident.get("severity"))
+        send_sms_notification.delay(recipient, incident.get("id"), incident.get("severity"), org_id)
     elif channel == "push":
         from app.workers.notification_worker import send_push_notification
         title = rule.get("push_title_template") or "FloorEye Alert"

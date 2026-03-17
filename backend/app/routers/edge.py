@@ -303,12 +303,35 @@ async def download_model(
     }}
 
 
+_ALLOWED_CONFIG_FIELDS = {
+    "detection_fps",
+    "confidence_threshold",
+    "upload_interval_seconds",
+    "max_uploads_per_minute",
+    "model_version_id",
+    "resolution_width",
+    "resolution_height",
+    "enable_preview",
+    "log_level",
+    "heartbeat_interval_seconds",
+    "offline_buffer_size",
+}
+
+
 @router.put("/config")
 async def push_config(
     body: dict,
     agent: dict = Depends(get_edge_agent),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
+    # Validate: only allow known config fields
+    unknown_fields = set(body.keys()) - _ALLOWED_CONFIG_FIELDS
+    if unknown_fields:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown config fields: {', '.join(sorted(unknown_fields))}",
+        )
+
     now = datetime.now(timezone.utc)
     await db.edge_agents.update_one(
         {"id": agent["id"]},

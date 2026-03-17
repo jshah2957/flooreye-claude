@@ -48,11 +48,24 @@ class CommandPoller:
             if cmd_type == "ping":
                 result = {"pong": True}
             elif cmd_type == "reload_model":
-                result = await self.inference.health()
-            elif cmd_type == "deploy_model":
                 model_path = payload.get("model_path", "")
                 if model_path:
                     result = await self.inference.load_model(model_path)
+                else:
+                    # Reload the current model (re-read from disk)
+                    health = await self.inference.health()
+                    result = {"reloaded": True, "version": health.get("model_version")}
+            elif cmd_type == "deploy_model":
+                download_url = payload.get("download_url", "")
+                checksum = payload.get("checksum")
+                version_id = payload.get("version_id", "model")
+                if download_url:
+                    result = await self.inference.download_model_from_url(
+                        download_url, checksum, f"{version_id}.onnx"
+                    )
+                else:
+                    log.warning("deploy_model missing download_url in payload")
+                    result = {"error": "No download_url provided"}
             elif cmd_type == "push_config":
                 log.info(f"Config update received: {payload}")
                 result = {"applied": True}

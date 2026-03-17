@@ -42,8 +42,11 @@ async def lifespan(app: FastAPI):
     # Startup
     await connect_db()
     await ensure_indexes(get_db())
+    from app.routers.websockets import start_redis_subscriber, stop_redis_subscriber
+    await start_redis_subscriber()
     yield
     # Shutdown
+    await stop_redis_subscriber()
     await close_db()
 
 
@@ -79,10 +82,27 @@ def create_app() -> FastAPI:
 
     @application.get("/api/v1/health", tags=["health"])
     async def health_check():
+        checks = {"mongodb": "error", "redis": "error"}
+        try:
+            db = get_db()
+            await db.command("ping")
+            checks["mongodb"] = "ok"
+        except Exception:
+            pass
+        try:
+            import redis as r
+            rc = r.from_url(settings.REDIS_URL, socket_connect_timeout=2)
+            rc.ping()
+            checks["redis"] = "ok"
+            rc.close()
+        except Exception:
+            pass
+        all_ok = all(v == "ok" for v in checks.values())
         return {
-            "status": "healthy",
-            "version": "2.0.0",
+            "status": "healthy" if all_ok else "degraded",
+            "version": "2.5.0",
             "environment": settings.ENVIRONMENT,
+            "checks": checks,
         }
 
     # Register all routers

@@ -3,6 +3,7 @@ import uuid
 import random
 import time
 import base64
+import asyncio
 from datetime import datetime, timezone
 
 import cv2
@@ -20,6 +21,21 @@ from app.services.detection_control_service import resolve_effective_settings
 _LIST_PROJECTION = {"frame_base64": 0, "_id": 0}
 
 
+async def _capture_frame(stream_url: str) -> tuple[bool, str | None]:
+    """Capture a single frame from a camera stream without blocking the event loop."""
+    def _blocking_capture():
+        cap = cv2.VideoCapture(stream_url)
+        if not cap.isOpened():
+            return False, None
+        ret, frame = cap.read()
+        cap.release()
+        if not ret or frame is None:
+            return False, None
+        _, buffer = cv2.imencode(".jpg", frame)
+        return True, base64.b64encode(buffer).decode("utf-8")
+    return await asyncio.to_thread(_blocking_capture)
+
+
 async def run_manual_detection(
     db: AsyncIOMotorDatabase,
     camera_id: str,
@@ -31,26 +47,14 @@ async def run_manual_detection(
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    # Capture frame from camera
+    # Capture frame from camera (non-blocking)
     stream_url = camera["stream_url"]
-    cap = cv2.VideoCapture(stream_url)
-    if not cap.isOpened():
+    success, frame_base64 = await _capture_frame(stream_url)
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Cannot connect to camera stream",
+            detail="Cannot connect to camera stream or failed to capture frame",
         )
-
-    ret, frame = cap.read()
-    cap.release()
-
-    if not ret or frame is None:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to capture frame",
-        )
-
-    _, buffer = cv2.imencode(".jpg", frame)
-    frame_base64 = base64.b64encode(buffer).decode("utf-8")
 
     # Run inference
     source = model_source or "roboflow"
@@ -97,7 +101,7 @@ async def run_manual_detection(
         "confidence": summary["confidence"],
         "wet_area_percent": summary["wet_area_percent"],
         "inference_time_ms": inference_time_ms,
-        "frame_base64": frame_base64,
+        "frame_base64": None,  # frames available via live stream; not stored inline
         "frame_s3_path": None,
         "predictions": predictions,
         "model_source": source,
@@ -158,11 +162,8 @@ async def _auto_collect_frame(
             should_save = True
             label = "wet"
         else:
-            # For dry frames, save 1 in 10 based on org detection count
-            org_id = detection_doc.get("org_id", "")
-            count = await db.detection_logs.count_documents(org_query(org_id))
-            if count % 10 == 0:
-                should_save = True
+            # For dry frames, save ~10% using random sampling (O(1) instead of O(N) count_documents)
+            should_save = random.random() < 0.1
 
         if not should_save or not frame_base64:
             return
@@ -183,7 +184,7 @@ async def _auto_collect_frame(
             "store_id": detection_doc.get("store_id"),
             "camera_id": detection_doc.get("camera_id"),
             "detection_id": detection_doc.get("id"),
-            "frame_base64": frame_base64,
+            "frame_base64": None,  # frames not stored inline; use S3 when configured
             "label": label,
             "label_source": "auto",
             "split": split,

@@ -1,6 +1,11 @@
 """
 WebSocket hub with Redis Pub/Sub for real-time channels.
 
+Uses Redis Pub/Sub to broadcast messages across multiple Gunicorn workers.
+Each worker subscribes to Redis channels and forwards messages to its local
+WebSocket clients. This ensures all connected clients receive broadcasts
+regardless of which worker they are connected to.
+
 Channels:
   /ws/live-detections          — real-time detection stream (org-scoped)
   /ws/live-frame/{camera_id}   — live frame stream for a camera
@@ -15,20 +20,58 @@ Auth: JWT token passed as ?token= query parameter.
 
 import asyncio
 import json
+import logging
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.core.security import decode_token
 from app.db.database import get_db
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["websockets"])
+
+# Redis channel prefix to namespace WebSocket broadcasts
+_REDIS_WS_PREFIX = "ws:"
+
+# Module-level Redis clients (lazy-initialized)
+_redis_pub: aioredis.Redis | None = None
+_redis_sub: aioredis.Redis | None = None
+_subscriber_task: asyncio.Task | None = None
+
+
+async def _get_redis_pub() -> aioredis.Redis:
+    """Get or create the Redis client used for publishing."""
+    global _redis_pub
+    if _redis_pub is None:
+        from app.core.config import settings
+        _redis_pub = aioredis.from_url(
+            settings.REDIS_URL, decode_responses=True
+        )
+    return _redis_pub
+
+
+async def _get_redis_sub() -> aioredis.Redis:
+    """Get or create the Redis client used for subscribing (separate connection)."""
+    global _redis_sub
+    if _redis_sub is None:
+        from app.core.config import settings
+        _redis_sub = aioredis.from_url(
+            settings.REDIS_URL, decode_responses=True
+        )
+    return _redis_sub
 
 
 # ── Connection Manager ──────────────────────────────────────────
 
 
 class ConnectionManager:
-    """Manages active WebSocket connections grouped by channel."""
+    """Manages active WebSocket connections grouped by channel.
+
+    Broadcasts use Redis Pub/Sub so that messages published by any Gunicorn
+    worker are forwarded to WebSocket clients connected to every worker.
+    """
 
     def __init__(self):
         self._connections: dict[str, list[WebSocket]] = {}
@@ -45,8 +88,8 @@ class ConnectionManager:
                 ws for ws in self._connections[channel] if ws is not websocket
             ]
 
-    async def broadcast(self, channel: str, message: dict):
-        """Broadcast a message to all connections on a channel."""
+    async def _local_broadcast(self, channel: str, message: dict):
+        """Broadcast to WebSocket clients connected to THIS worker only."""
         if channel not in self._connections:
             return
         dead = []
@@ -58,6 +101,22 @@ class ConnectionManager:
         for ws in dead:
             self.disconnect(channel, ws)
 
+    async def broadcast(self, channel: str, message: dict):
+        """Broadcast to all workers via Redis Pub/Sub, then locally.
+
+        The Redis subscriber running in each worker will pick up the message
+        and call _local_broadcast, ensuring all connected clients are reached.
+        """
+        # Publish to Redis so other workers receive the message
+        try:
+            r = await _get_redis_pub()
+            payload = json.dumps(message, default=str)
+            await r.publish(f"{_REDIS_WS_PREFIX}{channel}", payload)
+        except Exception:
+            # Redis unavailable — fall back to local-only broadcast
+            logger.warning("Redis pub/sub unavailable, falling back to local broadcast")
+            await self._local_broadcast(channel, message)
+
     async def send_to(self, websocket: WebSocket, message: dict):
         try:
             await websocket.send_json(message)
@@ -66,6 +125,73 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+
+
+# ── Redis Subscriber (background task) ──────────────────────────
+
+
+async def _redis_subscriber_loop():
+    """Background task: subscribe to all ws:* channels on Redis and forward
+    messages to local WebSocket clients.
+
+    Uses pattern-subscribe (PSUBSCRIBE) so we automatically pick up any
+    new channel without needing to manage individual subscriptions.
+    """
+    while True:
+        try:
+            r = await _get_redis_sub()
+            pubsub = r.pubsub()
+            await pubsub.psubscribe(f"{_REDIS_WS_PREFIX}*")
+            logger.info("Redis WebSocket subscriber started (pattern: ws:*)")
+
+            async for raw_message in pubsub.listen():
+                if raw_message["type"] != "pmessage":
+                    continue
+
+                # raw_message keys: type, pattern, channel, data
+                redis_channel: str = raw_message["channel"]
+                ws_channel = redis_channel[len(_REDIS_WS_PREFIX):]
+
+                try:
+                    message = json.loads(raw_message["data"])
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+                # Forward to local WebSocket clients on this worker
+                await manager._local_broadcast(ws_channel, message)
+
+        except asyncio.CancelledError:
+            logger.info("Redis WebSocket subscriber cancelled")
+            break
+        except Exception as exc:
+            logger.error(f"Redis subscriber error: {exc}. Reconnecting in 2s...")
+            await asyncio.sleep(2)
+
+
+async def start_redis_subscriber():
+    """Start the Redis subscriber background task. Call once on app startup."""
+    global _subscriber_task
+    if _subscriber_task is None or _subscriber_task.done():
+        _subscriber_task = asyncio.create_task(_redis_subscriber_loop())
+        logger.info("Redis WebSocket subscriber task created")
+
+
+async def stop_redis_subscriber():
+    """Stop the Redis subscriber and close connections. Call on app shutdown."""
+    global _subscriber_task, _redis_pub, _redis_sub
+    if _subscriber_task and not _subscriber_task.done():
+        _subscriber_task.cancel()
+        try:
+            await _subscriber_task
+        except asyncio.CancelledError:
+            pass
+    if _redis_pub:
+        await _redis_pub.aclose()
+        _redis_pub = None
+    if _redis_sub:
+        await _redis_sub.aclose()
+        _redis_sub = None
+    logger.info("Redis WebSocket connections closed")
 
 
 # ── Auth Helper ─────────────────────────────────────────────────

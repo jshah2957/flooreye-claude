@@ -9,6 +9,7 @@ _INSECURE_DEFAULTS = {
     "CHANGE_ME_256_BIT_SECRET",
     "CHANGE_ME_EDGE_SECRET",
     "CHANGE_ME_BASE64_32_BYTE_KEY",
+    "minioadmin",
 }
 
 
@@ -27,15 +28,15 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # MongoDB
-    MONGODB_URI: str = "mongodb://localhost:27017"
+    MONGODB_URI: str = "mongodb://flooreye:flooreye_secret_2026@localhost:27017"
     MONGODB_DB: str = "flooreye"
 
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://:flooreye_redis_2026@localhost:6379/0"
 
     # Celery
-    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
-    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    CELERY_BROKER_URL: str = "redis://:flooreye_redis_2026@localhost:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://:flooreye_redis_2026@localhost:6379/2"
 
     # Authentication (JWT)
     SECRET_KEY: str = "CHANGE_ME_256_BIT_SECRET"
@@ -90,7 +91,7 @@ settings = Settings()
 
 # SEC-1 + SEC-2: Block production startup with insecure default secrets
 if settings.ENVIRONMENT == "production":
-    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY"):
+    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"):
         if getattr(settings, attr) in _INSECURE_DEFAULTS:
             log.critical(
                 f"FATAL: {attr} is set to an insecure default. "

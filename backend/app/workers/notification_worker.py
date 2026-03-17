@@ -21,19 +21,22 @@ logger = logging.getLogger(__name__)
     max_retries=3,
     default_retry_delay=30,
 )
-def send_email_notification(self, recipient: str, incident_id: str, severity: str):
+def send_email_notification(self, recipient: str, incident_id: str, severity: str, org_id: str = ""):
     """Send email notification via configured SMTP integration."""
     try:
         from app.core.config import settings
 
-        # Try to load SMTP config from integration_configs
+        # Try to load SMTP config from integration_configs (scoped by org_id)
         loop = asyncio.new_event_loop()
         try:
             from motor.motor_asyncio import AsyncIOMotorClient
             client = AsyncIOMotorClient(settings.MONGODB_URI)
             db = client[settings.MONGODB_DB]
+            query = {"service": "smtp"}
+            if org_id:
+                query["org_id"] = org_id
             smtp_config = loop.run_until_complete(
-                db.integration_configs.find_one({"service": "smtp"})
+                db.integration_configs.find_one(query)
             )
             client.close()
         finally:
@@ -118,7 +121,7 @@ def send_webhook_notification(self, url: str, incident: dict, secret: str | None
     max_retries=3,
     default_retry_delay=30,
 )
-def send_sms_notification(self, phone: str, incident_id: str, severity: str):
+def send_sms_notification(self, phone: str, incident_id: str, severity: str, org_id: str = ""):
     """Send SMS via Twilio integration."""
     try:
         from app.core.config import settings
@@ -128,8 +131,11 @@ def send_sms_notification(self, phone: str, incident_id: str, severity: str):
             from motor.motor_asyncio import AsyncIOMotorClient
             client = AsyncIOMotorClient(settings.MONGODB_URI)
             db = client[settings.MONGODB_DB]
+            query = {"service": "sms"}
+            if org_id:
+                query["org_id"] = org_id
             sms_config = loop.run_until_complete(
-                db.integration_configs.find_one({"service": "sms"})
+                db.integration_configs.find_one(query)
             )
             client.close()
         finally:

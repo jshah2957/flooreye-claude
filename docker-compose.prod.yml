@@ -42,6 +42,9 @@ services:
     image: mongo:7.0
     volumes:
       - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-flooreye}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-flooreye_secret_2026}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
@@ -51,11 +54,12 @@ services:
 
   redis:
     image: redis:7.2-alpine
+    command: redis-server --requirepass ${REDIS_PASS:-flooreye_redis_2026}
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASS:-flooreye_redis_2026}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5

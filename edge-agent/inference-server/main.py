@@ -29,6 +29,12 @@ class LoadModelRequest(BaseModel):
     model_path: str
 
 
+class DownloadModelRequest(BaseModel):
+    url: str
+    checksum: str | None = None
+    filename: str = "model.onnx"
+
+
 @app.on_event("startup")
 def startup():
     loader.load_latest()
@@ -41,6 +47,8 @@ def health():
         "model_loaded": loader.is_loaded,
         "model_version": loader.model_version,
         "model_type": loader.model_type,
+        "model_source": loader.model_source,
+        "class_names": loader.class_names,
         "device": "cpu",
     }
 
@@ -53,9 +61,11 @@ def infer(req: InferRequest):
     result = run_inference(
         loader.session, req.image_base64, req.confidence,
         model_type=loader.model_type,
+        class_names=loader.class_names_dict,
     )
     result["model_version"] = loader.model_version
     result["model_type"] = loader.model_type
+    result["model_source"] = loader.model_source
     return result
 
 
@@ -66,6 +76,38 @@ def load_model_endpoint(req: LoadModelRequest):
         "loaded": success,
         "version": loader.model_version,
         "load_time_ms": loader.load_time_ms,
+        "model_type": loader.model_type,
+        "model_source": loader.model_source,
+    }
+
+
+@app.post("/model/download")
+def download_and_load(req: DownloadModelRequest):
+    """Download an ONNX model from URL, verify checksum, and hot-swap it in."""
+    dest_path = os.path.join(loader.models_dir, req.filename)
+    if not loader.download_model(req.url, dest_path, req.checksum):
+        return {"error": "Download or checksum verification failed"}, 500
+    success = loader.swap_model(dest_path)
+    return {
+        "loaded": success,
+        "version": loader.model_version,
+        "model_type": loader.model_type,
+        "model_source": loader.model_source,
+    }
+
+
+@app.get("/model/info")
+def model_info():
+    """Return full metadata about the currently loaded model."""
+    if not loader.is_loaded:
+        return {"error": "No model loaded"}, 503
+    return {
+        "version": loader.model_version,
+        "model_type": loader.model_type,
+        "model_source": loader.model_source,
+        "class_names": loader.class_names,
+        "input_shape": list(loader.input_shape),
+        "model_path": loader.model_path,
     }
 
 
