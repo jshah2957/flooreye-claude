@@ -90,8 +90,8 @@ async def run_manual_detection(
         layer4_enabled=effective.get("layer4_enabled", True),
     )
 
-    # Upload frame to S3
-    s3_path = upload_frame(frame_base64, org_id, camera_id)
+    # Upload frame to S3 (non-blocking — boto3 is synchronous)
+    s3_path = await asyncio.to_thread(upload_frame, frame_base64, org_id, camera_id)
 
     # Create detection log
     now = datetime.now(timezone.utc)

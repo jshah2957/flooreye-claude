@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -10,6 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.config import settings
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
+from app.utils.s3_utils import upload_frame as s3_upload
 from app.schemas.edge import (
     CommandAckRequest,
     DetectionUploadRequest,
@@ -157,6 +160,14 @@ async def upload_frame(
     resolved_camera_id = cam["id"] if cam else body.camera_id
 
     now = datetime.now(timezone.utc)
+    # Upload frame to S3 (non-blocking) instead of storing in MongoDB
+    s3_path = None
+    if body.frame_base64:
+        try:
+            s3_path = await asyncio.to_thread(s3_upload, body.frame_base64, agent["org_id"], resolved_camera_id)
+        except Exception:
+            pass
+
     detection_doc = {
         "id": str(uuid.uuid4()),
         "camera_id": resolved_camera_id,
@@ -167,8 +178,8 @@ async def upload_frame(
         "confidence": body.confidence,
         "wet_area_percent": body.wet_area_percent,
         "inference_time_ms": body.inference_time_ms,
-        "frame_base64": body.frame_base64,
-        "frame_s3_path": None,
+        "frame_base64": None,  # Don't store in MongoDB
+        "frame_s3_path": s3_path,
         "predictions": body.predictions,
         "model_source": "student",
         "model_version_id": agent.get("current_model_version"),
@@ -179,6 +190,17 @@ async def upload_frame(
         "incident_id": None,
     }
     await db.detection_logs.insert_one(detection_doc)
+
+    # Broadcast detection via WebSocket
+    try:
+        from app.routers.websockets import publish_detection
+        det_clean = {k: v for k, v in detection_doc.items() if k != "_id"}
+        for key, val in det_clean.items():
+            if hasattr(val, 'isoformat'):
+                det_clean[key] = val.isoformat()
+        await publish_detection(agent.get("org_id", ""), det_clean)
+    except Exception:
+        pass
 
     if body.is_wet:
         from app.services.incident_service import create_or_update_incident
@@ -226,6 +248,17 @@ async def upload_detection(
         "incident_id": None,
     }
     await db.detection_logs.insert_one(detection_doc)
+
+    # Broadcast detection via WebSocket
+    try:
+        from app.routers.websockets import publish_detection
+        det_clean = {k: v for k, v in detection_doc.items() if k != "_id"}
+        for key, val in det_clean.items():
+            if hasattr(val, 'isoformat'):
+                det_clean[key] = val.isoformat()
+        await publish_detection(agent.get("org_id", ""), det_clean)
+    except Exception:
+        pass
 
     if body.is_wet:
         from app.services.incident_service import create_or_update_incident

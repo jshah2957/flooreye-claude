@@ -3,11 +3,14 @@ Notification Service — rules CRUD, delivery engine, quiet hours enforcement.
 Dispatches Celery tasks for each delivery channel.
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+log = logging.getLogger(__name__)
 
 from app.core.org_filter import org_query
 from app.schemas.notification import NotificationRuleCreate, NotificationRuleUpdate
@@ -174,6 +177,7 @@ async def dispatch_notifications(
                 await _log_delivery(db, org_id, rule, recipient, incident, detection, "sent")
                 dispatched += 1
             except Exception as e:
+                log.warning("Notification dispatch failed for %s/%s: %s", channel, recipient, e)
                 await _log_delivery(db, org_id, rule, recipient, incident, detection, "failed", str(e))
 
     return dispatched

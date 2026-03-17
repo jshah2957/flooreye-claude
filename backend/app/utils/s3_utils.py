@@ -16,6 +16,10 @@ from app.core.config import settings
 
 log = logging.getLogger(__name__)
 
+# Module-level singleton for boto3 S3 client (connection pooling)
+_s3_client = None
+_s3_client_configured_for: str | None = None
+
 
 def _s3_configured() -> bool:
     """Check if S3 credentials are configured (non-default values)."""
@@ -28,7 +32,14 @@ def _s3_configured() -> bool:
 
 
 def get_s3_client():
-    """Create a boto3 S3 client from config settings."""
+    """Return a cached boto3 S3 client (singleton). Creates one on first call."""
+    global _s3_client, _s3_client_configured_for
+
+    # Cache key based on endpoint+key to detect config changes
+    cache_key = f"{settings.S3_ENDPOINT_URL}:{settings.S3_ACCESS_KEY_ID}"
+    if _s3_client is not None and _s3_client_configured_for == cache_key:
+        return _s3_client
+
     try:
         import boto3
         from botocore.config import Config
@@ -41,6 +52,8 @@ def get_s3_client():
             region_name=settings.S3_REGION,
             config=Config(signature_version="s3v4"),
         )
+        _s3_client = client
+        _s3_client_configured_for = cache_key
         return client
     except ImportError:
         log.warning("boto3 not installed — S3 operations will use local filesystem fallback")

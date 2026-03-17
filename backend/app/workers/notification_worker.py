@@ -161,6 +161,13 @@ def send_email_notification(self, recipient: str, incident_id: str, severity: st
 
         logger.info(f"Email sent: to={recipient} incident={incident_id}")
         return {"sent": True, "recipient": recipient}
+    except ConnectionRefusedError as exc:
+        logger.warning(f"SMTP connection refused — email to {recipient} skipped (no SMTP server): {exc}")
+        return {"sent": False, "reason": "smtp_connection_refused", "recipient": recipient}
+    except OSError as exc:
+        # Network-level errors (e.g., no route to host) — don't retry endlessly
+        logger.warning(f"SMTP network error — email to {recipient} skipped: {exc}")
+        return {"sent": False, "reason": "smtp_network_error", "recipient": recipient}
     except Exception as exc:
         logger.error(f"Email failed: to={recipient} error={exc}")
         raise self.retry(exc=exc)
