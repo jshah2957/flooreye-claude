@@ -47,14 +47,14 @@ class DetectionValidator:
         if wet_count < 2:
             return False, "temporal_check_pending"
 
-        # Layer 4: Rate limiting (prevent alert storm)
+        # Layer 4: Duplicate suppression (same wet event within 5-min cooldown)
         now = time.time()
         recent_alerts = [
             h for h in self._history[camera_name]
-            if h.get("alerted") and now - h["timestamp"] < 60
+            if h.get("alerted") and now - h["timestamp"] < 300
         ]
-        if len(recent_alerts) >= 10:
-            return False, "rate_limited"
+        if len(recent_alerts) > 0:
+            return False, "duplicate_suppressed"
 
         # Mark as alerted
         self._history[camera_name][-1]["alerted"] = True

@@ -15,6 +15,7 @@ from uploader import Uploader
 from buffer import FrameBuffer
 from command_poller import CommandPoller
 from validator import DetectionValidator
+from device_controller import DeviceController
 
 logging.basicConfig(
     level=config.LOG_LEVEL,
@@ -261,6 +262,8 @@ async def main():
     buffer = FrameBuffer()
     validator = DetectionValidator()
     cmd_poller = CommandPoller(inference)
+    device_ctrl = DeviceController()
+    device_ctrl.connect()
 
     # Semaphore to limit concurrent inference calls across all cameras
     inference_semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_INFERENCES)
@@ -301,9 +304,10 @@ async def main():
     try:
         await asyncio.gather(*tasks)
     finally:
-        # Clean up threaded captures on shutdown
+        # Clean up threaded captures and devices on shutdown
         for cam in cam_objects.values():
             cam.stop()
+        device_ctrl.disconnect()
 
 
 if __name__ == "__main__":

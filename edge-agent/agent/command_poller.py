@@ -67,8 +67,12 @@ class CommandPoller:
                     log.warning("deploy_model missing download_url in payload")
                     result = {"error": "No download_url provided"}
             elif cmd_type == "push_config":
-                log.info(f"Config update received: {payload}")
-                result = {"applied": True}
+                for key, value in payload.items():
+                    upper_key = key.upper()
+                    if hasattr(config, upper_key):
+                        setattr(config, upper_key, value)
+                        log.info(f"Config updated: {upper_key} = {value}")
+                result = {"applied": True, "keys": list(payload.keys())}
             elif cmd_type == "restart_agent":
                 log.warning("Restart command received — agent will restart")
                 result = {"restarting": True}
