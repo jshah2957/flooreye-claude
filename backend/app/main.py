@@ -42,6 +42,11 @@ async def lifespan(app: FastAPI):
     # Startup
     await connect_db()
     await ensure_indexes(get_db())
+    from app.utils.s3_utils import ensure_bucket
+    try:
+        ensure_bucket()
+    except Exception:
+        pass
     from app.routers.websockets import start_redis_subscriber, stop_redis_subscriber
     await start_redis_subscriber()
     yield

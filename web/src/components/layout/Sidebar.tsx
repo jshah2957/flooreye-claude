@@ -25,6 +25,8 @@ import {
   FileText,
   BookOpen,
   ShieldCheck,
+  Building2,
+  Settings,
 } from "lucide-react";
 import type { UserRole } from "@/types";
 import { cn } from "@/lib/utils";
@@ -53,6 +55,15 @@ const ALL_ROLES: UserRole[] = [
 const ADMIN_PLUS: UserRole[] = ["super_admin", "org_admin"];
 const ML_PLUS: UserRole[] = ["super_admin", "org_admin", "ml_engineer"];
 const OPERATOR_PLUS: UserRole[] = ["super_admin", "org_admin", "ml_engineer", "operator"];
+
+/** Simplified sidebar for store_owner and viewer roles */
+const SIMPLE_NAV_ITEMS: NavItem[] = [
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Store Status", path: "/stores", icon: Building2 },
+  { label: "Alerts", path: "/incidents", icon: AlertTriangle },
+  { label: "Live Cameras", path: "/monitoring", icon: Camera },
+  { label: "Settings", path: "/notifications", icon: Settings },
+];
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -135,6 +146,8 @@ function hasAccess(allowedRoles: UserRole[] | undefined, userRole: UserRole): bo
 }
 
 export default function Sidebar({ role, collapsed = false }: SidebarProps) {
+  const isAdmin = role === "super_admin" || role === "org_admin" || role === "ml_engineer";
+
   return (
     <aside
       className={cn(
@@ -151,34 +164,63 @@ export default function Sidebar({ role, collapsed = false }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-2">
-        {NAV_SECTIONS.filter((s) => hasAccess(s.minRole, role)).map((section) => (
-          <div key={section.title} className="mb-4">
+        {isAdmin ? (
+          /* Full admin sidebar */
+          NAV_SECTIONS.filter((s) => hasAccess(s.minRole, role)).map((section) => (
+            <div key={section.title} className="mb-4">
+              {!collapsed && (
+                <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
+                  {section.title}
+                </p>
+              )}
+              {section.items
+                .filter((item) => hasAccess(item.minRole, role))
+                .map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                        isActive
+                          ? "bg-[#1E293B] text-white"
+                          : "hover:bg-[#1E293B]/50 hover:text-white",
+                      )
+                    }
+                  >
+                    <item.icon size={18} />
+                    {!collapsed && <span>{item.label}</span>}
+                  </NavLink>
+                ))}
+            </div>
+          ))
+        ) : (
+          /* Simplified sidebar for store_owner / viewer / operator */
+          <div className="mb-4">
             {!collapsed && (
               <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
-                {section.title}
+                MY STORE
               </p>
             )}
-            {section.items
-              .filter((item) => hasAccess(item.minRole, role))
-              .map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-[#1E293B] text-white"
-                        : "hover:bg-[#1E293B]/50 hover:text-white",
-                    )
-                  }
-                >
-                  <item.icon size={18} />
-                  {!collapsed && <span>{item.label}</span>}
-                </NavLink>
-              ))}
+            {SIMPLE_NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-[#1E293B] text-white"
+                      : "hover:bg-[#1E293B]/50 hover:text-white",
+                  )
+                }
+              >
+                <item.icon size={18} />
+                {!collapsed && <span>{item.label}</span>}
+              </NavLink>
+            ))}
           </div>
-        ))}
+        )}
       </nav>
     </aside>
   );

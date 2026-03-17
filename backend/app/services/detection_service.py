@@ -16,6 +16,7 @@ from app.services.inference_service import run_roboflow_inference, compute_detec
 from app.services.validation_pipeline import run_validation_pipeline
 from app.core.org_filter import org_query
 from app.services.detection_control_service import resolve_effective_settings
+from app.utils.s3_utils import upload_frame
 
 # Projection to exclude heavy fields from list queries
 _LIST_PROJECTION = {"frame_base64": 0, "_id": 0}
@@ -89,6 +90,9 @@ async def run_manual_detection(
         layer4_enabled=effective.get("layer4_enabled", True),
     )
 
+    # Upload frame to S3
+    s3_path = upload_frame(frame_base64, org_id, camera_id)
+
     # Create detection log
     now = datetime.now(timezone.utc)
     detection_doc = {
@@ -101,8 +105,8 @@ async def run_manual_detection(
         "confidence": summary["confidence"],
         "wet_area_percent": summary["wet_area_percent"],
         "inference_time_ms": inference_time_ms,
-        "frame_base64": None,  # frames available via live stream; not stored inline
-        "frame_s3_path": None,
+        "frame_base64": None,  # frames not stored inline; uploaded to S3
+        "frame_s3_path": s3_path,
         "predictions": predictions,
         "model_source": source,
         "model_version_id": None,

@@ -34,6 +34,7 @@ import type {
 } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useAuth } from "@/hooks/useAuth";
 
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor(
@@ -54,6 +55,8 @@ const MODE_COLORS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "super_admin" || user?.role === "org_admin" || user?.role === "ml_engineer";
   const queryClient = useQueryClient();
   const [realtimeDetections, setRealtimeDetections] = useState<Detection[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
@@ -198,6 +201,17 @@ export default function DashboardPage() {
     (s: Record<string, string>) => s.service === "roboflow"
   );
 
+  // Camera name lookup for displaying names instead of UUIDs
+  const cameraNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const cam of cameraList) {
+      map[cam.id] = cam.name;
+    }
+    return map;
+  }, [cameraList]);
+
+  const hasActiveIncidents = (incidentsData?.meta?.total ?? 0) > 0;
+
   // Live frame polling (DASH-9)
   useEffect(() => {
     if (!streaming || !selectedCameraId) return;
@@ -253,16 +267,34 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Status Banner for store owners */}
+      {!isAdmin && (
+        <div className={`mb-6 rounded-xl p-6 text-center ${
+          hasActiveIncidents
+            ? "bg-[#FEE2E2] border-2 border-[#DC2626]"
+            : "bg-[#DCFCE7] border-2 border-[#16A34A]"
+        }`}>
+          <p className={`text-3xl font-bold ${hasActiveIncidents ? "text-[#DC2626]" : "text-[#16A34A]"}`}>
+            {hasActiveIncidents ? "ALERT" : "ALL CLEAR"}
+          </p>
+          <p className="mt-1 text-sm text-[#78716C]">
+            {hasActiveIncidents
+              ? `${incidentsData?.meta?.total} active wet floor alert(s)`
+              : "No wet floor alerts across your stores"}
+          </p>
+        </div>
+      )}
+
       {/* Stats Row (DASH-1 to DASH-4) */}
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div className={`mb-6 grid grid-cols-2 gap-4 ${isAdmin ? "lg:grid-cols-3 xl:grid-cols-6" : "lg:grid-cols-3"}`}>
         {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
+          Array.from({ length: isAdmin ? 6 : 3 }).map((_, i) => (
             <div
               key={i}
               className="h-[76px] animate-pulse rounded-lg border border-[#E7E5E0] bg-gray-100"
             />
           ))
-        ) : (
+        ) : isAdmin ? (
           <>
             <StatCard
               icon={Building2}
@@ -299,6 +331,27 @@ export default function DashboardPage() {
               label="Inference Modes"
               value={`C${cloudCount} E${edgeCount} H${hybridCount}`}
               color="brand"
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              icon={Building2}
+              label="My Stores"
+              value={storesData?.meta?.total ?? 0}
+              color="info"
+            />
+            <StatCard
+              icon={AlertTriangle}
+              label="Active Alerts"
+              value={incidentsData?.meta?.total ?? 0}
+              color={(incidentsData?.meta?.total ?? 0) > 0 ? "danger" : "success"}
+            />
+            <StatCard
+              icon={Camera}
+              label="Cameras Online"
+              value={`${onlineCameras} / ${cameraList.length}`}
+              color="success"
             />
           </>
         )}
@@ -515,7 +568,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-[10px] text-[#78716C]">
-                        {d.camera_id?.substring(0, 8)}...
+                        {cameraNames[d.camera_id] ?? d.camera_id?.substring(0, 8)}
                       </p>
                       <div className="mt-0.5 flex items-center gap-1.5">
                         <span
@@ -572,7 +625,7 @@ export default function DashboardPage() {
                         <StatusBadge status={inc.status} size="sm" />
                       </div>
                       <p className="mt-0.5 text-[10px] text-[#78716C]">
-                        {inc.camera_id?.substring(0, 8)}... &middot;{" "}
+                        {cameraNames[inc.camera_id] ?? inc.camera_id?.substring(0, 8)} &middot;{" "}
                         {inc.detection_count} detections &middot;{" "}
                         {inc.start_time ? timeAgo(inc.start_time) : ""}
                       </p>
@@ -583,8 +636,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* System Health Panel (DASH-19 to DASH-25) */}
-          <div className="rounded-lg border border-[#E7E5E0] bg-white">
+          {/* System Health Panel (DASH-19 to DASH-25) — admin only */}
+          {isAdmin && <div className="rounded-lg border border-[#E7E5E0] bg-white">
             <button
               onClick={() => setHealthOpen(!healthOpen)}
               className="flex w-full items-center justify-between p-4"
@@ -643,7 +696,7 @@ export default function DashboardPage() {
                 />
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 

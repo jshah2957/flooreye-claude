@@ -13,6 +13,35 @@ from app.core.org_filter import org_query
 from app.schemas.notification import NotificationRuleCreate, NotificationRuleUpdate
 
 
+# ── Default Rule Bootstrap ──────────────────────────────────────
+
+
+async def ensure_default_notification_rule(
+    db: AsyncIOMotorDatabase, org_id: str
+) -> None:
+    """Create a default high-severity email notification rule if none exists for the org."""
+    existing = await db.notification_rules.find_one(
+        {"org_id": org_id, "channel": "email"}
+    )
+    if not existing:
+        now = datetime.now(timezone.utc)
+        rule = {
+            "id": str(uuid.uuid4()),
+            "org_id": org_id,
+            "name": "Default High Severity Email Alert",
+            "channel": "email",
+            "recipients": [],  # Admin must fill in recipient emails
+            "min_severity": "high",
+            "min_confidence": 0.70,
+            "min_wet_area_percent": 0.0,
+            "quiet_hours_enabled": False,
+            "is_active": True,
+            "created_at": now,
+            "updated_at": now,
+        }
+        await db.notification_rules.insert_one(rule)
+
+
 # ── Rules CRUD ──────────────────────────────────────────────────
 
 
@@ -103,6 +132,9 @@ async def dispatch_notifications(
     severity = incident.get("severity", "low")
     confidence = incident.get("max_confidence", 0)
     wet_area = incident.get("max_wet_area_percent", 0)
+
+    # Ensure a default email notification rule exists for this org
+    await ensure_default_notification_rule(db, org_id)
 
     # Find active rules that match this incident
     query = {

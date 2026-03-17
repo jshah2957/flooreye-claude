@@ -61,6 +61,21 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: flooreye
+      MINIO_ROOT_PASSWORD: flooreye_minio_2026
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel run flooreye
@@ -76,3 +91,4 @@ volumes:
   mongo_data:
   redis_data:
   backend_data:
+  minio_data:

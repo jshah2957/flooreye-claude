@@ -15,6 +15,70 @@ from app.workers.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
+def _build_email_html(
+    incident_id: str,
+    severity: str,
+    store_name: str = "Unknown Store",
+    camera_name: str = "Unknown Camera",
+    confidence: float = 0.0,
+    timestamp: str = "",
+) -> str:
+    """Build an HTML email body for a FloorEye alert."""
+    severity_colors = {
+        "critical": "#991B1B",
+        "high": "#DC2626",
+        "medium": "#D97706",
+        "low": "#059669",
+    }
+    severity_color = severity_colors.get(severity, "#DC2626")
+    confidence_pct = round(confidence * 100, 1) if confidence <= 1.0 else round(confidence, 1)
+
+    return f"""\
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <div style="background: #0D9488; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">FloorEye Alert</h1>
+  </div>
+  <div style="border: 1px solid #E7E5E0; padding: 20px; border-radius: 0 0 8px 8px;">
+    <h2 style="color: {severity_color};">Wet Floor Detected</h2>
+    <p><strong>Store:</strong> {store_name}</p>
+    <p><strong>Camera:</strong> {camera_name}</p>
+    <p><strong>Severity:</strong> {severity.upper()}</p>
+    <p><strong>Time:</strong> {timestamp}</p>
+    <p><strong>Confidence:</strong> {confidence_pct}%</p>
+    <a href="https://app.puddlewatch.com/incidents/{incident_id}"
+       style="display: inline-block; background: #0D9488; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 16px;">
+      View Incident
+    </a>
+  </div>
+</div>"""
+
+
+def _send_smtp_email(config: dict, to_email: str, subject: str, body_html: str) -> bool:
+    """Send an email via SMTP using decrypted config."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    host = config.get("host", "")
+    port = int(config.get("port", 587))
+    username = config.get("username", "")
+    password = config.get("password", "")
+    from_email = config.get("from_email", username)
+
+    msg = MIMEMultipart()
+    msg["From"] = f"FloorEye Alerts <{from_email}>"
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body_html, "html"))
+
+    with smtplib.SMTP(host, port, timeout=10) as server:
+        server.starttls()
+        if username:
+            server.login(username, password)
+        server.send_message(msg)
+    return True
+
+
 @celery_app.task(
     name="app.workers.notification_worker.send_email_notification",
     bind=True,
@@ -26,18 +90,42 @@ def send_email_notification(self, recipient: str, incident_id: str, severity: st
     try:
         from app.core.config import settings
 
-        # Try to load SMTP config from integration_configs (scoped by org_id)
+        # Load SMTP config and incident details from DB
         loop = asyncio.new_event_loop()
         try:
             from motor.motor_asyncio import AsyncIOMotorClient
             client = AsyncIOMotorClient(settings.MONGODB_URI)
             db = client[settings.MONGODB_DB]
+
+            # SMTP config
             query = {"service": "smtp"}
             if org_id:
                 query["org_id"] = org_id
             smtp_config = loop.run_until_complete(
                 db.integration_configs.find_one(query)
             )
+
+            # Fetch incident details for the email template
+            incident = loop.run_until_complete(
+                db.events.find_one({"id": incident_id})
+            ) or {}
+
+            # Fetch store and camera names
+            store_name = "Unknown Store"
+            camera_name = "Unknown Camera"
+            if incident.get("store_id"):
+                store = loop.run_until_complete(
+                    db.stores.find_one({"id": incident["store_id"]})
+                )
+                if store:
+                    store_name = store.get("name", store_name)
+            if incident.get("camera_id"):
+                camera = loop.run_until_complete(
+                    db.cameras.find_one({"id": incident["camera_id"]})
+                )
+                if camera:
+                    camera_name = camera.get("name", camera_name)
+
             client.close()
         finally:
             loop.close()
@@ -46,28 +134,30 @@ def send_email_notification(self, recipient: str, incident_id: str, severity: st
             logger.warning(f"SMTP not configured — email to {recipient} logged only")
             return {"sent": False, "reason": "smtp_not_configured", "recipient": recipient}
 
-        # If SMTP is configured, decrypt and send via smtplib
-        import smtplib
-        from email.mime.text import MIMEText
+        # Decrypt SMTP config
         from app.core.encryption import decrypt_config
-
         config = decrypt_config(smtp_config["config_encrypted"])
-        host = config.get("host", "")
-        port = int(config.get("port", 587))
-        username = config.get("username", "")
-        password = config.get("password", "")
-        from_email = config.get("from_email", username)
 
-        msg = MIMEText(f"FloorEye Alert: {severity} severity incident detected.\nIncident ID: {incident_id}")
-        msg["Subject"] = f"FloorEye Alert — {severity.upper()} Severity"
-        msg["From"] = from_email
-        msg["To"] = recipient
+        # Build timestamp string
+        start_time = incident.get("start_time")
+        if hasattr(start_time, "isoformat"):
+            timestamp = start_time.strftime("%Y-%m-%d %H:%M UTC")
+        else:
+            timestamp = str(start_time or "N/A")
 
-        with smtplib.SMTP(host, port, timeout=10) as server:
-            server.starttls()
-            if username:
-                server.login(username, password)
-            server.sendmail(from_email, [recipient], msg.as_string())
+        # Build HTML email
+        html_body = _build_email_html(
+            incident_id=incident_id,
+            severity=severity,
+            store_name=store_name,
+            camera_name=camera_name,
+            confidence=incident.get("max_confidence", 0),
+            timestamp=timestamp,
+        )
+
+        subject = f"FloorEye Alert — {severity.upper()} Severity — {store_name}"
+
+        _send_smtp_email(config, recipient, subject, html_body)
 
         logger.info(f"Email sent: to={recipient} incident={incident_id}")
         return {"sent": True, "recipient": recipient}

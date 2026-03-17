@@ -4,9 +4,13 @@ S3 Client Wrapper — boto3 S3 operations with local filesystem fallback.
 Used by storage_service.py for upload/download/delete operations.
 """
 
+import base64
 import logging
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+
+from botocore.exceptions import ClientError
 
 from app.core.config import settings
 
@@ -43,6 +47,67 @@ def get_s3_client():
         return None
     except Exception as exc:
         log.error("Failed to create S3 client: %s", exc)
+        return None
+
+
+def ensure_bucket():
+    """Create the S3 bucket if it does not already exist."""
+    if not _s3_configured():
+        log.info("S3 not configured — skipping bucket creation")
+        return
+    client = get_s3_client()
+    if not client:
+        return
+    try:
+        client.head_bucket(Bucket=settings.S3_BUCKET_NAME)
+        log.info("S3 bucket already exists: %s", settings.S3_BUCKET_NAME)
+    except ClientError:
+        try:
+            client.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+            log.info("Created S3 bucket: %s", settings.S3_BUCKET_NAME)
+        except Exception as e:
+            log.warning("Could not create bucket: %s", e)
+
+
+def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
+    """Upload a base64-encoded JPEG frame to S3 and return the object key."""
+    if not _s3_configured():
+        return None
+    try:
+        client = get_s3_client()
+        if not client:
+            return None
+        frame_bytes = base64.b64decode(frame_base64)
+        now = datetime.now(timezone.utc)
+        key = f"frames/{org_id}/{camera_id}/{now.strftime('%Y%m%d_%H%M%S_%f')}.jpg"
+        client.put_object(
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=key,
+            Body=frame_bytes,
+            ContentType="image/jpeg",
+        )
+        log.info("Uploaded frame to S3: %s (%d bytes)", key, len(frame_bytes))
+        return key
+    except Exception as e:
+        log.warning("S3 frame upload failed: %s", e)
+        return None
+
+
+def get_signed_url(key: str, expires: int = 3600) -> str | None:
+    """Generate a pre-signed URL for downloading an S3 object."""
+    if not _s3_configured():
+        return None
+    try:
+        client = get_s3_client()
+        if not client:
+            return None
+        return client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": settings.S3_BUCKET_NAME, "Key": key},
+            ExpiresIn=expires,
+        )
+    except Exception as e:
+        log.warning("Failed to generate signed URL: %s", e)
         return None
 
 
