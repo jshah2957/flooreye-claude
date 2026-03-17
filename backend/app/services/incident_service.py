@@ -43,30 +43,35 @@ async def create_or_update_incident(
         start = existing.get("start_time", now)
         elapsed = (now - start).total_seconds()
         if elapsed <= INCIDENT_GROUPING_WINDOW_SECONDS:
-            # Update existing incident
-            updates: dict = {
-                "detection_count": existing.get("detection_count", 1) + 1,
+            # Update existing incident using $inc to avoid race conditions
+            set_fields: dict = {
                 "end_time": now,
             }
             confidence = detection.get("confidence", 0)
             wet_area = detection.get("wet_area_percent", 0)
             if confidence > existing.get("max_confidence", 0):
-                updates["max_confidence"] = confidence
+                set_fields["max_confidence"] = confidence
             if wet_area > existing.get("max_wet_area_percent", 0):
-                updates["max_wet_area_percent"] = wet_area
+                set_fields["max_wet_area_percent"] = wet_area
 
-            # Recalculate severity
-            updates["severity"] = _classify_incident_severity(
-                updates.get("max_confidence", existing.get("max_confidence", 0)),
-                updates.get("max_wet_area_percent", existing.get("max_wet_area_percent", 0)),
-                updates["detection_count"],
+            # Recalculate severity using projected new count
+            new_count = existing.get("detection_count", 1) + 1
+            set_fields["severity"] = _classify_incident_severity(
+                set_fields.get("max_confidence", existing.get("max_confidence", 0)),
+                set_fields.get("max_wet_area_percent", existing.get("max_wet_area_percent", 0)),
+                new_count,
             )
 
-            await db.events.update_one(
+            updated = await db.events.find_one_and_update(
                 {"id": existing["id"]},
-                {"$set": updates},
+                {
+                    "$inc": {"detection_count": 1},
+                    "$set": set_fields,
+                },
+                return_document=True,
             )
-            existing.update(updates)
+            if updated:
+                existing = updated
 
             # Broadcast via WebSocket and dispatch notifications
             await _broadcast_and_notify(db, existing, detection, is_new=False)

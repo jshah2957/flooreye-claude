@@ -152,10 +152,14 @@ async def upload_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Upload frame + detection result from edge agent."""
+    # Resolve camera name to UUID if needed
+    cam = await db.cameras.find_one({"name": body.camera_id, "store_id": agent["store_id"]})
+    resolved_camera_id = cam["id"] if cam else body.camera_id
+
     now = datetime.now(timezone.utc)
     detection_doc = {
         "id": str(uuid.uuid4()),
-        "camera_id": body.camera_id,
+        "camera_id": resolved_camera_id,
         "store_id": agent["store_id"],
         "org_id": agent["org_id"],
         "timestamp": now,
@@ -195,10 +199,14 @@ async def upload_detection(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Upload detection result only (no frame payload)."""
+    # Resolve camera name to UUID if needed
+    cam = await db.cameras.find_one({"name": body.camera_id, "store_id": agent["store_id"]})
+    resolved_camera_id = cam["id"] if cam else body.camera_id
+
     now = datetime.now(timezone.utc)
     detection_doc = {
         "id": str(uuid.uuid4()),
-        "camera_id": body.camera_id,
+        "camera_id": resolved_camera_id,
         "store_id": agent["store_id"],
         "org_id": agent["org_id"],
         "timestamp": now,

@@ -1,3 +1,4 @@
+import logging
 import uuid
 import random
 import time
@@ -7,6 +8,8 @@ from datetime import datetime, timezone
 import cv2
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+log = logging.getLogger(__name__)
 
 from app.services.inference_service import run_roboflow_inference, compute_detection_summary
 from app.services.validation_pipeline import run_validation_pipeline
@@ -61,7 +64,8 @@ async def run_manual_detection(
     # Resolve effective detection control settings for this camera
     try:
         effective, _ = await resolve_effective_settings(db, org_id, camera_id)
-    except Exception:
+    except Exception as e:
+        log.warning(f"Failed to resolve detection control settings for camera {camera_id}: {e}")
         effective = {}
 
     # Run validation pipeline with effective settings
@@ -117,8 +121,8 @@ async def run_manual_detection(
             if isinstance(val, datetime):
                 det_clean[key] = val.isoformat()
         await publish_detection(org_id, det_clean)
-    except Exception:
-        pass  # Non-critical
+    except Exception as e:
+        log.warning(f"WebSocket broadcast failed for detection {detection_doc['id']}: {e}")
 
     # If validated wet, create/update incident
     if validation.is_wet:
@@ -187,8 +191,8 @@ async def _auto_collect_frame(
             "created_at": now,
         }
         await db.dataset_frames.insert_one(frame_doc)
-    except Exception:
-        pass  # Non-critical — don't break detection flow
+    except Exception as e:
+        log.warning(f"Auto-collect frame failed for detection {detection_doc.get('id')}: {e}")
 
 
 async def get_detection(db: AsyncIOMotorDatabase, detection_id: str, org_id: str) -> dict:

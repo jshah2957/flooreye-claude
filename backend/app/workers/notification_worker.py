@@ -43,11 +43,12 @@ def send_email_notification(self, recipient: str, incident_id: str, severity: st
             logger.warning(f"SMTP not configured — email to {recipient} logged only")
             return {"sent": False, "reason": "smtp_not_configured", "recipient": recipient}
 
-        # If SMTP is configured, send via smtplib
+        # If SMTP is configured, decrypt and send via smtplib
         import smtplib
         from email.mime.text import MIMEText
+        from app.core.encryption import decrypt_config
 
-        config = smtp_config.get("config_encrypted", {})
+        config = decrypt_config(smtp_config["config_encrypted"])
         host = config.get("host", "")
         port = int(config.get("port", 587))
         username = config.get("username", "")
@@ -138,7 +139,8 @@ def send_sms_notification(self, phone: str, incident_id: str, severity: str):
             logger.warning(f"SMS not configured — SMS to {phone} logged only")
             return {"sent": False, "reason": "sms_not_configured", "phone": phone}
 
-        config = sms_config.get("config_encrypted", {})
+        from app.core.encryption import decrypt_config
+        config = decrypt_config(sms_config["config_encrypted"])
         account_sid = config.get("account_sid", "")
         auth_token = config.get("auth_token", "")
         from_number = config.get("from_number", "")
