@@ -36,15 +36,7 @@ import ClassManagerPage from "@/pages/detection-control/ClassManagerPage";
 import ApiTesterPage from "@/pages/integrations/ApiTesterPage";
 import ManualPage from "@/pages/admin/ManualPage";
 import CompliancePage from "@/pages/compliance/CompliancePage";
-
-// Placeholder for pages not yet implemented
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-[#E7E5E0]">
-      <p className="text-sm text-[#78716C]">{title} — coming soon</p>
-    </div>
-  );
-}
+import MonitoringPage from "@/pages/monitoring/MonitoringPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -123,7 +115,7 @@ export default function AppRoutes() {
       >
         {/* Monitoring */}
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/monitoring" element={<Placeholder title="Live Monitoring" />} />
+        <Route path="/monitoring" element={<MonitoringPage />} />
         <Route path="/clips" element={<ClipsPage />} />
         <Route path="/compliance" element={<CompliancePage />} />
 
