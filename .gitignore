@@ -79,3 +79,4 @@ celerybeat.pid
 
 # Sentry
 .sentryclirc
+backend/secrets/

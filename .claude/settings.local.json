@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(cat:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(find C:/Users/jshah/flooreye/backend/app -name *fcm* -o -name *firebase*)",
+      "Bash(docker compose -f docker-compose.prod.yml exec backend python -c \":*)",
+      "Bash(docker compose:*)"
     ]
   }
 }

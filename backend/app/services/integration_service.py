@@ -248,7 +248,8 @@ async def _run_test_handler(service: str, config: dict) -> dict:
     elif service == "smtp":
         return {"message": "SMTP test: config validated (send test requires recipient)"}
     elif service == "fcm":
-        return {"message": "FCM config validated"}
+        from app.services.fcm_service import verify_credentials
+        return verify_credentials()
     elif service == "webhook":
         return await _test_webhook(config)
     elif service == "mqtt":

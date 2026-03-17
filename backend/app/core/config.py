@@ -68,6 +68,8 @@ class Settings(BaseSettings):
 
     # Firebase Cloud Messaging
     FIREBASE_CREDENTIALS_JSON: str = ""
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_CREDENTIALS_PATH: str = ""
 
     # Training
     TRAINING_WORKER_ENABLED: bool = False

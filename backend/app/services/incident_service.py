@@ -41,6 +41,8 @@ async def create_or_update_incident(
     if existing:
         # Check if within grouping window
         start = existing.get("start_time", now)
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
         elapsed = (now - start).total_seconds()
         if elapsed <= INCIDENT_GROUPING_WINDOW_SECONDS:
             # Update existing incident using $inc to avoid race conditions
