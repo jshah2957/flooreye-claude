@@ -111,15 +111,14 @@ async def camera_loop(
                     f"Inference: {result.get('inference_time_ms', 0)}ms"
                 )
 
-            # Upload if wet or uncertain
-            should_upload = (
-                (result.get("is_wet") and "wet" in config.UPLOAD_FRAMES)
-                or (0.3 < result.get("max_confidence", 0) < 0.7 and "uncertain" in config.UPLOAD_FRAMES)
-            )
-            if should_upload:
-                await uploader.upload_detection(
-                    result, frame_b64 if should_upload else None, cam.name
-                )
+            # Upload based on validation result
+            if passed:
+                await uploader.upload_detection(result, frame_b64, cam.name)
+                log.info(f"[{cam.name}] CONFIRMED WET — uploaded (conf={result.get('max_confidence', 0):.2f})")
+            elif result.get("is_wet") and reason == "temporal_check_pending":
+                await uploader.upload_detection(result, None, cam.name)
+            elif 0.3 < result.get("max_confidence", 0) < 0.7 and "uncertain" in config.UPLOAD_FRAMES:
+                await uploader.upload_detection(result, frame_b64, cam.name)
 
         except Exception as e:
             if cam.frame_count % 30 == 1:
@@ -174,15 +173,14 @@ async def threaded_camera_loop(
                     f"Inference: {result.get('inference_time_ms', 0)}ms"
                 )
 
-            # Upload if wet or uncertain
-            should_upload = (
-                (result.get("is_wet") and "wet" in config.UPLOAD_FRAMES)
-                or (0.3 < result.get("max_confidence", 0) < 0.7 and "uncertain" in config.UPLOAD_FRAMES)
-            )
-            if should_upload:
-                await uploader.upload_detection(
-                    result, frame_b64 if should_upload else None, cam.name
-                )
+            # Upload based on validation result
+            if passed:
+                await uploader.upload_detection(result, frame_b64, cam.name)
+                log.info(f"[{cam.name}] CONFIRMED WET — uploaded (conf={result.get('max_confidence', 0):.2f})")
+            elif result.get("is_wet") and reason == "temporal_check_pending":
+                await uploader.upload_detection(result, None, cam.name)
+            elif 0.3 < result.get("max_confidence", 0) < 0.7 and "uncertain" in config.UPLOAD_FRAMES:
+                await uploader.upload_detection(result, frame_b64, cam.name)
 
         except Exception as e:
             if cam.frame_count % 30 == 1:

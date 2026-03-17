@@ -1,6 +1,12 @@
-"""Live stream and recording endpoints."""
+"""Live stream and recording endpoints.
 
+Supports both polling (GET /frame) and WebSocket streaming.
+WebSocket streams frames through Cloudflare Tunnel to the dashboard.
+"""
+
+import asyncio
 import base64
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -13,7 +19,23 @@ from app.core.org_filter import org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/live", tags=["live-stream"])
+
+
+async def _capture_single_frame(stream_url: str) -> str | None:
+    """Capture one frame from RTSP in a thread (non-blocking)."""
+    def _blocking():
+        cap = cv2.VideoCapture(stream_url)
+        if not cap.isOpened():
+            return None
+        ret, frame = cap.read()
+        cap.release()
+        if not ret or frame is None:
+            return None
+        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        return base64.b64encode(buf).decode("utf-8")
+    return await asyncio.to_thread(_blocking)
 
 
 @router.get("/stream/{camera_id}/frame")
@@ -22,30 +44,22 @@ async def get_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    """Capture and return a single live frame as JPEG base64."""
+    """Capture and return a single live frame as JPEG base64 (non-blocking)."""
     org_id = current_user.get("org_id", "")
     camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    stream_url = camera["stream_url"]
-    cap = cv2.VideoCapture(stream_url)
-    if not cap.isOpened():
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot connect to camera stream")
-
-    ret, frame = cap.read()
-    cap.release()
-
-    if not ret or frame is None:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to capture frame")
-
-    _, buffer = cv2.imencode(".jpg", frame)
-    frame_base64 = base64.b64encode(buffer).decode("utf-8")
+    frame_b64 = await _capture_single_frame(camera["stream_url"])
+    if not frame_b64:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot capture frame from camera")
 
     return {
         "data": {
-            "base64": frame_base64,
+            "frame_base64": frame_b64,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "camera_id": camera_id,
+            "camera_name": camera.get("name", camera_id),
         }
     }
 
