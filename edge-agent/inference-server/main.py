@@ -1,4 +1,7 @@
-"""FloorEye Inference Server — ONNX YOLOv8 model serving via FastAPI."""
+"""FloorEye Inference Server — ONNX YOLO model serving via FastAPI.
+
+Supports YOLOv8 and YOLO26 (NMS-free) model formats automatically.
+"""
 
 import logging
 import os
@@ -37,6 +40,7 @@ def health():
         "status": "ok",
         "model_loaded": loader.is_loaded,
         "model_version": loader.model_version,
+        "model_type": loader.model_type,
         "device": "cpu",
     }
 
@@ -46,8 +50,12 @@ def infer(req: InferRequest):
     if not loader.is_loaded:
         return {"error": "No model loaded"}, 503
 
-    result = run_inference(loader.session, req.image_base64, req.confidence)
+    result = run_inference(
+        loader.session, req.image_base64, req.confidence,
+        model_type=loader.model_type,
+    )
     result["model_version"] = loader.model_version
+    result["model_type"] = loader.model_type
     return result
 
 

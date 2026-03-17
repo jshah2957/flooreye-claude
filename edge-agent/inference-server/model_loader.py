@@ -18,6 +18,7 @@ class ModelLoader:
         self.session: ort.InferenceSession | None = None
         self.model_version = "unknown"
         self.model_path: str | None = None
+        self.model_type = "yolov8"  # "yolov8" or "yolo26"
         self.load_time_ms = 0
 
     def find_latest_model(self) -> str | None:
@@ -46,7 +47,13 @@ class ModelLoader:
             self.model_path = path
             self.model_version = os.path.basename(path).replace(".onnx", "")
             self.load_time_ms = round((time.time() - t0) * 1000, 1)
-            log.info(f"Model loaded: {self.model_version} in {self.load_time_ms}ms")
+            # Detect model type from output shape
+            out_shape = self.session.get_outputs()[0].shape
+            if len(out_shape) == 3 and out_shape[1] == 300 and out_shape[2] == 6:
+                self.model_type = "yolo26"
+            else:
+                self.model_type = "yolov8"
+            log.info(f"Model loaded: {self.model_version} ({self.model_type}) in {self.load_time_ms}ms")
             return True
         except Exception as e:
             log.error(f"Failed to load model {path}: {e}")
