@@ -1,108 +1,51 @@
 # FloorEye Sprint Master Plan
 # Created: 2026-03-18
-# Status: PLANNING COMPLETE
 # Last Updated: 2026-03-18
 
-## HONEST SCOPE ASSESSMENT
+## SESSION-01: BACKEND CRITICAL FIXES
+TASK-001 | SR_BACKEND | Fix Roboflow API Content-Type header          | TODO
+TASK-002 | SR_BACKEND | Add classes.json generation on model promote  | TODO
+TASK-003 | SR_BACKEND | Fix training worker to use yolo11n            | TODO
+TASK-004 | SR_BACKEND | Add model comparison endpoint                 | DONE (exists)
+TASK-005 | SR_BACKEND | Fix store detail API (cameras, incidents)     | TODO
 
-Total features requested: 60+
-Estimated tasks at 15-min each: ~300 tasks
-Estimated engineering effort: 450+ hours (per architect assessment)
-Available in single session: ~20 tasks realistically
+## SESSION-02: EDGE IMPROVEMENTS
+TASK-006 | SR_EDGE | Add TP-Link Kasa smart plug support              | TODO
+TASK-007 | SR_EDGE | Local detection data storage structure           | TODO
+TASK-008 | SR_EDGE | Classes.json auto-load with model                | DONE (exists)
+TASK-009 | SR_EDGE | Edge heartbeat includes model version            | TODO
+TASK-010 | SR_EDGE | Buffer flush loop (auto-sync on reconnect)       | TODO
 
-## STRATEGY: PRIORITY TRIAGE
+## SESSION-03: FRONTEND FIXES
+TASK-011 | SR_FRONTEND | Fix sidebar on mobile (no overlap)           | TODO
+TASK-012 | SR_FRONTEND | Store detail sections complete               | TODO
+TASK-013 | SR_FRONTEND | Detection review page with batch ops         | TODO
+TASK-014 | SR_FRONTEND | Model management page improvements          | TODO
+TASK-015 | SR_FRONTEND | Notification settings page                   | TODO
 
-Instead of attempting everything and delivering nothing complete,
-this sprint focuses on the TOP 20 TASKS that deliver the most
-value for pilot launch. Everything else is documented for future sprints.
+## SESSION-04: TESTING + VERIFICATION
+TASK-016 | QA_TESTER | Run full pytest suite                         | TODO
+TASK-017 | QA_TESTER | Test all 21+ API endpoints                    | TODO
+TASK-018 | QA_TESTER | Test user flows (store manager, admin)        | TODO
+TASK-019 | QA_TESTER | Build frontend and verify                     | TODO
+TASK-020 | QA_TESTER | Final commit and tag                          | TODO
 
-## PRIORITY TIERS
-
-### TIER 1 — PILOT BLOCKERS (do now, ~20 tasks)
-These are things that MUST work for a 3-store pilot.
-
-### TIER 2 — PILOT ENHANCERS (next sprint)
-These improve the pilot but aren't blockers.
-
-### TIER 3 — POST-PILOT (future roadmap)
-Full production features.
-
----
-
-## TIER 1 TASKS — PILOT BLOCKERS
-
-### Track A: Edge Critical Fixes
-TASK-001 | SR_EDGE    | Fix validator Layer 4 duplicate suppression | DONE (v2.5.4)
-TASK-002 | SR_EDGE    | Wire DeviceController into main loop       | DONE (v2.5.4)
-TASK-003 | SR_EDGE    | Fix push_config to apply settings           | DONE (v2.5.4)
-TASK-004 | SR_EDGE    | Fix upload logic to use validator result    | DONE (v2.5.5)
-TASK-005 | SR_EDGE    | Non-blocking live frame capture             | DONE (v2.5.5)
-
-### Track B: Backend Critical Fixes
-TASK-006 | SR_BACKEND | Edge frames upload to S3 not MongoDB        | DONE (v2.5.1)
-TASK-007 | SR_BACKEND | WebSocket broadcast from edge endpoints     | DONE (v2.5.1)
-TASK-008 | SR_BACKEND | S3 client connection pooling                | DONE (v2.5.1)
-TASK-009 | SR_BACKEND | Non-blocking S3 upload (asyncio.to_thread)  | DONE (v2.5.1)
-TASK-010 | SR_BACKEND | Graceful notifications without SMTP         | DONE (v2.5.1)
-TASK-011 | SR_BACKEND | Datetime timezone fix in incident_service   | DONE (v2.5.2)
-TASK-012 | SR_BACKEND | Health check validates MongoDB + Redis      | DONE (v2.5.0)
-TASK-013 | SR_BACKEND | Production startup blocks default secrets   | DONE (v2.5.0)
-
-### Track C: Infrastructure
-TASK-014 | SYS_ADMIN  | MinIO running + bucket created              | DONE (v2.5.2)
-TASK-015 | SYS_ADMIN  | MinIO healthcheck fix (curl not mc)         | DONE (v2.5.2)
-TASK-016 | SYS_ADMIN  | Redis authentication configured             | DONE (v2.5.0)
-TASK-017 | SYS_ADMIN  | Docker healthchecks on all services         | DONE (v2.2.0)
-
-### Track D: Frontend Critical
-TASK-018 | SR_FRONTEND | Store manager simplified sidebar           | DONE (v2.5.1)
-TASK-019 | SR_FRONTEND | ALL CLEAR / ALERT banner for store owners  | DONE (v2.5.1)
-TASK-020 | SR_FRONTEND | Camera names instead of UUIDs              | DONE (v2.5.1)
-
-### Track E: Remaining Tier 1 (TODO)
-TASK-021 | SR_EDGE    | TP-Link Kasa smart plug integration        | TODO
-TASK-022 | SR_BACKEND | Roboflow class sync endpoint               | TODO
-TASK-023 | SR_FRONTEND | Store detail sections (cameras, incidents) | TODO
-TASK-024 | SR_BACKEND | Fix yolo26n → yolo11n in training defaults | TODO
-TASK-025 | SR_EDGE    | Local detection data storage structure     | TODO
-
----
-
-## TIER 2 — PILOT ENHANCERS (next sprint)
-
-TASK-030 | Training pipeline wired into Celery worker
-TASK-031 | Model comparison UI
-TASK-032 | Detection review batch operations
-TASK-033 | Compliance report PDF export
-TASK-034 | Mobile push notification deep linking
-TASK-035 | Video upload + testing section
-TASK-036 | Analytics charts (trend lines, per-store breakdown)
-TASK-037 | Detection rules engine UI
-TASK-038 | Camera floor boundary editor
-TASK-039 | Accuracy testing mode on edge
-
----
-
-## TIER 3 — POST-PILOT (future roadmap)
-
-TASK-050 | Full knowledge distillation training
-TASK-051 | Multi-camera grid live stream
-TASK-052 | WebRTC low-latency streaming
-TASK-053 | MongoDB authentication in production
-TASK-054 | JWT token revocation
-TASK-055 | Horizontal scaling (multiple backend workers)
-TASK-056 | Multi-region deployment
-TASK-057 | Compliance dashboard with scheduling
-TASK-058 | Occupancy detection (competitor feature)
-TASK-059 | Fall detection (competitor feature)
-
----
-
-## COMPLETION STATUS
-
-Tasks completed (Tier 1): 20/25
-Tasks remaining (Tier 1): 5
-Overall pilot readiness: 8/10
-
-## RESUME INSTRUCTIONS
-If session breaks: read this file first, continue from first TODO task.
+## PREVIOUSLY COMPLETED
+TASK-P01 | Edge validator Layer 4 duplicate suppression    | DONE v2.5.4
+TASK-P02 | DeviceController wired into main loop          | DONE v2.5.4
+TASK-P03 | push_config applies settings dynamically       | DONE v2.5.4
+TASK-P04 | Upload logic uses validator result             | DONE v2.5.5
+TASK-P05 | Non-blocking live frame capture                | DONE v2.5.5
+TASK-P06 | Edge frames upload to S3 not MongoDB           | DONE v2.5.1
+TASK-P07 | WebSocket broadcast from edge endpoints        | DONE v2.5.1
+TASK-P08 | S3 client connection pooling                   | DONE v2.5.1
+TASK-P09 | Non-blocking S3 upload                         | DONE v2.5.1
+TASK-P10 | Graceful notifications without SMTP            | DONE v2.5.1
+TASK-P11 | Datetime timezone fix                          | DONE v2.5.2
+TASK-P12 | Health check validates services                | DONE v2.5.0
+TASK-P13 | Production startup blocks default secrets      | DONE v2.5.0
+TASK-P14 | MinIO running + bucket created                 | DONE v2.5.2
+TASK-P15 | Store manager simplified sidebar               | DONE v2.5.1
+TASK-P16 | Camera names instead of UUIDs                  | DONE v2.5.1
+TASK-P17 | Roboflow class sync endpoint                   | DONE dd4c33c
+TASK-P18 | Fix yolo26n → yolo11n defaults                 | DONE dd4c33c
