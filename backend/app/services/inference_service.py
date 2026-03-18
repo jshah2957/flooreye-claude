@@ -1,4 +1,3 @@
-import base64
 import time
 from datetime import datetime, timezone
 
@@ -35,11 +34,14 @@ async def run_roboflow_inference(
 
     start = time.monotonic()
 
+    # Roboflow's hosted Inference API expects the base64-encoded image string
+    # sent as the raw POST body with Content-Type: application/x-www-form-urlencoded.
+    # Do NOT decode to raw bytes — the API parses the base64 string directly.
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             url,
             params=params,
-            content=base64.b64decode(frame_base64),
+            content=frame_base64,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 

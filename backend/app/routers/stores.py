@@ -84,6 +84,51 @@ async def store_stats(
     }}
 
 
+@router.get("/{store_id}/stats")
+async def get_store_stats(
+    store_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    from datetime import datetime, timezone
+    from fastapi import HTTPException
+
+    org_id = current_user.get("org_id", "")
+    store = await db.stores.find_one({"org_id": org_id, "id": store_id})
+    if not store:
+        raise HTTPException(404, "Store not found")
+
+    # Count cameras
+    total_cams = await db.cameras.count_documents({"store_id": store_id})
+    active_cams = await db.cameras.count_documents(
+        {"store_id": store_id, "status": {"$in": ["active", "online"]}}
+    )
+
+    # Count incidents today
+    today_start = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    incidents_today = await db.events.count_documents(
+        {"store_id": store_id, "start_time": {"$gte": today_start}}
+    )
+    total_incidents = await db.events.count_documents({"store_id": store_id})
+
+    # Edge agent status
+    agent = await db.edge_agents.find_one({"store_id": store_id})
+
+    return {
+        "data": {
+            "store_id": store_id,
+            "total_cameras": total_cams,
+            "active_cameras": active_cams,
+            "incidents_today": incidents_today,
+            "total_incidents": total_incidents,
+            "edge_agent_status": agent.get("status") if agent else "not_configured",
+            "edge_agent_version": agent.get("agent_version") if agent else None,
+        }
+    }
+
+
 @router.get("/{store_id}")
 async def get_store(
     store_id: str,

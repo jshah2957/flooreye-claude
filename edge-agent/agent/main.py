@@ -15,7 +15,7 @@ from uploader import Uploader
 from buffer import FrameBuffer
 from command_poller import CommandPoller
 from validator import DetectionValidator
-from device_controller import DeviceController
+from device_controller import DeviceController, TPLinkController
 
 logging.basicConfig(
     level=config.LOG_LEVEL,
@@ -58,14 +58,23 @@ async def register_with_backend(cameras: dict[str, str]) -> dict | None:
     return None
 
 
-async def heartbeat_loop():
-    """Send periodic heartbeat to backend."""
+async def heartbeat_loop(inference: InferenceClient):
+    """Send periodic heartbeat to backend, including model version info."""
     async with httpx.AsyncClient() as client:
         while True:
             try:
+                body = {"agent_id": config.AGENT_ID, "status": "online"}
+                # Fetch model version from inference server health endpoint
+                try:
+                    inference_health = await inference.health()
+                    body["model_version"] = inference_health.get("model_version", "unknown")
+                    body["model_type"] = inference_health.get("model_type", "unknown")
+                except Exception:
+                    body["model_version"] = "unknown"
+                    body["model_type"] = "unknown"
                 await client.post(
                     f"{config.BACKEND_URL}/api/v1/edge/heartbeat",
-                    json={"agent_id": config.AGENT_ID, "status": "online"},
+                    json=body,
                     headers=config.auth_headers(),
                     timeout=10,
                 )
@@ -262,6 +271,9 @@ async def main():
     cmd_poller = CommandPoller(inference)
     device_ctrl = DeviceController()
     device_ctrl.connect()
+    tplink_ctrl = TPLinkController()
+    if tplink_ctrl.enabled:
+        log.info(f"TP-Link devices configured: {list(tplink_ctrl.devices.keys())}")
 
     # Semaphore to limit concurrent inference calls across all cameras
     inference_semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_INFERENCES)
@@ -287,7 +299,7 @@ async def main():
 
     # Start all tasks — cameras run concurrently via asyncio.gather
     tasks = [
-        asyncio.create_task(heartbeat_loop()),
+        asyncio.create_task(heartbeat_loop(inference)),
         asyncio.create_task(cmd_poller.poll_loop()),
     ]
     for cam in cam_objects.values():

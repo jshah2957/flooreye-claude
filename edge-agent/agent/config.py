@@ -42,6 +42,7 @@ class EdgeConfig:
     MQTT_BROKER: str = os.getenv("MQTT_BROKER", "")
     MQTT_USERNAME: str = os.getenv("MQTT_USERNAME", "")
     MQTT_PASSWORD: str = os.getenv("MQTT_PASSWORD", "")
+    TPLINK_DEVICES: str = os.getenv("TPLINK_DEVICES", "")  # name=ip,name=ip
 
     # Parallelism
     MAX_CONCURRENT_INFERENCES: int = int(os.getenv("MAX_CONCURRENT_INFERENCES", "4"))

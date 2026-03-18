@@ -3,6 +3,8 @@
 import json
 import logging
 import os
+import socket
+import struct
 
 log = logging.getLogger("edge-agent.devices")
 
@@ -78,3 +80,74 @@ class DeviceController:
         if self._client:
             self._client.loop_stop()
             self._client.disconnect()
+
+
+class TPLinkController:
+    """Controls TP-Link Kasa smart plugs (HS100/HS103/HS110) via local network."""
+
+    def __init__(self):
+        self.devices: dict[str, str] = {}  # name -> IP address
+        self.enabled = bool(os.getenv("TPLINK_DEVICES", ""))
+        self._parse_devices()
+
+    def _parse_devices(self):
+        """Parse TPLINK_DEVICES env: name1=192.168.1.10,name2=192.168.1.11"""
+        raw = os.getenv("TPLINK_DEVICES", "")
+        for entry in raw.split(","):
+            entry = entry.strip()
+            if "=" in entry:
+                name, ip = entry.split("=", 1)
+                self.devices[name.strip()] = ip.strip()
+
+    def turn_on(self, device_name: str) -> bool:
+        """Turn on a TP-Link smart plug."""
+        ip = self.devices.get(device_name)
+        if not ip:
+            log.warning(f"TP-Link device not found: {device_name}")
+            return False
+        return self._send_command(ip, '{"system":{"set_relay_state":{"state":1}}}')
+
+    def turn_off(self, device_name: str) -> bool:
+        """Turn off a TP-Link smart plug."""
+        ip = self.devices.get(device_name)
+        if not ip:
+            return False
+        return self._send_command(ip, '{"system":{"set_relay_state":{"state":0}}}')
+
+    def _send_command(self, ip: str, cmd: str) -> bool:
+        """Send encrypted command to TP-Link device on port 9999."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            sock.connect((ip, 9999))
+            # TP-Link XOR encryption
+            encrypted = self._encrypt(cmd)
+            sock.send(struct.pack(">I", len(encrypted)) + encrypted)
+            data = sock.recv(4096)
+            sock.close()
+            response = self._decrypt(data[4:])
+            log.info(f"TP-Link {ip}: {response[:100]}")
+            return True
+        except Exception as e:
+            log.error(f"TP-Link command failed ({ip}): {e}")
+            return False
+
+    @staticmethod
+    def _encrypt(string: str) -> bytes:
+        key = 171
+        result = []
+        for c in string:
+            a = key ^ ord(c)
+            key = a
+            result.append(a)
+        return bytes(result)
+
+    @staticmethod
+    def _decrypt(data: bytes) -> str:
+        key = 171
+        result = []
+        for b in data:
+            a = key ^ b
+            key = b
+            result.append(chr(a))
+        return "".join(result)
