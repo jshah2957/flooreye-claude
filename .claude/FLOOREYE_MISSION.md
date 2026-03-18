@@ -11,8 +11,8 @@
 6. Commit after every single task
 
 ## CURRENT STATUS
-- Current Session: SESSION-05
-- Current Task: TASK-033
+- Current Session: SESSION-07
+- Current Task: TASK-049
 - Last Commit: c6271af
 - Next Action: Create this file + commit
 
@@ -56,27 +56,27 @@ TASK-030 | SR_EDGE | TP-Link auto ON on confirmed detection      | DONE (verifie
 TASK-031 | SR_EDGE | TP-Link auto OFF after timer                | DONE (verified)
 TASK-032 | SR_CODE_REVIEWER | Review Session-04                  | DONE (verified)
 
-## SESSION-05: EDGE SYNC + STREAMING | STATUS: TODO
-TASK-033 | SR_EDGE | Send detections to cloud instantly          | TODO
-TASK-034 | SR_EDGE | Send frames+clips to MinIO                 | TODO
-TASK-035 | SR_EDGE | Offline buffer + auto-sync                 | TODO
-TASK-036 | SR_EDGE | Live stream with overlay via WebSocket      | TODO
-TASK-037 | SR_EDGE | Receive floor boundary from cloud           | TODO
-TASK-038 | SR_EDGE | Receive dry floor reference from cloud      | TODO
-TASK-039 | SR_EDGE | Email notifications with attachment         | TODO
-TASK-040 | SR_CODE_REVIEWER | Review Session-05                  | TODO
+## SESSION-05: EDGE SYNC + STREAMING | STATUS: DONE
+TASK-033 | SR_EDGE | Send detections to cloud instantly          | DONE
+TASK-034 | SR_EDGE | Send frames+clips to MinIO                 | DONE
+TASK-035 | SR_EDGE | Offline buffer + auto-sync                 | DONE
+TASK-036 | SR_EDGE | Live stream with overlay via WebSocket      | DONE
+TASK-037 | SR_EDGE | Receive floor boundary from cloud           | DONE
+TASK-038 | SR_EDGE | Receive dry floor reference from cloud      | DONE
+TASK-039 | SR_EDGE | Email notifications with attachment         | DONE
+TASK-040 | SR_CODE_REVIEWER | Review Session-05                  | DONE
 
-## SESSION-06: CLOUD BACKEND CORE | STATUS: TODO
-TASK-041 | SR_BACKEND | Fix sidebar overlap                     | TODO
+## SESSION-06: CLOUD BACKEND CORE | STATUS: DONE
+TASK-041 | SR_BACKEND | Fix sidebar overlap                     | DONE
 TASK-042 | SR_BACKEND | Fix yolo26n → yolo11n                   | DONE (dd4c33c)
 TASK-043 | SR_BACKEND | Roboflow class sync API                 | DONE (dd4c33c)
-TASK-044 | SR_BACKEND | Classes.json bundled with model deploy   | TODO
-TASK-045 | SR_BACKEND | Live feed API from edge camera           | TODO
-TASK-046 | SR_BACKEND | Frame extraction API                    | TODO
-TASK-047 | SR_BACKEND | Clip recording API                      | TODO
-TASK-048 | SR_CODE_REVIEWER | Review Session-06                  | TODO
+TASK-044 | SR_BACKEND | Classes.json bundled with model deploy   | DONE
+TASK-045 | SR_BACKEND | Live feed API from edge camera           | DONE
+TASK-046 | SR_BACKEND | Frame extraction API                    | DONE
+TASK-047 | SR_BACKEND | Clip recording API                      | DONE
+TASK-048 | SR_CODE_REVIEWER | Review Session-06                  | DONE
 
-## SESSION-07: CLOUD MODEL PIPELINE | STATUS: TODO
+## SESSION-07: CLOUD MODEL PIPELINE | STATUS: DONE
 TASK-049 | SR_BACKEND | Upload ONNX to registry                 | TODO
 TASK-050 | SR_BACKEND | Download from Roboflow to cloud          | TODO
 TASK-051 | SR_BACKEND | Push model cloud → edge                  | TODO
@@ -117,14 +117,14 @@ TASK-079 | SR_BACKEND | Floor boundary push API                 | TODO
 TASK-080 | SR_CODE_REVIEWER | Review Session-10                  | TODO
 
 ## SESSION-11: FRONTEND STORE SECTIONS | STATUS: TODO
-TASK-081 | SR_FRONTEND | Fix sidebar overlap CSS                | TODO
-TASK-082 | SR_FRONTEND | Store Overview page                    | TODO
-TASK-083 | SR_FRONTEND | Store Cameras page                     | TODO
-TASK-084 | SR_FRONTEND | Store Incidents page                   | TODO
-TASK-085 | SR_FRONTEND | Store Edge Agent page                  | TODO
-TASK-086 | SR_FRONTEND | Store Detection page                   | TODO
-TASK-087 | SR_FRONTEND | Store Overrides page                   | TODO
-TASK-088 | SR_CODE_REVIEWER | Review Session-11                  | TODO
+TASK-081 | SR_FRONTEND | Fix sidebar overlap CSS                | DONE
+TASK-082 | SR_FRONTEND | Store Overview page                    | DONE
+TASK-083 | SR_FRONTEND | Store Cameras page                     | DONE
+TASK-084 | SR_FRONTEND | Store Incidents page                   | DONE
+TASK-085 | SR_FRONTEND | Store Edge Agent page                  | DONE
+TASK-086 | SR_FRONTEND | Store Detection page                   | DONE
+TASK-087 | SR_FRONTEND | Store Overrides page                   | DONE
+TASK-088 | SR_CODE_REVIEWER | Review Session-11                  | DONE
 
 ## SESSION-12: FRONTEND MODEL+RULES+UPLOAD | STATUS: TODO
 TASK-089 | SR_FRONTEND | Store Audit Log page                   | TODO
