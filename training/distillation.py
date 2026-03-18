@@ -10,8 +10,8 @@ log = logging.getLogger("training.distillation")
 class DistillationTrainer:
     """Trains a YOLO student model using knowledge distillation from teacher.
 
-    Supports YOLOv8n, YOLO11n, and YOLO26n architectures.
-    Default architecture is YOLO26n for improved accuracy and efficiency.
+    Supports YOLOv8n and YOLO11n architectures.
+    Default architecture is YOLO11n for improved accuracy and efficiency.
     """
 
     # Supported architectures and their pretrained weight files
@@ -20,15 +20,14 @@ class DistillationTrainer:
         "yolov8s": "yolov8s.pt",
         "yolov8m": "yolov8m.pt",
         "yolo11n": "yolo11n.pt",
-        "yolo26n": "yolo26n.pt",
-        "yolo26s": "yolo26s.pt",
+        "yolo11s": "yolo11s.pt",
     }
 
     def __init__(
         self,
         data_yaml: str,
-        student_weights: str = "yolo26n.pt",
-        architecture: str = "yolo26n",
+        student_weights: str = "yolo11n.pt",
+        architecture: str = "yolo11n",
         epochs: int = 50,
         batch_size: int = 16,
         imgsz: int = 640,

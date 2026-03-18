@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
 
 _DEFAULT_CONFIG = {
-    "architecture": "yolo26n",
+    "architecture": "yolo11n",
     "augmentation_preset": "standard",
     "max_epochs": 100,
     "image_size": 640,

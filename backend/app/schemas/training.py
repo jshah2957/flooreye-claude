@@ -7,9 +7,8 @@ from pydantic import BaseModel
 class TrainingJobCreate(BaseModel):
     architecture: Literal[
         "yolov8n", "yolov8s", "yolov8m",
-        "yolo11n",
-        "yolo26n", "yolo26s",
-    ] = "yolo26n"
+        "yolo11n", "yolo11s",
+    ] = "yolo11n"
     store_ids: list[str] = []
     camera_ids: list[str] = []
     human_only: bool = False

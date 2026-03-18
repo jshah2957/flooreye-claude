@@ -26,7 +26,7 @@ export default function TrainingJobsPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
-  const [arch, setArch] = useState("yolo26n");
+  const [arch, setArch] = useState("yolo11n");
   const [epochs, setEpochs] = useState(100);
   const [augmentation, setAugmentation] = useState("standard");
 
@@ -151,9 +151,8 @@ export default function TrainingJobsPage() {
                 <label className="mb-1 block text-sm font-medium text-[#1C1917]">Architecture</label>
                 <select value={arch} onChange={(e) => setArch(e.target.value)}
                   className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-                  <option value="yolo26n">YOLO26n (Nano - Recommended)</option>
-                  <option value="yolo26s">YOLO26s (Small)</option>
-                  <option value="yolo11n">YOLO11n (Nano)</option>
+                  <option value="yolo11n">YOLO11n (Nano - Recommended)</option>
+                  <option value="yolo11s">YOLO11s (Small)</option>
                   <option value="yolov8n">YOLOv8n (Legacy Nano)</option>
                   <option value="yolov8s">YOLOv8s (Legacy Small)</option>
                   <option value="yolov8m">YOLOv8m (Legacy Medium)</option>

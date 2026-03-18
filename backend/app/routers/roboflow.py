@@ -1,9 +1,11 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.encryption import decrypt_config
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -101,3 +103,96 @@ async def sync_status(
         return {"data": {"status": "no_sync_jobs"}}
     latest.pop("_id", None)
     return {"data": latest}
+
+
+async def _fetch_roboflow_classes(
+    db: AsyncIOMotorDatabase, org_id: str
+) -> dict:
+    """Fetch class definitions from Roboflow API and cache them in MongoDB."""
+    config = await db.integration_configs.find_one(
+        {"org_id": org_id, "service": "roboflow"}
+    )
+    if not config or not config.get("config_encrypted"):
+        # Return locally cached classes if no Roboflow integration configured
+        classes = await db.detection_classes.find({"org_id": org_id}).to_list(100)
+        return {
+            "data": [{"name": c.get("name"), "color": c.get("color", "#00FFFF")} for c in classes],
+            "source": "cache",
+        }
+
+    rf_config = decrypt_config(config["config_encrypted"])
+    api_key = rf_config.get("api_key", "")
+    model_id = rf_config.get("model_id", "")
+
+    if not api_key or not model_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Roboflow API key or model ID not configured",
+        )
+
+    # model_id is in "project/version" format — extract project slug
+    parts = model_id.split("/")
+    project = parts[0] if parts else model_id
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(
+                f"https://api.roboflow.com/{project}",
+                params={"api_key": api_key},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                rf_classes = data.get("classes", {})
+                class_list = []
+                now = datetime.now(timezone.utc)
+
+                for name, info in rf_classes.items():
+                    class_doc = {
+                        "org_id": org_id,
+                        "name": name,
+                        "count": info.get("count", 0) if isinstance(info, dict) else 0,
+                        "source": "roboflow",
+                        "project": project,
+                        "synced_at": now,
+                    }
+                    # Upsert each class into detection_classes collection
+                    await db.detection_classes.update_one(
+                        {"org_id": org_id, "name": name},
+                        {"$set": class_doc},
+                        upsert=True,
+                    )
+                    class_list.append({"name": name, "count": class_doc["count"]})
+
+                return {"data": class_list, "source": "roboflow", "project": project}
+    except httpx.HTTPError:
+        pass
+
+    # Fallback to cached classes on any API failure
+    classes = await db.detection_classes.find({"org_id": org_id}).to_list(100)
+    return {
+        "data": [{"name": c.get("name"), "color": c.get("color", "#00FFFF")} for c in classes],
+        "source": "cache",
+    }
+
+
+@router.get("/classes")
+async def get_roboflow_classes(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Get class definitions from Roboflow project, with local cache fallback."""
+    org_id = current_user.get("org_id", "")
+    return await _fetch_roboflow_classes(db, org_id)
+
+
+@router.post("/sync-classes")
+async def sync_roboflow_classes(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Manually trigger a sync of class definitions from Roboflow."""
+    org_id = current_user.get("org_id", "")
+    result = await _fetch_roboflow_classes(db, org_id)
+    result["triggered_by"] = current_user.get("id", "")
+    result["synced_at"] = datetime.now(timezone.utc).isoformat()
+    return result
