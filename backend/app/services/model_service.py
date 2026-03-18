@@ -111,6 +111,17 @@ async def _deploy_model_to_agents(
             {**org_query(org_id), "status": "online"}
         ).to_list(length=1000)
 
+        # Fetch model doc to include class names in the deploy payload
+        model_doc = await db.model_versions.find_one(
+            {**org_query(org_id), "id": model_version_id}
+        )
+        class_names = []
+        if model_doc:
+            class_names = model_doc.get("class_names") or model_doc.get("per_class_metrics", [])
+            # Extract class names from per_class_metrics if it's a list of dicts
+            if class_names and isinstance(class_names[0], dict):
+                class_names = [m.get("class_name", m.get("name", "")) for m in class_names]
+
         now = datetime.now(timezone.utc)
         for agent in agents:
             cmd = {
@@ -118,7 +129,10 @@ async def _deploy_model_to_agents(
                 "agent_id": agent["id"],
                 "org_id": org_id,
                 "command_type": "deploy_model",
-                "payload": {"model_version_id": model_version_id},
+                "payload": {
+                    "model_version_id": model_version_id,
+                    "class_names": class_names,
+                },
                 "status": "pending",
                 "sent_by": user_id,
                 "sent_at": now,

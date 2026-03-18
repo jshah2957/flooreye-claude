@@ -137,12 +137,28 @@ async def camera_loop(
         await asyncio.sleep(max(0, cam.frame_interval - elapsed))
 
 
+async def buffer_flush_loop(buffer: FrameBuffer, uploader: Uploader):
+    """Periodically flush buffered detections to the backend."""
+    while True:
+        try:
+            queue_size = await buffer.size()
+            if queue_size > 0:
+                log.info(f"Buffer has {queue_size} items — flushing to backend")
+                flushed = await buffer.flush_to_backend(uploader)
+                if flushed:
+                    log.info(f"Flushed {flushed} buffered detections")
+        except Exception as e:
+            log.debug(f"Buffer flush error: {e}")
+        await asyncio.sleep(30)
+
+
 async def threaded_camera_loop(
     cam: ThreadedCameraCapture,
     inference: InferenceClient,
     uploader: Uploader,
     validator: DetectionValidator,
     semaphore: asyncio.Semaphore,
+    buffer: FrameBuffer | None = None,
 ):
     """Capture frames from a threaded camera and run inference with concurrency control.
 
@@ -182,14 +198,26 @@ async def threaded_camera_loop(
                     f"Inference: {result.get('inference_time_ms', 0)}ms"
                 )
 
-            # Upload based on validation result
+            # Upload based on validation result — buffer on failure
+            upload_ok = True
             if passed:
-                await uploader.upload_detection(result, frame_b64, cam.name)
-                log.info(f"[{cam.name}] CONFIRMED WET — uploaded (conf={result.get('max_confidence', 0):.2f})")
+                upload_ok = await uploader.upload_detection(result, frame_b64, cam.name)
+                if upload_ok:
+                    log.info(f"[{cam.name}] CONFIRMED WET — uploaded (conf={result.get('max_confidence', 0):.2f})")
             elif result.get("is_wet") and reason == "temporal_check_pending":
-                await uploader.upload_detection(result, None, cam.name)
+                upload_ok = await uploader.upload_detection(result, None, cam.name)
             elif 0.3 < result.get("max_confidence", 0) < 0.7 and "uncertain" in config.UPLOAD_FRAMES:
-                await uploader.upload_detection(result, frame_b64, cam.name)
+                upload_ok = await uploader.upload_detection(result, frame_b64, cam.name)
+            else:
+                upload_ok = True  # No upload attempted, not a failure
+
+            # Buffer failed uploads for later retry
+            if not upload_ok and buffer:
+                await buffer.push({
+                    "result": result,
+                    "frame_b64": frame_b64 if passed else None,
+                    "camera_name": cam.name,
+                })
 
         except Exception as e:
             if cam.frame_count % 30 == 1:
@@ -301,11 +329,12 @@ async def main():
     tasks = [
         asyncio.create_task(heartbeat_loop(inference)),
         asyncio.create_task(cmd_poller.poll_loop()),
+        asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
     ]
     for cam in cam_objects.values():
         tasks.append(
             asyncio.create_task(
-                threaded_camera_loop(cam, inference, uploader_inst, validator, inference_semaphore)
+                threaded_camera_loop(cam, inference, uploader_inst, validator, inference_semaphore, buffer)
             )
         )
 
