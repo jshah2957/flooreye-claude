@@ -204,6 +204,16 @@ async def threaded_camera_loop(
                 upload_ok = await uploader.upload_detection(result, frame_b64, cam.name)
                 if upload_ok:
                     log.info(f"[{cam.name}] CONFIRMED WET — uploaded (conf={result.get('max_confidence', 0):.2f})")
+                # Trigger IoT devices on confirmed wet detection
+                try:
+                    if tplink_ctrl and tplink_ctrl.enabled:
+                        for dev_name in tplink_ctrl.devices:
+                            tplink_ctrl.turn_on(dev_name)
+                            log.info(f"[{cam.name}] TP-Link '{dev_name}' turned ON")
+                    if device_ctrl and device_ctrl.enabled:
+                        device_ctrl.trigger_alarm(config.STORE_ID, cam.name, result)
+                except Exception as iot_err:
+                    log.warning(f"[{cam.name}] IoT trigger failed: {iot_err}")
             elif result.get("is_wet") and reason == "temporal_check_pending":
                 upload_ok = await uploader.upload_detection(result, None, cam.name)
             elif 0.3 < result.get("max_confidence", 0) < 0.7 and "uncertain" in config.UPLOAD_FRAMES:

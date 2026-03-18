@@ -295,7 +295,13 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
 
     inference_ms = round((time.time() - t0) * 1000, 1)
 
-    is_wet = any(d["class_id"] == 0 for d in detections)
+    # Detect wet floor by class name (not hardcoded class_id)
+    WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
+    is_wet = any(
+        d.get("class_name", "").lower() in WET_CLASSES or
+        (not d.get("class_name") and d["class_id"] == 0)  # fallback if no class names loaded
+        for d in detections
+    )
     max_conf = max((d["confidence"] for d in detections), default=0.0)
 
     return {
