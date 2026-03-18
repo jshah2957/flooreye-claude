@@ -11,8 +11,8 @@
 6. Commit after every single task
 
 ## CURRENT STATUS
-- Current Session: SESSION-02
-- Current Task: TASK-009
+- Current Session: SESSION-03
+- Current Task: TASK-017
 - Last Commit: c6271af
 - Next Action: Create this file + commit
 
@@ -26,15 +26,15 @@ TASK-006 | USE_CASE       | Edge app use cases                   | DONE
 TASK-007 | USE_CASE       | Cloud app use cases                  | DONE
 TASK-008 | USE_CASE       | Mobile app use cases                 | DONE
 
-## SESSION-02: DATABASE + DATA ORG | STATUS: TODO
-TASK-009  | SR_DATABASE | Fix MongoDB schemas                    | TODO
-TASK-010  | SR_DATABASE | Fix file naming convention             | TODO
-TASK-011  | SR_DATABASE | Fix MinIO storage paths                | TODO
-TASK-012  | SR_DATABASE | Fix indexes on all collections         | TODO
-TASK-013  | SR_DATABASE | Fix sync_queue for offline buffering   | TODO
-TASK-014  | SR_DATABASE | Fix TTL indexes for cleanup            | TODO
-TASK-015  | SR_DATABASE | Verify schemas match SRD.md            | TODO
-TASK-016  | SR_CODE_REVIEWER | Review Session-02                 | TODO
+## SESSION-02: DATABASE + DATA ORG | STATUS: DONE
+TASK-009  | SR_DATABASE | Fix MongoDB schemas                    | DONE (verified)
+TASK-010  | SR_DATABASE | Fix file naming convention             | DONE (verified)
+TASK-011  | SR_DATABASE | Fix MinIO storage paths                | DONE (verified)
+TASK-012  | SR_DATABASE | Fix indexes on all collections         | DONE (verified)
+TASK-013  | SR_DATABASE | Fix sync_queue for offline buffering   | DONE (verified)
+TASK-014  | SR_DATABASE | Fix TTL indexes for cleanup            | DONE (verified)
+TASK-015  | SR_DATABASE | Verify schemas match SRD.md            | DONE (verified)
+TASK-016  | SR_CODE_REVIEWER | Review Session-02                 | DONE
 
 ## SESSION-03: EDGE CAMERAS + DETECTION | STATUS: TODO
 TASK-017 | SR_EDGE | Multiple camera add/remove/edit             | TODO
