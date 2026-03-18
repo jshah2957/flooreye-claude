@@ -11,8 +11,8 @@
 6. Commit after every single task
 
 ## CURRENT STATUS
-- Current Session: SESSION-03
-- Current Task: TASK-017
+- Current Session: SESSION-05
+- Current Task: TASK-033
 - Last Commit: c6271af
 - Next Action: Create this file + commit
 
@@ -36,25 +36,25 @@ TASK-014  | SR_DATABASE | Fix TTL indexes for cleanup            | DONE (verifie
 TASK-015  | SR_DATABASE | Verify schemas match SRD.md            | DONE (verified)
 TASK-016  | SR_CODE_REVIEWER | Review Session-02                 | DONE
 
-## SESSION-03: EDGE CAMERAS + DETECTION | STATUS: TODO
-TASK-017 | SR_EDGE | Multiple camera add/remove/edit             | TODO
-TASK-018 | SR_EDGE | Camera health monitoring + reconnect        | TODO
-TASK-019 | SR_EDGE | Camera list sync with cloud                 | TODO
-TASK-020 | SR_EDGE | Verify ONNX runs locally only               | TODO
-TASK-021 | SR_EDGE | Real-time annotation (boxes + labels)       | TODO
-TASK-022 | SR_EDGE | Classes from classes.json                   | TODO
-TASK-023 | SR_EDGE | Detection speed optimization <100ms         | TODO
-TASK-024 | SR_CODE_REVIEWER | Review Session-03                  | TODO
+## SESSION-03: EDGE CAMERAS + DETECTION | STATUS: DONE
+TASK-017 | SR_EDGE | Multiple camera add/remove/edit             | DONE (verified)
+TASK-018 | SR_EDGE | Camera health monitoring + reconnect        | DONE (verified)
+TASK-019 | SR_EDGE | Camera list sync with cloud                 | DONE (verified)
+TASK-020 | SR_EDGE | Verify ONNX runs locally only               | DONE (verified)
+TASK-021 | SR_EDGE | Real-time annotation (boxes + labels)       | DONE (verified)
+TASK-022 | SR_EDGE | Classes from classes.json                   | DONE (verified)
+TASK-023 | SR_EDGE | Detection speed optimization <100ms         | DONE (verified)
+TASK-024 | SR_CODE_REVIEWER | Review Session-03                  | DONE (verified)
 
-## SESSION-04: EDGE STORAGE + IOT | STATUS: TODO
-TASK-025 | SR_EDGE | Local storage structure                     | TODO
-TASK-026 | SR_EDGE | Frame naming convention                     | TODO
-TASK-027 | SR_EDGE | Clip naming convention                      | TODO
-TASK-028 | SR_EDGE | Log naming convention                       | TODO
-TASK-029 | SR_EDGE | TP-Link Kasa device discovery               | TODO
-TASK-030 | SR_EDGE | TP-Link auto ON on confirmed detection      | TODO
-TASK-031 | SR_EDGE | TP-Link auto OFF after timer                | TODO
-TASK-032 | SR_CODE_REVIEWER | Review Session-04                  | TODO
+## SESSION-04: EDGE STORAGE + IOT | STATUS: DONE
+TASK-025 | SR_EDGE | Local storage structure                     | DONE (verified)
+TASK-026 | SR_EDGE | Frame naming convention                     | DONE (verified)
+TASK-027 | SR_EDGE | Clip naming convention                      | DONE (verified)
+TASK-028 | SR_EDGE | Log naming convention                       | DONE (verified)
+TASK-029 | SR_EDGE | TP-Link Kasa device discovery               | DONE (verified)
+TASK-030 | SR_EDGE | TP-Link auto ON on confirmed detection      | DONE (verified)
+TASK-031 | SR_EDGE | TP-Link auto OFF after timer                | DONE (verified)
+TASK-032 | SR_CODE_REVIEWER | Review Session-04                  | DONE (verified)
 
 ## SESSION-05: EDGE SYNC + STREAMING | STATUS: TODO
 TASK-033 | SR_EDGE | Send detections to cloud instantly          | TODO
