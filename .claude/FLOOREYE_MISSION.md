@@ -11,20 +11,20 @@
 6. Commit after every single task
 
 ## CURRENT STATUS
-- Current Session: SESSION-01
-- Current Task: TASK-001
-- Last Commit: 3392bd9 (v2.6.0)
+- Current Session: SESSION-02
+- Current Task: TASK-009
+- Last Commit: c6271af
 - Next Action: Create this file + commit
 
-## SESSION-01: FOUNDATION | STATUS: IN_PROGRESS
+## SESSION-01: FOUNDATION | STATUS: DONE
 TASK-001 | AGILE_PM       | Create FLOOREYE_MISSION.md           | DONE
-TASK-002 | SR_ARCHITECT   | Architecture summary + API approval  | TODO
-TASK-003 | SR_RESEARCHER  | TP-Link Kasa API research            | TODO
-TASK-004 | SR_RESEARCHER  | Roboflow class sync + model API      | TODO
-TASK-005 | SR_RESEARCHER  | WebSocket streaming via CF Tunnel     | TODO
-TASK-006 | USE_CASE       | Edge app use cases                   | TODO
-TASK-007 | USE_CASE       | Cloud app use cases                  | TODO
-TASK-008 | USE_CASE       | Mobile app use cases                 | TODO
+TASK-002 | SR_ARCHITECT   | Architecture summary + API approval  | DONE
+TASK-003 | SR_RESEARCHER  | TP-Link Kasa API research            | DONE
+TASK-004 | SR_RESEARCHER  | Roboflow class sync + model API      | DONE
+TASK-005 | SR_RESEARCHER  | WebSocket streaming via CF Tunnel     | DONE
+TASK-006 | USE_CASE       | Edge app use cases                   | DONE
+TASK-007 | USE_CASE       | Cloud app use cases                  | DONE
+TASK-008 | USE_CASE       | Mobile app use cases                 | DONE
 
 ## SESSION-02: DATABASE + DATA ORG | STATUS: TODO
 TASK-009  | SR_DATABASE | Fix MongoDB schemas                    | TODO
