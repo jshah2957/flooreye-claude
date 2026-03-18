@@ -2,11 +2,19 @@
 
 import asyncio
 import logging
+import os
 import platform
 import time
 from datetime import datetime, timezone
 
 import httpx
+
+# TP-Link auto-OFF timers: device_name → timestamp when to turn off
+_tplink_off_timers: dict[str, float] = {}
+TPLINK_AUTO_OFF_SECONDS = int(os.getenv("TPLINK_AUTO_OFF_SECONDS", "600"))
+
+# Module-level camera objects for heartbeat status reporting
+_cam_objects: dict = {}
 
 from config import config
 from capture import CameraCapture, ThreadedCameraCapture
@@ -72,6 +80,12 @@ async def heartbeat_loop(inference: InferenceClient):
                 except Exception:
                     body["model_version"] = "unknown"
                     body["model_type"] = "unknown"
+                # Include per-camera status
+                cam_status = {}
+                for cname, cobj in _cam_objects.items():
+                    cam_status[cname] = {"connected": cobj.connected, "frames": cobj.frame_count}
+                body["cameras"] = cam_status
+                body["camera_count"] = len(cam_status)
                 await client.post(
                     f"{config.BACKEND_URL}/api/v1/edge/heartbeat",
                     json=body,
@@ -82,6 +96,21 @@ async def heartbeat_loop(inference: InferenceClient):
             except Exception as e:
                 log.debug(f"Heartbeat failed: {e}")
             await asyncio.sleep(30)
+
+
+async def tplink_auto_off_loop(tplink_ctrl):
+    """Periodically check TP-Link auto-OFF timers and turn off expired devices."""
+    while True:
+        now = time.time()
+        expired = [name for name, off_time in _tplink_off_timers.items() if now >= off_time]
+        for name in expired:
+            try:
+                tplink_ctrl.turn_off(name)
+                log.info(f"TP-Link '{name}' auto-OFF (timer expired)")
+                del _tplink_off_timers[name]
+            except Exception as e:
+                log.warning(f"TP-Link auto-OFF failed for '{name}': {e}")
+        await asyncio.sleep(30)
 
 
 async def camera_loop(
@@ -209,7 +238,8 @@ async def threaded_camera_loop(
                     if tplink_ctrl and tplink_ctrl.enabled:
                         for dev_name in tplink_ctrl.devices:
                             tplink_ctrl.turn_on(dev_name)
-                            log.info(f"[{cam.name}] TP-Link '{dev_name}' turned ON")
+                            _tplink_off_timers[dev_name] = time.time() + TPLINK_AUTO_OFF_SECONDS
+                            log.info(f"[{cam.name}] TP-Link '{dev_name}' ON (auto-OFF in {TPLINK_AUTO_OFF_SECONDS}s)")
                     if device_ctrl and device_ctrl.enabled:
                         device_ctrl.trigger_alarm(config.STORE_ID, cam.name, result)
                 except Exception as iot_err:
@@ -328,12 +358,14 @@ async def main():
     await check_and_download_model(inference)
 
     # Build threaded camera capture objects
+    global _cam_objects
     cam_objects = {
         name: ThreadedCameraCapture(
             name, url, config.CAPTURE_FPS, config.CAPTURE_THREAD_TIMEOUT
         )
         for name, url in cameras.items()
     }
+    _cam_objects = cam_objects
 
     # Start all tasks — cameras run concurrently via asyncio.gather
     tasks = [
@@ -341,6 +373,8 @@ async def main():
         asyncio.create_task(cmd_poller.poll_loop()),
         asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
     ]
+    if tplink_ctrl.enabled:
+        tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))
     for cam in cam_objects.values():
         tasks.append(
             asyncio.create_task(
