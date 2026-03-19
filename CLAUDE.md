@@ -14,7 +14,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Web Frontend: React 18 + TypeScript + Shadcn UI + Tailwind + Vite
 - Mobile: React Native 0.74 + Expo SDK 51 + Expo Router 3
 - AI Teacher: Roboflow Inference API
-- AI Student: YOLOv8 ONNX Runtime
+- AI Student: YOLO ONNX Runtime (YOLO11n default, YOLOv8/YOLO26/Roboflow auto-detected)
 - Edge: Docker Compose + Cloudflare Tunnel
 - Storage: AWS S3 / MinIO / Cloudflare R2
 - Push: Firebase FCM

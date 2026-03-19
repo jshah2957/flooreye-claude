@@ -62,6 +62,7 @@ def infer(req: InferRequest):
         loader.session, req.image_base64, req.confidence,
         model_type=loader.model_type,
         class_names=loader.class_names_dict,
+        roi=req.roi,
     )
     result["model_version"] = loader.model_version
     result["model_type"] = loader.model_type

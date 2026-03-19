@@ -40,13 +40,16 @@ F2. TEACHER MODEL (Roboflow)
      {key}
 
 
-F3. STUDENT MODEL (Custom YOLOv8)
-     Architecture: YOLOv8n (3M params, edge-friendly) or YOLOv8s (11M params, server)
+F3. STUDENT MODEL (Custom YOLO)
+     Default architecture: YOLO11n (edge-friendly) — YOLOv8n also supported
+     Edge deployment: ONNX Runtime (auto-detects YOLOv8, YOLO26, or Roboflow format)
+     Current edge model: student_v2.0.onnx (YOLO26n-format, [1,300,6] NMS-free output)
      Training: bootstrapped from COCO pretrained weights (not scratch)
      Deployment formats: ONNX Runtime (cross-platform) / TensorRT .engine (NVIDIA GPU) /
      PyTorch .pt (training/server)
      Classes: same as teacher model (imported via Roboflow class sync)
      Performance target: mAP@0.5 ≥ 0.75 for production promotion
+     Note: predict.py detect_model_type() auto-detects format from ONNX output shape
 
 
 F4. KNOWLEDGE DISTILLATION ALGORITHM
@@ -185,8 +188,8 @@ F7. TRAINING JOB EXECUTION
    nc: {num_classes}
    names: {class_names_list}
 
-5. Initialize YOLOv8 model from pretrained:
-   model = YOLO("yolov8n.pt") # COCO pretrained base
+5. Initialize YOLO model from pretrained:
+   model = YOLO("yolo11n.pt") # COCO pretrained base (yolov8n.pt also supported)
 
 6. Override Ultralytics trainer with FloorEyeDistillationTrainer:
    - Teacher model loaded in parallel

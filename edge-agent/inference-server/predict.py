@@ -11,7 +11,7 @@ import os
 import time
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 INPUT_SIZE = 640
 
@@ -267,13 +267,53 @@ def decode_image(image_base64: str) -> Image.Image:
     return Image.open(io.BytesIO(img_bytes)).convert("RGB")
 
 
+def apply_roi_mask(img: Image.Image, roi: list[dict]) -> Image.Image:
+    """Apply ROI polygon mask — blacks out everything OUTSIDE the polygon.
+
+    Args:
+        img: PIL RGB image.
+        roi: List of normalized polygon points, e.g.
+             [{"x": 0.1, "y": 0.2}, {"x": 0.8, "y": 0.2}, ...].
+             Coordinates are in 0-1 range relative to image dimensions.
+
+    Returns:
+        Masked PIL image with regions outside the ROI set to black.
+    """
+    if not roi or len(roi) < 3:
+        return img
+
+    w, h = img.size
+    arr = np.array(img)
+
+    # Build polygon vertices in pixel coordinates
+    poly_points = [(int(pt["x"] * w), int(pt["y"] * h)) for pt in roi]
+
+    # Use PIL to draw filled polygon on the mask
+    mask_img = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(mask_img)
+    draw.polygon(poly_points, fill=255)
+    mask = np.array(mask_img)
+
+    # Apply mask: zero out pixels outside polygon
+    mask_3ch = mask[:, :, np.newaxis]  # [H, W, 1]
+    arr = arr * (mask_3ch > 0).astype(np.uint8)
+
+    return Image.fromarray(arr)
+
+
 def run_inference(session, image_base64: str, confidence: float = 0.5,
                   model_type: str | None = None,
-                  class_names: dict[int, str] | None = None) -> dict:
-    """Full inference pipeline: decode -> preprocess -> infer -> postprocess."""
+                  class_names: dict[int, str] | None = None,
+                  roi: list[dict] | None = None) -> dict:
+    """Full inference pipeline: decode -> ROI mask -> preprocess -> infer -> postprocess."""
     t0 = time.time()
 
     img = decode_image(image_base64)
+
+    # Apply ROI mask before preprocessing if ROI polygon is provided
+    if roi:
+        img = apply_roi_mask(img, roi)
+
     tensor = preprocess(img)
 
     input_name = session.get_inputs()[0].name
