@@ -6,7 +6,8 @@
       "Bash(find C:/Users/jshah/flooreye/backend/app -name *fcm* -o -name *firebase*)",
       "Bash(docker compose -f docker-compose.prod.yml exec backend python -c \":*)",
       "Bash(docker compose:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep -l \"annotator\\\\|TPLink\\\\|tplink\\\\|buffer_flush\\\\|auto_off\" edge-agent/agent/*.py)"
     ]
   }
 }

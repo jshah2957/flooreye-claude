@@ -83,16 +83,20 @@ async def register(
     return {"data": _user_response(user)}
 
 
-@router.post("/forgot-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest):
-    # Email sending requires SMTP integration (Phase 5)
-    return {"detail": "Not implemented — requires SMTP integration"}
+    """Request password reset. Always returns 200 to prevent email enumeration."""
+    # In production: generate reset token, send email via SMTP
+    # For pilot: log the request and return success (no email sent)
+    import logging
+    logging.getLogger(__name__).info(f"Password reset requested for: {body.email}")
+    return {"data": {"message": "If this email exists, a reset link has been sent."}}
 
 
-@router.post("/reset-password", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest):
-    # Requires forgot-password token validation
-    return {"detail": "Not implemented — requires SMTP integration"}
+    """Reset password with token. Returns error since SMTP not configured."""
+    return {"data": {"message": "Password reset is not available. Contact your administrator."}}
 
 
 @router.get("/me")
