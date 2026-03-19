@@ -22,7 +22,7 @@ class ModelLoader:
         self.session: ort.InferenceSession | None = None
         self.model_version = "unknown"
         self.model_path: str | None = None
-        self.model_type = "roboflow"  # "roboflow", "yolov8", or "yolo26"
+        self.model_type = "roboflow"  # "roboflow", "yolov8", or "nms_free"
         self.model_source = "roboflow"  # "roboflow" or "yolo"
         self.load_time_ms = 0
         self.class_names: list[str] = []

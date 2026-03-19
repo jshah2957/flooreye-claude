@@ -131,7 +131,7 @@ def postprocess_yolov8(output: np.ndarray, conf_thresh: float) -> list[dict]:
     return _nms_iou(detections)
 
 
-def postprocess_yolo26(output: np.ndarray, conf_thresh: float) -> list[dict]:
+def postprocess_nms_free(output: np.ndarray, conf_thresh: float) -> list[dict]:
     """Parse YOLO26 NMS-free output [1, 300, 6] -> list of detections.
 
     Each row: [x1, y1, x2, y2, score, class_id] in pixel coords.
@@ -235,9 +235,9 @@ def detect_model_type(session) -> str:
 
     output_shape = session.get_outputs()[0].shape
 
-    # YOLO26: [1, 300, 6] -- NMS-free end-to-end
+    # NMS-free: [1, 300, 6] -- end-to-end (previously called "yolo26")
     if len(output_shape) == 3 and output_shape[1] == 300 and output_shape[2] == 6:
-        return "yolo26"
+        return "nms_free"
 
     # RF-DETR style: [1, N, 5-7] where N is large and last dim is small
     if (len(output_shape) == 3
@@ -325,8 +325,8 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
 
     if model_type == "roboflow":
         detections = postprocess_roboflow(outputs[0], confidence, session)
-    elif model_type == "yolo26":
-        detections = postprocess_yolo26(outputs[0], confidence)
+    elif model_type == "nms_free":
+        detections = postprocess_nms_free(outputs[0], confidence)
     else:
         detections = postprocess_yolov8(outputs[0], confidence)
 
@@ -400,8 +400,8 @@ def run_batch_inference(
         confidence = frame.get("confidence", 0.5)
         if model_type == "roboflow":
             detections = postprocess_roboflow(frame_output, confidence, session)
-        elif model_type == "yolo26":
-            detections = postprocess_yolo26(frame_output, confidence)
+        elif model_type == "nms_free":
+            detections = postprocess_nms_free(frame_output, confidence)
         else:
             detections = postprocess_yolov8(frame_output, confidence)
 
