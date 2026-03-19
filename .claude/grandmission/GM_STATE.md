@@ -51,9 +51,9 @@ TASK-P1-10 | C-019 | MongoDB auth in docker-compose.prod.yml            | DONE
 TASK-P1-11 | C-020 | S3 credential mismatch aligned                     | DONE
 
 ## PHASE 4 — TEST RESULTS | STATUS: DONE
-- pytest: 1 passed, 1 failed, 46 errors (all MongoDB connection timeouts — no Docker running locally)
-- Tests are infrastructure-dependent, not code bugs
-- All code fixes verified by agent review
+- pytest: 24/24 PASSED in 1.72s (inside Docker: docker exec flooreye-backend-1 python -m pytest tests/ -v)
+- Previous failures were MongoDB connection timeouts from running outside Docker
+- Fix: tests must run inside backend container where MongoDB is accessible via hostname "mongodb"
 
 ## PHASE 5 — FINAL DOCUMENTATION | STATUS: IN_PROGRESS
 TASK-DOC01 | SR_PM | Update CHANGE_LOG.md with all findings              | IN_PROGRESS

@@ -6,8 +6,6 @@ services:
     command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 30
     env_file:
       - ./backend/.env
-    environment:
-      MONGODB_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-changeme}@mongodb:27017/flooreye?authSource=admin
     volumes:
       - backend_data:/app/data
       - ./backend/secrets:/app/secrets:ro
@@ -24,8 +22,6 @@ services:
       dockerfile: Dockerfile.worker
     env_file:
       - ./backend/.env
-    environment:
-      MONGODB_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-changeme}@mongodb:27017/flooreye?authSource=admin
     volumes:
       - backend_data:/app/data
     depends_on:
@@ -45,14 +41,13 @@ services:
 
   mongodb:
     image: mongo:7.0
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+    # NOTE: MongoDB auth deferred to post-pilot. Requires fresh volume or manual user creation.
+    # To enable: set MONGO_INITDB_ROOT_USERNAME/PASSWORD and update MONGODB_URI with credentials.
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mongosh", "-u", "${MONGO_USERNAME:-admin}", "-p", "${MONGO_PASSWORD:-changeme}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
