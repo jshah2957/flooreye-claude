@@ -101,6 +101,7 @@ None yet. All field names must come from docs/schemas.md.
 - Use these frameworks when they add value to tasks. See .claude/skills/INDEX.md for full command reference.
 
 ## Rules — Follow These Always
+0. READ .claude/rules.md FIRST — global rules override everything below
 1. NEVER use mock data, fake responses, or hardcoded dummy values in implementation
 2. NEVER modify files already marked complete in this file
 3. NEVER add features not in the SRD
@@ -111,6 +112,10 @@ None yet. All field names must come from docs/schemas.md.
 8. git commit after every completed task
 9. git push to origin/main after every 3 commits
 10. Update this file and PROGRESS.md before ending any session
+11. ARCHITECT APPROVAL required before ANY code change — see .claude/rules.md
+12. docs/SRD.md is READ-ONLY — never write to it
+13. No git tag without every agent sign-off in GM_STATE.md
+14. No file deletions without explicit human approval
 
 ## Project Status
 ALL 12 PHASES COMPLETE (0-11) + Session 20 audit/fix cycle.
