@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from model_loader import ModelLoader
-from predict import run_inference
+from predict import run_batch_inference, run_inference
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 log = logging.getLogger("inference-server")
@@ -94,6 +94,38 @@ def download_and_load(req: DownloadModelRequest):
         "version": loader.model_version,
         "model_type": loader.model_type,
         "model_source": loader.model_source,
+    }
+
+
+class BatchFrameItem(BaseModel):
+    camera_id: str
+    image_base64: str
+    confidence: float = 0.5
+    roi: list | None = None
+
+
+class BatchInferRequest(BaseModel):
+    frames: list[BatchFrameItem]
+
+
+@app.post("/infer-batch")
+def infer_batch(req: BatchInferRequest):
+    """Batch inference: process multiple camera frames in a single call."""
+    if not loader.is_loaded:
+        return {"error": "No model loaded"}, 503
+
+    frames_data = [f.model_dump() for f in req.frames]
+    results = run_batch_inference(
+        loader.session, frames_data,
+        model_type=loader.model_type,
+        class_names=loader.class_names_dict,
+    )
+    for r in results:
+        r["model_version"] = loader.model_version
+    return {
+        "results": results,
+        "batch_size": len(frames_data),
+        "batch_inference_time_ms": results[0]["batch_inference_time_ms"] if results else 0,
     }
 
 

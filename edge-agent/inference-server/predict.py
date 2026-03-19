@@ -356,3 +356,94 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
         "model_type": model_type,
         "model_source": "roboflow" if model_type == "roboflow" else "yolo",
     }
+
+
+def run_batch_inference(
+    session,
+    frames: list[dict],
+    model_type: str | None = None,
+    class_names: dict[int, str] | None = None,
+) -> list[dict]:
+    """Batch inference: process multiple frames in a single call.
+
+    Checks if the ONNX model supports dynamic batch size. If it does, all
+    frames are stacked into a single batch tensor and run in one inference
+    call. Otherwise, frames are processed individually in a loop.
+    """
+    if not frames:
+        return []
+
+    t0 = time.time()
+
+    if model_type is None:
+        model_type = detect_model_type(session)
+
+    input_meta = session.get_inputs()[0]
+    input_name = input_meta.name
+    batch_dim = input_meta.shape[0]
+    supports_dynamic_batch = isinstance(batch_dim, str) or batch_dim is None
+
+    # Decode and preprocess all frames
+    tensors = []
+    for frame in frames:
+        img = decode_image(frame["image_base64"])
+        roi = frame.get("roi")
+        if roi:
+            img = apply_roi_mask(img, roi)
+        tensor = preprocess(img)
+        tensors.append(tensor)
+
+    names = class_names if class_names else CLASS_NAMES
+    WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
+
+    def _postprocess_frame(frame, frame_output, idx):
+        confidence = frame.get("confidence", 0.5)
+        if model_type == "roboflow":
+            detections = postprocess_roboflow(frame_output, confidence, session)
+        elif model_type == "yolo26":
+            detections = postprocess_yolo26(frame_output, confidence)
+        else:
+            detections = postprocess_yolov8(frame_output, confidence)
+
+        if names:
+            for det in detections:
+                det["class_name"] = names.get(det["class_id"], f"class_{det['class_id']}")
+
+        is_wet = any(
+            d.get("class_name", "").lower() in WET_CLASSES
+            or (not d.get("class_name") and d["class_id"] == 0)
+            for d in detections
+        )
+        max_conf = max((d["confidence"] for d in detections), default=0.0)
+        return {
+            "camera_id": frame.get("camera_id", f"cam_{idx}"),
+            "predictions": detections,
+            "is_wet": is_wet,
+            "max_confidence": max_conf,
+            "num_detections": len(detections),
+        }
+
+    if supports_dynamic_batch and len(tensors) > 1:
+        batch_tensor = np.concatenate(tensors, axis=0)
+        outputs = session.run(None, {input_name: batch_tensor})
+        results = [
+            _postprocess_frame(frame, outputs[0][i:i+1], i)
+            for i, frame in enumerate(frames)
+        ]
+        del batch_tensor
+    else:
+        results = []
+        for i, (frame, tensor) in enumerate(zip(frames, tensors)):
+            outputs = session.run(None, {input_name: tensor})
+            results.append(_postprocess_frame(frame, outputs[0], i))
+
+    del tensors
+    total_ms = round((time.time() - t0) * 1000, 1)
+
+    for r in results:
+        r["batch_inference_time_ms"] = total_ms
+        r["batch_size"] = len(frames)
+        r["model_type"] = model_type
+        r["model_source"] = "roboflow" if model_type == "roboflow" else "yolo"
+
+    return results
