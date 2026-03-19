@@ -282,6 +282,159 @@ async def threaded_camera_loop(
         await asyncio.sleep(max(0, cam.frame_interval - elapsed))
 
 
+async def batch_camera_loop(
+    cam_objects: dict[str, ThreadedCameraCapture],
+    inference: InferenceClient,
+    uploader: Uploader,
+    validator: DetectionValidator,
+    buffer: FrameBuffer | None = None,
+):
+    """Collect frames from all cameras and send them as a single batch to /infer-batch.
+
+    Instead of running inference per-camera, this loop:
+    1. Reads the latest frame from each connected camera.
+    2. Bundles all available frames into one batch request.
+    3. Sends the batch to /infer-batch for efficient processing.
+    4. Dispatches results back to per-camera upload/validation logic.
+    """
+    # Wait for all cameras to start
+    for cam in cam_objects.values():
+        if not cam.start():
+            await cam.reconnect()
+
+    # Use the interval from the first camera (they should all be the same)
+    frame_interval = next(iter(cam_objects.values())).frame_interval
+
+    while True:
+        t0 = time.time()
+
+        # Step 1: Collect frames from all connected cameras
+        batch_frames = []
+        frame_map = {}  # index -> (cam, frame_b64)
+
+        for cam_name, cam in cam_objects.items():
+            if not cam.connected:
+                # Try reconnect in background, skip this cycle
+                asyncio.create_task(cam.reconnect())
+                continue
+
+            ok, jpeg_bytes, frame_b64 = await asyncio.to_thread(cam.read_frame)
+            if not ok:
+                if not cam.connected:
+                    asyncio.create_task(cam.reconnect())
+                continue
+
+            idx = len(batch_frames)
+            batch_frames.append({
+                "camera_id": cam_name,
+                "image_base64": frame_b64,
+                "confidence": 0.5,
+            })
+            frame_map[idx] = (cam, frame_b64)
+
+        if not batch_frames:
+            await asyncio.sleep(frame_interval)
+            continue
+
+        # Step 2: Send batch to inference server
+        try:
+            batch_response = await inference.infer_batch(batch_frames)
+            results_list = batch_response.get("results", [])
+
+            batch_time = batch_response.get("batch_inference_time_ms", 0)
+            batch_size = batch_response.get("batch_size", len(batch_frames))
+
+            # Log batch timing periodically
+            any_cam = next(iter(cam_objects.values()))
+            if any_cam.frame_count % 10 == 1:
+                log.info(
+                    f"[BATCH] {batch_size} frames in {batch_time}ms "
+                    f"({batch_time / max(batch_size, 1):.1f}ms/frame)"
+                )
+
+            # Step 3: Process results per camera
+            for i, result in enumerate(results_list):
+                if i not in frame_map:
+                    continue
+                cam, frame_b64 = frame_map[i]
+                camera_name = result.get("camera_id", cam.name)
+
+                # Validate detection
+                passed, reason = validator.validate(result, camera_name)
+
+                # Log every 10th frame per camera
+                if cam.frame_count % 10 == 1:
+                    log.info(
+                        f"[{camera_name}] Frame #{cam.frame_count} | "
+                        f"Detections: {result.get('num_detections', 0)} | "
+                        f"Wet: {result.get('is_wet', False)} | "
+                        f"Conf: {result.get('max_confidence', 0):.2f} | "
+                        f"Batch: {batch_time}ms"
+                    )
+
+                # Upload based on validation result
+                upload_ok = True
+                if passed:
+                    annotated_b64, clean_b64 = annotate_frame(
+                        frame_b64, result.get("predictions", []),
+                        store_name=config.STORE_ID, camera_name=camera_name,
+                    )
+                    top_class = (
+                        result.get("predictions", [{}])[0].get("class_name", "detection")
+                        if result.get("predictions")
+                        else "detection"
+                    )
+                    await asyncio.to_thread(
+                        save_detection_frames,
+                        annotated_b64, clean_b64, config.STORE_ID, camera_name,
+                        top_class, result.get("max_confidence", 0),
+                    )
+                    upload_frame = annotated_b64 or frame_b64
+                    upload_ok = await uploader.upload_detection(result, upload_frame, camera_name)
+                    if upload_ok:
+                        log.info(
+                            f"[{camera_name}] CONFIRMED WET — annotated + uploaded "
+                            f"(conf={result.get('max_confidence', 0):.2f})"
+                        )
+                    # Trigger IoT devices
+                    try:
+                        if tplink_ctrl and tplink_ctrl.enabled:
+                            for dev_name in tplink_ctrl.devices:
+                                tplink_ctrl.turn_on(dev_name)
+                                _tplink_off_timers[dev_name] = time.time() + TPLINK_AUTO_OFF_SECONDS
+                                log.info(
+                                    f"[{camera_name}] TP-Link '{dev_name}' ON "
+                                    f"(auto-OFF in {TPLINK_AUTO_OFF_SECONDS}s)"
+                                )
+                        if device_ctrl and device_ctrl.enabled:
+                            device_ctrl.trigger_alarm(config.STORE_ID, camera_name, result)
+                    except Exception as iot_err:
+                        log.warning(f"[{camera_name}] IoT trigger failed: {iot_err}")
+                elif result.get("is_wet") and reason == "temporal_check_pending":
+                    upload_ok = await uploader.upload_detection(result, None, camera_name)
+                elif (
+                    0.3 < result.get("max_confidence", 0) < 0.7
+                    and "uncertain" in config.UPLOAD_FRAMES
+                ):
+                    upload_ok = await uploader.upload_detection(result, frame_b64, camera_name)
+                else:
+                    upload_ok = True
+
+                # Buffer failed uploads
+                if not upload_ok and buffer:
+                    await buffer.push({
+                        "result": result,
+                        "frame_b64": frame_b64 if passed else None,
+                        "camera_name": camera_name,
+                    })
+
+        except Exception as e:
+            log.warning(f"[BATCH] Inference error: {e}")
+
+        elapsed = time.time() - t0
+        await asyncio.sleep(max(0, frame_interval - elapsed))
+
+
 async def check_and_download_model(inference: InferenceClient):
     """Check for newer Roboflow ONNX model and download if available."""
     log.info("Checking for model updates...")
@@ -390,14 +543,24 @@ async def main():
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))
-    for cam in cam_objects.values():
+
+    # Use batch inference when enabled and there are multiple cameras
+    use_batch = config.BATCH_INFERENCE and len(cam_objects) > 1
+    if use_batch:
         tasks.append(
             asyncio.create_task(
-                threaded_camera_loop(cam, inference, uploader_inst, validator, inference_semaphore, buffer)
+                batch_camera_loop(cam_objects, inference, uploader_inst, validator, buffer)
             )
         )
-
-    log.info(f"Edge agent running with {len(cameras)} camera(s) (threaded capture)")
+        log.info(f"Edge agent running with {len(cameras)} camera(s) (BATCH inference mode)")
+    else:
+        for cam in cam_objects.values():
+            tasks.append(
+                asyncio.create_task(
+                    threaded_camera_loop(cam, inference, uploader_inst, validator, inference_semaphore, buffer)
+                )
+            )
+        log.info(f"Edge agent running with {len(cameras)} camera(s) (per-camera inference mode)")
 
     try:
         await asyncio.gather(*tasks)

@@ -51,6 +51,27 @@ class InferenceClient:
         )
         return resp.json()
 
+    async def infer_batch(self, frames: list[dict]) -> dict:
+        """Send multiple frames for batch inference. Returns dict with 'results' list.
+
+        Args:
+            frames: List of dicts, each with keys:
+                - camera_id (str)
+                - image_base64 (str)
+                - confidence (float, optional)
+                - roi (list[dict] | None, optional)
+
+        Returns:
+            Dict with 'results' (list of prediction dicts), 'batch_size', 'batch_inference_time_ms'.
+        """
+        client = await self._get_client()
+        resp = await client.post(
+            f"{self.url}/infer-batch",
+            json={"frames": frames},
+            timeout=60,  # batch may take longer
+        )
+        return resp.json()
+
     async def health(self) -> dict:
         """Check inference server health."""
         client = await self._get_client()

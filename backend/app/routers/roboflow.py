@@ -212,12 +212,61 @@ async def get_roboflow_classes(
 
 @router.post("/sync-classes")
 async def sync_roboflow_classes(
+    body: dict | None = None,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    """Manually trigger a sync of class definitions from Roboflow."""
+    """Sync class definitions from Roboflow, store in class_definitions, optionally push to edge.
+
+    Body (optional):
+        push_to_edge: bool — if True, push classes to all edge agents after sync
+        agent_id: str — if provided with push_to_edge, push to this agent only
+    """
     org_id = current_user.get("org_id", "")
+    body = body or {}
+
+    # Fetch classes from Roboflow (also upserts into detection_classes)
     result = await _fetch_roboflow_classes(db, org_id)
+
+    # Build structured class_definitions document
+    now = datetime.now(timezone.utc)
+    class_list = []
+    for idx, cls in enumerate(result.get("data", [])):
+        class_list.append({
+            "id": str(idx),
+            "name": cls.get("name", ""),
+            "color": cls.get("color", "#00FFFF"),
+            "count": cls.get("count", 0),
+        })
+
+    class_def_doc = {
+        "org_id": org_id,
+        "classes": class_list,
+        "synced_at": now,
+        "source": result.get("source", "roboflow"),
+        "project": result.get("project", ""),
+        "synced_by": current_user.get("id", ""),
+    }
+
+    # Upsert into class_definitions collection
+    await db.class_definitions.update_one(
+        {"org_id": org_id},
+        {"$set": class_def_doc},
+        upsert=True,
+    )
+
     result["triggered_by"] = current_user.get("id", "")
-    result["synced_at"] = datetime.now(timezone.utc).isoformat()
+    result["synced_at"] = now.isoformat()
+    result["class_definitions_stored"] = True
+
+    # Optionally push classes to edge agents
+    if body.get("push_to_edge"):
+        from app.services.edge_service import push_classes_to_edge
+        agent_id = body.get("agent_id")
+        commands = await push_classes_to_edge(db, org_id, agent_id=agent_id, user_id=current_user["id"])
+        result["edge_push"] = {
+            "agents_pushed": len(commands),
+            "command_ids": [c["id"] for c in commands],
+        }
+
     return result

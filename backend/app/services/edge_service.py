@@ -245,6 +245,168 @@ async def ack_command(
     return doc
 
 
+# ── Class & Model Push ──────────────────────────────────────────
+
+
+async def push_classes_to_edge(
+    db: AsyncIOMotorDatabase,
+    org_id: str,
+    agent_id: str | None = None,
+    user_id: str = "system",
+) -> list[dict]:
+    """Push current class definitions to edge agent(s) via edge commands.
+
+    If agent_id is specified, push to that agent only; otherwise push to all
+    agents belonging to the org.
+
+    Returns list of created command documents.
+    """
+    class_def = await db.class_definitions.find_one({"org_id": org_id})
+    if not class_def:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No class definitions found for this org. Sync classes from Roboflow first.",
+        )
+
+    classes_payload = class_def.get("classes", [])
+
+    # Determine target agents
+    if agent_id:
+        agents = [await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})]
+        if not agents[0]:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    else:
+        agents = await db.edge_agents.find(org_query(org_id)).to_list(length=1000)
+
+    commands = []
+    for agent in agents:
+        cmd = await send_command(
+            db,
+            agent["id"],
+            org_id,
+            command_type="update_classes",
+            payload={"classes": classes_payload, "synced_at": class_def.get("synced_at", "").isoformat() if hasattr(class_def.get("synced_at", ""), "isoformat") else str(class_def.get("synced_at", ""))},
+            user_id=user_id,
+        )
+        commands.append(cmd)
+
+    return commands
+
+
+async def push_model_to_edge(
+    db: AsyncIOMotorDatabase,
+    org_id: str,
+    agent_id: str,
+    model_version_id: str,
+    user_id: str = "system",
+) -> dict:
+    """Push a model version to an edge agent via edge command.
+
+    The edge agent will download the model, verify the checksum, and hot-swap.
+    """
+    agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    model = await db.model_versions.find_one({"id": model_version_id, "org_id": org_id})
+    if not model:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model version not found")
+
+    if model.get("model_source") == "yolo_cloud":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cloud-only models cannot be deployed to edge agents",
+        )
+
+    download_url = model.get("onnx_s3_path") or model.get("artifact_path", "")
+    if not download_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Model version has no downloadable artifact",
+        )
+
+    cmd = await send_command(
+        db,
+        agent_id,
+        org_id,
+        command_type="update_model",
+        payload={
+            "model_version_id": model["id"],
+            "version_str": model.get("version_str", ""),
+            "download_url": download_url,
+            "checksum": model.get("checksum", ""),
+            "format": "onnx",
+            "model_source": model.get("model_source", "roboflow"),
+        },
+        user_id=user_id,
+    )
+
+    # Update the agent's current_model_version
+    now = datetime.now(timezone.utc)
+    await db.edge_agents.update_one(
+        {"id": agent_id},
+        {"$set": {"current_model_version": model_version_id, "updated_at": now}},
+    )
+
+    return cmd
+
+
+async def push_config_to_edge(
+    db: AsyncIOMotorDatabase,
+    org_id: str,
+    agent_id: str,
+    config: dict,
+    user_id: str = "system",
+) -> dict:
+    """Push configuration update to edge agent via edge command.
+
+    Validates config fields before creating the command.
+    """
+    allowed_fields = {
+        "detection_fps",
+        "confidence_threshold",
+        "upload_interval_seconds",
+        "max_uploads_per_minute",
+        "model_version_id",
+        "resolution_width",
+        "resolution_height",
+        "enable_preview",
+        "log_level",
+        "heartbeat_interval_seconds",
+        "offline_buffer_size",
+        "roi_zones",
+    }
+
+    unknown = set(config.keys()) - allowed_fields
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Unknown config fields: {', '.join(sorted(unknown))}",
+        )
+
+    agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    cmd = await send_command(
+        db,
+        agent_id,
+        org_id,
+        command_type="push_config",
+        payload=config,
+        user_id=user_id,
+    )
+
+    # Also persist config on the agent document
+    now = datetime.now(timezone.utc)
+    await db.edge_agents.update_one(
+        {"id": agent_id},
+        {"$set": {"config": config, "config_updated_at": now, "updated_at": now}},
+    )
+
+    return cmd
+
+
 # ── Agent CRUD ──────────────────────────────────────────────────
 
 

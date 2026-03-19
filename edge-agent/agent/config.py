@@ -47,6 +47,7 @@ class EdgeConfig:
     # Parallelism
     MAX_CONCURRENT_INFERENCES: int = int(os.getenv("MAX_CONCURRENT_INFERENCES", "4"))
     CAPTURE_THREAD_TIMEOUT: int = int(os.getenv("CAPTURE_THREAD_TIMEOUT", "10"))
+    BATCH_INFERENCE: bool = os.getenv("BATCH_INFERENCE", "true").lower() in ("true", "1", "yes")
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

@@ -59,7 +59,10 @@ class CommandAckRequest(BaseModel):
 
 
 class SendCommandRequest(BaseModel):
-    command_type: Literal["deploy_model", "push_config", "restart_agent", "reload_model", "ping"]
+    command_type: Literal[
+        "deploy_model", "push_config", "restart_agent", "reload_model",
+        "ping", "update_classes", "update_model",
+    ]
     payload: dict = {}
 
 

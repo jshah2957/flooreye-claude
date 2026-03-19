@@ -123,6 +123,68 @@ async def send_command(
     return {"data": cmd}
 
 
+@router.post("/agents/{agent_id}/push-model")
+async def push_model_to_edge(
+    agent_id: str,
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Push a model version to an edge agent for hot-swap deployment."""
+    model_version_id = body.get("model_version_id")
+    if not model_version_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="model_version_id is required",
+        )
+    cmd = await edge_service.push_model_to_edge(
+        db, current_user.get("org_id", ""), agent_id, model_version_id,
+        user_id=current_user["id"],
+    )
+    return {"data": cmd}
+
+
+@router.post("/agents/{agent_id}/push-config")
+async def push_config_to_edge(
+    agent_id: str,
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Push configuration update to an edge agent."""
+    config = body.get("config", body)
+    # If the body was wrapped in {"config": {...}}, use the inner dict;
+    # otherwise treat the whole body as config (minus any meta keys).
+    if "config" in body and isinstance(body["config"], dict):
+        config = body["config"]
+    cmd = await edge_service.push_config_to_edge(
+        db, current_user.get("org_id", ""), agent_id, config,
+        user_id=current_user["id"],
+    )
+    return {"data": cmd}
+
+
+@router.post("/agents/push-classes")
+async def push_classes_to_all_agents(
+    body: dict | None = None,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Push current class definitions to all edge agents (or a specific one)."""
+    body = body or {}
+    agent_id = body.get("agent_id")
+    commands = await edge_service.push_classes_to_edge(
+        db, current_user.get("org_id", ""), agent_id=agent_id,
+        user_id=current_user["id"],
+    )
+    return {
+        "data": {
+            "agents_pushed": len(commands),
+            "command_ids": [c["id"] for c in commands],
+        }
+    }
+
+
 # ── Edge Agent Endpoints (Edge Token Auth) ──────────────────────
 
 
@@ -145,7 +207,13 @@ async def heartbeat(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     result = await edge_service.process_heartbeat(db, agent["id"], body.model_dump())
-    return {"data": {"ok": True}}
+
+    # Include pending commands count so edge agent knows to poll
+    pending_count = await db.edge_commands.count_documents(
+        {"agent_id": agent["id"], "status": "pending"}
+    )
+
+    return {"data": {"ok": True, "pending_commands": pending_count}}
 
 
 @router.post("/frame")
