@@ -24,6 +24,7 @@ from buffer import FrameBuffer
 from command_poller import CommandPoller
 from validator import DetectionValidator
 from device_controller import DeviceController, TPLinkController
+from annotator import annotate_frame, save_detection_frames
 
 logging.basicConfig(
     level=config.LOG_LEVEL,
@@ -230,9 +231,23 @@ async def threaded_camera_loop(
             # Upload based on validation result — buffer on failure
             upload_ok = True
             if passed:
-                upload_ok = await uploader.upload_detection(result, frame_b64, cam.name)
+                # Annotate frame + save locally
+                annotated_b64, clean_b64 = annotate_frame(
+                    frame_b64, result.get("predictions", []),
+                    store_name=config.STORE_ID, camera_name=cam.name,
+                )
+                # Save both versions to disk
+                top_class = result.get("predictions", [{}])[0].get("class_name", "detection") if result.get("predictions") else "detection"
+                await asyncio.to_thread(
+                    save_detection_frames,
+                    annotated_b64, clean_b64, config.STORE_ID, cam.name,
+                    top_class, result.get("max_confidence", 0),
+                )
+                # Upload annotated version to cloud
+                upload_frame = annotated_b64 or frame_b64
+                upload_ok = await uploader.upload_detection(result, upload_frame, cam.name)
                 if upload_ok:
-                    log.info(f"[{cam.name}] CONFIRMED WET — uploaded (conf={result.get('max_confidence', 0):.2f})")
+                    log.info(f"[{cam.name}] CONFIRMED WET — annotated + uploaded (conf={result.get('max_confidence', 0):.2f})")
                 # Trigger IoT devices on confirmed wet detection
                 try:
                     if tplink_ctrl and tplink_ctrl.enabled:
