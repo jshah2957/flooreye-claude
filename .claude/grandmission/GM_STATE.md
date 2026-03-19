@@ -1,47 +1,33 @@
-# FloorEye Grand Mission State — v4.0.0
+# FloorEye Grand Mission State — v3.6.0
 # Created: 2026-03-19
 
-## Current Status: COMPLETE — v4.0.0
+## Current Status: 8 RULINGS COMPLETE — READY FOR v3.6.0 TAG
 
-## SESSION 1: CLEANUP | DONE
-- Removed YOLOv8/v11 from 22 files (-1191 lines)
-- Deleted training/kd_loss.py + distillation.py
-- Removed Roboflow live inference
-- Cleared training stubs
-- Updated all docs
-- 24/24 tests passing
+## 8 ARCHITECT RULINGS | STATUS: ALL DONE
+RULING-1 | Verify P0/P1 fixes intact               | DONE — all 20 fixes present
+RULING-2 | Restore kd_loss.py + distillation.py     | DONE — commit 050d0a0
+RULING-3 | Restore multi-format support             | DONE — commit a1a536d
+RULING-4 | Restore Roboflow inference (fallback)     | DONE — commit a1a536d
+RULING-5 | Restore training stubs (v3.5.0)          | DONE — commit a1a536d
+RULING-6 | Verify + cherry-pick batch inference      | DONE — commit deb5199
+RULING-7 | Restore docs/SRD.md + other docs          | DONE — commit a1a536d
+RULING-8 | Rename yolo26→nms_free                    | DONE — commit d8e42b6
 
-## SESSION 2: BATCH INFERENCE + CLASS SYNC | DONE
-- /infer-batch endpoint with dynamic batch support
-- run_batch_inference() in predict.py
-- batch_camera_loop() in edge agent
-- Class sync: Roboflow → Cloud → Edge
-- Model push: cloud → edge hot-reload
-- Config push: cloud → edge
-- 24/24 tests passing
-
-## SESSION 3: DATASET ORGANIZATION | DONE
-- build_detection_path() standardized naming
-- save_detection_metadata() JSON per detection
-- compute_frame_hash() duplicate detection
-- Edge annotator naming convention aligned
-- Auto-cleanup: 30 day frames, 90 day clips
-- 24/24 tests passing
-
-## SESSION 4: VERIFICATION + TAG | DONE
-- All 7 key files verified correct
-- docs/ml.md F4/F7 KD references cleaned
-- CHANGE_LOG.md updated with full v4.0.0 section
-- Tagged v4.0.0
-
-## EVIDENCE
+## VERIFICATION
 | Check | Result |
 |-------|--------|
-| pytest 24/24 | PASS (2.36s in Docker) |
-| API health | PASS (healthy, mongodb ok, redis ok) |
-| Edge agent | PASS (frame #18331+, real RTSP camera) |
-| YOLOv8/v11 removed | PASS (grep confirms 0 matches in code) |
-| Batch inference | PASS (/infer-batch endpoint exists) |
-| Class sync | PASS (sync-classes + push-to-edge) |
-| Dataset paths | PASS (build_detection_path standardized) |
-| CHANGE_LOG | PASS (v4.0.0 section complete) |
+| pytest 24/24 | PASS (1.79s) |
+| API health | PASS (healthy) |
+| Edge agent | PASS (frame #27841+) |
+| SRD restored | PASS (matches v3.3.1) |
+| Multi-format support | PASS (yolov8, nms_free, roboflow) |
+| Batch inference | PASS (/infer-batch present) |
+| No files deleted | PASS (deletion check: 0) |
+| New features intact | PASS (class sync, model push, dataset org) |
+
+## SIGN-OFFS
+- ARCHITECT: APPROVED in .claude/loop/ARCHITECT_REVIEW.md
+- TESTER: 24/24 pytest pass + API healthy + edge active
+- ENGINEER: all 8 rulings executed per CHANGE_LOG_v2.md
+
+## NEXT: Tag v3.6.0 and push
