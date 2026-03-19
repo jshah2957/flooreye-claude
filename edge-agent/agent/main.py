@@ -4,8 +4,10 @@ import asyncio
 import logging
 import os
 import platform
+import shutil
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import httpx
 
@@ -435,6 +437,60 @@ async def batch_camera_loop(
         await asyncio.sleep(max(0, frame_interval - elapsed))
 
 
+async def cleanup_old_files_loop():
+    """Periodically remove detection frames and clips older than retention thresholds.
+
+    Runs every CLEANUP_INTERVAL_HOURS (default 6h).
+    Deletes date-based directories (YYYY-MM-DD) that exceed FRAME_RETENTION_DAYS or CLIP_RETENTION_DAYS.
+    """
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            data_root = Path(config.DATA_PATH)
+
+            # Clean detection frames — look for date dirs under detections/
+            frame_cutoff = now - timedelta(days=config.FRAME_RETENTION_DAYS)
+            stores_dir = data_root / "stores"
+            if stores_dir.exists():
+                removed_frames = 0
+                for det_dir in stores_dir.glob("*/cameras/*/detections/*"):
+                    if not det_dir.is_dir():
+                        continue
+                    # Directory name should be YYYY-MM-DD
+                    try:
+                        dir_date = datetime.strptime(det_dir.name, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                        if dir_date < frame_cutoff:
+                            shutil.rmtree(det_dir, ignore_errors=True)
+                            removed_frames += 1
+                    except ValueError:
+                        continue
+                if removed_frames:
+                    log.info(f"Cleanup: removed {removed_frames} old detection directories (>{config.FRAME_RETENTION_DAYS}d)")
+
+            # Clean clips
+            clip_cutoff = now - timedelta(days=config.CLIP_RETENTION_DAYS)
+            clips_dir = Path(config.CLIPS_PATH)
+            if clips_dir.exists():
+                removed_clips = 0
+                for clip_file in clips_dir.rglob("*"):
+                    if not clip_file.is_file():
+                        continue
+                    try:
+                        mtime = datetime.fromtimestamp(clip_file.stat().st_mtime, tz=timezone.utc)
+                        if mtime < clip_cutoff:
+                            clip_file.unlink(missing_ok=True)
+                            removed_clips += 1
+                    except Exception:
+                        continue
+                if removed_clips:
+                    log.info(f"Cleanup: removed {removed_clips} old clips (>{config.CLIP_RETENTION_DAYS}d)")
+
+        except Exception as e:
+            log.warning(f"Cleanup loop error: {e}")
+
+        await asyncio.sleep(config.CLEANUP_INTERVAL_HOURS * 3600)
+
+
 async def check_and_download_model(inference: InferenceClient):
     """Check for newer Roboflow ONNX model and download if available."""
     log.info("Checking for model updates...")
@@ -540,6 +596,7 @@ async def main():
         asyncio.create_task(heartbeat_loop(inference)),
         asyncio.create_task(cmd_poller.poll_loop()),
         asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
+        asyncio.create_task(cleanup_old_files_loop()),
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))

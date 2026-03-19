@@ -33,6 +33,12 @@ class EdgeConfig:
     BUFFER_PATH: str = os.getenv("BUFFER_PATH", "/data/buffer")
     MAX_BUFFER_GB: int = int(os.getenv("MAX_BUFFER_GB", "10"))
     CLIPS_PATH: str = os.getenv("CLIPS_PATH", "/data/clips")
+    DATA_PATH: str = os.getenv("DATA_PATH", "/data")
+
+    # Auto-cleanup retention
+    FRAME_RETENTION_DAYS: int = int(os.getenv("FRAME_RETENTION_DAYS", "30"))
+    CLIP_RETENTION_DAYS: int = int(os.getenv("CLIP_RETENTION_DAYS", "90"))
+    CLEANUP_INTERVAL_HOURS: int = int(os.getenv("CLEANUP_INTERVAL_HOURS", "6"))
 
     # Services
     INFERENCE_SERVER_URL: str = os.getenv("INFERENCE_SERVER_URL", "http://inference-server:8080")

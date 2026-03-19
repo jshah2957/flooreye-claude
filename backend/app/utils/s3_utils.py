@@ -6,6 +6,8 @@ Used by storage_service.py for upload/download/delete operations.
 
 import asyncio
 import base64
+import hashlib
+import json
 import logging
 import os
 from datetime import datetime, timezone
@@ -83,6 +85,74 @@ async def ensure_bucket():
             log.warning("Could not create bucket: %s", e)
 
 
+def build_detection_path(
+    org_id: str,
+    store_id: str,
+    camera_id: str,
+    detection_class: str,
+    confidence: float,
+    timestamp: datetime = None,
+    suffix: str = "clean",
+) -> str:
+    """Build the S3 path for a detection frame following the standard naming convention.
+
+    Path structure:
+      frames/{org_id}/stores/{store_id}/cameras/{camera_id}/
+        detections/{YYYY-MM-DD}/{suffix}/{HH-MM-SS}_{class}_{conf}_{suffix}.jpg
+    """
+    ts = timestamp or datetime.now(timezone.utc)
+    date_str = ts.strftime("%Y-%m-%d")
+    time_str = ts.strftime("%H-%M-%S")
+    conf_str = f"{confidence:.2f}"
+    return (
+        f"frames/{org_id}/stores/{store_id}/cameras/{camera_id}/"
+        f"detections/{date_str}/{suffix}/{time_str}_{detection_class}_{conf_str}_{suffix}.jpg"
+    )
+
+
+async def save_detection_metadata(
+    org_id: str,
+    store_id: str,
+    camera_id: str,
+    detection_data: dict,
+    timestamp: datetime = None,
+) -> str:
+    """Save detection metadata JSON alongside the frame.
+
+    Returns the S3 key / local path where metadata was stored.
+    """
+    ts = timestamp or datetime.now(timezone.utc)
+    path = build_detection_path(
+        org_id,
+        store_id,
+        camera_id,
+        detection_data.get("class", "unknown"),
+        detection_data.get("confidence", 0.0),
+        ts,
+        suffix="metadata",
+    ).replace(".jpg", ".json")
+
+    metadata = {
+        "timestamp": ts.isoformat(),
+        "store_id": store_id,
+        "camera_id": camera_id,
+        "class": detection_data.get("class", "unknown"),
+        "confidence": detection_data.get("confidence", 0.0),
+        "bounding_box": detection_data.get("bbox", {}),
+        "frame_path": detection_data.get("frame_path", ""),
+        "iot_triggered": detection_data.get("iot_triggered", False),
+        "validation_layers": detection_data.get("validation_layers", {}),
+    }
+    json_bytes = json.dumps(metadata, indent=2).encode()
+    result = await upload_to_s3(path, json_bytes, content_type="application/json")
+    return result
+
+
+def compute_frame_hash(frame_bytes: bytes) -> str:
+    """SHA256 hash of frame for duplicate detection."""
+    return hashlib.sha256(frame_bytes).hexdigest()
+
+
 async def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
     """Upload a base64-encoded JPEG frame to S3 and return the object key."""
     if not _s3_configured():
@@ -93,7 +163,8 @@ async def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | 
             return None
         frame_bytes = base64.b64decode(frame_base64)
         now = datetime.now(timezone.utc)
-        key = f"frames/{org_id}/{camera_id}/{now.strftime('%Y%m%d_%H%M%S_%f')}.jpg"
+        # Use structured path: frames/{org}/{stores/{store}/cameras/{cam}/detections/{date}/clean/...
+        key = build_detection_path(org_id, "default", camera_id, "upload", 0.0, now, suffix="clean")
         await asyncio.to_thread(
             client.put_object,
             Bucket=settings.S3_BUCKET_NAME,

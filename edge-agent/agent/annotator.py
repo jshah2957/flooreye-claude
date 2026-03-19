@@ -159,9 +159,10 @@ def save_detection_frames(
     now = datetime.now(timezone.utc)
     date_dir = now.strftime("%Y-%m-%d")
     time_str = now.strftime("%H-%M-%S")
-    conf_str = f"{confidence:.0%}".replace("%", "")
+    conf_str = f"{confidence:.2f}"
 
-    # Build paths
+    # Build paths matching S3 convention:
+    # /data/stores/{store}/cameras/{camera}/detections/{YYYY-MM-DD}/{suffix}/{HH-MM-SS}_{class}_{conf}_{suffix}.jpg
     store_dir = store_name.replace(" ", "_").lower() if store_name else "unknown"
     cam_dir = camera_name.replace(" ", "_").lower() if camera_name else "unknown"
     det_base = os.path.join(base_path, "stores", store_dir, "cameras", cam_dir, "detections", date_dir)
@@ -172,7 +173,7 @@ def save_detection_frames(
     if annotated_b64:
         ann_dir = os.path.join(det_base, "annotated")
         os.makedirs(ann_dir, exist_ok=True)
-        ann_file = f"{time_str}_{class_name}_{conf_str}_{cam_dir}_annotated.jpg"
+        ann_file = f"{time_str}_{class_name}_{conf_str}_annotated.jpg"
         ann_path = os.path.join(ann_dir, ann_file)
         with open(ann_path, "wb") as f:
             f.write(base64.b64decode(annotated_b64))
@@ -182,15 +183,11 @@ def save_detection_frames(
     if clean_b64:
         clean_dir = os.path.join(det_base, "clean")
         os.makedirs(clean_dir, exist_ok=True)
-        clean_file = f"{time_str}_{class_name}_{conf_str}_{cam_dir}_clean.jpg"
+        clean_file = f"{time_str}_{class_name}_{conf_str}_clean.jpg"
         clean_path = os.path.join(clean_dir, clean_file)
         with open(clean_path, "wb") as f:
             f.write(base64.b64decode(clean_b64))
         saved["clean_path"] = clean_path
-
-    # Save detection log
-    log_dir = os.path.join(base_path, "stores", store_dir, "cameras", cam_dir, "logs", date_dir)
-    os.makedirs(log_dir, exist_ok=True)
 
     if saved:
         log.info(f"Frames saved: {list(saved.keys())}")
