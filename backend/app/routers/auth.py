@@ -79,7 +79,7 @@ async def register(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
-    user = await auth_service.create_user(db, body, org_id)
+    user = await auth_service.create_user(db, body, org_id, current_user_role=current_user["role"])
     return {"data": _user_response(user)}
 
 
@@ -170,7 +170,7 @@ async def create_user(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
-    user = await auth_service.create_user(db, body, org_id)
+    user = await auth_service.create_user(db, body, org_id, current_user_role=current_user["role"])
     return {"data": _user_response(user)}
 
 

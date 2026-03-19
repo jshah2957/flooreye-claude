@@ -128,6 +128,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     # detection_class_overrides
     await db.detection_class_overrides.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
+        IndexModel([("org_id", ASCENDING), ("scope", ASCENDING), ("scope_id", ASCENDING), ("class_id", ASCENDING)], unique=True),
         IndexModel([("scope", ASCENDING), ("scope_id", ASCENDING)]),
         IndexModel([("org_id", ASCENDING)]),
     ])
@@ -148,7 +149,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await db.notification_deliveries.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
         IndexModel([("rule_id", ASCENDING)]),
-        IndexModel([("org_id", ASCENDING), ("created_at", DESCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("sent_at", DESCENDING)]),
+        IndexModel([("status", ASCENDING)]),
     ])
 
     # devices (IoT)

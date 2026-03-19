@@ -6,6 +6,8 @@ services:
     command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 30
     env_file:
       - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-changeme}@mongodb:27017/flooreye?authSource=admin
     volumes:
       - backend_data:/app/data
       - ./backend/secrets:/app/secrets:ro
@@ -22,6 +24,8 @@ services:
       dockerfile: Dockerfile.worker
     env_file:
       - ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-changeme}@mongodb:27017/flooreye?authSource=admin
     volumes:
       - backend_data:/app/data
     depends_on:
@@ -41,11 +45,14 @@ services:
 
   mongodb:
     image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "-u", "${MONGO_USERNAME:-admin}", "-p", "${MONGO_PASSWORD:-changeme}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -66,8 +73,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address :9001
     environment:
-      MINIO_ROOT_USER: flooreye
-      MINIO_ROOT_PASSWORD: flooreye_minio_2026
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio_data:/data
     restart: unless-stopped

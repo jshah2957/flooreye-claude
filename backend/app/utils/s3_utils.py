@@ -4,6 +4,7 @@ S3 Client Wrapper — boto3 S3 operations with local filesystem fallback.
 Used by storage_service.py for upload/download/delete operations.
 """
 
+import asyncio
 import base64
 import logging
 import os
@@ -63,7 +64,7 @@ def get_s3_client():
         return None
 
 
-def ensure_bucket():
+async def ensure_bucket():
     """Create the S3 bucket if it does not already exist."""
     if not _s3_configured():
         log.info("S3 not configured — skipping bucket creation")
@@ -72,17 +73,17 @@ def ensure_bucket():
     if not client:
         return
     try:
-        client.head_bucket(Bucket=settings.S3_BUCKET_NAME)
+        await asyncio.to_thread(client.head_bucket, Bucket=settings.S3_BUCKET_NAME)
         log.info("S3 bucket already exists: %s", settings.S3_BUCKET_NAME)
     except ClientError:
         try:
-            client.create_bucket(Bucket=settings.S3_BUCKET_NAME)
+            await asyncio.to_thread(client.create_bucket, Bucket=settings.S3_BUCKET_NAME)
             log.info("Created S3 bucket: %s", settings.S3_BUCKET_NAME)
         except Exception as e:
             log.warning("Could not create bucket: %s", e)
 
 
-def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
+async def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
     """Upload a base64-encoded JPEG frame to S3 and return the object key."""
     if not _s3_configured():
         return None
@@ -93,7 +94,8 @@ def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
         frame_bytes = base64.b64decode(frame_base64)
         now = datetime.now(timezone.utc)
         key = f"frames/{org_id}/{camera_id}/{now.strftime('%Y%m%d_%H%M%S_%f')}.jpg"
-        client.put_object(
+        await asyncio.to_thread(
+            client.put_object,
             Bucket=settings.S3_BUCKET_NAME,
             Key=key,
             Body=frame_bytes,
@@ -106,7 +108,7 @@ def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
         return None
 
 
-def get_signed_url(key: str, expires: int = 3600) -> str | None:
+async def get_signed_url(key: str, expires: int = 3600) -> str | None:
     """Generate a pre-signed URL for downloading an S3 object."""
     if not _s3_configured():
         return None
@@ -114,7 +116,8 @@ def get_signed_url(key: str, expires: int = 3600) -> str | None:
         client = get_s3_client()
         if not client:
             return None
-        return client.generate_presigned_url(
+        return await asyncio.to_thread(
+            client.generate_presigned_url,
             "get_object",
             Params={"Bucket": settings.S3_BUCKET_NAME, "Key": key},
             ExpiresIn=expires,
@@ -140,7 +143,8 @@ async def upload_to_s3(key: str, data: bytes, content_type: str = "image/jpeg") 
         client = get_s3_client()
         if client:
             try:
-                client.put_object(
+                await asyncio.to_thread(
+                    client.put_object,
                     Bucket=settings.S3_BUCKET_NAME,
                     Key=key,
                     Body=data,
@@ -168,7 +172,8 @@ async def download_from_s3(key: str) -> bytes:
         client = get_s3_client()
         if client:
             try:
-                response = client.get_object(
+                response = await asyncio.to_thread(
+                    client.get_object,
                     Bucket=settings.S3_BUCKET_NAME,
                     Key=key,
                 )
@@ -197,7 +202,8 @@ async def delete_from_s3(key: str) -> bool:
         client = get_s3_client()
         if client:
             try:
-                client.delete_object(
+                await asyncio.to_thread(
+                    client.delete_object,
                     Bucket=settings.S3_BUCKET_NAME,
                     Key=key,
                 )

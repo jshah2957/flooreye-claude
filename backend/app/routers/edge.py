@@ -164,7 +164,7 @@ async def upload_frame(
     s3_path = None
     if body.frame_base64:
         try:
-            s3_path = await asyncio.to_thread(s3_upload, body.frame_base64, agent["org_id"], resolved_camera_id)
+            s3_path = await s3_upload(body.frame_base64, agent["org_id"], resolved_camera_id)
         except Exception:
             pass
 

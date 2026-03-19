@@ -61,7 +61,29 @@ async def get_user_by_id(db: AsyncIOMotorDatabase, user_id: str) -> dict:
     return user
 
 
-async def create_user(db: AsyncIOMotorDatabase, data: UserCreate, org_id: str | None = None) -> dict:
+async def create_user(
+    db: AsyncIOMotorDatabase,
+    data: UserCreate,
+    org_id: str | None = None,
+    current_user_role: str = "org_admin",
+) -> dict:
+    # Privilege escalation guard: enforce role hierarchy
+    _ROLE_RANK = {
+        "viewer": 0,
+        "store_owner": 1,
+        "operator": 2,
+        "ml_engineer": 3,
+        "org_admin": 4,
+        "super_admin": 5,
+    }
+    caller_rank = _ROLE_RANK.get(current_user_role, 0)
+    requested_rank = _ROLE_RANK.get(data.role, 99)
+    if current_user_role != "super_admin" and requested_rank >= caller_rank:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Insufficient privileges to create a user with role '{data.role}'",
+        )
+
     if org_id and data.org_id and data.org_id != org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create user in another org")
     if org_id and not data.org_id:

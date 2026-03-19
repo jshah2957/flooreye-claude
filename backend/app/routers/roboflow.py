@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -9,6 +10,8 @@ from app.core.encryption import decrypt_config
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
+log = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1/roboflow", tags=["roboflow"])
 
 
@@ -18,10 +21,16 @@ async def list_projects(
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     org_id = current_user.get("org_id", "")
-    # Check for stored Roboflow integration config
+    # Check for stored Roboflow integration config (config is AES-256-GCM encrypted)
     integration = await db.integration_configs.find_one({"org_id": org_id, "service": "roboflow"})
-    if not integration or not integration.get("config", {}).get("api_key"):
+    if not integration or not integration.get("config_encrypted"):
         return {"data": [], "meta": {"message": "Roboflow integration not configured"}}
+    try:
+        rf_config = decrypt_config(integration["config_encrypted"])
+    except Exception:
+        return {"data": [], "meta": {"message": "Failed to decrypt Roboflow config"}}
+    if not rf_config.get("api_key"):
+        return {"data": [], "meta": {"message": "Roboflow API key not configured"}}
     projects = await db.roboflow_projects.find({"org_id": org_id}).to_list(length=100)
     for p in projects:
         p.pop("_id", None)
@@ -63,6 +72,14 @@ async def upload_frames(
     }
     await db.roboflow_jobs.insert_one(job)
     job.pop("_id", None)
+
+    # Dispatch Celery task for the upload job
+    try:
+        from app.workers.sync_worker import sync_to_roboflow
+        sync_to_roboflow.delay(org_id)
+    except Exception as exc:
+        log.warning("Failed to dispatch roboflow upload task: %s", exc)
+
     return {"data": job}
 
 
@@ -86,6 +103,14 @@ async def sync_dataset(
     }
     await db.roboflow_jobs.insert_one(job)
     job.pop("_id", None)
+
+    # Dispatch Celery task for the sync job
+    try:
+        from app.workers.sync_worker import sync_to_roboflow
+        sync_to_roboflow.delay(org_id)
+    except Exception as exc:
+        log.warning("Failed to dispatch roboflow sync task: %s", exc)
+
     return {"data": job}
 
 

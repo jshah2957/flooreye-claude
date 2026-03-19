@@ -183,11 +183,14 @@ async def start_auto_label(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
+    from app.workers.auto_label_worker import run_auto_label
+
     org_id = current_user.get("org_id", "")
     now = datetime.now(timezone.utc)
     job = {
         "id": str(uuid.uuid4()),
         "org_id": org_id,
+        "job_type": "auto_label",
         "type": "auto_label",
         "model_id": body.get("model_id", ""),
         "frame_ids": body.get("frame_ids", []),
@@ -200,8 +203,12 @@ async def start_auto_label(
         "created_at": now,
         "updated_at": now,
     }
-    await db.auto_label_jobs.insert_one(job)
+    await db.training_jobs.insert_one(job)
     job.pop("_id", None)
+
+    # Dispatch Celery auto-label task
+    run_auto_label.delay(job["id"], org_id, body.get("limit", 100))
+
     return {"data": job}
 
 
@@ -213,7 +220,7 @@ async def auto_label_status(
 ):
     from fastapi import HTTPException
     org_id = current_user.get("org_id", "")
-    job = await db.auto_label_jobs.find_one({"id": job_id, "org_id": org_id})
+    job = await db.training_jobs.find_one({"id": job_id, "org_id": org_id, "job_type": "auto_label"})
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auto-label job not found")
     job.pop("_id", None)
@@ -230,11 +237,11 @@ async def approve_auto_label(
     from fastapi import HTTPException
     org_id = current_user.get("org_id", "")
     now = datetime.now(timezone.utc)
-    job = await db.auto_label_jobs.find_one({"id": job_id, "org_id": org_id})
+    job = await db.training_jobs.find_one({"id": job_id, "org_id": org_id, "job_type": "auto_label"})
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auto-label job not found")
     approved_ids = body.get("approved_frame_ids", [])
-    await db.auto_label_jobs.update_one(
+    await db.training_jobs.update_one(
         {"id": job_id},
         {"$set": {"status": "approved", "approved_frame_ids": approved_ids, "approved_by": current_user["id"], "approved_at": now, "updated_at": now}},
     )
