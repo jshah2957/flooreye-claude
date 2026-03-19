@@ -142,6 +142,9 @@ def postprocess_yolo26(output: np.ndarray, conf_thresh: float) -> list[dict]:
 
     for pred in preds:
         x1, y1, x2, y2, score, class_id = pred
+        # YOLO26 scores may be raw logits — apply sigmoid to normalize to 0.0-1.0
+        if score > 1.0:
+            score = 1.0 / (1.0 + np.exp(-score))  # sigmoid
         if score < conf_thresh:
             continue
 

@@ -59,7 +59,7 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="FloorEye v2.0 API",
         description="Enterprise AI Wet Floor & Spill Detection Platform",
-        version="2.0.0",
+        version="3.1.0",
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
         lifespan=lifespan,
@@ -105,7 +105,7 @@ def create_app() -> FastAPI:
         all_ok = all(v == "ok" for v in checks.values())
         return {
             "status": "healthy" if all_ok else "degraded",
-            "version": "3.0.1",
+            "version": "3.1.0",
             "environment": settings.ENVIRONMENT,
             "checks": checks,
         }
