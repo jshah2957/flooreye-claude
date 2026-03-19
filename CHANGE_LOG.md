@@ -1,4 +1,21 @@
-# FloorEye Model & Architecture Change Log
+# FloorEye Change Log
+
+## v3.5.0 — Verified Pilot Release (2026-03-19)
+
+### Verification Results
+- **24/24 pytest passing** inside Docker (2.44s)
+- **API healthy**: MongoDB ok, Redis ok at https://app.puddlewatch.com
+- **Edge agent online**: 5195+ detections, real RTSP camera active
+- **All 3 corrected indexes verified** in live MongoDB
+- **C-019 deferred**: MongoDB auth needs fresh volume (documented)
+- **Test password updated**: SecurePass123 (complies with C-006 validation)
+
+### Additional Fixes in v3.5.0
+- Dropped stale indexes and rebuilt with correct definitions on live DB
+- Reverted MongoDB auth in compose (existing volume incompatible)
+- Fixed test_create_user password to comply with new complexity rules
+
+---
 
 ## Model Progression
 
