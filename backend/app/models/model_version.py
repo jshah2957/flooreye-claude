@@ -15,7 +15,7 @@ class ModelVersion(BaseModel):
     id: str
     org_id: Optional[str] = None
     version_str: str
-    architecture: Literal["yolo26n", "yolo26s", "yolo26m"]
+    architecture: Literal["yolov8n", "yolov8s", "yolov8m"]
     param_count: Optional[int] = None
     status: Literal["draft", "validating", "staging", "production", "retired"] = "draft"
     training_job_id: Optional[str] = None

@@ -1,8 +1,4 @@
-"""Training Job Service — create, list, cancel training jobs.
-
-Note: Self-training pipeline removed in v4.0.0. Job creation records the
-request but does not dispatch any training. Use Roboflow for model training.
-"""
+"""Training Job Service — create, list, cancel training jobs."""
 
 import uuid
 from datetime import datetime, timezone
@@ -13,11 +9,6 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.org_filter import org_query
 from app.schemas.training import TrainingJobCreate
 
-TRAINING_REMOVED_MESSAGE = (
-    "Training pipeline removed in v4.0.0. Use Roboflow for model training. "
-    "Visit the Roboflow integration page to manage training data and models."
-)
-
 
 async def create_job(db: AsyncIOMotorDatabase, org_id: str, data: TrainingJobCreate, user_id: str) -> dict:
     now = datetime.now(timezone.utc)
@@ -25,21 +16,29 @@ async def create_job(db: AsyncIOMotorDatabase, org_id: str, data: TrainingJobCre
     doc = {
         "id": str(uuid.uuid4()),
         "org_id": org_id,
-        "status": "failed",
+        "status": "queued",
         "config": config,
         "triggered_by": user_id,
         "celery_task_id": None,
         "frames_used": 0,
         "current_epoch": None,
-        "total_epochs": None,
+        "total_epochs": config.get("max_epochs", 100),
         "resulting_model_id": None,
-        "error_message": TRAINING_REMOVED_MESSAGE,
+        "error_message": None,
         "log_path": None,
-        "started_at": now,
-        "completed_at": now,
+        "started_at": None,
+        "completed_at": None,
         "created_at": now,
     }
     await db.training_jobs.insert_one(doc)
+
+    # Dispatch Celery task
+    from app.workers.training_worker import run_training_job
+    task = run_training_job.delay(doc["id"], org_id)
+    await db.training_jobs.update_one(
+        {"id": doc["id"]}, {"$set": {"celery_task_id": task.id}}
+    )
+    doc["celery_task_id"] = task.id
     return doc
 
 

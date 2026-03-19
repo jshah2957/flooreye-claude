@@ -1,72 +1,134 @@
 PART F — AI & ML PIPELINE
 ═══════════════════════════════════════════════════════
 
-F1. MODEL ARCHITECTURE
+F1. DUAL-MODEL ARCHITECTURE
 
  ┌─────────────────────────────────────────────────────────┐
  │               FLOOREYE AI PIPELINE                       │
  │                                                         │
  │ ┌───────────────────┐     ┌───────────────────────────┐ │
- │ │ ROBOFLOW           │    │ STUDENT MODEL             │ │
- │ │ (Annotation Mgmt)  │    │ (Custom YOLO26)           │ │
+ │ │ TEACHER MODEL      │    │ STUDENT MODEL             │ │
+ │ │ (Roboflow)         │    │ (Custom YOLOv8)           │ │
  │ │                    │    │                           │ │
- │ │ Class sync         │    │ Object Detection          │ │
- │ │ Auto-labeling      │    │ Lightweight               │ │
- │ │ Frame upload       │    │ ~30–100ms (CPU)           │ │
- │ │                    │    │ Zero marginal cost        │ │
- │ │ ROLE:              │    │ ONNX for edge             │ │
- │ │ - Class mgmt       │    │ ROLE:                     │ │
- │ │ - Auto-labeling    │    │ - ALL live inference      │ │
- │ │ - Frame upload     │    │ - Edge-only detection     │ │
- │ │ - NOT live detect  │    │ - Primary on-device       │ │
- │ │                    │    │ - Improves with data      │ │
+ │ │ Instance Seg       │    │ Object Detection          │ │
+ │ │ High accuracy      │    │ Lightweight               │ │
+ │ │ ~300–800ms         │    │ ~30–100ms (CPU)           │ │
+ │ │ API cost/call      │    │ Zero marginal cost        │ │
+ │ │                    │    │ ONNX for edge             │ │
+ │ │ ROLE:              │    │ ROLE:                     │ │
+ │ │ - Cloud mode       │    │ - Edge mode inference     │ │
+ │ │ - Hybrid fallback│      │ - Hybrid first attempt │ │
+ │ │ - Ground truth │        │ - Primary on-device       │ │
+ │ │ - Auto-labeling │       │ - Improves with data      │ │
  │ └───────────────────┘     └───────────────────────────┘ │
  │            │                          ▲                  │
  │            │ Teacher labels           │ Distillation     │
  │            ▼                          │ training         │
- │ ┌──────────────────────────────────────────────────┐    │
- │ │            TRAINING DATA STORE                    │    │
- │ │ Frames + Teacher Soft Labels + Human Labels       │    │
- │ └──────────────────────────────────────────────────┘    │
- └─────────────────────────────────────────────────────────┘
+ │ ┌──────────────────────────────────────────────────┐ │
+ │ │            TRAINING DATA STORE                    │ │
+  │ │ Frames + Teacher Soft Labels + Human Labels       │ │
+  │ └──────────────────────────────────────────────────┘ │
+  └─────────────────────────────────────────────────────────┘
 
 
-F2. ROBOFLOW INTEGRATION (Annotation & Class Management ONLY)
-     Roboflow-hosted instance segmentation model used for ANNOTATION only.
-     NOT used for live detection — all live inference runs on edge ONNX student model.
-     Used for: class sync, auto-labeling batch jobs, frame upload to Roboflow projects
-     API calls:
-       - GET https://api.roboflow.com/{project} (class sync)
-       - POST /upload (training frame upload)
-       - POST inference for auto-labeling batch jobs only (NOT live detection)
+F2. TEACHER MODEL (Roboflow)
+     Roboflow-hosted instance segmentation model
+     Called via Roboflow Inference API (REST)
+     Returns: bounding boxes, segmentation polygons, class labels, confidence scores, raw logits
+     Used in: cloud mode, hybrid escalation, auto-labeling batch, Test Inference page
+     API call format: POST https://detect.roboflow.com/{project}/{version}?api_key=
+     {key}
 
 
 F3. STUDENT MODEL (Custom YOLO)
-     Default architecture: YOLO26n (edge-friendly, NMS-free end-to-end)
-     Edge deployment: ONNX Runtime (YOLO26 format only)
+     Default architecture: YOLO11n (edge-friendly) — YOLOv8n also supported
+     Edge deployment: ONNX Runtime (auto-detects YOLOv8, YOLO26, or Roboflow format)
      Current edge model: student_v2.0.onnx (YOLO26n-format, [1,300,6] NMS-free output)
      Training: bootstrapped from COCO pretrained weights (not scratch)
      Deployment formats: ONNX Runtime (cross-platform) / TensorRT .engine (NVIDIA GPU) /
      PyTorch .pt (training/server)
-     Classes: same as Roboflow project classes (imported via Roboflow class sync)
-     Performance target: mAP@0.5 >= 0.75 for production promotion
+     Classes: same as teacher model (imported via Roboflow class sync)
+     Performance target: mAP@0.5 ≥ 0.75 for production promotion
      Note: predict.py detect_model_type() auto-detects format from ONNX output shape
 
 
-F4. [REMOVED] KNOWLEDGE DISTILLATION
-     Removed in v4.0.0. Self-training and knowledge distillation are no longer part of the pipeline.
-     Model training is managed through Roboflow. The files training/kd_loss.py and
-     training/distillation.py have been deleted.
+F4. KNOWLEDGE DISTILLATION ALGORITHM
+Loss function:
 
-F5. [REMOVED] HYBRID INFERENCE LOGIC
-     Hybrid inference (student tries first, escalates to Roboflow teacher) has been removed.
-     All live detection now runs exclusively on the edge ONNX student model.
-     Roboflow API is only called for auto-labeling and class sync, never for live inference.
+  Total_Loss = α × CE_Loss(student_hard_pred, ground_truth_label)
+             + (1-α) × KL_Divergence(
+                 student_logits / T,
+                 teacher_logits / T
+               )
+
+  Where:
+    α = 0.3         (weight on hard label loss)
+    T = 4           (temperature — softens probability distribution)
+    CE_Loss = standard cross-entropy
+    KL_Divergence = Kullback-Leibler divergence on softened outputs
+
+
+Why temperature softening: teacher's high-confidence predictions become softer, encoding
+"near-miss" class relationships that hard labels miss. Student learns richer representations.
+Implementation: Custom Ultralytics trainer subclass in training/distillation.py that
+injects KD loss alongside standard detection loss.
+
+F5. HYBRID INFERENCE LOGIC
+
+  python
+    async def hybrid_inference(frame_b64, camera_config, settings):
+        # Step 1: Run student model locally (fast)
+        student_result = await inference_server.predict(
+            frame_b64,
+            confidence=settings.layer1_confidence_threshold
+        )
+
+        # Step 2: Check if confident enough
+        if student_result.max_confidence >= settings.hybrid_threshold:
+            # Student is confident — use its result
+            student_result.source = "student"
+            student_result.escalated = False
+
+           # Light sampling for training (only confident wet detections)
+           if student_result.is_wet:
+               await save_training_frame(frame_b64, student_result,
+                                          label_source="student_pseudolabel",
+                                          sample_rate=1) # Always save wet
+           else:
+               await save_training_frame(frame_b64, student_result,
+                                          label_source="student_pseudolabel",
+                                          sample_rate=settings.dry_sample_rate)          # 1-in
+           return student_result
+
+        else:
+            # Student uncertain — escalate to Roboflow teacher
+            # (rate-limited per camera per minute)
+            if escalation_limiter.allow(camera_config.camera_id, settings.max_escalation
+                teacher_result = await roboflow_inference(frame_b64, camera_config)
+                teacher_result.source = "hybrid_escalated"
+                teacher_result.escalated = True
+                teacher_result.student_confidence = student_result.max_confidence
+
+               # Always save escalated frames — highest training value
+               await save_training_frame(frame_b64, teacher_result,
+                                          label_source="teacher_roboflow",
+                                          sample_rate=1)
+
+               await metrics.increment("hybrid_escalations", camera_config.camera_id)
+               return teacher_result
+           else:
+               # Rate limited — use student result anyway
+               student_result.source = "student"
+               student_result.rate_limited = True
+               return student_result
+                                                                                                 
+
+
 
 
 F6. PER-CLASS DETECTION CONTROL AT INFERENCE TIME
 After raw inference results are returned, the validation_pipeline.py applies per-class filters:
-    python
+    python
 
     def apply_class_filters(predictions, effective_settings):
         """
@@ -97,12 +159,12 @@ After raw inference results are returned, the validation_pipeline.py applies per
              filtered.append(pred)
 
         return filtered
+                                                                                      
 
 
-F7. [REMOVED] TRAINING JOB EXECUTION
-     Removed in v4.0.0. Training is managed through Roboflow.
-     The training_worker.py now returns an honest message directing users to Roboflow.
-     Historical spec preserved below for reference:
+
+
+F7. TRAINING JOB EXECUTION
 
     Celery worker (training_worker.py) receives task with job_config:
 
@@ -120,17 +182,18 @@ F7. [REMOVED] TRAINING JOB EXECUTION
     {job_id}/)
 
     4. Generate Ultralytics dataset YAML:
-   path: /tmp/flooreye-training-{job_id}
+   path: /tmp/flooreye-training-{job_id}
    train: images/train
    val: images/val
    nc: {num_classes}
    names: {class_names_list}
 
 5. Initialize YOLO model from pretrained:
-   model = YOLO("yolo26n.pt") # COCO pretrained base
+   model = YOLO("yolo11n.pt") # COCO pretrained base (yolov8n.pt also supported)
 
-6. [REMOVED] FloorEyeDistillationTrainer removed in v4.0.0.
-   Standard model.train() used if training is re-enabled in future.
+6. Override Ultralytics trainer with FloorEyeDistillationTrainer:
+   - Teacher model loaded in parallel
+   - Combined CE + KL loss computed per batch
 
 7. model.train(
      data=yaml_path,
@@ -160,7 +223,7 @@ F7. [REMOVED] TRAINING JOB EXECUTION
     {
       version: "v1.5.0",
       org_id: ...,
-      architecture: "yolo26n",
+      architecture: "yolov8n",
       training_job_id: ...,
       frame_count: 18432,
       map_50: 0.847,
@@ -171,7 +234,7 @@ F7. [REMOVED] TRAINING JOB EXECUTION
       onnx_path: "s3://...",
       pt_path: "s3://...",
       status: "validating" if auto_promote_check else "draft"
-      }
+      }
 
   14. Auto-promote check:
       if map_50 >= training_schedule.auto_promote_threshold:
@@ -191,10 +254,12 @@ After each detection, if model source is "student":
 
   def score_for_active_learning(detection_result):
       """
-      Add to active learning queue if student confidence is below
-      uncertainty threshold (needs human review).
+      Add to active learning queue if:
+      1. Student was confident enough to not escalate BUT
+      2. Below a higher uncertainty threshold (needs human review)
       """
       if (detection_result.source == "student" and
+          not detection_result.escalated and
           detection_result.max_confidence < ACTIVE_LEARNING_THRESHOLD):          # e.g., 0.75
 
            active_learning_queue.add({
@@ -208,4 +273,5 @@ After each detection, if model source is "student":
 
 The Review Queue page (B11) surfaces these as the "Active Learning" tab, sorted by lowest
 confidence first.
-═══════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════
+

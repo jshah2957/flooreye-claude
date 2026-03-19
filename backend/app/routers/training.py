@@ -12,10 +12,12 @@ router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
 
 _DEFAULT_CONFIG = {
-    "architecture": "yolo26n",
+    "architecture": "yolo11n",
     "augmentation_preset": "standard",
     "max_epochs": 100,
     "image_size": 640,
+    "distillation_temperature": 4.0,
+    "distillation_alpha": 0.3,
 }
 
 
@@ -50,13 +52,7 @@ async def create_job(
     job = await training_service.create_job(
         db, current_user.get("org_id", ""), body, current_user["id"]
     )
-    return {
-        "data": _job_response(job),
-        "message": (
-            "Training pipeline removed in v4.0.0. Use Roboflow for model training. "
-            "Visit the Roboflow integration page to manage training data and models."
-        ),
-    }
+    return {"data": _job_response(job)}
 
 
 @router.get("/jobs/{job_id}")

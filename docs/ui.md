@@ -919,7 +919,7 @@ Version Table
 
  Version              v1.4.0 (link to detail)
 
- Architecture         YOLO26n / YOLO26s / YOLO26m
+ Architecture         YOLOv8n / YOLOv8s / YOLOv8m
 
  Status               Draft / Validating / Staging / Production / Retired badge
 
@@ -944,7 +944,7 @@ Status promotion flow: Draft → Staging (manual or auto on mAP threshold) → P
 Model Detail Side Panel (click row to open, slides from right)
 
  Student Model v1.4.0
- Architecture: YOLO26n (2.6M params)
+ Architecture: YOLOv8n (3.01M params)
  Status: 🟢 Production
  Training Job: #job_abc123 → link
 
@@ -995,7 +995,7 @@ Jobs Table
 
  Status           Queued / Running (animated) / Completed / Failed / Cancelled
 
- Architecture     YOLO26n/s/m
+ Architecture     YOLOv8n/s/m
 
  Started          Datetime
 
@@ -1011,7 +1011,7 @@ Jobs Table
 New Training Run Dialog (modal)
 
  CONFIGURATION
- Architecture*       [select: YOLO26n | YOLO26s | YOLO26m]
+ Architecture*       [select: YOLOv8n | YOLOv8s | YOLOv8m]
  Training Data
    Date range         [date from — date to]
    Stores             [multi-select — filter source data]
@@ -1044,7 +1044,7 @@ Job Detail Panel (click row — right-side drawer)
  [████████████████████░░░░░] 67%
 
  CONFIGURATION
- Architecture: YOLO26n
+ Architecture: YOLOv8n
  Frames Used: 18,432
  Epochs Configured: 100
 
@@ -1062,7 +1062,7 @@ Auto-Training Schedule Panel (collapsible section bottom of page)
  Auto-Training: [Enabled ●/○]
  Frame count trigger: Every [5000 ▼] new labeled frames
  Schedule trigger:     [Weekly ▼] on [Sunday ▼] at [02:00 ▼] UTC
- Default architecture: [YOLO26n ▼]
+ Default architecture: [YOLOv8n ▼]
  Auto-promote if mAP ≥ [0.75] compared to current
 
  [Save Schedule]

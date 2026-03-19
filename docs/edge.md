@@ -92,7 +92,7 @@ Installed: fastapi , uvicorn , onnxruntime (CPU) or onnxruntime-gpu (GPU), ultra
  Pillow Port: 8080 (internal HTTP API) Endpoints:
 
 
- POST /infer                 # Run YOLO26 inference on base64 JPEG
+ POST /infer                 # Run YOLOv8 inference on base64 JPEG
    Request: { "image_base64": "...", "confidence": 0.70, "roi":
  [{"x":0.1,"y":0.1},...] }
    Response: { "predictions": [...], "inference_time_ms": 88, "model_version":

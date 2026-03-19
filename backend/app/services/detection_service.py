@@ -1,17 +1,41 @@
 import logging
-import random
 import uuid
+import random
+import time
+import base64
+import asyncio
 from datetime import datetime, timezone
 
+import cv2
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 log = logging.getLogger(__name__)
 
+from app.core.encryption import decrypt_string
+from app.services.inference_service import run_roboflow_inference, compute_detection_summary
+from app.services.validation_pipeline import run_validation_pipeline
 from app.core.org_filter import org_query
+from app.services.detection_control_service import resolve_effective_settings
+from app.utils.s3_utils import upload_frame
 
 # Projection to exclude heavy fields from list queries
 _LIST_PROJECTION = {"frame_base64": 0, "_id": 0}
+
+
+async def _capture_frame(stream_url: str) -> tuple[bool, str | None]:
+    """Capture a single frame from a camera stream without blocking the event loop."""
+    def _blocking_capture():
+        cap = cv2.VideoCapture(stream_url)
+        if not cap.isOpened():
+            return False, None
+        ret, frame = cap.read()
+        cap.release()
+        if not ret or frame is None:
+            return False, None
+        _, buffer = cv2.imencode(".jpg", frame)
+        return True, base64.b64encode(buffer).decode("utf-8")
+    return await asyncio.to_thread(_blocking_capture)
 
 
 async def run_manual_detection(
@@ -20,19 +44,113 @@ async def run_manual_detection(
     org_id: str,
     model_source: str | None = None,
 ) -> dict:
-    """Server-side live detection has been removed.
+    """Run a single detection on a camera — capture frame, infer, validate, log."""
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
+    if not camera:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    Live detection runs exclusively on the edge agent using the ONNX student
-    model. Roboflow API is only used for auto-labeling and test-inference.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=(
-            "Server-side live detection via Roboflow API has been removed. "
-            "Live detection runs on the edge agent using the ONNX student model. "
-            "Use the edge agent or the Test Inference page for detection."
-        ),
+    # Decrypt stream_url (supports both encrypted and legacy plaintext)
+    if camera.get("stream_url_encrypted"):
+        try:
+            stream_url = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            stream_url = camera.get("stream_url", "")
+    else:
+        stream_url = camera.get("stream_url", "")
+    success, frame_base64 = await _capture_frame(stream_url)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Cannot connect to camera stream or failed to capture frame",
+        )
+
+    # Run inference
+    source = model_source or "roboflow"
+    inference_result = await run_roboflow_inference(frame_base64)
+    predictions = inference_result["predictions"]
+    inference_time_ms = inference_result["inference_time_ms"]
+
+    # Compute summary
+    summary = compute_detection_summary(predictions)
+
+    # Resolve effective detection control settings for this camera
+    try:
+        effective, _ = await resolve_effective_settings(db, org_id, camera_id)
+    except Exception as e:
+        log.warning(f"Failed to resolve detection control settings for camera {camera_id}: {e}")
+        effective = {}
+
+    # Run validation pipeline with effective settings
+    validation = await run_validation_pipeline(
+        db,
+        camera_id,
+        predictions,
+        frame_base64,
+        layer1_confidence=effective.get("layer1_confidence", 0.70),
+        layer2_min_area=effective.get("layer2_min_area_percent", 0.5),
+        layer3_k=effective.get("layer3_k", 3),
+        layer3_m=effective.get("layer3_m", 5),
+        layer4_delta=effective.get("layer4_delta_threshold", 0.15),
+        layer1_enabled=effective.get("layer1_enabled", True),
+        layer2_enabled=effective.get("layer2_enabled", True),
+        layer3_enabled=effective.get("layer3_enabled", True),
+        layer4_enabled=effective.get("layer4_enabled", True),
     )
+
+    # Upload frame to S3 (non-blocking — boto3 calls wrapped in asyncio.to_thread internally)
+    s3_path = await upload_frame(frame_base64, org_id, camera_id)
+
+    # Create detection log
+    now = datetime.now(timezone.utc)
+    detection_doc = {
+        "id": str(uuid.uuid4()),
+        "camera_id": camera_id,
+        "store_id": camera["store_id"],
+        "org_id": org_id,
+        "timestamp": now,
+        "is_wet": validation.is_wet,
+        "confidence": summary["confidence"],
+        "wet_area_percent": summary["wet_area_percent"],
+        "inference_time_ms": inference_time_ms,
+        "frame_base64": None,  # frames not stored inline; uploaded to S3
+        "frame_s3_path": s3_path,
+        "predictions": predictions,
+        "model_source": source,
+        "model_version_id": None,
+        "student_confidence": None,
+        "escalated": False,
+        "is_flagged": False,
+        "in_training_set": False,
+        "incident_id": None,
+    }
+    await db.detection_logs.insert_one(detection_doc)
+
+    # Auto-collect frames for dataset pipeline
+    await _auto_collect_frame(db, detection_doc, frame_base64)
+
+    # Broadcast detection via WebSocket (all detections, not just wet)
+    try:
+        from app.routers.websockets import publish_detection
+        det_clean = {k: v for k, v in detection_doc.items() if k != "_id"}
+        for key, val in det_clean.items():
+            if isinstance(val, datetime):
+                det_clean[key] = val.isoformat()
+        await publish_detection(org_id, det_clean)
+    except Exception as e:
+        log.warning(f"WebSocket broadcast failed for detection {detection_doc['id']}: {e}")
+
+    # If validated wet, create/update incident
+    if validation.is_wet:
+        from app.services.incident_service import create_or_update_incident
+        incident = await create_or_update_incident(db, detection_doc)
+        if incident:
+            detection_doc["incident_id"] = incident["id"]
+            await db.detection_logs.update_one(
+                {"id": detection_doc["id"]},
+                {"$set": {"incident_id": incident["id"]}},
+            )
+
+    return detection_doc
 
 
 async def _auto_collect_frame(

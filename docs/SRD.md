@@ -12,7 +12,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 
 Surfaces: (1) Web Admin App (2) FloorEye Mobile App (3) Edge
 Agent Stack
-Stack: FastAPI · MongoDB · React 18 · React Native/Expo · YOLO26
+Stack: FastAPI · MongoDB · React 18 · React Native/Expo · YOLOv8
 Docker · Cloudflare Tunnel · Redis · Celery · Firebase FCM
 ============================================================
 
@@ -112,7 +112,7 @@ Part F — AI & ML Pipeline
 
     F1. Dual-Model Architecture
     F2. Teacher Model (Roboflow)
-    F3. Student Model (YOLO26)
+    F3. Student Model (YOLOv8)
      F4. Knowledge Distillation Algorithm
      F5. Hybrid Inference Logic
      F6. Per-Class Detection Control at Inference Time
@@ -185,7 +185,7 @@ Key Differentiators from v1.0
 
  Mobile App         ❌ None               ✅ iOS + Android for store owners
 
- AI Models          Roboflow only        ✅ Dual-model: Teacher (Roboflow) + Student (YOLO26) —
+ AI Models          Roboflow only        ✅ Dual-model: Teacher (Roboflow) + Student (YOLOv8) —
                                          self-improving
 
  Detection          Global settings      ✅ Per-class, per-store, per-camera hierarchical control
@@ -242,7 +242,7 @@ A2. SYSTEM ARCHITECTURE OVERVIEW
  │ └────────────────┘ │    │                                        │
  │ ┌────────────────┐ │    │ ┌──────────────────────────────────┐ │
  │ │ inference-svr │ │     │ │ FloorEye Mobile App               │ │
- │ │ (YOLO26 ONNX) │ │    │ │ Store Owner role (iOS+Android) │ │
+ │ │ (YOLOv8 ONNX) │ │    │ │ Store Owner role (iOS+Android) │ │
  │ └────────────────┘ │    │ └──────────────────────────────────┘ │
  │ ┌────────────────┐ │    └────────────────────────────────────────┘
  │ │ cloudflared    │ │
@@ -305,7 +305,7 @@ Task Queue          Celery                            5.x       Background worke
 
 AI Teacher          Roboflow Inference API            latest    High-accuracy inference
 
-AI Student          Ultralytics YOLO26                8.x       Custom student model
+AI Student          Ultralytics YOLOv8                8.x       Custom student model
 
 Inference Runtime   ONNX Runtime                      1.17+     Edge inference
 
@@ -350,7 +350,7 @@ Inference Modes (per camera, configurable)
  cloud        Cloud backend           Roboflow API                      No edge hardware; highest
                                                                         accuracy
 
- edge         Store edge device       YOLO26 ONNX student               Low latency; zero API cost; stable
+ edge         Store edge device       YOLOv8 ONNX student               Low latency; zero API cost; stable
                                                                         model
 
  hybrid       Edge first, cloud       Student → Roboflow if             Best cost/accuracy balance
@@ -705,7 +705,7 @@ schemas)
 │ ├── inference-server/
 │ │ ├── main.py                   #   FastAPI inference HTTP server
 │ │ ├── model_loader.py           #   ONNX model loading + hot-reload
-│ │ └── predict.py                #   YOLO26 ONNX inference
+│ │ └── predict.py                #   YOLOv8 ONNX inference
 │ ├── docker-compose.yml          #   Template (generated per-store)
 │ ├── .env.example
 │ ├── Dockerfile.agent
@@ -1652,7 +1652,7 @@ Version Table
 
  Version              v1.4.0 (link to detail)
 
- Architecture         YOLO26n / YOLO26s / YOLO26m
+ Architecture         YOLOv8n / YOLOv8s / YOLOv8m
 
  Status               Draft / Validating / Staging / Production / Retired badge
 
@@ -1677,7 +1677,7 @@ Status promotion flow: Draft → Staging (manual or auto on mAP threshold) → P
 Model Detail Side Panel (click row to open, slides from right)
 
  Student Model v1.4.0
- Architecture: YOLO26n (3.01M params)
+ Architecture: YOLOv8n (3.01M params)
  Status: 🟢 Production
  Training Job: #job_abc123 → link
 
@@ -1728,7 +1728,7 @@ Jobs Table
 
  Status           Queued / Running (animated) / Completed / Failed / Cancelled
 
- Architecture     YOLO26n/s/m
+ Architecture     YOLOv8n/s/m
 
  Started          Datetime
 
@@ -1744,7 +1744,7 @@ Jobs Table
 New Training Run Dialog (modal)
 
  CONFIGURATION
- Architecture*       [select: YOLO26n | YOLO26s | YOLO26m]
+ Architecture*       [select: YOLOv8n | YOLOv8s | YOLOv8m]
  Training Data
    Date range         [date from — date to]
    Stores             [multi-select — filter source data]
@@ -1777,7 +1777,7 @@ Job Detail Panel (click row — right-side drawer)
  [████████████████████░░░░░] 67%
 
  CONFIGURATION
- Architecture: YOLO26n
+ Architecture: YOLOv8n
  Frames Used: 18,432
  Epochs Configured: 100
 
@@ -1795,7 +1795,7 @@ Auto-Training Schedule Panel (collapsible section bottom of page)
  Auto-Training: [Enabled ●/○]
  Frame count trigger: Every [5000 ▼] new labeled frames
  Schedule trigger:     [Weekly ▼] on [Sunday ▼] at [02:00 ▼] UTC
- Default architecture: [YOLO26n ▼]
+ Default architecture: [YOLOv8n ▼]
  Auto-promote if mAP ≥ [0.75] compared to current
 
  [Save Schedule]
@@ -4308,7 +4308,7 @@ Installed: fastapi , uvicorn , onnxruntime (CPU) or onnxruntime-gpu (GPU), ultra
  Pillow Port: 8080 (internal HTTP API) Endpoints:
 
 
- POST /infer                 # Run YOLO26 inference on base64 JPEG
+ POST /infer                 # Run YOLOv8 inference on base64 JPEG
    Request: { "image_base64": "...", "confidence": 0.70, "roi":
  [{"x":0.1,"y":0.1},...] }
    Response: { "predictions": [...], "inference_time_ms": 88, "model_version":
@@ -4551,7 +4551,7 @@ F1. DUAL-MODEL ARCHITECTURE
  │                                                         │
  │ ┌───────────────────┐     ┌───────────────────────────┐ │
  │ │ TEACHER MODEL      │    │ STUDENT MODEL             │ │
- │ │ (Roboflow)         │    │ (Custom YOLO26)           │ │
+ │ │ (Roboflow)         │    │ (Custom YOLOv8)           │ │
  │ │                    │    │                           │ │
  │ │ Instance Seg       │    │ Object Detection          │ │
  │ │ High accuracy      │    │ Lightweight               │ │
@@ -4583,8 +4583,8 @@ F2. TEACHER MODEL (Roboflow)
      {key}
 
 
-F3. STUDENT MODEL (Custom YOLO26)
-     Architecture: YOLO26n (3M params, edge-friendly) or YOLO26s (11M params, server)
+F3. STUDENT MODEL (Custom YOLOv8)
+     Architecture: YOLOv8n (3M params, edge-friendly) or YOLOv8s (11M params, server)
      Training: bootstrapped from COCO pretrained weights (not scratch)
      Deployment formats: ONNX Runtime (cross-platform) / TensorRT .engine (NVIDIA GPU) /
      PyTorch .pt (training/server)
@@ -4728,8 +4728,8 @@ F7. TRAINING JOB EXECUTION
    nc: {num_classes}
    names: {class_names_list}
 
-5. Initialize YOLO26 model from pretrained:
-   model = YOLO("yolo26n.pt") # COCO pretrained base
+5. Initialize YOLOv8 model from pretrained:
+   model = YOLO("yolov8n.pt") # COCO pretrained base
 
 6. Override Ultralytics trainer with FloorEyeDistillationTrainer:
    - Teacher model loaded in parallel
@@ -4763,7 +4763,7 @@ F7. TRAINING JOB EXECUTION
     {
       version: "v1.5.0",
       org_id: ...,
-      architecture: "yolo26n",
+      architecture: "yolov8n",
       training_job_id: ...,
       frame_count: 18432,
       map_50: 0.847,
@@ -5155,7 +5155,7 @@ model_versions
         id: str
         org_id: Optional[str]            # None = universal/pre-trained base
         version_str: str                 # e.g., "v1.4.0"
-        architecture: Literal["yolo26n", "yolo26s", "yolo26m"]
+        architecture: Literal["yolov8n", "yolov8s", "yolov8m"]
         param_count: Optional[int]
         status: Literal["draft", "validating", "staging", "production", "retired"] = "dr
         training_job_id: Optional[str]
