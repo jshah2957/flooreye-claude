@@ -15,6 +15,10 @@ async def run_roboflow_inference(
     """
     Send a frame to Roboflow Inference API and return predictions.
 
+    WARNING: This function is for auto-labeling and test-inference ONLY.
+    It must NOT be used for live detection. Live detection uses the edge
+    ONNX student model exclusively.
+
     Returns dict with:
         predictions: list of {class_name, confidence, bbox, ...}
         inference_time_ms: float

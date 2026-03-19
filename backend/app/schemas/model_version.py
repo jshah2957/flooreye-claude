@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class ModelVersionCreate(BaseModel):
     version_str: str
-    architecture: Literal["yolov8n", "yolov8s", "yolov8m", "yolo11n", "yolo11s"]
+    architecture: Literal["yolo26n", "yolo26s", "yolo26m"]
     training_job_id: Optional[str] = None
     model_source: Optional[str] = None  # "roboflow" or "yolo_cloud"
 

@@ -11,7 +11,7 @@ log = logging.getLogger("training.exporter")
 class ModelExporter:
     """Exports trained YOLO model to ONNX for edge inference.
 
-    Supports YOLOv8, YOLO11, and YOLO26 architectures.
+    Standardized on YOLO26 architecture.
     """
 
     def __init__(self, model_path: str, output_dir: str = "/app/models", architecture: str = "yolo26n"):

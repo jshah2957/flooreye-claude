@@ -34,10 +34,10 @@ class DetectionLog(BaseModel):
     frame_base64: Optional[str] = None
     frame_s3_path: Optional[str] = None
     predictions: list[Prediction] = []
-    model_source: Literal["roboflow", "student", "hybrid_escalated"]
+    model_source: Literal["student", "edge_onnx", "test_inference", "auto_label"]
     model_version_id: Optional[str] = None
     student_confidence: Optional[float] = None
-    escalated: bool = False
+    escalated: bool = False  # DEPRECATED: hybrid escalation removed, kept for backward compat
     is_flagged: bool = False
     in_training_set: bool = False
     incident_id: Optional[str] = None

@@ -94,9 +94,9 @@ class LabelSource(StrEnum):
 
 
 class ModelArchitecture(StrEnum):
-    YOLOV8N = "yolov8n"
-    YOLOV8S = "yolov8s"
-    YOLOV8M = "yolov8m"
+    YOLO26N = "yolo26n"
+    YOLO26S = "yolo26s"
+    YOLO26M = "yolo26m"
 
 
 class ModelStatus(StrEnum):

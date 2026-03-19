@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class TrainingJobConfig(BaseModel):
-    architecture: str = "yolov8n"
+    architecture: str = "yolo26n"
     date_from: Optional[datetime] = None
     date_to: Optional[datetime] = None
     store_ids: list[str] = []
@@ -14,8 +14,6 @@ class TrainingJobConfig(BaseModel):
     max_epochs: int = 100
     image_size: int = 640
     augmentation_preset: Literal["light", "standard", "heavy"] = "standard"
-    distillation_temperature: float = 4.0
-    distillation_alpha: float = 0.3
 
 
 class TrainingJob(BaseModel):

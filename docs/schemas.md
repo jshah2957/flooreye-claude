@@ -338,7 +338,7 @@ model_versions
         id: str
         org_id: Optional[str]            # None = universal/pre-trained base
         version_str: str                 # e.g., "v1.4.0"
-        architecture: Literal["yolov8n", "yolov8s", "yolov8m"]
+        architecture: Literal["yolo26n", "yolo26s", "yolo26m"]
         param_count: Optional[int]
         status: Literal["draft", "validating", "staging", "production", "retired"] = "dr
         training_job_id: Optional[str]

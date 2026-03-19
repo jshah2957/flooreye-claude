@@ -32,7 +32,7 @@ def _detection_response(d: dict) -> DetectionResponse:
         frame_base64=d.get("frame_base64"),
         frame_s3_path=d.get("frame_s3_path"),
         predictions=d.get("predictions", []),
-        model_source=d.get("model_source", "roboflow"),
+        model_source=d.get("model_source", "student"),
         model_version_id=d.get("model_version_id"),
         student_confidence=d.get("student_confidence"),
         escalated=d.get("escalated", False),

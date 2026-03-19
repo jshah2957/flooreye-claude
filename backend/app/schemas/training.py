@@ -6,17 +6,14 @@ from pydantic import BaseModel
 
 class TrainingJobCreate(BaseModel):
     architecture: Literal[
-        "yolov8n", "yolov8s", "yolov8m",
-        "yolo11n", "yolo11s",
-    ] = "yolo11n"
+        "yolo26n", "yolo26s", "yolo26m",
+    ] = "yolo26n"
     store_ids: list[str] = []
     camera_ids: list[str] = []
     human_only: bool = False
     max_epochs: int = 100
     image_size: int = 640
     augmentation_preset: Literal["light", "standard", "heavy"] = "standard"
-    distillation_temperature: float = 4.0
-    distillation_alpha: float = 0.3
 
 
 class TrainingJobResponse(BaseModel):

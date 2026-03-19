@@ -37,21 +37,26 @@
 - **No code change**: predict.py auto-detects format from output shape, so all three formats coexist
 
 ### Phase 4: Multi-Format Support (Session 26+)
-- **predict.py** now handles all formats transparently via `detect_model_type()`:
-  - YOLOv8: [1, 84, 8400] — standard 80-class COCO
-  - YOLO26: [1, 300, 6] — NMS-free end-to-end
-  - Roboflow: [1, 4+C, N] (YOLOv8-based) or [1, N, 5-7] (RF-DETR)
+- **predict.py** previously handled multiple formats (YOLOv8, YOLO26, Roboflow) via `detect_model_type()`
 - **Confidence fix**: Sigmoid normalization added for YOLO26 raw logits (scores > 1.0)
 - **Database migration**: 4964 detections + 207 incidents normalized to 0.0-1.0
 
-## Current State (v3.1.0)
+### Phase 5: YOLO26 Standardization (Cleanup)
+- **All YOLOv8 and YOLO11 code removed** from codebase (predict.py, training, schemas, UI)
+- **Standardized on YOLO26 only** — NMS-free end-to-end inference
+- Removed `postprocess_yolov8()`, `postprocess_roboflow()`, `_nms_iou()` dead code from predict.py
+- Simplified `detect_model_type()` to return "yolo26" only
+- Updated all architecture selectors (schemas, UI, constants) from yolov8n/yolo11n to yolo26n/s/m
+- **Note**: Historical references to YOLOv8/YOLO11 above are preserved for context
+
+## Current State (v4.0.0)
 
 | Component | Model | Format | Notes |
 |-----------|-------|--------|-------|
 | Edge inference | student_v2.0.onnx | YOLO26 [1,300,6] | 40-70ms on CPU |
-| Cloud training | YOLO11n (default) | Ultralytics export | YOLOv8 still supported |
+| Cloud training | YOLO26n (default) | Ultralytics export | YOLO26 only |
 | Teacher | Roboflow API | REST | Instance segmentation |
-| Model detection | Auto (predict.py) | Any supported | Shape-based heuristics |
+| Model detection | YOLO26 | predict.py | Standardized format |
 
 ## Key Fixes Applied
 

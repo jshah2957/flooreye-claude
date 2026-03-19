@@ -49,8 +49,12 @@ class DetectionListResponse(BaseModel):
 
 
 class ManualDetectionRequest(BaseModel):
-    """Optional overrides for manual detection trigger."""
-    model_source: Optional[Literal["roboflow", "student"]] = None
+    """Optional overrides for manual detection trigger.
+
+    Note: Server-side live detection via Roboflow has been removed.
+    Live detection runs on the edge agent using the ONNX student model.
+    """
+    model_source: Optional[Literal["student", "edge_onnx"]] = None
 
 
 class FlagToggleResponse(BaseModel):

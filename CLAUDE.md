@@ -13,8 +13,8 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Cache/Queue: Redis 7.2 + Celery 5.x
 - Web Frontend: React 18 + TypeScript + Shadcn UI + Tailwind + Vite
 - Mobile: React Native 0.74 + Expo SDK 51 + Expo Router 3
-- AI Teacher: Roboflow Inference API
-- AI Student: YOLO ONNX Runtime (YOLO11n default, YOLOv8/YOLO26/Roboflow auto-detected)
+- AI Annotation: Roboflow API (class sync, auto-labeling ONLY — NOT for live detection)
+- AI Inference: YOLO26 ONNX Runtime on edge (YOLO26n default, NMS-free end-to-end)
 - Edge: Docker Compose + Cloudflare Tunnel
 - Storage: AWS S3 / MinIO / Cloudflare R2
 - Push: Firebase FCM

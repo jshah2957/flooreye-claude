@@ -24,7 +24,7 @@ async def test_detection_history_with_data(client, admin_user, test_db):
         "id": str(uuid.uuid4()), "camera_id": "cam1", "store_id": "store1",
         "org_id": user["org_id"], "timestamp": now, "is_wet": True,
         "confidence": 0.85, "wet_area_percent": 2.1, "inference_time_ms": 120,
-        "predictions": [], "model_source": "roboflow", "is_flagged": False,
+        "predictions": [], "model_source": "student", "is_flagged": False,
         "in_training_set": False, "escalated": False, "incident_id": None,
     })
     resp = await client.get("/api/v1/detection/history", headers=auth_headers(token))
@@ -40,7 +40,7 @@ async def test_flag_detection(client, admin_user, test_db):
         "id": det_id, "camera_id": "cam1", "store_id": "store1",
         "org_id": user["org_id"], "timestamp": datetime.now(timezone.utc),
         "is_wet": True, "confidence": 0.9, "wet_area_percent": 3.0,
-        "inference_time_ms": 100, "predictions": [], "model_source": "roboflow",
+        "inference_time_ms": 100, "predictions": [], "model_source": "student",
         "is_flagged": False, "in_training_set": False, "escalated": False, "incident_id": None,
     })
     resp = await client.post(f"/api/v1/detection/history/{det_id}/flag", headers=auth_headers(token))

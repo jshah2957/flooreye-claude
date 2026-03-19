@@ -134,7 +134,7 @@ function SectionContent({ id }: { id: SectionId }) {
           </p>
           <ul className="mb-4 ml-6 list-disc space-y-1 text-[#1C1917]">
             <li><strong>Teacher Model</strong> — Roboflow Inference API provides high-accuracy cloud-based detection</li>
-            <li><strong>Student Model</strong> — YOLOv8 ONNX model runs locally on edge devices for real-time inference</li>
+            <li><strong>Student Model</strong> — YOLO26 ONNX model runs locally on edge devices for real-time inference</li>
             <li><strong>4-Layer Validation</strong> — Confidence scoring, temporal consistency, ROI filtering, and dry reference comparison</li>
           </ul>
           <h3 className="mb-2 mt-6 text-lg font-semibold text-[#1C1917]">Detection History</h3>
@@ -170,7 +170,7 @@ function SectionContent({ id }: { id: SectionId }) {
           <h3 className="mb-2 mt-6 text-lg font-semibold text-[#1C1917]">Training Jobs</h3>
           <p className="mb-3 text-[#1C1917] leading-relaxed">
             Start a training job to distill knowledge from the teacher model into a student model.
-            Configure the architecture (YOLOv8n/s/m), number of epochs, and augmentation preset.
+            Configure the architecture (YOLO26n/s/m), number of epochs, and augmentation preset.
             Monitor training progress in real time with epoch tracking.
           </p>
           <h3 className="mb-2 mt-6 text-lg font-semibold text-[#1C1917]">Model Registry</h3>

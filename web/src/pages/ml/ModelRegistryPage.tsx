@@ -31,7 +31,7 @@ export default function ModelRegistryPage() {
   const [selectedModel, setSelectedModel] = useState<ModelVersion | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newVersion, setNewVersion] = useState("");
-  const [newArch, setNewArch] = useState("yolov8n");
+  const [newArch, setNewArch] = useState("yolo26n");
 
   const { data, isLoading } = useQuery({
     queryKey: ["models", statusFilter],
@@ -209,9 +209,9 @@ export default function ModelRegistryPage() {
                 <label className="mb-1 block text-sm font-medium text-[#1C1917]">Architecture *</label>
                 <select value={newArch} onChange={(e) => setNewArch(e.target.value)}
                   className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-                  <option value="yolov8n">YOLOv8n (Nano)</option>
-                  <option value="yolov8s">YOLOv8s (Small)</option>
-                  <option value="yolov8m">YOLOv8m (Medium)</option>
+                  <option value="yolo26n">YOLO26n (Nano)</option>
+                  <option value="yolo26s">YOLO26s (Small)</option>
+                  <option value="yolo26m">YOLO26m (Medium)</option>
                 </select>
               </div>
               <button onClick={() => createMutation.mutate()} disabled={!newVersion || createMutation.isPending}
