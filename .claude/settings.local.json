@@ -7,7 +7,9 @@
       "Bash(docker compose -f docker-compose.prod.yml exec backend python -c \":*)",
       "Bash(docker compose:*)",
       "Bash(npm run:*)",
-      "Bash(grep -l \"annotator\\\\|TPLink\\\\|tplink\\\\|buffer_flush\\\\|auto_off\" edge-agent/agent/*.py)"
+      "Bash(grep -l \"annotator\\\\|TPLink\\\\|tplink\\\\|buffer_flush\\\\|auto_off\" edge-agent/agent/*.py)",
+      "Bash(curl -s -m 5 -o /dev/null -w \"Web app: %{http_code} %{time_total}s\\\\n\" https://app.puddlewatch.com/login)",
+      "Bash(curl -s -m 5 -o /dev/null -w \"Health: %{http_code} %{time_total}s\\\\n\" https://app.puddlewatch.com/api/v1/health)"
     ]
   }
 }
