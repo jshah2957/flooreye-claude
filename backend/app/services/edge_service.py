@@ -3,7 +3,7 @@ Edge Agent Service — provisioning, registration, heartbeat, commands, agent CR
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from fastapi import HTTPException, status
@@ -39,6 +39,7 @@ async def provision_agent(
         "store_id": store_id,
         "type": "edge_agent",
         "iat": now,
+        "exp": now + timedelta(days=settings.EDGE_TOKEN_EXPIRE_DAYS),
     }
     token = jwt.encode(payload, settings.EDGE_SECRET_KEY, algorithm="HS256")
     token_hash = hash_password(token)

@@ -55,6 +55,26 @@ def decrypt_config(encrypted: str) -> dict:
     return json.loads(plaintext.decode("utf-8"))
 
 
+def encrypt_string(plaintext: str) -> str:
+    """Encrypt a plaintext string to a base64-encoded AES-256-GCM ciphertext."""
+    key = _get_key()
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
+    return base64.b64encode(nonce + ciphertext).decode("utf-8")
+
+
+def decrypt_string(encrypted: str) -> str:
+    """Decrypt a base64-encoded AES-256-GCM ciphertext back to a plaintext string."""
+    key = _get_key()
+    aesgcm = AESGCM(key)
+    raw = base64.b64decode(encrypted)
+    nonce = raw[:12]
+    ciphertext = raw[12:]
+    plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+    return plaintext.decode("utf-8")
+
+
 def mask_secrets(config_dict: dict) -> dict:
     """Return a copy with sensitive fields masked for display."""
     sensitive_keys = {

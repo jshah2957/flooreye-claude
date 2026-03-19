@@ -66,8 +66,15 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     if not camera:
         return {"error": "Camera not found", "camera_id": camera_id}
 
-    # Capture frame
-    stream_url = camera["stream_url"]
+    # Decrypt stream_url (supports both encrypted and legacy plaintext)
+    from app.core.encryption import decrypt_string
+    if camera.get("stream_url_encrypted"):
+        try:
+            stream_url = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            stream_url = camera.get("stream_url", "")
+    else:
+        stream_url = camera.get("stream_url", "")
     cap = cv2.VideoCapture(stream_url)
     if not cap.isOpened():
         return {"error": "Cannot connect to stream", "camera_id": camera_id}

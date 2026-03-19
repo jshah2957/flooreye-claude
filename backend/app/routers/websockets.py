@@ -25,6 +25,7 @@ import logging
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
+from app.core.constants import ROLE_HIERARCHY, UserRole
 from app.core.security import decode_token
 from app.db.database import get_db
 
@@ -213,6 +214,49 @@ async def _validate_ws_token(websocket: WebSocket, token: str | None) -> dict | 
         return None
 
 
+def _is_super_admin(payload: dict) -> bool:
+    """Check if the JWT payload indicates a super_admin role."""
+    return payload.get("role") == UserRole.SUPER_ADMIN
+
+
+def _has_min_role(payload: dict, minimum_role: str) -> bool:
+    """Check if the user meets a minimum role requirement."""
+    user_role = payload.get("role", "")
+    if user_role not in ROLE_HIERARCHY:
+        return False
+    return ROLE_HIERARCHY.index(user_role) >= ROLE_HIERARCHY.index(minimum_role)
+
+
+async def _verify_camera_org(websocket: WebSocket, camera_id: str, payload: dict) -> bool:
+    """Verify the camera belongs to the user's org. Returns True if allowed."""
+    if _is_super_admin(payload):
+        return True
+    db = get_db()
+    camera = await db.cameras.find_one({"id": camera_id}, {"org_id": 1})
+    if not camera:
+        await websocket.close(code=4003, reason="Camera not found")
+        return False
+    if camera.get("org_id") != payload.get("org_id"):
+        await websocket.close(code=4003, reason="Org mismatch")
+        return False
+    return True
+
+
+async def _verify_training_job_org(websocket: WebSocket, job_id: str, payload: dict) -> bool:
+    """Verify the training job belongs to the user's org. Returns True if allowed."""
+    if _is_super_admin(payload):
+        return True
+    db = get_db()
+    job = await db.training_jobs.find_one({"id": job_id}, {"org_id": 1})
+    if not job:
+        await websocket.close(code=4003, reason="Training job not found")
+        return False
+    if job.get("org_id") != payload.get("org_id"):
+        await websocket.close(code=4003, reason="Org mismatch")
+        return False
+    return True
+
+
 # ── WebSocket Endpoints ─────────────────────────────────────────
 
 
@@ -237,6 +281,10 @@ async def live_detections(websocket: WebSocket, token: str | None = Query(None))
 async def live_frame(websocket: WebSocket, camera_id: str, token: str | None = Query(None)):
     payload = await _validate_ws_token(websocket, token)
     if not payload:
+        return
+
+    # C-003: Verify camera belongs to user's org
+    if not await _verify_camera_org(websocket, camera_id, payload):
         return
 
     channel = f"live-frame:{camera_id}"
@@ -270,6 +318,11 @@ async def edge_status(websocket: WebSocket, token: str | None = Query(None)):
     if not payload:
         return
 
+    # Enforce operator+ role for edge-status (admin channel)
+    if not _has_min_role(payload, UserRole.OPERATOR):
+        await websocket.close(code=4003, reason="Insufficient role")
+        return
+
     org_id = payload.get("org_id", "")
     channel = f"edge-status:{org_id}"
     await manager.connect(channel, websocket)
@@ -284,6 +337,10 @@ async def edge_status(websocket: WebSocket, token: str | None = Query(None)):
 async def training_job(websocket: WebSocket, job_id: str, token: str | None = Query(None)):
     payload = await _validate_ws_token(websocket, token)
     if not payload:
+        return
+
+    # C-004: Verify training job belongs to user's org
+    if not await _verify_training_job_org(websocket, job_id, payload):
         return
 
     channel = f"training-job:{job_id}"
@@ -301,6 +358,11 @@ async def system_logs(websocket: WebSocket, token: str | None = Query(None)):
     if not payload:
         return
 
+    # Enforce org_admin+ role for system-logs (admin channel)
+    if not _has_min_role(payload, UserRole.ORG_ADMIN):
+        await websocket.close(code=4003, reason="Insufficient role")
+        return
+
     org_id = payload.get("org_id", "")
     channel = f"system-logs:{org_id}"
     await manager.connect(channel, websocket)
@@ -315,6 +377,11 @@ async def system_logs(websocket: WebSocket, token: str | None = Query(None)):
 async def detection_control(websocket: WebSocket, token: str | None = Query(None)):
     payload = await _validate_ws_token(websocket, token)
     if not payload:
+        return
+
+    # Enforce operator+ role for detection-control (admin channel)
+    if not _has_min_role(payload, UserRole.OPERATOR):
+        await websocket.close(code=4003, reason="Insufficient role")
         return
 
     org_id = payload.get("org_id", "")

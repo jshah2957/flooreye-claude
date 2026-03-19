@@ -11,4 +11,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY agent/ ./agent/
 
-CMD ["python", "-m", "agent.main"]
+WORKDIR /app/agent
+CMD ["python", "main.py"]

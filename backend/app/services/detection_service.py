@@ -12,6 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 log = logging.getLogger(__name__)
 
+from app.core.encryption import decrypt_string
 from app.services.inference_service import run_roboflow_inference, compute_detection_summary
 from app.services.validation_pipeline import run_validation_pipeline
 from app.core.org_filter import org_query
@@ -48,8 +49,14 @@ async def run_manual_detection(
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    # Capture frame from camera (non-blocking)
-    stream_url = camera["stream_url"]
+    # Decrypt stream_url (supports both encrypted and legacy plaintext)
+    if camera.get("stream_url_encrypted"):
+        try:
+            stream_url = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            stream_url = camera.get("stream_url", "")
+    else:
+        stream_url = camera.get("stream_url", "")
     success, frame_base64 = await _capture_frame(stream_url)
     if not success:
         raise HTTPException(
@@ -188,11 +195,17 @@ async def _auto_collect_frame(
             "store_id": detection_doc.get("store_id"),
             "camera_id": detection_doc.get("camera_id"),
             "detection_id": detection_doc.get("id"),
-            "frame_base64": None,  # frames not stored inline; use S3 when configured
-            "label": label,
-            "label_source": "auto",
+            "frame_path": detection_doc.get("frame_s3_path", ""),
+            "thumbnail_path": None,
+            "label_class": label,
+            "floor_type": None,
+            "label_source": "student_pseudolabel",
+            "teacher_logits": None,
+            "teacher_confidence": None,
+            "annotations_id": None,
+            "roboflow_sync_status": "not_sent",
             "split": split,
-            "confidence": confidence,
+            "included": True,
             "created_at": now,
         }
         await db.dataset_frames.insert_one(frame_doc)

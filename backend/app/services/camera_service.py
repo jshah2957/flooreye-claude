@@ -1,9 +1,11 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.encryption import decrypt_string, encrypt_string
 from app.core.org_filter import org_query
 from app.schemas.camera import (
     CameraCreate,
@@ -11,6 +13,33 @@ from app.schemas.camera import (
     InferenceModeUpdate,
     ROICreate,
 )
+
+log = logging.getLogger(__name__)
+
+
+def _encrypt_stream_url(url: str) -> str:
+    """Encrypt a stream URL for storage."""
+    return encrypt_string(url)
+
+
+def _decrypt_camera(camera: dict) -> dict:
+    """Decrypt stream_url from a camera document.
+
+    Handles three cases:
+    1. Camera has stream_url_encrypted — decrypt it into stream_url
+    2. Camera has only plaintext stream_url (legacy) — return as-is
+    3. Neither — set stream_url to None
+    """
+    if camera.get("stream_url_encrypted"):
+        try:
+            camera["stream_url"] = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            log.warning("Failed to decrypt stream_url for camera %s, falling back to plaintext", camera.get("id"))
+            # Fall back to plaintext if it exists
+            if not camera.get("stream_url"):
+                camera["stream_url"] = None
+    # If no encrypted value, keep whatever stream_url is already there (legacy migration path)
+    return camera
 
 
 # ── Camera CRUD ─────────────────────────────────────────────────
@@ -33,7 +62,8 @@ async def create_camera(
         "org_id": org_id,
         "name": data.name,
         "stream_type": data.stream_type,
-        "stream_url": data.stream_url,
+        "stream_url": None,
+        "stream_url_encrypted": _encrypt_stream_url(data.stream_url),
         "credentials": data.credentials,
         "status": "offline",
         "fps_config": data.fps_config,
@@ -52,7 +82,7 @@ async def create_camera(
         "updated_at": now,
     }
     await db.cameras.insert_one(camera_doc)
-    return camera_doc
+    return _decrypt_camera(camera_doc)
 
 
 async def get_camera(db: AsyncIOMotorDatabase, camera_id: str, org_id: str) -> dict:
@@ -61,7 +91,7 @@ async def get_camera(db: AsyncIOMotorDatabase, camera_id: str, org_id: str) -> d
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
         )
-    return camera
+    return _decrypt_camera(camera)
 
 
 async def list_cameras(
@@ -81,7 +111,7 @@ async def list_cameras(
     total = await db.cameras.count_documents(query)
     cursor = db.cameras.find(query).skip(offset).limit(limit).sort("created_at", -1)
     cameras = await cursor.to_list(length=limit)
-    return cameras, total
+    return [_decrypt_camera(c) for c in cameras], total
 
 
 async def update_camera(
@@ -90,6 +120,11 @@ async def update_camera(
     updates = data.model_dump(exclude_unset=True)
     if not updates:
         return await get_camera(db, camera_id, org_id)
+
+    # If stream_url is being updated, encrypt it
+    if "stream_url" in updates and updates["stream_url"] is not None:
+        updates["stream_url_encrypted"] = _encrypt_stream_url(updates["stream_url"])
+        updates["stream_url"] = None  # Clear plaintext
 
     updates["updated_at"] = datetime.now(timezone.utc)
 
@@ -102,7 +137,7 @@ async def update_camera(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
         )
-    return result
+    return _decrypt_camera(result)
 
 
 async def delete_camera(
@@ -285,7 +320,7 @@ async def update_inference_mode(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
         )
-    return result
+    return _decrypt_camera(result)
 
 
 # ── ROI ─────────────────────────────────────────────────────────

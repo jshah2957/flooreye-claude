@@ -13,4 +13,5 @@ COPY inference-server/ ./inference-server/
 
 EXPOSE 8080
 
-CMD ["uvicorn", "inference-server.main:app", "--host", "0.0.0.0", "--port", "8080"]
+WORKDIR /app/inference-server
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

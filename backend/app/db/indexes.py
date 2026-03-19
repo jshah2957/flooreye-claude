@@ -122,7 +122,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     # detection_control_settings
     await db.detection_control_settings.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
-        IndexModel([("scope", ASCENDING), ("scope_id", ASCENDING)], unique=True),
+        IndexModel([("org_id", ASCENDING), ("scope", ASCENDING), ("scope_id", ASCENDING)], unique=True),
     ])
 
     # detection_class_overrides

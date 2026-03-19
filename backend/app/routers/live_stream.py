@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.encryption import decrypt_string
 from app.core.org_filter import org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
@@ -50,7 +51,15 @@ async def get_frame(
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    frame_b64 = await _capture_single_frame(camera["stream_url"])
+    # Decrypt stream_url (supports both encrypted and legacy plaintext)
+    if camera.get("stream_url_encrypted"):
+        try:
+            _stream_url = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            _stream_url = camera.get("stream_url", "")
+    else:
+        _stream_url = camera.get("stream_url", "")
+    frame_b64 = await _capture_single_frame(_stream_url)
     if not frame_b64:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot capture frame from camera")
 

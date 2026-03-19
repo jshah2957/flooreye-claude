@@ -10,6 +10,7 @@ import cv2
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.encryption import decrypt_string
 from app.core.org_filter import org_query
 
 
@@ -110,7 +111,14 @@ async def get_camera_frame(db: AsyncIOMotorDatabase, camera_id: str, org_id: str
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    stream_url = camera["stream_url"]
+    # Decrypt stream_url (supports both encrypted and legacy plaintext)
+    if camera.get("stream_url_encrypted"):
+        try:
+            stream_url = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            stream_url = camera.get("stream_url", "")
+    else:
+        stream_url = camera.get("stream_url", "")
     cap = cv2.VideoCapture(stream_url)
     if not cap.isOpened():
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot connect to camera")
