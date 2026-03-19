@@ -45,9 +45,48 @@
 | 2026-03-17 | Edge container not picking up predict.py fixes | Rebuilt with full repo inference-server code |
 | 2026-03-17 | Hardcoded class_id==0 for wet detection | Changed to class name lookup via WET_CLASSES set |
 
-## Architecture Decision Record
+## Grand Mission Audit (2026-03-19)
 
-See `.claude/grandmission/MODEL_DECISIONS.md` for the architect-approved decision record confirming:
-- YOLO26 model on edge is acceptable for pilot
-- Docs should be updated to match code (not vice versa)
-- All three model formats supported without conflict
+8-domain investigation found 85 contradictions across the entire system.
+Architect ruled on all findings. 20 fixes implemented (9 P0 + 11 P1).
+
+### P0 Blockers Fixed (9)
+| ID | Issue | Fix |
+|----|-------|-----|
+| C-001 | Edge docker-compose.yml was empty (0 bytes) | Created 4-service stack (inference, agent, redis, cloudflared) |
+| C-002 | Dockerfile CMD paths broken (ModuleNotFoundError) | Fixed WORKDIR + CMD to match bare import style |
+| C-003 | WebSocket /ws/live-frame — cross-tenant camera access | Added org_id verification + super_admin bypass |
+| C-004 | WebSocket /ws/training-job — cross-tenant data leak | Added org_id verification on job lookup |
+| C-005 | Edge JWT tokens had no expiry (valid forever) | Added 180-day exp claim using EDGE_TOKEN_EXPIRE_DAYS |
+| C-006 | No password complexity (accepted "1") | 8+ chars, upper/lower/digit required via field_validator |
+| C-007 | detection_control index missing org_id (multi-tenant collision) | Changed unique index to (org_id, scope, scope_id) |
+| C-008 | dataset_frames auto-collect wrong field names | Fixed label→label_class, auto→student_pseudolabel, added frame_path |
+| C-009 | Camera stream_url stored plaintext (has RTSP creds) | AES-256-GCM encryption with legacy plaintext fallback |
+
+### P1 Critical Fixed (11)
+| ID | Issue | Fix |
+|----|-------|-----|
+| C-010 | CameraDetailPage 5/8 tabs were stubs | Live Feed, Detection History, Config, Overrides functional |
+| C-011 | notification_deliveries index on wrong field | Changed created_at→sent_at, added status index |
+| C-012 | org_admin could create super_admin (privilege escalation) | Role hierarchy check in create_user() |
+| C-013 | S3 boto3 calls blocked async event loop | Wrapped all calls in asyncio.to_thread() |
+| C-014 | Roboflow config check read plaintext (data encrypted) | Decrypt config_encrypted before checking api_key |
+| C-015 | Auto-label wrote to wrong collection (auto_label_jobs vs training_jobs) | Unified to training_jobs + Celery dispatch |
+| C-016 | Roboflow sync jobs never dispatched to worker | Added sync_to_roboflow.delay() after job creation |
+| C-017 | detection_class_overrides missing unique index | Added compound index (org_id, scope, scope_id, class_id) |
+| C-018 | Edge ROI masking accepted but ignored | Implemented apply_roi_mask() with PIL polygon fill |
+| C-019 | MongoDB unauthenticated in production compose | Added MONGO_INITDB credentials + backend URI override |
+| C-020 | S3 credential mismatch (config vs compose defaults) | Compose uses env var substitution matching config defaults |
+
+### Known Deferred Items (P2/P3 — post-pilot)
+- Token revocation mechanism (logout only clears cookie)
+- Mobile app (web-only pilot, mobile deferred)
+- ML training pipeline (stub — uses pre-trained Roboflow model)
+- Hybrid inference on edge (local-only, no Roboflow escalation)
+- Per-endpoint rate limiting refinement
+- Audit log writes (indexes exist, no write implementations)
+
+## Architecture Decision Records
+
+See `.claude/grandmission/ARCHITECT_DECISIONS_v2.md` for the full 85-contradiction ruling.
+See `.claude/grandmission/MODEL_DECISIONS.md` for model-specific decisions.
