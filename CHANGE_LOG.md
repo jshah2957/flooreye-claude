@@ -1,5 +1,36 @@
 # FloorEye Change Log
 
+## v4.0.0 — Architecture Overhaul (2026-03-19)
+
+### Architecture Changes
+- Standardized on YOLO26 NMS-free inference (removed YOLOv8/v11 entirely)
+- Roboflow role changed from "teacher model for live inference" to "annotation and class management only"
+- Self-training pipeline removed (use Roboflow for model training)
+- Knowledge distillation removed
+
+### New Features
+- **Batch inference**: /infer-batch endpoint processes multiple camera frames in single ONNX call
+- **Class sync pipeline**: Roboflow → Cloud → Edge with push commands
+- **Model push**: Cloud pushes model versions to edge agents with hot-reload
+- **Config push**: Cloud pushes confidence, FPS, ROI, detection rules to edge
+- **Dataset organization**: Standardized S3 path structure with metadata JSON
+- **Auto-cleanup**: Configurable retention (30 days frames, 90 days clips)
+- **Duplicate detection**: SHA256 hash check before saving frames
+
+### Code Removed (1,191 lines)
+- training/kd_loss.py — knowledge distillation loss
+- training/distillation.py — distillation trainer
+- postprocess_yolov8() — dead YOLOv8 postprocessing
+- postprocess_roboflow(), _postprocess_roboflow_detr() — dead Roboflow postprocessing
+- _nms_iou() — NMS for YOLOv8 (YOLO26 is NMS-free)
+- Roboflow live inference calls from detection_service and detection_worker
+- Hybrid inference logic from docs
+
+### Files Changed
+- 35+ files modified across backend, edge-agent, web, training, docs
+
+---
+
 ## v3.5.0 — Verified Pilot Release (2026-03-19)
 
 ### Verification Results

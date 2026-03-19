@@ -53,26 +53,10 @@ F3. STUDENT MODEL (Custom YOLO)
      Note: predict.py detect_model_type() auto-detects format from ONNX output shape
 
 
-F4. KNOWLEDGE DISTILLATION ALGORITHM
-Loss function:
-
-  Total_Loss = α × CE_Loss(student_hard_pred, ground_truth_label)
-             + (1-α) × KL_Divergence(
-                 student_logits / T,
-                 teacher_logits / T
-               )
-
-  Where:
-    α = 0.3         (weight on hard label loss)
-    T = 4           (temperature — softens probability distribution)
-    CE_Loss = standard cross-entropy
-    KL_Divergence = Kullback-Leibler divergence on softened outputs
-
-
-Why temperature softening: teacher's high-confidence predictions become softer, encoding
-"near-miss" class relationships that hard labels miss. Student learns richer representations.
-Implementation: Custom Ultralytics trainer subclass in training/distillation.py that
-injects KD loss alongside standard detection loss.
+F4. [REMOVED] KNOWLEDGE DISTILLATION
+     Removed in v4.0.0. Self-training and knowledge distillation are no longer part of the pipeline.
+     Model training is managed through Roboflow. The files training/kd_loss.py and
+     training/distillation.py have been deleted.
 
 F5. [REMOVED] HYBRID INFERENCE LOGIC
      Hybrid inference (student tries first, escalates to Roboflow teacher) has been removed.
@@ -115,7 +99,10 @@ After raw inference results are returned, the validation_pipeline.py applies per
         return filtered
 
 
-F7. TRAINING JOB EXECUTION
+F7. [REMOVED] TRAINING JOB EXECUTION
+     Removed in v4.0.0. Training is managed through Roboflow.
+     The training_worker.py now returns an honest message directing users to Roboflow.
+     Historical spec preserved below for reference:
 
     Celery worker (training_worker.py) receives task with job_config:
 
@@ -142,9 +129,8 @@ F7. TRAINING JOB EXECUTION
 5. Initialize YOLO model from pretrained:
    model = YOLO("yolo26n.pt") # COCO pretrained base
 
-6. Override Ultralytics trainer with FloorEyeDistillationTrainer:
-   - Teacher model loaded in parallel
-   - Combined CE + KL loss computed per batch
+6. [REMOVED] FloorEyeDistillationTrainer removed in v4.0.0.
+   Standard model.train() used if training is re-enabled in future.
 
 7. model.train(
      data=yaml_path,
