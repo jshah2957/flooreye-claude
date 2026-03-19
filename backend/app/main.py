@@ -105,7 +105,7 @@ def create_app() -> FastAPI:
         all_ok = all(v == "ok" for v in checks.values())
         return {
             "status": "healthy" if all_ok else "degraded",
-            "version": "2.5.0",
+            "version": "3.0.1",
             "environment": settings.ENVIRONMENT,
             "checks": checks,
         }
