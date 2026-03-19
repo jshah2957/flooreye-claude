@@ -46,11 +46,11 @@ function CameraCell({ camera }: { camera: CameraType }) {
         const res = await api.get(`/live/stream/${camera.id}/frame`);
         if (!cancelled && res.data?.data?.frame_base64) {
           setFrameData(res.data.data.frame_base64);
+          setLoading(false);
         }
       } catch {
-        // Camera may not be streaming
-      } finally {
-        if (!cancelled) setLoading(false);
+        // Camera may not be streaming — keep loading until first frame
+        if (!cancelled && frameData) setLoading(false);
       }
     };
 

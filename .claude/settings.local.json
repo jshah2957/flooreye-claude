@@ -9,7 +9,13 @@
       "Bash(npm run:*)",
       "Bash(grep -l \"annotator\\\\|TPLink\\\\|tplink\\\\|buffer_flush\\\\|auto_off\" edge-agent/agent/*.py)",
       "Bash(curl -s -m 5 -o /dev/null -w \"Web app: %{http_code} %{time_total}s\\\\n\" https://app.puddlewatch.com/login)",
-      "Bash(curl -s -m 5 -o /dev/null -w \"Health: %{http_code} %{time_total}s\\\\n\" https://app.puddlewatch.com/api/v1/health)"
+      "Bash(curl -s -m 5 -o /dev/null -w \"Health: %{http_code} %{time_total}s\\\\n\" https://app.puddlewatch.com/api/v1/health)",
+      "Bash(docker exec:*)",
+      "Bash(cp C:/Users/jshah/flooreye/edge-agent/inference-server/main.py C:/Users/jshah/flooreye-edge-test/inference-server/main.py)",
+      "Bash(cp C:/Users/jshah/flooreye/edge-agent/inference-server/model_loader.py C:/Users/jshah/flooreye-edge-test/inference-server/model_loader.py)",
+      "Bash(cp C:/Users/jshah/flooreye/edge-agent/inference-server/predict.py C:/Users/jshah/flooreye-edge-test/inference-server/predict.py)",
+      "Bash(curl -s http://localhost:8080/health)",
+      "Bash(python -c \"import sys,json; print\\(json.dumps\\(json.loads\\(sys.stdin.read\\(\\)\\),indent=2\\)\\)\")"
     ]
   }
 }
