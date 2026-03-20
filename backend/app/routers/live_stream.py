@@ -63,10 +63,19 @@ async def get_frame(
     if not frame_b64:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot capture frame from camera")
 
+    ts = datetime.now(timezone.utc).isoformat()
+
+    # Also publish to WebSocket for real-time subscribers
+    try:
+        from app.routers.websockets import publish_frame
+        await publish_frame(camera_id, frame_b64, ts)
+    except Exception:
+        pass
+
     return {
         "data": {
             "frame_base64": frame_b64,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": ts,
             "camera_id": camera_id,
             "camera_name": camera.get("name", camera_id),
         }
