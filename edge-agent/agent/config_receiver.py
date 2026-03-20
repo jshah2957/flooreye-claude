@@ -267,6 +267,10 @@ async def add_device_from_cloud(request: Request):
         device_type=body.get("type", "tplink"),
         protocol=body.get("protocol", "tcp"),
     )
+    # Store cloud device ID if provided
+    cloud_device_id = body.get("cloud_device_id", "")
+    if cloud_device_id:
+        _local_config.update_device(device["id"], cloud_device_id=cloud_device_id)
 
     # Reload controllers
     try:
@@ -275,8 +279,8 @@ async def add_device_from_cloud(request: Request):
     except Exception:
         pass
 
-    log.info("Device added from cloud: %s (%s)", name, ip)
-    return {"status": "added", "device_id": device["id"], "name": name}
+    log.info("Device added from cloud: %s (%s, cloud_id=%s)", name, ip, cloud_device_id)
+    return {"status": "added", "device_id": device["id"], "cloud_device_id": cloud_device_id, "name": name}
 
 
 @app.get("/api/stream/{camera_id}/frame")

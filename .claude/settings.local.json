@@ -46,7 +46,8 @@
       "Bash(find /c/Users/jshah/flooreye/edge-agent -name *.py)",
       "Bash(__NEW_LINE_737146a7bfd3a2da__ echo:*)",
       "Bash(python -c \":*)",
-      "Bash(__NEW_LINE_bad6a4377af5698e__ echo:*)"
+      "Bash(__NEW_LINE_bad6a4377af5698e__ echo:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

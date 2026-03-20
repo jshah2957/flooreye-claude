@@ -37,15 +37,18 @@ app.mount("/static", StaticFiles(directory=os.path.join(WEB_DIR, "static")), nam
 # These are set by main.py before starting the server
 _local_config = None
 _camera_manager = None
+_device_manager = None
 _agent_info = {}
 _tplink_ctrl = None
 
 
-def init(local_config, camera_manager=None, agent_info: dict | None = None, tplink_ctrl=None):
+def init(local_config, camera_manager=None, device_manager=None,
+         agent_info: dict | None = None, tplink_ctrl=None):
     """Initialize with references to agent components."""
-    global _local_config, _camera_manager, _agent_info, _tplink_ctrl
+    global _local_config, _camera_manager, _device_manager, _agent_info, _tplink_ctrl
     _local_config = local_config
     _camera_manager = camera_manager
+    _device_manager = device_manager
     _agent_info = agent_info or {}
     _tplink_ctrl = tplink_ctrl
 
@@ -184,6 +187,15 @@ async def add_device(request: Request):
         raise HTTPException(400, "name and ip are required")
     device = _local_config.add_device(name, ip, device_type, protocol)
     _reload_device_controllers()
+    # Register with cloud
+    if _device_manager:
+        try:
+            cloud_id = await _device_manager.register_device(device)
+            if cloud_id:
+                _local_config.update_device(device["id"], cloud_device_id=cloud_id)
+                device["cloud_device_id"] = cloud_id
+        except Exception as e:
+            log.warning("Cloud device registration failed (will retry): %s", e)
     return {"data": device}
 
 
@@ -204,8 +216,16 @@ async def edit_device(device_id: str, request: Request):
 
 @app.delete("/devices/{device_id}")
 async def remove_device(device_id: str):
-    if not _local_config.remove_device(device_id):
+    device = _local_config.get_device(device_id)
+    if not device:
         raise HTTPException(404, "Device not found")
+    # Unregister from cloud
+    if _device_manager and device.get("cloud_device_id"):
+        try:
+            await _device_manager.unregister_device(device["cloud_device_id"])
+        except Exception:
+            pass
+    _local_config.remove_device(device_id)
     _reload_device_controllers()
     return {"status": "removed"}
 

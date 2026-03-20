@@ -145,24 +145,55 @@ async def add_device_via_edge(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    """Add IoT device via edge: tell edge to add to its local config.
+    """Add IoT device via edge: create in MongoDB + tell edge to add locally.
 
     Body: {store_id, name, ip, type, protocol}
-    Returns: {edge_ack}
+    Returns: {cloud_device_id, edge_ack}
     """
     store_id = body.get("store_id")
     name = body.get("name", "").strip()
     ip = body.get("ip", "").strip()
+    device_type = body.get("type", "tplink")
     if not store_id or not name or not ip:
         raise HTTPException(400, "store_id, name, and ip are required")
 
     org_id = current_user.get("org_id", "")
     agent = await find_store_agent(db, store_id, org_id)
 
-    edge_ack = await proxy_to_edge(agent, "/api/devices/add-from-cloud", {
+    # Create device in MongoDB first
+    now = datetime.now(timezone.utc)
+    device_id = str(uuid.uuid4())
+    device_doc = {
+        "id": device_id,
+        "org_id": org_id,
+        "store_id": store_id,
         "name": name,
+        "device_type": device_type if device_type in ("sign", "alarm", "light", "speaker", "other") else "other",
+        "control_method": "mqtt" if device_type == "mqtt" else "http",
         "ip": ip,
-        "type": body.get("type", "tplink"),
         "protocol": body.get("protocol", "tcp"),
-    })
-    return {"data": edge_ack}
+        "edge_agent_id": agent["id"],
+        "assigned_cameras": [],
+        "trigger_on_any": True,
+        "auto_off_seconds": 600,
+        "status": "online",
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.devices.insert_one(device_doc)
+
+    # Tell edge to add device
+    edge_ack = None
+    try:
+        edge_ack = await proxy_to_edge(agent, "/api/devices/add-from-cloud", {
+            "name": name,
+            "ip": ip,
+            "type": device_type,
+            "protocol": body.get("protocol", "tcp"),
+            "cloud_device_id": device_id,
+        })
+    except Exception as e:
+        log.warning("Edge device add ACK failed: %s", e)
+
+    return {"data": {"cloud_device_id": device_id, "edge_ack": edge_ack}}

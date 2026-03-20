@@ -639,7 +639,7 @@ async def validation_settings_sync_loop(validator: "DetectionValidator"):
         await sync_validation_settings(validator)
 
 
-async def start_web_servers(lc, cam_mgr, cam_objects_ref, tplink_ctrl_ref=None):
+async def start_web_servers(lc, cam_mgr, dev_mgr_ref, cam_objects_ref, tplink_ctrl_ref=None):
     """Start edge web UI (8090) and config receiver (8091) as background tasks."""
     import sys
     import uvicorn
@@ -651,7 +651,7 @@ async def start_web_servers(lc, cam_mgr, cam_objects_ref, tplink_ctrl_ref=None):
 
     # Initialize web UI
     from web.app import app as web_app, init as web_init
-    web_init(lc, cam_mgr, {"agent_id": config.AGENT_ID, "model_version": "unknown"}, tplink_ctrl=tplink_ctrl_ref)
+    web_init(lc, cam_mgr, dev_mgr_ref, {"agent_id": config.AGENT_ID, "model_version": "unknown"}, tplink_ctrl=tplink_ctrl_ref)
 
     # Initialize config receiver
     from config_receiver import app as receiver_app, init as receiver_init
@@ -723,6 +723,9 @@ async def main():
     from camera_manager import CameraManager
     cam_mgr = CameraManager(lc)
 
+    from device_manager import DeviceManager
+    dev_mgr = DeviceManager(lc)
+
     # Semaphore to limit concurrent inference calls across all cameras
     inference_semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_INFERENCES)
 
@@ -736,6 +739,9 @@ async def main():
 
     # Register all unregistered cameras with cloud
     await cam_mgr.sync_all_cameras()
+
+    # Register all unregistered devices with cloud
+    await dev_mgr.sync_all_devices()
 
     # Check for model updates before starting detection
     await check_and_download_model(inference)
@@ -771,7 +777,7 @@ async def main():
         asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
         asyncio.create_task(cleanup_old_files_loop()),
         asyncio.create_task(validation_settings_sync_loop(validator)),
-        asyncio.create_task(start_web_servers(lc, cam_mgr, cam_objects, tplink_ctrl)),
+        asyncio.create_task(start_web_servers(lc, cam_mgr, dev_mgr, cam_objects, tplink_ctrl)),
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))
