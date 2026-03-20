@@ -320,6 +320,58 @@ async def add_device_from_cloud(request: Request):
     return {"status": "added", "device_id": device["id"], "cloud_device_id": cloud_device_id, "name": name}
 
 
+## ── Clip Recording ───────────────────────────────────────────────
+
+_clip_recorder = None
+
+
+def init_clip_recorder(recorder):
+    global _clip_recorder
+    _clip_recorder = recorder
+
+
+@app.post("/api/clips/start")
+async def start_clip(request: Request):
+    """Start recording a clip from a camera."""
+    body = await request.json()
+    camera_id = body.get("camera_id", "")
+    duration = body.get("duration", 30)
+
+    cam = None
+    if _local_config:
+        cam = _local_config.get_camera_by_cloud_id(camera_id)
+        if not cam:
+            cam = _local_config.get_camera(camera_id)
+    if not cam:
+        raise HTTPException(404, "Camera not found")
+
+    capture = _capture_objects.get(cam["id"]) or _capture_objects.get(cam["name"])
+    if not capture:
+        raise HTTPException(404, "Camera capture not initialized")
+
+    if not _clip_recorder:
+        raise HTTPException(503, "Clip recorder not available")
+
+    result = await _clip_recorder.start_recording(cam["name"], capture, duration=duration)
+    return {"data": result}
+
+
+@app.post("/api/clips/stop")
+async def stop_clip(request: Request):
+    """Stop recording a clip."""
+    body = await request.json()
+    camera_id = body.get("camera_id", "")
+    cam = _local_config.get_camera_by_cloud_id(camera_id) if _local_config else None
+    if not cam:
+        cam = _local_config.get_camera(camera_id) if _local_config else None
+    if not cam:
+        raise HTTPException(404, "Camera not found")
+    if not _clip_recorder:
+        raise HTTPException(503, "Clip recorder not available")
+    result = _clip_recorder.stop_recording(cam["name"])
+    return {"data": result or {"status": "not_recording"}}
+
+
 @app.post("/api/devices/remove-from-cloud")
 async def remove_device_from_cloud(request: Request):
     """Cloud tells edge to remove a device from local config."""

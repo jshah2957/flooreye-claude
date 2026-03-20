@@ -153,6 +153,43 @@ async def stream_frame_via_edge(
     return result
 
 
+@router.post("/clip-start")
+async def start_clip_via_edge(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Start recording a clip via edge. Body: {store_id, camera_id, duration}"""
+    store_id = body.get("store_id")
+    camera_id = body.get("camera_id")
+    if not store_id or not camera_id:
+        raise HTTPException(400, "store_id and camera_id required")
+    org_id = current_user.get("org_id", "")
+    agent = await find_store_agent(db, store_id, org_id)
+    result = await proxy_to_edge(agent, "/api/clips/start", {
+        "camera_id": camera_id,
+        "duration": body.get("duration", 30),
+    }, timeout=10.0)
+    return result
+
+
+@router.post("/clip-stop")
+async def stop_clip_via_edge(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Stop recording a clip via edge."""
+    store_id = body.get("store_id")
+    camera_id = body.get("camera_id")
+    if not store_id or not camera_id:
+        raise HTTPException(400, "store_id and camera_id required")
+    org_id = current_user.get("org_id", "")
+    agent = await find_store_agent(db, store_id, org_id)
+    result = await proxy_to_edge(agent, "/api/clips/stop", {"camera_id": camera_id})
+    return result
+
+
 @router.post("/add-device")
 async def add_device_via_edge(
     body: dict,
