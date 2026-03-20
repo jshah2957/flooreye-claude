@@ -304,15 +304,22 @@ async def threaded_camera_loop(
                 upload_ok = await uploader.upload_detection(result, upload_frame, cam.name)
                 if upload_ok:
                     log.info(f"[{cam.name}] CONFIRMED WET — annotated + uploaded (conf={result.get('max_confidence', 0):.2f})")
-                # Trigger IoT devices on confirmed wet detection
+                # Trigger IoT devices on confirmed wet detection (selective by camera assignment)
                 try:
-                    if tplink_ctrl and tplink_ctrl.enabled:
-                        for dev_name in tplink_ctrl.devices:
-                            tplink_ctrl.turn_on(dev_name)
-                            _tplink_off_timers[dev_name] = time.time() + TPLINK_AUTO_OFF_SECONDS
-                            log.info(f"[{cam.name}] TP-Link '{dev_name}' ON (auto-OFF in {TPLINK_AUTO_OFF_SECONDS}s)")
-                    if device_ctrl and device_ctrl.enabled:
-                        device_ctrl.trigger_alarm(config.STORE_ID, cam.name, result)
+                    cam_cloud_id = cam_local.get("cloud_camera_id", "") if cam_local else ""
+                    for dev in _lc.list_devices():
+                        dev_cfg = _lc.get_camera_config(dev.get("cloud_device_id") or dev["id"]) or {}
+                        trigger_any = dev_cfg.get("trigger_on_any", True)
+                        assigned = dev_cfg.get("assigned_cameras", [])
+                        auto_off = dev_cfg.get("auto_off_seconds", TPLINK_AUTO_OFF_SECONDS)
+                        if trigger_any or cam_cloud_id in assigned:
+                            if dev.get("type") == "tplink" and tplink_ctrl and tplink_ctrl.enabled:
+                                if dev["name"] in tplink_ctrl.devices:
+                                    tplink_ctrl.turn_on(dev["name"])
+                                    _tplink_off_timers[dev["name"]] = time.time() + auto_off
+                                    log.info(f"[{cam.name}] TP-Link '{dev['name']}' ON (auto-OFF in {auto_off}s)")
+                            elif dev.get("type") == "mqtt" and device_ctrl and device_ctrl.enabled:
+                                device_ctrl.trigger_alarm(config.STORE_ID, cam.name, result)
                 except Exception as iot_err:
                     log.warning(f"[{cam.name}] IoT trigger failed: {iot_err}")
             elif result.get("is_wet") and reason == "temporal_check_pending":
