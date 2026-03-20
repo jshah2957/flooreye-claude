@@ -402,7 +402,16 @@ async def capture_dry_reference(
     import time
 
     camera = await get_camera(db, camera_id, org_id)
-    stream_url = camera["stream_url"]
+
+    # Decrypt stream_url (supports both encrypted and legacy plaintext)
+    if camera.get("stream_url_encrypted"):
+        try:
+            from app.core.encryption import decrypt_string
+            stream_url = decrypt_string(camera["stream_url_encrypted"])
+        except Exception:
+            stream_url = camera.get("stream_url", "")
+    else:
+        stream_url = camera.get("stream_url", "")
 
     try:
         cap = cv2.VideoCapture(stream_url)
