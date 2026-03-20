@@ -48,7 +48,8 @@
       "Bash(python -c \":*)",
       "Bash(__NEW_LINE_bad6a4377af5698e__ echo:*)",
       "Bash(xargs grep:*)",
-      "Bash(grep -r \"\\\\.mp4\\\\|VideoWriter\\\\|ffmpeg\\\\|write_video\" /c/Users/jshah/flooreye --include=*.py)"
+      "Bash(grep -r \"\\\\.mp4\\\\|VideoWriter\\\\|ffmpeg\\\\|write_video\" /c/Users/jshah/flooreye --include=*.py)",
+      "Bash(__NEW_LINE_c1c4f7b527ed8956__ echo:*)"
     ]
   }
 }
