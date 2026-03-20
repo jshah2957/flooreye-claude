@@ -109,6 +109,20 @@ async def delete_agent(
     return {"data": {"ok": True}}
 
 
+@router.put("/agents/{agent_id}")
+async def update_agent(
+    agent_id: str,
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Update edge agent name."""
+    agent = await edge_service.update_agent(
+        db, agent_id, current_user.get("org_id", ""), name=body.get("name")
+    )
+    return {"data": _agent_response(agent)}
+
+
 @router.post("/agents/{agent_id}/command")
 async def send_command(
     agent_id: str,

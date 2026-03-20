@@ -439,3 +439,26 @@ async def delete_agent(db: AsyncIOMotorDatabase, agent_id: str, org_id: str) -> 
     if result.deleted_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     await db.edge_commands.delete_many({"agent_id": agent_id})
+    # Unlink cameras — don't delete them, just clear the agent reference
+    await db.cameras.update_many(
+        {"edge_agent_id": agent_id, "org_id": org_id},
+        {"$set": {"edge_agent_id": None, "config_status": "unlinked"}},
+    )
+
+
+async def update_agent(
+    db: AsyncIOMotorDatabase, agent_id: str, org_id: str, name: str | None = None
+) -> dict:
+    """Update edge agent properties."""
+    agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    updates = {}
+    if name is not None:
+        updates["name"] = name
+    if updates:
+        updates["updated_at"] = datetime.now(timezone.utc)
+        await db.edge_agents.update_one({"id": agent_id}, {"$set": updates})
+        agent.update(updates)
+    agent.pop("_id", None)
+    return agent
