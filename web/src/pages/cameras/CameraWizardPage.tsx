@@ -3,77 +3,50 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Loader2,
-  CheckCircle2,
+  CheckCircle,
   XCircle,
+  ArrowRight,
+  ArrowLeft,
+  Camera,
+  Store as StoreIcon,
   Wifi,
-  Cloud,
-  Zap,
-  ArrowLeftRight,
+  WifiOff,
 } from "lucide-react";
 
 import api from "@/lib/api";
 import type { Store, PaginatedResponse } from "@/types";
-import RoiCanvas from "@/components/roi/RoiCanvas";
 import { useToast } from "@/components/ui/Toast";
 
-type InferenceMode = "cloud" | "edge" | "hybrid";
-
-interface WizardState {
-  // Step 1
-  streamUrl: string;
-  streamType: string;
-  // Step 2
-  cameraName: string;
-  fpsConfig: number;
-  resolution: string;
-  floorType: string;
-  minWetAreaPercent: number;
-  storeId: string;
-  // Step 3
-  inferenceMode: InferenceMode;
-  hybridThreshold: number;
-  // Step 4
-  roiPoints: { x: number; y: number }[];
-  maskOutside: boolean;
-  // Step 5
-  dryRefFrames: { frame_base64: string; brightness_score: number; reflection_score: number }[];
-  // Step 6
-  enableDetection: boolean;
+interface EdgeAgent {
+  id: string;
+  store_id: string;
+  name: string;
+  status: string;
 }
-
-const INITIAL: WizardState = {
-  streamUrl: "",
-  streamType: "rtsp",
-  cameraName: "",
-  fpsConfig: 2,
-  resolution: "",
-  floorType: "tile",
-  minWetAreaPercent: 0.5,
-  storeId: "",
-  inferenceMode: "cloud",
-  hybridThreshold: 0.65,
-  roiPoints: [],
-  maskOutside: false,
-  dryRefFrames: [],
-  enableDetection: true,
-};
-
-const STEPS = ["Connect", "Configure", "Inference", "ROI", "Reference", "Confirm"] as const;
 
 export default function CameraWizardPage() {
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
-  const [step, setStep] = useState(0);
-  const [state, setState] = useState<WizardState>(INITIAL);
-  const [testResult, setTestResult] = useState<{
-    connected: boolean;
-    resolution?: string;
-    snapshot_base64?: string;
-    error?: string;
-  } | null>(null);
-  const [snapshotBase64, setSnapshotBase64] = useState<string | null>(null);
 
-  const { data: stores } = useQuery({
+  // Step state
+  const [step, setStep] = useState(0);
+
+  // Step 1: Store selection
+  const [storeId, setStoreId] = useState("");
+
+  // Step 2: Camera details + validation
+  const [camName, setCamName] = useState("");
+  const [camUrl, setCamUrl] = useState("");
+  const [streamType, setStreamType] = useState("rtsp");
+  const [location, setLocation] = useState("");
+  const [testResult, setTestResult] = useState<{ connected: boolean; snapshot: string | null } | null>(null);
+  const [testError, setTestError] = useState("");
+
+  // Step 3: Result
+  const [createdCameraId, setCreatedCameraId] = useState<string | null>(null);
+
+  // Data queries
+  const { data: storesData } = useQuery({
     queryKey: ["stores-list"],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<Store>>("/stores", { params: { limit: 100 } });
@@ -81,525 +54,287 @@ export default function CameraWizardPage() {
     },
   });
 
-  // Step 1 — Test connection (creates temp camera, tests, deletes)
-  const testMutation = useMutation({
-    mutationFn: async () => {
-      // Create temp camera
-      const createRes = await api.post("/cameras", {
-        store_id: stores?.[0]?.id ?? state.storeId,
-        name: "__wizard_test__",
-        stream_type: state.streamType,
-        stream_url: state.streamUrl,
-        floor_type: "tile",
-      });
-      const camId = createRes.data.data.id;
-      try {
-        const testRes = await api.post(`/cameras/${camId}/test`);
-        return { ...testRes.data.data, camId };
-      } catch (err: any) {
-        // Clean up on failure
-        await api.delete(`/cameras/${camId}`).catch(() => {});
-        throw err;
-      }
-    },
-    onSuccess: (data) => {
-      setTestResult({ connected: true, resolution: data.resolution, snapshot_base64: data.snapshot_base64 });
-      setSnapshotBase64(data.snapshot_base64);
-      setState((s) => ({ ...s, resolution: data.resolution ?? "" }));
-      // Delete temp camera
-      api.delete(`/cameras/${data.camId}`).catch(() => {});
-      success("Connection test successful");
-    },
-    onError: (err: any) => {
-      setTestResult({
-        connected: false,
-        error: err?.response?.data?.detail ?? "Connection failed",
-      });
-      showError(err?.response?.data?.detail || "Connection test failed");
+  const { data: agentsData } = useQuery({
+    queryKey: ["edge-agents-all"],
+    queryFn: async () => {
+      const res = await api.get("/edge/agents", { params: { limit: 100 } });
+      return res.data.data as EdgeAgent[];
     },
   });
 
-  // Step 6 — Create camera
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      // Create camera
-      const camRes = await api.post("/cameras", {
-        store_id: state.storeId,
-        name: state.cameraName,
-        stream_type: state.streamType,
-        stream_url: state.streamUrl,
-        fps_config: state.fpsConfig,
-        floor_type: state.floorType,
-        min_wet_area_percent: state.minWetAreaPercent,
-      });
-      const camId = camRes.data.data.id;
+  const stores = storesData ?? [];
+  const agents = agentsData ?? [];
 
-      // Test connection to set status + snapshot
-      await api.post(`/cameras/${camId}/test`).catch(() => {});
+  // Map store → agent
+  const agentByStore = new Map(agents.map((a) => [a.store_id, a]));
+  const selectedAgent = agentByStore.get(storeId);
 
-      // Save inference mode
-      if (state.inferenceMode !== "cloud") {
-        await api.put(`/cameras/${camId}/inference-mode`, {
-          inference_mode: state.inferenceMode,
-          hybrid_threshold: state.hybridThreshold,
-        });
-      }
-
-      // Save ROI if drawn
-      if (state.roiPoints.length >= 3) {
-        await api.post(`/cameras/${camId}/roi`, {
-          polygon_points: state.roiPoints,
-          mask_outside: state.maskOutside,
-        });
-      }
-
-      // Enable detection
-      if (state.enableDetection) {
-        await api.put(`/cameras/${camId}`, { detection_enabled: true });
-      }
-
-      return camId;
-    },
-    onSuccess: (camId) => {
-      success("Camera created successfully");
-      navigate(`/cameras/${camId}`);
-    },
-    onError: (err: any) => {
-      showError(err?.response?.data?.detail || "Failed to create camera");
-    },
-  });
-
-  function canNext(): boolean {
-    switch (step) {
-      case 0: return !!testResult?.connected;
-      case 1: return !!state.cameraName && !!state.storeId && !!state.floorType;
-      case 2: return true;
-      case 3: return true; // ROI optional
-      case 4: return true; // Dry ref optional (captured via wizard later)
-      case 5: return true;
-      default: return false;
-    }
+  function storeEdgeStatus(sid: string): "online" | "offline" | "none" {
+    const agent = agentByStore.get(sid);
+    if (!agent) return "none";
+    return agent.status === "online" ? "online" : "offline";
   }
 
+  // Test camera via edge
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      setTestResult(null);
+      setTestError("");
+      const res = await api.post("/edge/proxy/test-camera", {
+        store_id: storeId,
+        url: camUrl,
+        stream_type: streamType,
+      });
+      return res.data.data as { connected: boolean; snapshot: string | null };
+    },
+    onSuccess: (data) => {
+      setTestResult(data);
+      if (!data.connected) setTestError("Camera not reachable on edge network");
+    },
+    onError: (err: any) => {
+      setTestError(err?.response?.data?.detail || "Validation failed");
+      setTestResult(null);
+    },
+  });
+
+  // Add camera via edge proxy
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post("/edge/proxy/add-camera", {
+        store_id: storeId,
+        name: camName,
+        url: camUrl,
+        stream_type: streamType,
+        location,
+      });
+      return res.data.data as { cloud_camera_id: string };
+    },
+    onSuccess: (data) => {
+      setCreatedCameraId(data.cloud_camera_id);
+      setStep(2);
+      success("Camera added");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to add camera");
+    },
+  });
+
+  // Reset test when URL changes
+  function handleUrlChange(val: string) {
+    setCamUrl(val);
+    setTestResult(null);
+    setTestError("");
+  }
+
+  const canProceedStep0 = storeId && storeEdgeStatus(storeId) === "online";
+  const canProceedStep1 = camName.trim() && camUrl.trim() && testResult?.connected;
+
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Progress bar */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          {STEPS.map((label, i) => (
-            <div key={label} className="flex flex-1 items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                    i < step
-                      ? "bg-[#0D9488] text-white"
-                      : i === step
-                        ? "border-2 border-[#0D9488] text-[#0D9488]"
-                        : "border-2 border-[#E7E5E0] text-[#78716C]"
-                  }`}
-                >
-                  {i < step ? <CheckCircle2 size={16} /> : i + 1}
-                </div>
-                <span className={`mt-1 text-xs ${i <= step ? "text-[#0D9488]" : "text-[#78716C]"}`}>
-                  {label}
-                </span>
-              </div>
-              {i < STEPS.length - 1 && (
-                <div className={`mx-2 h-0.5 flex-1 ${i < step ? "bg-[#0D9488]" : "bg-[#E7E5E0]"}`} />
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="mx-auto max-w-2xl">
+      {/* Header */}
+      <div className="mb-6">
+        <button onClick={() => navigate("/cameras")} className="mb-2 flex items-center gap-1 text-sm text-[#78716C] hover:text-[#0D9488]">
+          <ArrowLeft size={14} /> Back to Cameras
+        </button>
+        <h1 className="text-xl font-semibold text-[#1C1917]">Add Camera</h1>
+        <p className="text-sm text-[#78716C]">Camera connectivity is tested through the edge device on the store's local network.</p>
       </div>
 
-      {/* Step Content */}
-      <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-        {/* Step 1 — Connection Test */}
-        {step === 0 && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-[#1C1917]">Step 1 — Connection Test</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Stream URL *</label>
-                <input
-                  value={state.streamUrl}
-                  onChange={(e) => setState({ ...state, streamUrl: e.target.value })}
-                  placeholder="rtsp://192.168.1.100:554/stream"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Stream Type</label>
-                <select
-                  value={state.streamType}
-                  onChange={(e) => setState({ ...state, streamType: e.target.value })}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+      {/* Step indicators */}
+      <div className="mb-6 flex gap-2">
+        {["Select Store", "Camera Details", "Done"].map((label, i) => (
+          <div key={label} className={`flex-1 rounded-full py-1.5 text-center text-xs font-medium ${
+            i === step ? "bg-[#0D9488] text-white" : i < step ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#F1F0ED] text-[#78716C]"
+          }`}>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 0: Select Store */}
+      {step === 0 && (
+        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
+          <h2 className="mb-4 text-base font-semibold text-[#1C1917]">Select Store</h2>
+          <p className="mb-4 text-xs text-[#78716C]">
+            Choose the store where this camera is located. The store must have an online edge device.
+          </p>
+          <div className="space-y-2">
+            {stores.map((s) => {
+              const edgeStatus = storeEdgeStatus(s.id);
+              const agent = agentByStore.get(s.id);
+              return (
+                <label
+                  key={s.id}
+                  className={`flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors ${
+                    storeId === s.id ? "border-[#0D9488] bg-[#F0FDFA]" : "border-[#E7E5E0] hover:border-[#0D9488]/50"
+                  } ${edgeStatus !== "online" ? "opacity-50" : ""}`}
                 >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="store"
+                      value={s.id}
+                      checked={storeId === s.id}
+                      onChange={() => setStoreId(s.id)}
+                      disabled={edgeStatus !== "online"}
+                      className="accent-[#0D9488]"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <StoreIcon size={14} className="text-[#78716C]" />
+                        <span className="text-sm font-medium text-[#1C1917]">{s.name}</span>
+                      </div>
+                      {agent && (
+                        <span className="text-[10px] text-[#78716C]">Edge: {agent.name}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    {edgeStatus === "online" && (
+                      <span className="flex items-center gap-1 text-xs text-[#16A34A]"><Wifi size={12} /> Online</span>
+                    )}
+                    {edgeStatus === "offline" && (
+                      <span className="flex items-center gap-1 text-xs text-[#DC2626]"><WifiOff size={12} /> Offline</span>
+                    )}
+                    {edgeStatus === "none" && (
+                      <span className="text-xs text-[#78716C]">No edge device</span>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+            {stores.length === 0 && (
+              <p className="py-8 text-center text-sm text-[#78716C]">No stores found. Create a store first.</p>
+            )}
+          </div>
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setStep(1)}
+              disabled={!canProceedStep0}
+              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+            >
+              Next <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Camera Details + Validate */}
+      {step === 1 && (
+        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
+          <h2 className="mb-4 text-base font-semibold text-[#1C1917]">Camera Details</h2>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[#78716C]">Camera Name *</label>
+              <input value={camName} onChange={(e) => setCamName(e.target.value)}
+                placeholder="e.g. Entrance Camera"
+                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[#78716C]">RTSP URL *</label>
+              <input value={camUrl} onChange={(e) => handleUrlChange(e.target.value)}
+                placeholder="rtsp://admin:pass@192.168.1.100/stream"
+                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 font-mono text-sm outline-none focus:border-[#0D9488]" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[#78716C]">Stream Type</label>
+                <select value={streamType} onChange={(e) => setStreamType(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
                   <option value="rtsp">RTSP</option>
                   <option value="hls">HLS</option>
                   <option value="mjpeg">MJPEG</option>
-                  <option value="onvif">ONVIF</option>
                   <option value="http">HTTP</option>
                 </select>
               </div>
-              <button
-                onClick={() => testMutation.mutate()}
-                disabled={!state.streamUrl || testMutation.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-3 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
-              >
-                {testMutation.isPending ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Connecting to camera...
-                  </>
-                ) : (
-                  <>
-                    <Wifi size={16} />
-                    Test Connection
-                  </>
-                )}
-              </button>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[#78716C]">Location</label>
+                <input value={location} onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Main entrance"
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+              </div>
+            </div>
+          </div>
 
-              {testResult && (
-                <div
-                  className={`rounded-md p-4 ${
-                    testResult.connected ? "bg-[#DCFCE7]" : "bg-[#FEE2E2]"
-                  }`}
-                >
-                  {testResult.connected ? (
-                    <div>
-                      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[#16A34A]">
-                        <CheckCircle2 size={16} /> Connected successfully
-                      </div>
-                      {testResult.snapshot_base64 && (
-                        <img
-                          src={`data:image/jpeg;base64,${testResult.snapshot_base64}`}
-                          alt="Snapshot"
-                          className="mt-2 max-h-[180px] rounded"
-                        />
-                      )}
-                      <p className="mt-2 text-xs text-[#16A34A]">
-                        Detected: {(state.streamType ?? 'rtsp').toUpperCase()} | {testResult.resolution}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-[#DC2626]">
-                      <XCircle size={16} />
-                      {testResult.error}
-                    </div>
-                  )}
-                </div>
+          {/* Validate button */}
+          <div className="mt-4">
+            <button
+              onClick={() => testMutation.mutate()}
+              disabled={!camUrl.trim() || testMutation.isPending}
+              className="flex items-center gap-2 rounded-md border border-[#0D9488] px-4 py-2 text-sm font-medium text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+            >
+              {testMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+              Validate via Edge
+            </button>
+          </div>
+
+          {/* Test result */}
+          {testResult && testResult.connected && (
+            <div className="mt-4 rounded-lg border border-[#DCFCE7] bg-[#F0FDF4] p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[#16A34A]">
+                <CheckCircle size={16} /> Camera connected successfully
+              </div>
+              {testResult.snapshot && (
+                <img
+                  src={`data:image/jpeg;base64,${testResult.snapshot}`}
+                  alt="Preview"
+                  className="mt-2 max-h-[300px] rounded-md border border-[#E7E5E0]"
+                />
               )}
             </div>
-          </div>
-        )}
-
-        {/* Step 2 — Configuration */}
-        {step === 1 && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-[#1C1917]">Step 2 — Preview & Configuration</h2>
-            {snapshotBase64 && (
-              <img
-                src={`data:image/jpeg;base64,${snapshotBase64}`}
-                alt="Preview"
-                className="mb-4 max-h-[240px] rounded border border-[#E7E5E0]"
-              />
-            )}
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Store *</label>
-                <select
-                  value={state.storeId}
-                  onChange={(e) => setState({ ...state, storeId: e.target.value })}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-                >
-                  <option value="">Select a store</option>
-                  {(stores ?? []).map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Camera Name *</label>
-                <input
-                  value={state.cameraName}
-                  onChange={(e) => setState({ ...state, cameraName: e.target.value })}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[#1C1917]">FPS</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={1}
-                      max={30}
-                      value={state.fpsConfig}
-                      onChange={(e) => setState({ ...state, fpsConfig: parseInt(e.target.value) })}
-                      className="flex-1"
-                    />
-                    <span className="w-8 text-sm text-[#1C1917]">{state.fpsConfig}</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[#1C1917]">Resolution</label>
-                  <select
-                    value={state.resolution}
-                    onChange={(e) => setState({ ...state, resolution: e.target.value })}
-                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-                  >
-                    <option value="">Auto-detect</option>
-                    <option value="640x480">480p</option>
-                    <option value="1280x720">720p</option>
-                    <option value="1920x1080">1080p</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Floor Type *</label>
-                <select
-                  value={state.floorType}
-                  onChange={(e) => setState({ ...state, floorType: e.target.value })}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-                >
-                  <option value="tile">Tile</option>
-                  <option value="concrete">Concrete</option>
-                  <option value="wood">Wood</option>
-                  <option value="carpet">Carpet</option>
-                  <option value="vinyl">Vinyl</option>
-                  <option value="linoleum">Linoleum</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                  Min Wet Area % (threshold: {state.minWetAreaPercent}%)
-                </label>
-                <input
-                  type="range"
-                  min={0.1}
-                  max={10}
-                  step={0.1}
-                  value={state.minWetAreaPercent}
-                  onChange={(e) => setState({ ...state, minWetAreaPercent: parseFloat(e.target.value) })}
-                  className="w-full"
-                />
-                <p className="mt-1 text-xs text-[#78716C]">
-                  Only trigger alerts if wet area exceeds this % of the frame
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3 — Inference Mode */}
-        {step === 2 && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-[#1C1917]">Step 3 — Inference Mode</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {([
-                { mode: "cloud" as InferenceMode, icon: Cloud, label: "Cloud", desc: "All inference via Roboflow API. Highest accuracy. No edge hardware required." },
-                { mode: "edge" as InferenceMode, icon: Zap, label: "Edge", desc: "100% local inference. Zero API cost. Requires edge agent + model." },
-                { mode: "hybrid" as InferenceMode, icon: ArrowLeftRight, label: "Hybrid", desc: "Edge first, cloud fallback. Best cost/accuracy balance. Recommended." },
-              ]).map(({ mode, icon: Icon, label, desc }) => (
-                <button
-                  key={mode}
-                  onClick={() => setState({ ...state, inferenceMode: mode })}
-                  className={`rounded-lg border-2 p-4 text-left transition-colors ${
-                    state.inferenceMode === mode
-                      ? "border-[#0D9488] bg-[#CCFBF1]"
-                      : "border-[#E7E5E0] hover:border-[#0D9488]/50"
-                  }`}
-                >
-                  <Icon size={24} className={state.inferenceMode === mode ? "text-[#0D9488]" : "text-[#78716C]"} />
-                  <h3 className="mt-2 font-semibold text-[#1C1917]">{label}</h3>
-                  <p className="mt-1 text-xs text-[#78716C]">{desc}</p>
-                </button>
-              ))}
-            </div>
-
-            {state.inferenceMode === "hybrid" && (
-              <div className="mt-6 space-y-4 rounded-lg border border-[#E7E5E0] p-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                    Escalation Threshold ({state.hybridThreshold})
-                  </label>
-                  <input
-                    type="range"
-                    min={0.4}
-                    max={0.9}
-                    step={0.05}
-                    value={state.hybridThreshold}
-                    onChange={(e) => setState({ ...state, hybridThreshold: parseFloat(e.target.value) })}
-                    className="w-full"
-                  />
-                  <p className="mt-1 text-xs text-[#78716C]">
-                    Detections below {(state.hybridThreshold * 100).toFixed(0)}% confidence will be sent to Roboflow for a second opinion.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 4 — ROI Drawing */}
-        {step === 3 && (
-          <div>
-            <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Step 4 — ROI Drawing</h2>
-            <p className="mb-4 text-sm text-[#78716C]">
-              Draw a polygon around the area to monitor. Click to add points, double-click to close. Skip if you want to monitor the full frame.
-            </p>
-            <RoiCanvas
-              snapshotBase64={snapshotBase64 ?? undefined}
-              cameraId="__wizard__"
-              onSave={(points, mask) => setState({ ...state, roiPoints: points, maskOutside: mask })}
-            />
-            {state.roiPoints.length >= 3 && (
-              <p className="mt-2 text-xs text-[#16A34A]">
-                ROI set with {state.roiPoints.length} points
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Step 5 — Dry Reference */}
-        {step === 4 && (
-          <div>
-            <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Step 5 — Dry Reference Capture</h2>
-            <div className="mb-4 rounded-md bg-[#DBEAFE] p-3 text-sm text-[#2563EB]">
-              Ensure the floor is completely dry and clear of people or objects. The system will use these frames as a baseline to detect changes.
-            </div>
-            {snapshotBase64 && (
-              <img
-                src={`data:image/jpeg;base64,${snapshotBase64}`}
-                alt="Live preview"
-                className="mb-4 max-h-[270px] rounded border border-[#E7E5E0]"
-              />
-            )}
-            <p className="mb-4 text-sm text-[#78716C]">
-              Dry reference frames will be captured automatically when the camera is created. You can recapture them later from the camera detail page.
-            </p>
-          </div>
-        )}
-
-        {/* Step 6 — Confirm */}
-        {step === 5 && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold text-[#1C1917]">Step 6 — Confirm & Enable</h2>
-            <div className="rounded-lg border border-[#E7E5E0] p-4">
-              <h3 className="mb-3 text-sm font-semibold text-[#78716C]">Camera Configuration Summary</h3>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Name</dt>
-                  <dd className="font-medium text-[#1C1917]">{state.cameraName}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Store</dt>
-                  <dd className="text-[#1C1917]">{stores?.find((s) => s.id === state.storeId)?.name ?? "—"}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Stream</dt>
-                  <dd className="text-[#1C1917]">
-                    {(state.streamType ?? 'rtsp').toUpperCase()} &middot; {state.resolution || "Auto"}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Floor Type</dt>
-                  <dd className="text-[#1C1917] capitalize">{state.floorType}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">FPS</dt>
-                  <dd className="text-[#1C1917]">{state.fpsConfig} frames/second</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Min Wet Area</dt>
-                  <dd className="text-[#1C1917]">{state.minWetAreaPercent}%</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Inference</dt>
-                  <dd><StatusBadgeInline mode={state.inferenceMode} threshold={state.hybridThreshold} /></dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-[#78716C]">ROI</dt>
-                  <dd className="text-[#1C1917]">
-                    {state.roiPoints.length >= 3
-                      ? `${state.roiPoints.length} points${state.maskOutside ? " (masked)" : ""}`
-                      : "Full frame"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <label className="mt-4 flex items-center gap-2 text-sm text-[#1C1917]">
-              <input
-                type="checkbox"
-                checked={state.enableDetection}
-                onChange={(e) => setState({ ...state, enableDetection: e.target.checked })}
-                className="rounded border-[#E7E5E0]"
-              />
-              Enable continuous detection immediately
-            </label>
-
-            {createMutation.isError && (
-              <div className="mt-4 rounded-md bg-[#FEE2E2] px-3 py-2 text-sm text-[#DC2626]">
-                Failed to create camera. Please try again.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="mt-6 flex items-center justify-between">
-        <button
-          onClick={() => navigate("/cameras")}
-          className="rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
-        >
-          Cancel
-        </button>
-        <div className="flex gap-3">
-          {step > 0 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className="rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
-            >
-              Back
-            </button>
           )}
-          {step < STEPS.length - 1 ? (
-            <button
-              onClick={() => setStep(step + 1)}
-              disabled={!canNext()}
-              className="rounded-md bg-[#0D9488] px-6 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending}
-              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-6 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
-            >
-              {createMutation.isPending && <Loader2 size={14} className="animate-spin" />}
-              Finish Setup
-            </button>
+          {testError && (
+            <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] p-4 text-sm text-[#DC2626]">
+              <XCircle size={16} /> {testError}
+            </div>
           )}
+
+          {/* Navigation */}
+          <div className="mt-6 flex justify-between">
+            <button onClick={() => setStep(0)}
+              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]">
+              <ArrowLeft size={14} /> Back
+            </button>
+            <button
+              onClick={() => addMutation.mutate()}
+              disabled={!canProceedStep1 || addMutation.isPending}
+              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+            >
+              {addMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
+              Add Camera
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
+      )}
 
-function StatusBadgeInline({ mode, threshold }: { mode: InferenceMode; threshold: number }) {
-  const colors: Record<string, string> = {
-    cloud: "text-[#2563EB]",
-    edge: "text-[#7C3AED]",
-    hybrid: "text-[#0891B2]",
-  };
-  return (
-    <span className={`font-medium capitalize ${colors[mode]}`}>
-      {mode}
-      {mode === "hybrid" && ` (threshold: ${threshold})`}
-    </span>
+      {/* Step 2: Done */}
+      {step === 2 && (
+        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6 text-center">
+          <CheckCircle size={48} className="mx-auto mb-4 text-[#16A34A]" />
+          <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Camera Added</h2>
+          <p className="mb-1 text-sm text-[#78716C]">
+            "{camName}" has been added to the cloud and edge device.
+          </p>
+          <p className="mb-6 text-sm text-[#D97706]">
+            Next: Configure ROI (floor boundary) and capture dry reference images to start detection.
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => navigate(`/cameras/${createdCameraId}`)}
+              className="rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+            >
+              Configure Camera
+            </button>
+            <button
+              onClick={() => { setStep(0); setCamName(""); setCamUrl(""); setLocation(""); setTestResult(null); setTestError(""); setCreatedCameraId(null); }}
+              className="rounded-md border border-[#E7E5E0] px-5 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]"
+            >
+              Add Another
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
