@@ -242,6 +242,19 @@ async def process_heartbeat(
     if data.get("direct_url"):
         updates["direct_url"] = data["direct_url"]
 
+    updates["device_count"] = data.get("device_count", 0)
+
+    # Update device status from heartbeat
+    devices_data = data.get("devices", {})
+    if devices_data:
+        for dev_name, dev_info in devices_data.items():
+            cloud_id = dev_info.get("cloud_device_id")
+            if cloud_id:
+                await db.devices.update_one(
+                    {"id": cloud_id},
+                    {"$set": {"status": dev_info.get("status", "online"), "last_heartbeat": now}},
+                )
+
     result = await db.edge_agents.find_one_and_update(
         {"id": agent_id},
         {"$set": updates},

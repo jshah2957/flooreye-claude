@@ -100,6 +100,20 @@ async def heartbeat_loop(inference: InferenceClient):
                     cam_status[cname] = {"connected": cobj.connected, "frames": cobj.frame_count}
                 body["cameras"] = cam_status
                 body["camera_count"] = len(cam_status)
+                # Device status
+                try:
+                    from local_config import local_config as _lc_hb
+                    dev_status = {}
+                    for dev in _lc_hb.list_devices():
+                        dev_status[dev["name"]] = {
+                            "type": dev.get("type", "unknown"),
+                            "status": dev.get("status", "unknown"),
+                            "cloud_device_id": dev.get("cloud_device_id"),
+                        }
+                    body["devices"] = dev_status
+                    body["device_count"] = len(dev_status)
+                except Exception:
+                    body["device_count"] = 0
                 # Report tunnel/direct URL for cloud→edge direct push
                 if config.TUNNEL_URL:
                     body["tunnel_url"] = config.TUNNEL_URL
