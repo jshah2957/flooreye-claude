@@ -75,6 +75,17 @@ async def heartbeat_loop(inference: InferenceClient):
         while True:
             try:
                 body = {"agent_id": config.AGENT_ID, "status": "online"}
+                # System metrics
+                try:
+                    import psutil
+                    body["cpu_percent"] = psutil.cpu_percent(interval=None)
+                    body["ram_percent"] = psutil.virtual_memory().percent
+                    try:
+                        body["disk_percent"] = psutil.disk_usage(config.DATA_PATH).percent
+                    except Exception:
+                        body["disk_percent"] = None
+                except ImportError:
+                    pass
                 # Fetch model version from inference server health endpoint
                 try:
                     inference_health = await inference.health()
