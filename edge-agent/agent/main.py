@@ -624,8 +624,16 @@ async def start_web_servers(lc, cam_mgr, cam_objects_ref, tplink_ctrl_ref=None):
     from config_receiver import app as receiver_app, init as receiver_init
     receiver_init(lc, cam_objects_ref)
 
-    web_config = uvicorn.Config(web_app, host="0.0.0.0", port=8090, log_level="warning")
-    receiver_config = uvicorn.Config(receiver_app, host="0.0.0.0", port=8091, log_level="warning")
+    # Check port availability before starting
+    import socket
+    for port, name in [(config.WEB_UI_PORT, "Web UI"), (config.CONFIG_RECEIVER_PORT, "Config Receiver")]:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", port)) == 0:
+                log.error("Port %d (%s) already in use. Set %s env var to use a different port.",
+                          port, name, "WEB_UI_PORT" if port == config.WEB_UI_PORT else "CONFIG_RECEIVER_PORT")
+
+    web_config = uvicorn.Config(web_app, host="0.0.0.0", port=config.WEB_UI_PORT, log_level="warning")
+    receiver_config = uvicorn.Config(receiver_app, host="0.0.0.0", port=config.CONFIG_RECEIVER_PORT, log_level="warning")
 
     web_server = uvicorn.Server(web_config)
     receiver_server = uvicorn.Server(receiver_config)
