@@ -252,6 +252,43 @@ async def add_camera_from_cloud(request: Request):
     }
 
 
+@app.post("/api/config/device/{device_id}")
+async def receive_device_config(device_id: str, request: Request):
+    """Receive device assignment config from cloud (assigned cameras, auto-off, etc)."""
+    body = await request.json()
+    # Find the local device by cloud_device_id
+    dev = _local_config.get_device(device_id)
+    if not dev:
+        # Try by cloud_device_id
+        for d in _local_config.list_devices():
+            if d.get("cloud_device_id") == device_id:
+                dev = d
+                break
+    if not dev:
+        raise HTTPException(404, "Device not found on edge")
+
+    # Save device config (assigned_cameras, trigger_on_any, auto_off_seconds)
+    config_to_save = {
+        "assigned_cameras": body.get("assigned_cameras", []),
+        "trigger_on_any": body.get("trigger_on_any", True),
+        "auto_off_seconds": body.get("auto_off_seconds", 600),
+        "config_version": body.get("config_version", 1),
+        "received_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Store as per-device config using same pattern as camera configs
+    config_path = os.path.join(_local_config._cam_configs_dir, f"dev_{device_id}.json")
+    import json
+    with open(config_path, "w") as f:
+        json.dump(config_to_save, f, indent=2)
+
+    log.info("Device config received: %s (assigned to %d cameras)", device_id, len(config_to_save["assigned_cameras"]))
+    return {
+        "device_id": device_id,
+        "status": "received",
+        "assigned_cameras": len(config_to_save["assigned_cameras"]),
+    }
+
+
 @app.post("/api/devices/add-from-cloud")
 async def add_device_from_cloud(request: Request):
     """Cloud tells edge to add an IoT device to local config."""

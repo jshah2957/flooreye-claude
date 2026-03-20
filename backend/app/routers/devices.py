@@ -96,6 +96,20 @@ async def assign_cameras(
         await db.devices.update_one({"id": device_id}, {"$set": updates})
         device.update(updates)
     device.pop("_id", None)
+    # Push device config to edge if edge-managed
+    if device.get("edge_agent_id"):
+        try:
+            from app.services.edge_proxy_service import find_store_agent, proxy_to_edge
+            agent = await db.edge_agents.find_one({"id": device["edge_agent_id"]})
+            if agent:
+                await proxy_to_edge(agent, f"/api/config/device/{device_id}", {
+                    "assigned_cameras": device.get("assigned_cameras", []),
+                    "trigger_on_any": device.get("trigger_on_any", True),
+                    "auto_off_seconds": device.get("auto_off_seconds", 600),
+                    "config_version": 1,
+                })
+        except Exception:
+            pass
     return {"data": device}
 
 

@@ -322,7 +322,7 @@ async def threaded_camera_loop(
                 try:
                     cam_cloud_id = cam_local.get("cloud_camera_id", "") if cam_local else ""
                     for dev in _lc.list_devices():
-                        dev_cfg = _lc.get_camera_config(dev.get("cloud_device_id") or dev["id"]) or {}
+                        dev_cfg = _lc.get_device_config(dev.get("cloud_device_id") or dev["id"]) or {}
                         trigger_any = dev_cfg.get("trigger_on_any", True)
                         assigned = dev_cfg.get("assigned_cameras", [])
                         auto_off = dev_cfg.get("auto_off_seconds", TPLINK_AUTO_OFF_SECONDS)

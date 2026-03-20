@@ -185,6 +185,11 @@ class LocalConfigStore:
                 return dev
         return None
 
+    def get_device_config(self, device_id: str) -> dict | None:
+        """Get per-device config (assigned cameras, trigger rules) from cloud push."""
+        path = os.path.join(self._cam_configs_dir, f"dev_{device_id}.json")
+        return self._read_json(path, None)
+
     # --- Per-camera config (received from cloud) ---
 
     def get_camera_config(self, camera_id: str) -> dict | None:
