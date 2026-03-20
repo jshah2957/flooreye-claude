@@ -34,6 +34,45 @@ async def list_frames(
     return {"data": [_frame_response(f) for f in frames], "meta": {"total": total, "offset": offset, "limit": limit}}
 
 
+@router.get("/frames/{frame_id}/preview")
+async def preview_frame(
+    frame_id: str,
+    annotated: bool = Query(False),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    """Get frame image from S3. Optionally draw existing annotations on it."""
+    org_id = current_user.get("org_id", "")
+    frame = await db.dataset_frames.find_one({"id": frame_id, "org_id": org_id})
+    if not frame:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Frame not found")
+
+    s3_path = frame.get("frame_path", "")
+    frame_base64 = None
+    if s3_path:
+        try:
+            from app.utils.s3_utils import download_from_s3
+            data = await download_from_s3(s3_path)
+            import base64
+            frame_base64 = base64.b64encode(data).decode("utf-8")
+        except Exception:
+            pass
+
+    if not frame_base64:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Frame data not available")
+
+    # Optionally draw annotations
+    if annotated:
+        ann = await db.annotations.find_one({"frame_id": frame_id, "org_id": org_id})
+        if ann and ann.get("bboxes"):
+            from app.utils.annotation_utils import draw_annotations
+            annotated_b64 = draw_annotations(frame_base64, ann["bboxes"])
+            if annotated_b64:
+                frame_base64 = annotated_b64
+
+    return {"data": {"frame_base64": frame_base64}}
+
+
 @router.post("/frames", status_code=status.HTTP_201_CREATED)
 async def add_frame(
     body: DatasetFrameCreate,
