@@ -168,12 +168,21 @@ async def upload_flagged_to_roboflow(
 
     uploaded = 0
     for det in flagged:
-        if det.get("frame_base64"):
+        if det.get("frame_base64") or det.get("frame_s3_path"):
             uploaded += 1
             await db.detection_logs.update_one(
                 {"id": det["id"]},
                 {"$set": {"uploaded_to_roboflow": True}},
             )
+
+    # Dispatch Celery task for the actual upload
+    if uploaded > 0:
+        try:
+            from app.workers.sync_worker import sync_to_roboflow
+            sync_to_roboflow.delay(org_id)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning("Failed to dispatch roboflow sync task")
 
     return {"data": {"uploaded_count": uploaded, "total_flagged": len(flagged)}}
 

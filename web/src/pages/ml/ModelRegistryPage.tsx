@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Box, Loader2, ArrowUpCircle, Trash2, Plus, X } from "lucide-react";
+import { Box, Loader2, ArrowUpCircle, Trash2, Plus, X, CloudDownload } from "lucide-react";
 
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
@@ -55,6 +55,17 @@ export default function ModelRegistryPage() {
     },
   });
 
+  const pullFromRoboflowMutation = useMutation({
+    mutationFn: () => api.post("/roboflow/pull-model", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["models"] });
+      success("Model pulled from Roboflow");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to pull model from Roboflow");
+    },
+  });
+
   const promoteMutation = useMutation({
     mutationFn: ({ id, target }: { id: string; target: string }) =>
       api.post(`/models/${id}/promote`, { target }),
@@ -86,10 +97,20 @@ export default function ModelRegistryPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-[#1C1917]">Model Registry</h1>
-        <button onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]">
-          <Plus size={16} /> New Model
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => pullFromRoboflowMutation.mutate()}
+            disabled={pullFromRoboflowMutation.isPending}
+            className="flex items-center gap-2 rounded-md border border-[#0D9488] px-4 py-2 text-sm font-medium text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+          >
+            {pullFromRoboflowMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <CloudDownload size={16} />}
+            Pull from Roboflow
+          </button>
+          <button onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]">
+            <Plus size={16} /> New Model
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex gap-3">

@@ -2,9 +2,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.dataset import DatasetFrameCreate, DatasetFrameResponse, DatasetStatsResponse
@@ -113,6 +114,15 @@ async def upload_to_roboflow(
         "updated_at": now,
     }
     await db.dataset_jobs.insert_one(job)
+
+    # Dispatch Celery task for the upload
+    try:
+        from app.workers.sync_worker import sync_to_roboflow
+        sync_to_roboflow.delay(org_id)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Failed to dispatch roboflow upload task: %s", exc)
+
     return {"data": {"job_id": job["id"], "frame_count": len(frame_ids), "status": "queued"}}
 
 
@@ -183,6 +193,11 @@ async def start_auto_label(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
+    if not settings.SELF_TRAINING_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auto-labeling is paused. Use Roboflow for annotation.",
+        )
     from app.workers.auto_label_worker import run_auto_label
 
     org_id = current_user.get("org_id", "")

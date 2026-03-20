@@ -21,7 +21,7 @@ import NotificationsPage from "@/pages/config/NotificationsPage";
 import DevicesPage from "@/pages/config/DevicesPage";
 import DatasetPage from "@/pages/ml/DatasetPage";
 import ModelRegistryPage from "@/pages/ml/ModelRegistryPage";
-import TrainingJobsPage from "@/pages/ml/TrainingJobsPage";
+// TrainingJobsPage removed — self-training paused, use Roboflow
 import ReviewQueuePage from "@/pages/detection/ReviewQueuePage";
 import ClipsPage from "@/pages/clips/ClipsPage";
 import LogsPage from "@/pages/admin/LogsPage";
@@ -30,9 +30,7 @@ import RoboflowPage from "@/pages/integrations/RoboflowPage";
 import StoragePage from "@/pages/config/StoragePage";
 import TestInferencePage from "@/pages/ml/TestInferencePage";
 import RoboflowTestPage from "@/pages/ml/RoboflowTestPage";
-import AnnotationPage from "@/pages/ml/AnnotationPage";
-import AutoLabelPage from "@/pages/ml/AutoLabelPage";
-import TrainingExplorerPage from "@/pages/ml/TrainingExplorerPage";
+// AnnotationPage, AutoLabelPage, TrainingExplorerPage removed — use Roboflow for annotation/training
 import ClassManagerPage from "@/pages/detection-control/ClassManagerPage";
 import ApiTesterPage from "@/pages/integrations/ApiTesterPage";
 import ManualPage from "@/pages/admin/ManualPage";
@@ -128,10 +126,7 @@ export default function AppRoutes() {
 
         {/* ML & Training */}
         <Route path="/dataset" element={<DatasetPage />} />
-        <Route path="/dataset/annotate/:id" element={<AnnotationPage />} />
-        <Route path="/dataset/auto-label" element={<AutoLabelPage />} />
-        <Route path="/training/explorer" element={<TrainingExplorerPage />} />
-        <Route path="/training/jobs" element={<TrainingJobsPage />} />
+        {/* Removed: /dataset/annotate/:id, /dataset/auto-label, /training/explorer, /training/jobs */}
         <Route path="/models" element={<ModelRegistryPage />} />
         <Route path="/ml/test-inference" element={<TestInferencePage />} />
         <Route path="/ml/roboflow-test" element={<RoboflowTestPage />} />

@@ -88,8 +88,6 @@ const NAV_SECTIONS: NavSection[] = [
     minRole: ML_PLUS,
     items: [
       { label: "Dataset Management", path: "/dataset", icon: Database, minRole: ML_PLUS },
-      { label: "Training Data Explorer", path: "/training/explorer", icon: FlaskConical, minRole: ML_PLUS },
-      { label: "Distillation Jobs", path: "/training/jobs", icon: BrainCircuit, minRole: ML_PLUS },
       { label: "Model Registry", path: "/models", icon: Boxes, minRole: ML_PLUS },
       { label: "Test Inference", path: "/ml/test-inference", icon: TestTube, minRole: ML_PLUS },
       { label: "Roboflow Test", path: "/ml/roboflow-test", icon: FlaskConical, minRole: ADMIN_PLUS },

@@ -15,7 +15,28 @@
       "Bash(cp C:/Users/jshah/flooreye/edge-agent/inference-server/model_loader.py C:/Users/jshah/flooreye-edge-test/inference-server/model_loader.py)",
       "Bash(cp C:/Users/jshah/flooreye/edge-agent/inference-server/predict.py C:/Users/jshah/flooreye-edge-test/inference-server/predict.py)",
       "Bash(curl -s http://localhost:8080/health)",
-      "Bash(python -c \"import sys,json; print\\(json.dumps\\(json.loads\\(sys.stdin.read\\(\\)\\),indent=2\\)\\)\")"
+      "Bash(python -c \"import sys,json; print\\(json.dumps\\(json.loads\\(sys.stdin.read\\(\\)\\),indent=2\\)\\)\")",
+      "Bash(grep -rn \"yolo26\\\\|yolo11\\\\|yolov8\\\\|yolo13\" /c/Users/jshah/flooreye --include=*.py --include=*.md)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(git tag:*)",
+      "Bash(docker ps:*)",
+      "Bash(MONGODB_URI=mongodb://localhost:27017/flooreye python -m pytest tests/ -v --tb=short)",
+      "Bash(MONGODB_URI=mongodb://localhost:27017/flooreye python -m pytest tests/test_auth.py::test_login_invalid_credentials -v --tb=long)",
+      "Bash(docker port:*)",
+      "Bash(curl:*)",
+      "Bash(docker cp:*)",
+      "Bash(git log:*)",
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Bash(git diff-tree:*)",
+      "Bash(done)",
+      "Bash(grep -n \"deploy_model\\\\|update_model\\\\|push_model\" /c/Users/jshah/flooreye/backend/app/routers/*.py)",
+      "Bash(find /c/Users/jshah/flooreye/mobile -name *.tsx -o -name *.ts)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python:*)"
     ]
   }
 }
