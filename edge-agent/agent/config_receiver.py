@@ -372,6 +372,40 @@ async def stop_clip(request: Request):
     return {"data": result or {"status": "not_recording"}}
 
 
+@app.post("/api/clips/extract-frames")
+async def extract_clip_frames(request: Request):
+    """Extract N frames from a clip file at even intervals."""
+    body = await request.json()
+    filepath = body.get("filepath", "")
+    num_frames = body.get("num_frames", 10)
+
+    if not filepath or not os.path.isfile(filepath):
+        raise HTTPException(404, "Clip file not found")
+
+    import cv2
+
+    def _extract(path, n):
+        cap = cv2.VideoCapture(path)
+        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total <= 0:
+            cap.release()
+            return []
+        interval = max(1, total // n)
+        frames = []
+        for i in range(min(n, total)):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, i * interval)
+            ret, frame = cap.read()
+            if not ret:
+                break
+            _, buf = cv2.imencode(".jpg", frame)
+            frames.append(base64.b64encode(buf).decode("utf-8"))
+        cap.release()
+        return frames
+
+    extracted = await asyncio.to_thread(_extract, filepath, num_frames)
+    return {"data": {"frames": extracted, "count": len(extracted)}}
+
+
 @app.post("/api/devices/remove-from-cloud")
 async def remove_device_from_cloud(request: Request):
     """Cloud tells edge to remove a device from local config."""
