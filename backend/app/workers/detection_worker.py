@@ -122,8 +122,33 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     else:
         summary = compute_detection_summary(predictions)
 
-    # Validation
-    validation = await run_validation_pipeline(db, camera_id, predictions, frame_base64)
+    # Resolve per-camera detection control settings (same as detection_service.py)
+    from app.services.detection_control_service import resolve_effective_settings
+    try:
+        effective, _ = await resolve_effective_settings(db, org_id, camera_id)
+    except Exception:
+        effective = {}
+
+    # Validation with effective settings
+    validation = await run_validation_pipeline(
+        db, camera_id, predictions, frame_base64,
+        layer1_confidence=effective.get("layer1_confidence", 0.70),
+        layer2_min_area=effective.get("layer2_min_area_percent", 0.5),
+        layer3_k=effective.get("layer3_k", 3),
+        layer3_m=effective.get("layer3_m", 5),
+        layer4_delta=effective.get("layer4_delta_threshold", 0.15),
+        layer1_enabled=effective.get("layer1_enabled", True),
+        layer2_enabled=effective.get("layer2_enabled", True),
+        layer3_enabled=effective.get("layer3_enabled", True),
+        layer4_enabled=effective.get("layer4_enabled", True),
+    )
+
+    # Upload frame to S3 (match detection_service.py pattern)
+    from app.utils.s3_utils import upload_frame
+    try:
+        s3_path = await upload_frame(frame_base64, org_id, camera_id)
+    except Exception:
+        s3_path = None
 
     # Log detection
     now = datetime.now(timezone.utc)
@@ -137,8 +162,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
         "confidence": summary["confidence"],
         "wet_area_percent": summary["wet_area_percent"],
         "inference_time_ms": inference_time_ms,
-        "frame_base64": frame_base64,
-        "frame_s3_path": None,
+        "frame_base64": None,
+        "frame_s3_path": s3_path,
         "predictions": predictions,
         "model_source": model_source,
         "model_version_id": None,
