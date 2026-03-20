@@ -13,7 +13,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 log = logging.getLogger(__name__)
 
 from app.core.encryption import decrypt_string
+from app.core.config import settings
 from app.services.inference_service import run_roboflow_inference, compute_detection_summary
+from app.services.onnx_inference_service import run_local_inference
 from app.services.validation_pipeline import run_validation_pipeline
 from app.core.org_filter import org_query
 from app.services.detection_control_service import resolve_effective_settings
@@ -64,14 +66,30 @@ async def run_manual_detection(
             detail="Cannot connect to camera stream or failed to capture frame",
         )
 
-    # Run inference
-    source = model_source or "roboflow"
-    inference_result = await run_roboflow_inference(frame_base64)
-    predictions = inference_result["predictions"]
-    inference_time_ms = inference_result["inference_time_ms"]
-
-    # Compute summary
-    summary = compute_detection_summary(predictions)
+    # Run inference — prefer local ONNX, fallback to Roboflow API
+    source = model_source or ("local_onnx" if settings.LOCAL_INFERENCE_ENABLED else "roboflow")
+    if source == "local_onnx":
+        try:
+            inference_result = await run_local_inference(frame_base64, db=db)
+            predictions = inference_result["predictions"]
+            inference_time_ms = inference_result["inference_time_ms"]
+            summary = {
+                "is_wet": inference_result.get("is_wet", False),
+                "confidence": inference_result.get("confidence", 0.0),
+                "wet_area_percent": inference_result.get("wet_area_percent", 0.0),
+            }
+        except Exception as exc:
+            log.warning("Local ONNX inference failed, falling back to Roboflow: %s", exc)
+            source = "roboflow"
+            inference_result = await run_roboflow_inference(frame_base64)
+            predictions = inference_result["predictions"]
+            inference_time_ms = inference_result["inference_time_ms"]
+            summary = compute_detection_summary(predictions)
+    else:
+        inference_result = await run_roboflow_inference(frame_base64)
+        predictions = inference_result["predictions"]
+        inference_time_ms = inference_result["inference_time_ms"]
+        summary = compute_detection_summary(predictions)
 
     # Resolve effective detection control settings for this camera
     try:

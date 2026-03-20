@@ -88,15 +88,39 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     _, buffer = cv2.imencode(".jpg", frame)
     frame_base64 = base64.b64encode(buffer).decode("utf-8")
 
-    # Inference
-    try:
-        inference_result = await run_roboflow_inference(frame_base64)
-    except Exception as e:
-        return {"error": f"Inference failed: {str(e)}", "camera_id": camera_id}
+    # Inference — prefer local ONNX, fallback to Roboflow API
+    model_source = "roboflow"
+    if settings.LOCAL_INFERENCE_ENABLED:
+        try:
+            from app.services.onnx_inference_service import run_local_inference
+            inference_result = await run_local_inference(frame_base64, db=db)
+            model_source = "local_onnx"
+        except Exception as onnx_err:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Local ONNX inference failed for camera %s, falling back to Roboflow: %s",
+                camera_id, onnx_err,
+            )
+            try:
+                inference_result = await run_roboflow_inference(frame_base64)
+            except Exception as e:
+                return {"error": f"Inference failed: {str(e)}", "camera_id": camera_id}
+    else:
+        try:
+            inference_result = await run_roboflow_inference(frame_base64)
+        except Exception as e:
+            return {"error": f"Inference failed: {str(e)}", "camera_id": camera_id}
 
     predictions = inference_result["predictions"]
     inference_time_ms = inference_result["inference_time_ms"]
-    summary = compute_detection_summary(predictions)
+    if model_source == "local_onnx":
+        summary = {
+            "is_wet": inference_result.get("is_wet", False),
+            "confidence": inference_result.get("confidence", 0.0),
+            "wet_area_percent": inference_result.get("wet_area_percent", 0.0),
+        }
+    else:
+        summary = compute_detection_summary(predictions)
 
     # Validation
     validation = await run_validation_pipeline(db, camera_id, predictions, frame_base64)
@@ -116,7 +140,7 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
         "frame_base64": frame_base64,
         "frame_s3_path": None,
         "predictions": predictions,
-        "model_source": "roboflow",
+        "model_source": model_source,
         "model_version_id": None,
         "student_confidence": None,
         "escalated": False,
