@@ -50,7 +50,7 @@ class DetectionListResponse(BaseModel):
 
 class ManualDetectionRequest(BaseModel):
     """Optional overrides for manual detection trigger."""
-    model_source: Optional[Literal["roboflow", "student"]] = None
+    model_source: Optional[Literal["roboflow", "student", "local_onnx"]] = None
 
 
 class FlagToggleResponse(BaseModel):
