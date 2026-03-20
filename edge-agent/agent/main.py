@@ -230,7 +230,16 @@ async def threaded_camera_loop(
         if not ok:
             if not cam.connected:
                 if not await cam.reconnect():
-                    return
+                    # Don't exit — enter long-backoff retry mode (never give up)
+                    log.warning("[%s] Short reconnect failed, entering 60s retry loop", cam.name)
+                    while True:
+                        await asyncio.sleep(60)
+                        try:
+                            if cam.start():
+                                log.info("[%s] Camera recovered after extended outage", cam.name)
+                                break
+                        except Exception:
+                            pass
             continue
 
         # Get ROI from cloud config for this camera

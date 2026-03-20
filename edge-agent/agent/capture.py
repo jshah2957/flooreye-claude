@@ -37,7 +37,7 @@ class CameraCapture:
         self.connected = False
         return False
 
-    async def reconnect(self, max_retries: int = 10) -> bool:
+    async def reconnect(self, max_retries: int = 20) -> bool:
         """Attempt reconnection with backoff."""
         self.release()
         for attempt in range(1, max_retries + 1):
@@ -169,7 +169,7 @@ class ThreadedCameraCapture:
         b64 = base64.b64encode(jpeg_bytes).decode()
         return True, jpeg_bytes, b64
 
-    async def reconnect(self, max_retries: int = 10) -> bool:
+    async def reconnect(self, max_retries: int = 20) -> bool:
         """Stop capture thread, release stream, and attempt reconnection with backoff."""
         self.stop()
         for attempt in range(1, max_retries + 1):
