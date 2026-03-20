@@ -320,6 +320,93 @@ async def add_device_from_cloud(request: Request):
     return {"status": "added", "device_id": device["id"], "cloud_device_id": cloud_device_id, "name": name}
 
 
+@app.post("/api/devices/remove-from-cloud")
+async def remove_device_from_cloud(request: Request):
+    """Cloud tells edge to remove a device from local config."""
+    body = await request.json()
+    edge_device_id = body.get("edge_device_id", "")
+    cloud_device_id = body.get("cloud_device_id", "")
+
+    # Find by edge_device_id or cloud_device_id
+    removed = False
+    if edge_device_id:
+        removed = _local_config.remove_device(edge_device_id)
+    if not removed and cloud_device_id:
+        for dev in _local_config.list_devices():
+            if dev.get("cloud_device_id") == cloud_device_id:
+                removed = _local_config.remove_device(dev["id"])
+                break
+
+    # Reload controllers
+    try:
+        from web.app import _reload_device_controllers
+        _reload_device_controllers()
+    except Exception:
+        pass
+
+    return {"status": "removed" if removed else "not_found"}
+
+
+@app.post("/api/devices/control")
+async def control_device(request: Request):
+    """Cloud tells edge to turn a device on or off."""
+    body = await request.json()
+    device_name = body.get("device_name", "")
+    device_type = body.get("device_type", "tplink")
+    action = body.get("action", "on")
+
+    if device_type == "tplink":
+        try:
+            from web.app import _tplink_ctrl
+            if _tplink_ctrl and _tplink_ctrl.enabled and device_name in _tplink_ctrl.devices:
+                if action == "on":
+                    success = _tplink_ctrl.turn_on(device_name)
+                else:
+                    success = _tplink_ctrl.turn_off(device_name)
+                return {"status": "ok" if success else "failed", "action": action, "device": device_name}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    return {"status": "unsupported", "device_type": device_type}
+
+
+@app.post("/api/devices/update-from-cloud")
+async def update_device_from_cloud(request: Request):
+    """Cloud tells edge to update a device's local config."""
+    body = await request.json()
+    edge_device_id = body.get("edge_device_id", "")
+    cloud_device_id = body.get("cloud_device_id", "")
+
+    dev = None
+    if edge_device_id:
+        dev = _local_config.get_device(edge_device_id)
+    if not dev and cloud_device_id:
+        for d in _local_config.list_devices():
+            if d.get("cloud_device_id") == cloud_device_id:
+                dev = d
+                break
+
+    if not dev:
+        raise HTTPException(404, "Device not found on edge")
+
+    updates = {}
+    if body.get("name"):
+        updates["name"] = body["name"]
+    if body.get("ip"):
+        updates["ip"] = body["ip"]
+    if body.get("device_type"):
+        updates["type"] = body["device_type"]
+    if updates:
+        _local_config.update_device(dev["id"], **updates)
+        try:
+            from web.app import _reload_device_controllers
+            _reload_device_controllers()
+        except Exception:
+            pass
+
+    return {"status": "updated", "device_id": dev["id"]}
+
+
 @app.get("/api/stream/{camera_id}/frame")
 async def get_camera_frame(camera_id: str):
     """Live feed proxy — returns latest frame from camera capture buffer.

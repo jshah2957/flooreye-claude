@@ -42,11 +42,13 @@ async def get_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> d
 
 async def list_devices(
     db: AsyncIOMotorDatabase, org_id: str, store_id: str | None = None,
-    limit: int = 50, offset: int = 0,
+    limit: int = 50, offset: int = 0, include_inactive: bool = False,
 ) -> tuple[list[dict], int]:
     query: dict = org_query(org_id)
     if store_id:
         query["store_id"] = store_id
+    if not include_inactive:
+        query["is_active"] = {"$ne": False}
     total = await db.devices.count_documents(query)
     cursor = db.devices.find(query).sort("created_at", -1).skip(offset).limit(limit)
     devices = await cursor.to_list(length=limit)
@@ -70,10 +72,29 @@ async def update_device(
     return result
 
 
-async def delete_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> None:
-    result = await db.devices.delete_one({**org_query(org_id), "id": device_id})
-    if result.deleted_count == 0:
+async def delete_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> dict:
+    """Soft-delete device — set is_active=false, preserve history."""
+    device = await get_device(db, device_id, org_id)
+    now = datetime.now(timezone.utc)
+    await db.devices.update_one(
+        {"id": device_id},
+        {"$set": {"is_active": False, "status": "offline", "updated_at": now}},
+    )
+    return device
+
+
+async def reactivate_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> dict:
+    """Reactivate a soft-deleted device."""
+    device = await db.devices.find_one({**org_query(org_id), "id": device_id})
+    if not device:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Device not found")
+    now = datetime.now(timezone.utc)
+    await db.devices.update_one(
+        {"id": device_id},
+        {"$set": {"is_active": True, "status": "offline", "updated_at": now}},
+    )
+    device["is_active"] = True
+    return device
 
 
 async def trigger_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) -> dict:
