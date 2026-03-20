@@ -29,6 +29,7 @@ import UsersPage from "@/pages/admin/UsersPage";
 import RoboflowPage from "@/pages/integrations/RoboflowPage";
 import StoragePage from "@/pages/config/StoragePage";
 import TestInferencePage from "@/pages/ml/TestInferencePage";
+import RoboflowTestPage from "@/pages/ml/RoboflowTestPage";
 import AnnotationPage from "@/pages/ml/AnnotationPage";
 import AutoLabelPage from "@/pages/ml/AutoLabelPage";
 import TrainingExplorerPage from "@/pages/ml/TrainingExplorerPage";
@@ -133,6 +134,7 @@ export default function AppRoutes() {
         <Route path="/training/jobs" element={<TrainingJobsPage />} />
         <Route path="/models" element={<ModelRegistryPage />} />
         <Route path="/ml/test-inference" element={<TestInferencePage />} />
+        <Route path="/ml/roboflow-test" element={<RoboflowTestPage />} />
 
         {/* Configuration */}
         <Route path="/stores" element={<StoresPage />} />

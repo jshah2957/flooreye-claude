@@ -29,6 +29,7 @@ from app.routers import (
     notifications,
     reports,
     roboflow,
+    roboflow_test,
     storage,
     stores,
     training,
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
     application.include_router(dataset.router)
     application.include_router(annotations.router)
     application.include_router(roboflow.router)
+    application.include_router(roboflow_test.router)
     application.include_router(models.router)
     application.include_router(training.router)
     application.include_router(active_learning.router)

@@ -92,6 +92,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Distillation Jobs", path: "/training/jobs", icon: BrainCircuit, minRole: ML_PLUS },
       { label: "Model Registry", path: "/models", icon: Boxes, minRole: ML_PLUS },
       { label: "Test Inference", path: "/ml/test-inference", icon: TestTube, minRole: ML_PLUS },
+      { label: "Roboflow Test", path: "/ml/roboflow-test", icon: FlaskConical, minRole: ADMIN_PLUS },
     ],
   },
   {
