@@ -216,7 +216,7 @@ async def update_user(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
-    updated = await auth_service.update_user(db, user_id, body, org_id)
+    updated = await auth_service.update_user(db, user_id, body, org_id, current_user_role=current_user["role"])
     from app.services.audit_service import log_action
     await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
                      "user_updated", "user", user_id, {"fields": list(body.model_dump(exclude_unset=True).keys())})

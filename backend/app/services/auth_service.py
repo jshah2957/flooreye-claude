@@ -132,9 +132,24 @@ async def create_user(
     return user_doc
 
 
-async def update_user(db: AsyncIOMotorDatabase, user_id: str, data: UserUpdate, org_id: str | None = None) -> dict:
+async def update_user(
+    db: AsyncIOMotorDatabase, user_id: str, data: UserUpdate,
+    org_id: str | None = None, current_user_role: str = "org_admin",
+) -> dict:
+    # Privilege escalation guard on role change
+    raw = data.model_dump(exclude_unset=True)
+    if "role" in raw:
+        _ROLE_RANK = {"viewer": 0, "store_owner": 1, "operator": 2, "ml_engineer": 3, "org_admin": 4, "super_admin": 5}
+        caller_rank = _ROLE_RANK.get(current_user_role, 0)
+        requested_rank = _ROLE_RANK.get(raw["role"], 99)
+        if current_user_role != "super_admin" and requested_rank >= caller_rank:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Cannot assign role '{raw['role']}' — insufficient privileges",
+            )
+
     updates: dict = {}
-    for field, value in data.model_dump(exclude_unset=True).items():
+    for field, value in raw.items():
         if field == "password" and value is not None:
             updates["password_hash"] = hash_password(value)
         else:

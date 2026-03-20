@@ -88,9 +88,21 @@ async def list_cameras(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
+    # Enforce store_access for non-admin roles
+    effective_store_id = store_id
+    store_access = current_user.get("store_access", [])
+    if store_access and current_user["role"] not in ("super_admin", "org_admin", "ml_engineer"):
+        if store_id and store_id not in store_access:
+            return {"data": [], "meta": {"total": 0, "offset": offset, "limit": limit}}
+        if not store_id:
+            effective_store_id = None  # Will filter below
     cameras, total = await camera_service.list_cameras(
-        db, current_user.get("org_id", ""), store_id, status_filter, limit, offset
+        db, current_user.get("org_id", ""), effective_store_id, status_filter, limit, offset
     )
+    # Filter by store_access if non-admin
+    if store_access and current_user["role"] not in ("super_admin", "org_admin", "ml_engineer"):
+        cameras = [c for c in cameras if c.get("store_id") in store_access]
+        total = len(cameras)
     return {
         "data": [_camera_response(c) for c in cameras],
         "meta": {"total": total, "offset": offset, "limit": limit},
