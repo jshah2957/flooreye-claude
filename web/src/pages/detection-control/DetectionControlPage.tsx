@@ -92,17 +92,23 @@ export default function DetectionControlPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await api.put("/detection-control/settings", {
+      const res = await api.put("/detection-control/settings", {
         scope: selectedScope,
         scope_id: selectedScopeId,
         ...formData,
       });
+      return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
       queryClient.invalidateQueries({ queryKey: ["dc-inheritance"] });
       setFormDirty(false);
-      success("Settings saved");
+      const pushCount = data?.edge_push?.cameras_pushed ?? 0;
+      if (pushCount > 0) {
+        success(`Settings saved — pushed to ${pushCount} edge camera(s)`);
+      } else {
+        success("Settings saved");
+      }
     },
     onError: (err: any) => {
       showError(err?.response?.data?.detail || "Failed to save settings");

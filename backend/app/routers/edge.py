@@ -415,8 +415,11 @@ async def get_validation_settings(
             "layer3_k": effective.get("layer3_k", 3),
             "layer3_m": effective.get("layer3_m", 5),
             "layer3_enabled": effective.get("layer3_enabled", True),
+            "layer4_delta_threshold": effective.get("layer4_delta_threshold", 0.15),
             "layer4_cooldown_seconds": effective.get("cooldown_after_alert_seconds", 300),
             "layer4_enabled": effective.get("layer4_enabled", True),
+            "capture_fps": effective.get("capture_fps", 2),
+            "detection_enabled": effective.get("detection_enabled", False),
         }
 
     return {"data": settings_map}
