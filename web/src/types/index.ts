@@ -42,7 +42,7 @@ export interface Camera {
   stream_type: "rtsp" | "onvif" | "http" | "hls" | "mjpeg";
   stream_url: string;
   credentials: string | null;
-  status: "offline" | "online" | "testing" | "active";
+  status: "offline" | "online" | "testing" | "active" | "inactive" | "registered" | "removed";
   fps_config: number;
   resolution: string | null;
   floor_type: "tile" | "wood" | "concrete" | "carpet" | "vinyl" | "linoleum";

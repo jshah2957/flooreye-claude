@@ -33,6 +33,7 @@ class CameraManager:
                         "stream_type": camera.get("stream_type", "rtsp"),
                         "location": camera.get("location", ""),
                         "edge_camera_id": camera["id"],
+                        "test_passed": True,
                     },
                 )
                 if resp.status_code in (200, 201):

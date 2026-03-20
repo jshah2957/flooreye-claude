@@ -8,6 +8,7 @@ import type { Camera, Store, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonCard from "@/components/shared/SkeletonCard";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 
 export default function CamerasPage() {
@@ -44,13 +45,37 @@ export default function CamerasPage() {
   const cameras = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
 
-  const filtered = cameras.filter((c) => {
+  const activeCameras = cameras.filter((c) => c.status !== "inactive");
+  const inactiveCameras = cameras.filter((c) => c.status === "inactive");
+
+  const filtered = activeCameras.filter((c) => {
     if (search && !(c.name ?? '').toLowerCase().includes(search.toLowerCase())) return false;
     if (modeFilter && c.inference_mode !== modeFilter) return false;
     return true;
   });
 
   const storeMap = new Map((storesData ?? []).map((s) => [s.id, s.name]));
+
+  const [deleteTarget, setDeleteTarget] = useState<Camera | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (camId: string) => api.delete(`/cameras/${camId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      setDeleteTarget(null);
+      success("Camera deactivated");
+    },
+    onError: () => showError("Failed to deactivate camera"),
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: (camId: string) => api.post(`/cameras/${camId}/reactivate`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      success("Camera reactivated — needs config push");
+    },
+    onError: () => showError("Failed to reactivate camera"),
+  });
 
   const toggleMutation = useMutation({
     mutationFn: (camId: string) => api.post(`/cameras/${camId}/toggle-detection`),
@@ -202,6 +227,17 @@ export default function CamerasPage() {
                         >
                           Test Connection
                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setMenuOpen(null);
+                            setDeleteTarget(cam);
+                          }}
+                          className="block w-full px-4 py-2 text-left text-sm text-[#DC2626] hover:bg-[#FEE2E2]"
+                        >
+                          Deactivate
+                        </button>
                       </div>
                     )}
                   </div>
@@ -277,6 +313,43 @@ export default function CamerasPage() {
           </div>
         </div>
       )}
+
+      {/* Inactive Cameras */}
+      {inactiveCameras.length > 0 && (
+        <div className="mt-8">
+          <h3 className="mb-3 text-sm font-semibold text-[#78716C]">
+            Inactive Cameras ({inactiveCameras.length})
+          </h3>
+          <div className="space-y-2">
+            {inactiveCameras.map((cam) => (
+              <div key={cam.id} className="flex items-center justify-between rounded-lg border border-[#E7E5E0] bg-[#FAFAF9] p-3">
+                <div>
+                  <span className="text-sm text-[#78716C]">{cam.name}</span>
+                  <span className="ml-2 rounded bg-[#F1F0ED] px-1.5 py-0.5 text-[10px] text-[#78716C]">inactive</span>
+                </div>
+                <button
+                  onClick={() => reactivateMutation.mutate(cam.id)}
+                  disabled={reactivateMutation.isPending}
+                  className="rounded-md border border-[#0D9488] px-3 py-1 text-xs text-[#0D9488] hover:bg-[#F0FDFA]"
+                >
+                  Reactivate
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate Confirmation */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Deactivate Camera"
+        description={`Deactivate "${deleteTarget?.name}"? Detection will stop. History is preserved. You can reactivate later.`}
+        confirmLabel="Deactivate"
+        destructive
+        onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

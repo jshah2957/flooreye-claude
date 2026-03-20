@@ -25,8 +25,30 @@ async def register_edge_camera(
     stream_type: str,
     location: str,
     edge_camera_id: str,
+    test_passed: bool = False,
 ) -> dict:
-    """Register a camera from an edge agent. Creates or updates camera in MongoDB."""
+    """Register a camera from an edge agent. Creates or updates camera in MongoDB.
+
+    Edge must test connectivity before calling this. If test_passed is False,
+    cloud attempts to verify by calling edge's stream proxy.
+    """
+    if not test_passed:
+        # Try to verify camera via edge stream proxy
+        agent = await db.edge_agents.find_one({"id": agent_id})
+        edge_url = agent.get("tunnel_url") or agent.get("direct_url") if agent else None
+        if edge_url:
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get(f"{edge_url}:8091/api/stream/{edge_camera_id}/frame")
+                    if resp.status_code != 200:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Camera connectivity verification failed — edge returned error",
+                        )
+            except httpx.HTTPError:
+                log.warning("Could not verify camera via edge proxy (accepting registration anyway)")
+        # If edge_url not available, accept on faith (edge already tested locally)
     # Check if camera already registered by this edge
     existing = await db.cameras.find_one({
         "org_id": org_id,

@@ -44,6 +44,7 @@ async def register_camera(
         stream_type=body.get("stream_type", "rtsp"),
         location=body.get("location", ""),
         edge_camera_id=edge_camera_id,
+        test_passed=body.get("test_passed", False),
     )
     return {"data": result}
 

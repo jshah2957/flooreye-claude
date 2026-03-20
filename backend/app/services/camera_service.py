@@ -143,14 +143,52 @@ async def update_camera(
 async def delete_camera(
     db: AsyncIOMotorDatabase, camera_id: str, org_id: str
 ) -> None:
-    result = await db.cameras.delete_one({**org_query(org_id), "id": camera_id})
-    if result.deleted_count == 0:
+    """Soft-delete: mark camera as inactive, preserve all history."""
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
+    if not camera:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
         )
-    # Clean up related ROIs and dry references
-    await db.rois.delete_many({"camera_id": camera_id})
-    await db.dry_references.delete_many({"camera_id": camera_id})
+    now = datetime.now(timezone.utc)
+    await db.cameras.update_one(
+        {"id": camera_id},
+        {"$set": {
+            "status": "inactive",
+            "detection_enabled": False,
+            "deactivated_at": now,
+            "updated_at": now,
+        }},
+    )
+    # Notify edge to stop detection for this camera
+    try:
+        from app.services.edge_camera_service import push_config_to_edge
+        await push_config_to_edge(db, camera_id, org_id)
+    except Exception:
+        pass
+
+
+async def reactivate_camera(
+    db: AsyncIOMotorDatabase, camera_id: str, org_id: str
+) -> dict:
+    """Reactivate a soft-deleted camera. Needs fresh ROI + dry ref push."""
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
+    if not camera:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found"
+        )
+    now = datetime.now(timezone.utc)
+    await db.cameras.update_one(
+        {"id": camera_id},
+        {"$set": {
+            "status": "registered",
+            "config_status": "waiting",
+            "deactivated_at": None,
+            "updated_at": now,
+        }},
+    )
+    camera["status"] = "registered"
+    camera["config_status"] = "waiting"
+    return camera
 
 
 # ── Connection Test ─────────────────────────────────────────────

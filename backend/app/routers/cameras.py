@@ -143,7 +143,20 @@ async def delete_camera(
     await camera_service.delete_camera(
         db, camera_id, current_user.get("org_id", "")
     )
-    return {"data": {"ok": True}}
+    return {"data": {"ok": True, "status": "inactive"}}
+
+
+@router.post("/{camera_id}/reactivate")
+async def reactivate_camera(
+    camera_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Reactivate a soft-deleted camera. Needs fresh config push before detection resumes."""
+    camera = await camera_service.reactivate_camera(
+        db, camera_id, current_user.get("org_id", "")
+    )
+    return {"data": _camera_response(camera)}
 
 
 # ── Connection Test & Quality ───────────────────────────────────

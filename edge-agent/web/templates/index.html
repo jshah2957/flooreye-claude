@@ -94,49 +94,64 @@
         </section>
     </main>
 
-    <!-- Add Camera Modal -->
+    <!-- Add Camera Modal (test-before-add) -->
     <div id="add-camera-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <h3>Add Camera</h3>
-            <form onsubmit="submitAddCamera(event)">
-                <label>Name *<input type="text" id="cam-name" required placeholder="e.g. Entrance Camera"></label>
-                <label>RTSP URL *<input type="text" id="cam-url" required placeholder="rtsp://user:pass@192.168.1.100/stream"></label>
-                <label>Stream Type
-                    <select id="cam-type">
-                        <option value="rtsp">RTSP</option>
-                        <option value="hls">HLS</option>
-                        <option value="mjpeg">MJPEG</option>
-                        <option value="http">HTTP</option>
-                    </select>
-                </label>
-                <label>Location<input type="text" id="cam-location" placeholder="e.g. Main entrance, aisle 3"></label>
-                <div class="modal-actions">
-                    <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Camera</button>
-                </div>
-            </form>
+            <label>Name *<input type="text" id="cam-name" required placeholder="e.g. Entrance Camera"></label>
+            <label>RTSP URL *<input type="text" id="cam-url" required placeholder="rtsp://user:pass@192.168.1.100/stream"></label>
+            <label>Stream Type
+                <select id="cam-type">
+                    <option value="rtsp">RTSP</option>
+                    <option value="hls">HLS</option>
+                    <option value="mjpeg">MJPEG</option>
+                    <option value="http">HTTP</option>
+                </select>
+            </label>
+            <label>Location<input type="text" id="cam-location" placeholder="e.g. Main entrance, aisle 3"></label>
+            <div id="cam-test-result" style="display:none; margin:12px 0;"></div>
+            <div id="cam-preview" style="display:none; margin:12px 0; text-align:center;">
+                <img id="cam-preview-img" style="max-width:100%; border-radius:6px; border:1px solid #e7e5e0;" />
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
+                <button type="button" onclick="testCameraBeforeAdd()" id="cam-test-btn" class="btn" style="border-color:#0d9488; color:#0d9488;">Test Connection</button>
+                <button type="button" onclick="submitAddCamera()" id="cam-add-btn" class="btn btn-primary" disabled>Add Camera</button>
+            </div>
         </div>
     </div>
 
-    <!-- Add Device Modal -->
+    <!-- Add Device Modal (test-before-add) -->
     <div id="add-device-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <h3>Add IoT Device</h3>
-            <form onsubmit="submitAddDevice(event)">
-                <label>Name *<input type="text" id="dev-name" required placeholder="e.g. Caution Sign Plug"></label>
-                <label>IP Address *<input type="text" id="dev-ip" required placeholder="192.168.1.50"></label>
-                <label>Type
-                    <select id="dev-type">
-                        <option value="tplink">TP-Link Kasa</option>
-                        <option value="mqtt">MQTT</option>
-                        <option value="webhook">HTTP Webhook</option>
-                    </select>
-                </label>
-                <div class="modal-actions">
-                    <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Device</button>
-                </div>
-            </form>
+            <label>Name *<input type="text" id="dev-name" required placeholder="e.g. Caution Sign Plug"></label>
+            <label>IP Address *<input type="text" id="dev-ip" required placeholder="192.168.1.50"></label>
+            <label>Type
+                <select id="dev-type">
+                    <option value="tplink">TP-Link Kasa</option>
+                    <option value="mqtt">MQTT</option>
+                    <option value="webhook">HTTP Webhook</option>
+                </select>
+            </label>
+            <div id="dev-test-result" style="display:none; margin:12px 0;"></div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
+                <button type="button" onclick="testDeviceBeforeAdd()" id="dev-test-btn" class="btn" style="border-color:#0d9488; color:#0d9488;">Test Connection</button>
+                <button type="button" onclick="submitAddDevice()" id="dev-add-btn" class="btn btn-primary" disabled>Add Device</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirm-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3 id="confirm-title">Confirm</h3>
+            <p id="confirm-msg" style="margin:12px 0; font-size:13px; color:#78716c;"></p>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
+                <button type="button" id="confirm-btn" class="btn btn-danger">Confirm</button>
+            </div>
         </div>
     </div>
 
@@ -144,10 +159,31 @@
     <div id="toast" class="toast" style="display:none;"></div>
 
     <script>
-        function showAddCamera() { document.getElementById('add-camera-modal').style.display = 'flex'; }
-        function showAddDevice() { document.getElementById('add-device-modal').style.display = 'flex'; }
+        let _camTestPassed = false;
+        let _devTestPassed = false;
+        let _confirmAction = null;
+
+        function showAddCamera() {
+            _camTestPassed = false;
+            document.getElementById('cam-add-btn').disabled = true;
+            document.getElementById('cam-test-result').style.display = 'none';
+            document.getElementById('cam-preview').style.display = 'none';
+            document.getElementById('cam-name').value = '';
+            document.getElementById('cam-url').value = '';
+            document.getElementById('cam-location').value = '';
+            document.getElementById('add-camera-modal').style.display = 'flex';
+        }
+        function showAddDevice() {
+            _devTestPassed = false;
+            document.getElementById('dev-add-btn').disabled = true;
+            document.getElementById('dev-test-result').style.display = 'none';
+            document.getElementById('dev-name').value = '';
+            document.getElementById('dev-ip').value = '';
+            document.getElementById('add-device-modal').style.display = 'flex';
+        }
         function closeModals() {
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+            _confirmAction = null;
         }
         function toast(msg, type) {
             const t = document.getElementById('toast');
@@ -156,9 +192,72 @@
             t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 3000);
         }
+        function showConfirm(title, msg, action) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-msg').textContent = msg;
+            _confirmAction = action;
+            document.getElementById('confirm-btn').onclick = async () => {
+                if (_confirmAction) await _confirmAction();
+                closeModals();
+                location.reload();
+            };
+            document.getElementById('confirm-modal').style.display = 'flex';
+        }
 
-        async function submitAddCamera(e) {
-            e.preventDefault();
+        // --- Camera test-before-add ---
+        async function testCameraBeforeAdd() {
+            const url = document.getElementById('cam-url').value.trim();
+            if (!url) { toast('Enter RTSP URL first', 'error'); return; }
+            const btn = document.getElementById('cam-test-btn');
+            const result = document.getElementById('cam-test-result');
+            btn.textContent = 'Testing...'; btn.disabled = true;
+            result.style.display = 'none';
+            document.getElementById('cam-preview').style.display = 'none';
+            try {
+                const res = await fetch('/cameras/test-url', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url})
+                });
+                const d = await res.json();
+                if (d.data && d.data.connected) {
+                    _camTestPassed = true;
+                    document.getElementById('cam-add-btn').disabled = false;
+                    result.innerHTML = '<span style="color:#16a34a;">&#10003; Connected successfully</span>';
+                    if (d.data.snapshot) {
+                        document.getElementById('cam-preview-img').src = 'data:image/jpeg;base64,' + d.data.snapshot;
+                        document.getElementById('cam-preview').style.display = 'block';
+                    }
+                } else {
+                    _camTestPassed = false;
+                    document.getElementById('cam-add-btn').disabled = true;
+                    result.innerHTML = '<span style="color:#dc2626;">&#10007; Connection failed. Check URL and try again.</span>';
+                }
+                result.style.display = 'block';
+            } catch(e) {
+                result.innerHTML = '<span style="color:#dc2626;">&#10007; Test error: ' + e.message + '</span>';
+                result.style.display = 'block';
+            }
+            btn.textContent = 'Test Connection'; btn.disabled = false;
+        }
+        // Reset test when URL changes
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlInput = document.getElementById('cam-url');
+            if (urlInput) urlInput.addEventListener('input', () => {
+                _camTestPassed = false;
+                document.getElementById('cam-add-btn').disabled = true;
+                document.getElementById('cam-test-result').style.display = 'none';
+                document.getElementById('cam-preview').style.display = 'none';
+            });
+            const ipInput = document.getElementById('dev-ip');
+            if (ipInput) ipInput.addEventListener('input', () => {
+                _devTestPassed = false;
+                document.getElementById('dev-add-btn').disabled = true;
+                document.getElementById('dev-test-result').style.display = 'none';
+            });
+        });
+
+        async function submitAddCamera() {
+            if (!_camTestPassed) { toast('Test connection first', 'error'); return; }
             const body = {
                 name: document.getElementById('cam-name').value,
                 url: document.getElementById('cam-url').value,
@@ -170,8 +269,39 @@
             else { const d = await res.json(); toast(d.detail || 'Failed', 'error'); }
         }
 
-        async function submitAddDevice(e) {
-            e.preventDefault();
+        // --- Device test-before-add ---
+        async function testDeviceBeforeAdd() {
+            const ip = document.getElementById('dev-ip').value.trim();
+            if (!ip) { toast('Enter IP address first', 'error'); return; }
+            const btn = document.getElementById('dev-test-btn');
+            const result = document.getElementById('dev-test-result');
+            btn.textContent = 'Testing...'; btn.disabled = true;
+            result.style.display = 'none';
+            try {
+                const res = await fetch('/devices/test-ip', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ip, type: document.getElementById('dev-type').value})
+                });
+                const d = await res.json();
+                if (d.data && d.data.reachable) {
+                    _devTestPassed = true;
+                    document.getElementById('dev-add-btn').disabled = false;
+                    result.innerHTML = '<span style="color:#16a34a;">&#10003; Device reachable</span>';
+                } else {
+                    _devTestPassed = false;
+                    document.getElementById('dev-add-btn').disabled = true;
+                    result.innerHTML = '<span style="color:#dc2626;">&#10007; Device unreachable. Check IP and try again.</span>';
+                }
+                result.style.display = 'block';
+            } catch(e) {
+                result.innerHTML = '<span style="color:#dc2626;">&#10007; Test error</span>';
+                result.style.display = 'block';
+            }
+            btn.textContent = 'Test Connection'; btn.disabled = false;
+        }
+
+        async function submitAddDevice() {
+            if (!_devTestPassed) { toast('Test connection first', 'error'); return; }
             const body = {
                 name: document.getElementById('dev-name').value,
                 ip: document.getElementById('dev-ip').value,
@@ -182,19 +312,33 @@
             else { toast('Failed to add device', 'error'); }
         }
 
+        // --- Existing camera/device row actions ---
         async function testCamera(id) {
             toast('Testing connection...', 'info');
             const res = await fetch(`/cameras/${id}/test`, { method: 'POST' });
             const d = await res.json();
-            toast(d.data.connected ? 'Connected!' : 'Connection failed', d.data.connected ? 'success' : 'error');
+            if (d.data.connected && d.data.snapshot) {
+                // Show preview frame in a temporary overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'modal';
+                overlay.style.display = 'flex';
+                overlay.innerHTML = `<div class="modal-content" style="text-align:center;">
+                    <h3 style="color:#16a34a;">Connected</h3>
+                    <img src="data:image/jpeg;base64,${d.data.snapshot}" style="max-width:100%;border-radius:6px;margin:12px 0;" />
+                    <button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button>
+                </div>`;
+                document.body.appendChild(overlay);
+            } else {
+                toast('Connection failed', 'error');
+            }
             location.reload();
         }
 
-        async function removeCamera(id, name) {
-            if (!confirm(`Remove camera "${name}"?`)) return;
-            await fetch(`/cameras/${id}`, { method: 'DELETE' });
-            toast('Camera removed', 'success');
-            location.reload();
+        function removeCamera(id, name) {
+            showConfirm('Remove Camera', 'Remove "' + name + '"? This will unregister from cloud and delete local config.', async () => {
+                await fetch(`/cameras/${id}`, { method: 'DELETE' });
+                toast('Camera removed', 'success');
+            });
         }
 
         async function testDevice(id) {
@@ -204,11 +348,11 @@
             toast(d.data.reachable ? 'Device reachable!' : 'Device unreachable', d.data.reachable ? 'success' : 'error');
         }
 
-        async function removeDevice(id, name) {
-            if (!confirm(`Remove device "${name}"?`)) return;
-            await fetch(`/devices/${id}`, { method: 'DELETE' });
-            toast('Device removed', 'success');
-            location.reload();
+        function removeDevice(id, name) {
+            showConfirm('Remove Device', 'Remove "' + name + '"?', async () => {
+                await fetch(`/devices/${id}`, { method: 'DELETE' });
+                toast('Device removed', 'success');
+            });
         }
 
         // Auto-refresh status every 5 seconds

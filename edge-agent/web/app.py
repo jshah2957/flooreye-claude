@@ -123,6 +123,29 @@ async def test_camera(camera_id: str):
     return {"data": {"connected": success, "status": status, "snapshot": snapshot}}
 
 
+@app.post("/cameras/test-url")
+async def test_camera_url(request: Request):
+    """Test camera URL before adding. Returns preview frame if connected."""
+    body = await request.json()
+    url = body.get("url", "").strip()
+    if not url:
+        raise HTTPException(400, "url is required")
+
+    def _test(u):
+        cap = cv2.VideoCapture(u)
+        if not cap.isOpened():
+            return False, None
+        ret, frame = cap.read()
+        cap.release()
+        if not ret or frame is None:
+            return False, None
+        _, buf = cv2.imencode(".jpg", frame)
+        return True, base64.b64encode(buf).decode("utf-8")
+
+    success, snapshot = await asyncio.to_thread(_test, url)
+    return {"data": {"connected": success, "snapshot": snapshot}}
+
+
 # --- Device API ---
 
 @app.get("/devices")
@@ -149,6 +172,32 @@ async def remove_device(device_id: str):
     if not _local_config.remove_device(device_id):
         raise HTTPException(404, "Device not found")
     return {"status": "removed"}
+
+
+@app.post("/devices/test-ip")
+async def test_device_ip(request: Request):
+    """Test device IP before adding."""
+    body = await request.json()
+    ip = body.get("ip", "").strip()
+    device_type = body.get("type", "tplink")
+    if not ip:
+        raise HTTPException(400, "ip is required")
+
+    import socket
+
+    def _test(addr, port):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            sock.connect((addr, port))
+            sock.close()
+            return True
+        except Exception:
+            return False
+
+    port = 9999 if device_type == "tplink" else 80
+    reachable = await asyncio.to_thread(_test, ip, port)
+    return {"data": {"reachable": reachable}}
 
 
 @app.post("/devices/{device_id}/test")
