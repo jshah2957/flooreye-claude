@@ -128,9 +128,15 @@ async def update_camera(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    camera = await camera_service.update_camera(
-        db, camera_id, current_user.get("org_id", ""), body
-    )
+    org_id = current_user.get("org_id", "")
+    camera = await camera_service.update_camera(db, camera_id, org_id, body)
+    # Push updated config to edge if camera is edge-managed
+    if camera.get("edge_agent_id"):
+        try:
+            from app.services.edge_camera_service import push_config_to_edge
+            await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+        except Exception:
+            pass
     return {"data": _camera_response(camera)}
 
 

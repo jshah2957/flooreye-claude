@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -14,12 +14,16 @@ import {
   Settings,
   FileText,
   ExternalLink,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import api from "@/lib/api";
 import type { Camera } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import RoiCanvas from "@/components/roi/RoiCanvas";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 
 interface ROIData {
@@ -68,6 +72,12 @@ export default function CameraDetailPage() {
   const { success, error: showError } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [showUrl, setShowUrl] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editFloorType, setEditFloorType] = useState("tile");
+  const [editFps, setEditFps] = useState(2);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const navigate = useNavigate();
 
   const { data: camera, isLoading } = useQuery({
     queryKey: ["camera", id],
@@ -168,6 +178,26 @@ export default function CameraDetailPage() {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: () => api.put(`/cameras/${id}`, { name: editName, floor_type: editFloorType, fps_config: editFps }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["camera", id] });
+      queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      setEditOpen(false);
+      success("Camera updated");
+    },
+    onError: (err: any) => showError(err?.response?.data?.detail || "Update failed"),
+  });
+
+  const deactivateMutation = useMutation({
+    mutationFn: () => api.delete(`/cameras/${id}`),
+    onSuccess: () => {
+      success("Camera deactivated");
+      navigate("/cameras");
+    },
+    onError: (err: any) => showError(err?.response?.data?.detail || "Deactivation failed"),
+  });
+
   const captureDryRefMutation = useMutation({
     mutationFn: () => api.post(`/cameras/${id}/dry-reference`, null, { params: { num_frames: 5 } }),
     onSuccess: () => {
@@ -233,9 +263,72 @@ export default function CameraDetailPage() {
               )}
               Test
             </button>
+            <button
+              onClick={() => { setEditName(camera.name); setEditFloorType(camera.floor_type); setEditFps(camera.fps_config); setEditOpen(true); }}
+              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm text-[#1C1917] hover:bg-[#F1F0ED]"
+            >
+              <Pencil size={14} /> Edit
+            </button>
+            {camera.status !== "inactive" && (
+              <button
+                onClick={() => setDeactivateOpen(true)}
+                className="flex items-center gap-1 rounded-md border border-[#FCA5A5] px-3 py-2 text-sm text-[#DC2626] hover:bg-[#FEE2E2]"
+              >
+                <Trash2 size={14} /> Deactivate
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[400px] rounded-lg bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#1C1917]">Edit Camera</h3>
+              <button onClick={() => setEditOpen(false)} className="text-[#78716C]"><X size={16} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Name</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Floor Type</label>
+                <select value={editFloorType} onChange={(e) => setEditFloorType(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  {["tile","wood","concrete","carpet","vinyl","linoleum"].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">FPS ({editFps})</label>
+                <input type="range" min={1} max={30} value={editFps} onChange={(e) => setEditFps(Number(e.target.value))}
+                  className="w-full" />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setEditOpen(false)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
+              <button onClick={() => editMutation.mutate()} disabled={editMutation.isPending}
+                className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50">
+                {editMutation.isPending ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate Confirmation */}
+      <ConfirmDialog
+        open={deactivateOpen}
+        title="Deactivate Camera"
+        description={`Deactivate "${camera.name}"? Detection will stop. All history is preserved.`}
+        confirmLabel="Deactivate"
+        destructive
+        onConfirm={() => deactivateMutation.mutate()}
+        onCancel={() => setDeactivateOpen(false)}
+      />
 
       {/* Tabs */}
       <div className="mb-6 flex gap-1 overflow-x-auto border-b border-[#E7E5E0]">
