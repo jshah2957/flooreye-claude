@@ -36,7 +36,12 @@
       "Bash(grep -n \"deploy_model\\\\|update_model\\\\|push_model\" /c/Users/jshah/flooreye/backend/app/routers/*.py)",
       "Bash(find /c/Users/jshah/flooreye/mobile -name *.tsx -o -name *.ts)",
       "Bash(python -m pytest tests/ -x -q)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(grep -r dry_ref /c/Users/jshah/flooreye --include=*.py --include=*.tsx --include=*.ts)",
+      "Bash(grep -r layer4 /c/Users/jshah/flooreye --include=*.md -A 2 -B 2)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts|jsx|js\\)$\")"
     ]
   }
 }
