@@ -66,6 +66,37 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number];
 
+function RoiHistory({ cameraId }: { cameraId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data } = useQuery({
+    queryKey: ["roi-history", cameraId],
+    queryFn: async () => {
+      const res = await api.get(`/cameras/${cameraId}/roi/history`);
+      return res.data.data as { version: number; is_active: boolean; created_by: string; created_at: string }[];
+    },
+    enabled: open,
+  });
+  const history = data ?? [];
+  if (history.length <= 1 && !open) return null;
+  return (
+    <div className="mt-4">
+      <button onClick={() => setOpen(!open)} className="text-xs text-[#0D9488] hover:underline">
+        {open ? "Hide" : "Show"} version history ({history.length} versions)
+      </button>
+      {open && history.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {history.map((r) => (
+            <div key={r.version} className="flex items-center justify-between rounded border border-[#F5F5F4] px-3 py-1.5 text-xs">
+              <span className="text-[#1C1917]">v{r.version} {r.is_active && <span className="ml-1 rounded bg-[#DCFCE7] px-1 text-[10px] text-[#16A34A]">active</span>}</span>
+              <span className="text-[#78716C]">{new Date(r.created_at).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CameraDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -492,6 +523,8 @@ export default function CameraDetailPage() {
             initialMaskOutside={roi?.mask_outside}
             cameraId={camera.id}
           />
+          {/* ROI Version History */}
+          <RoiHistory cameraId={camera.id} />
         </div>
       )}
 

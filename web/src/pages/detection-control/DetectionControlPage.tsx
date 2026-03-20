@@ -253,6 +253,29 @@ export default function DetectionControlPage() {
                 {saveMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
                 Save
               </button>
+              {selectedScope === "camera" && selectedScopeId && (
+                <select
+                  onChange={async (e) => {
+                    const srcId = e.target.value;
+                    if (!srcId) return;
+                    if (!window.confirm(`Copy settings from selected camera to this camera?`)) { e.target.value = ""; return; }
+                    try {
+                      await api.post("/detection-control/bulk-apply", {
+                        source_scope: "camera", source_scope_id: srcId,
+                        target_camera_ids: [selectedScopeId],
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
+                    } catch { /* ignore */ }
+                    e.target.value = "";
+                  }}
+                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px] text-[#78716C] outline-none"
+                >
+                  <option value="">Copy from camera...</option>
+                  {(cameras ?? []).filter((c: any) => c.id !== selectedScopeId).map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 

@@ -238,6 +238,23 @@ async def get_roi(
     return {"data": _roi_response(roi)}
 
 
+@router.get("/{camera_id}/roi/history")
+async def get_roi_history(
+    camera_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    """List all ROI versions for a camera (active + inactive), most recent first."""
+    org_id = current_user.get("org_id", "")
+    await camera_service.get_camera(db, camera_id, org_id)
+    rois = await db.rois.find(
+        {"camera_id": camera_id, "org_id": org_id}
+    ).sort("version", -1).to_list(length=50)
+    for r in rois:
+        r.pop("_id", None)
+    return {"data": rois}
+
+
 # ── Dry Reference ──────────────────────────────────────────────
 
 
