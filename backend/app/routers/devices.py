@@ -73,6 +73,32 @@ async def delete_device(
     return {"data": {"ok": True}}
 
 
+@router.put("/{device_id}/assign")
+async def assign_cameras(
+    device_id: str,
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Assign device to specific cameras. Set trigger_on_any=false to enable selective triggering."""
+    org_id = current_user.get("org_id", "")
+    device = await device_service.get_device(db, device_id, org_id)
+    updates = {}
+    if "assigned_cameras" in body:
+        updates["assigned_cameras"] = body["assigned_cameras"]
+    if "trigger_on_any" in body:
+        updates["trigger_on_any"] = body["trigger_on_any"]
+    if "auto_off_seconds" in body:
+        updates["auto_off_seconds"] = body["auto_off_seconds"]
+    if updates:
+        from datetime import datetime, timezone
+        updates["updated_at"] = datetime.now(timezone.utc)
+        await db.devices.update_one({"id": device_id}, {"$set": updates})
+        device.update(updates)
+    device.pop("_id", None)
+    return {"data": device}
+
+
 @router.post("/{device_id}/trigger")
 async def trigger_device(
     device_id: str,
