@@ -538,6 +538,31 @@ async def check_and_download_model(inference: InferenceClient):
         log.warning(f"Model check failed (non-critical, continuing with current model): {e}")
 
 
+async def sync_validation_settings(validator: "DetectionValidator"):
+    """Pull per-camera validation settings from cloud backend on startup and periodically."""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{config.BACKEND_URL}/api/v1/edge/validation-settings",
+                headers=config.auth_headers(),
+            )
+            if resp.status_code == 200:
+                settings_map = resp.json().get("data", {})
+                validator.update_settings(settings_map)
+                log.info("Synced validation settings for %d cameras from cloud", len(settings_map))
+            else:
+                log.warning("Failed to sync validation settings: %d", resp.status_code)
+    except Exception as e:
+        log.warning("Could not sync validation settings (using defaults): %s", e)
+
+
+async def validation_settings_sync_loop(validator: "DetectionValidator"):
+    """Periodically sync validation settings from cloud (every 5 minutes)."""
+    while True:
+        await asyncio.sleep(300)
+        await sync_validation_settings(validator)
+
+
 async def main():
     log.info("=" * 60)
     log.info("FloorEye Edge Agent v2.0.0")
@@ -581,6 +606,9 @@ async def main():
     # Check for model updates before starting detection
     await check_and_download_model(inference)
 
+    # Sync validation settings from cloud (uses defaults if unreachable)
+    await sync_validation_settings(validator)
+
     # Build threaded camera capture objects
     global _cam_objects
     cam_objects = {
@@ -597,6 +625,7 @@ async def main():
         asyncio.create_task(cmd_poller.poll_loop()),
         asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
         asyncio.create_task(cleanup_old_files_loop()),
+        asyncio.create_task(validation_settings_sync_loop(validator)),
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))

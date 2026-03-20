@@ -362,6 +362,52 @@ async def ack_command(
     return {"data": result}
 
 
+@router.get("/validation-settings")
+async def get_validation_settings(
+    agent: dict = Depends(get_edge_agent),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Return per-camera validation thresholds for all cameras in this agent's org/store.
+
+    Edge agent calls this on startup and periodically to sync validation settings.
+    Returns a dict mapping camera_name → effective validation thresholds.
+    """
+    from app.services.detection_control_service import resolve_effective_settings
+
+    org_id = agent.get("org_id", "")
+    store_id = agent.get("store_id", "")
+
+    # Get all cameras for this agent's store
+    query = {"org_id": org_id}
+    if store_id:
+        query["store_id"] = store_id
+    cameras = await db.cameras.find(query).to_list(length=200)
+
+    settings_map = {}
+    for cam in cameras:
+        camera_id = cam.get("id", "")
+        camera_name = cam.get("name", camera_id)
+        try:
+            effective, _ = await resolve_effective_settings(db, org_id, camera_id)
+        except Exception:
+            effective = {}
+
+        settings_map[camera_name] = {
+            "camera_id": camera_id,
+            "layer1_confidence": effective.get("layer1_confidence", 0.70),
+            "layer1_enabled": effective.get("layer1_enabled", True),
+            "layer2_min_area": effective.get("layer2_min_area_percent", 0.5),
+            "layer2_enabled": effective.get("layer2_enabled", True),
+            "layer3_k": effective.get("layer3_k", 3),
+            "layer3_m": effective.get("layer3_m", 5),
+            "layer3_enabled": effective.get("layer3_enabled", True),
+            "layer4_cooldown_seconds": effective.get("cooldown_after_alert_seconds", 300),
+            "layer4_enabled": effective.get("layer4_enabled", True),
+        }
+
+    return {"data": settings_map}
+
+
 @router.get("/model/current")
 async def current_model(
     agent: dict = Depends(get_edge_agent),
