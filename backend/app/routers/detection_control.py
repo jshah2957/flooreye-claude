@@ -144,6 +144,30 @@ async def list_classes(
     return {"data": classes}
 
 
+@router.post("/classes/sync-from-model")
+async def sync_classes_from_model(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Extract classes from currently loaded ONNX model and sync to detection_classes.
+
+    Also pushes updated classes to all edge agents.
+    """
+    from app.services.onnx_inference_service import onnx_service
+    org_id = current_user.get("org_id", "")
+    if not onnx_service.is_loaded:
+        from fastapi import HTTPException
+        raise HTTPException(503, "No ONNX model loaded — load a production model first")
+    count = await onnx_service.sync_classes_to_db(db, org_id)
+    # Push to edge agents
+    try:
+        from app.services.edge_service import push_classes_to_edge
+        await push_classes_to_edge(db, org_id)
+    except Exception:
+        pass
+    return {"data": {"synced": count, "source": "model"}}
+
+
 @router.post("/classes", status_code=status.HTTP_201_CREATED)
 async def create_class(
     body: dict,

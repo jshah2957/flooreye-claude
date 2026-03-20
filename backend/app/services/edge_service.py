@@ -347,14 +347,30 @@ async def push_classes_to_edge(
 
     Returns list of created command documents.
     """
-    class_def = await db.class_definitions.find_one({"org_id": org_id})
-    if not class_def:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No class definitions found for this org. Sync classes from Roboflow first.",
-        )
+    # Try detection_classes first (model-sourced), fall back to class_definitions (Roboflow)
+    det_classes = await db.detection_classes.find(
+        {"org_id": org_id} if org_id else {}
+    ).to_list(length=100)
 
-    classes_payload = class_def.get("classes", [])
+    if det_classes:
+        classes_payload = [
+            {
+                "id": str(c.get("class_id", i)),
+                "name": c.get("name", ""),
+                "enabled": c.get("enabled", True),
+                "alert_on_detect": c.get("alert_on_detect", True),
+                "min_confidence": c.get("min_confidence", 0.5),
+            }
+            for i, c in enumerate(det_classes)
+        ]
+    else:
+        class_def = await db.class_definitions.find_one({"org_id": org_id})
+        if not class_def:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No classes found. Load a model or sync from Roboflow first.",
+            )
+        classes_payload = class_def.get("classes", [])
 
     # Determine target agents
     if agent_id:
