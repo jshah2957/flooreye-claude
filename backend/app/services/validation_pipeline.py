@@ -60,10 +60,37 @@ async def run_validation_pipeline(
     # Get alert-triggering classes from DB (dynamic, not hardcoded)
     alert_classes = await get_alert_class_names(db)
 
-    wet_predictions = [
-        p for p in predictions
-        if p.get("class_name") in alert_classes
-    ]
+    # Load per-class overrides if camera is known
+    class_overrides: dict[str, dict] = {}
+    if camera_id:
+        try:
+            overrides = await db.detection_class_overrides.find(
+                {"org_id": {"$exists": True}, "scope": "camera", "scope_id": camera_id}
+            ).to_list(length=50)
+            if not overrides:
+                overrides = await db.detection_class_overrides.find(
+                    {"org_id": {"$exists": True}, "scope": "global"}
+                ).to_list(length=50)
+            for ov in overrides:
+                class_overrides[ov.get("class_name", "")] = ov
+        except Exception:
+            pass
+
+    # Filter predictions by alert classes + per-class enabled flag
+    wet_predictions = []
+    for p in predictions:
+        cname = p.get("class_name", "")
+        if cname not in alert_classes:
+            continue
+        # Check per-class override: disabled classes are skipped
+        ov = class_overrides.get(cname, {})
+        if ov.get("enabled") is False:
+            continue
+        # Apply per-class min_confidence if set
+        per_class_conf = ov.get("min_confidence")
+        if per_class_conf is not None and p.get("confidence", 0) < per_class_conf:
+            continue
+        wet_predictions.append(p)
 
     if not wet_predictions:
         return ValidationResult(passed=False, is_wet=False, reason="no_wet_predictions")
