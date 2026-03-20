@@ -99,6 +99,17 @@ class TPLinkController:
                 name, ip = entry.split("=", 1)
                 self.devices[name.strip()] = ip.strip()
 
+    def reload_from_config(self, local_config):
+        """Reload device list from local config store (replaces env var approach)."""
+        devices = local_config.list_devices()
+        tplink_devices = {d["name"]: d["ip"] for d in devices if d.get("type") == "tplink"}
+        if tplink_devices:
+            self.devices = tplink_devices
+            self.enabled = True
+            log.info("TP-Link devices reloaded from config: %s", list(tplink_devices.keys()))
+        elif not self.devices:
+            self.enabled = False
+
     def turn_on(self, device_name: str) -> bool:
         """Turn on a TP-Link smart plug."""
         ip = self.devices.get(device_name)

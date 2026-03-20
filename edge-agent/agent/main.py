@@ -651,6 +651,7 @@ async def main():
     device_ctrl = DeviceController()
     device_ctrl.connect()
     tplink_ctrl = TPLinkController()
+    tplink_ctrl.reload_from_config(lc)  # Load from local config (overrides env var)
     if tplink_ctrl.enabled:
         log.info(f"TP-Link devices configured: {list(tplink_ctrl.devices.keys())}")
 
