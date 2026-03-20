@@ -78,7 +78,16 @@ class ModelLoader:
 
     def load(self, path: str) -> bool:
         """Load an ONNX model into an inference session."""
+        # Validate file before attempting load
+        if not os.path.isfile(path):
+            log.error("Model file not found: %s", path)
+            return False
+        if os.path.getsize(path) < 1000:
+            log.error("Model file too small (likely corrupt): %s (%d bytes)", path, os.path.getsize(path))
+            return False
+
         log.info(f"Loading ONNX model from {path}")
+        old_session = self.session  # Keep fallback
         t0 = time.time()
         try:
             sess_options = self._build_session_options()
@@ -107,6 +116,9 @@ class ModelLoader:
             return True
         except Exception as e:
             log.error(f"Failed to load model {path}: {e}")
+            if old_session:
+                self.session = old_session  # Restore previous working model
+                log.warning("Restored previous model as fallback")
             return False
 
     def load_latest(self) -> bool:

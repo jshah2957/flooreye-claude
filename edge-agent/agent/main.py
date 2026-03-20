@@ -777,13 +777,49 @@ async def main():
             )
         log.info(f"Edge agent running with {len(cameras)} camera(s) (per-camera inference mode)")
 
+    # Graceful shutdown handler
+    shutdown_event = asyncio.Event()
+
+    def _handle_signal(sig_name):
+        log.info("Received %s — initiating graceful shutdown", sig_name)
+        shutdown_event.set()
+
     try:
-        await asyncio.gather(*tasks)
+        loop = asyncio.get_running_loop()
+        for sig_name in ("SIGTERM", "SIGINT"):
+            try:
+                import signal
+                loop.add_signal_handler(
+                    getattr(signal, sig_name),
+                    lambda s=sig_name: _handle_signal(s),
+                )
+            except (NotImplementedError, AttributeError):
+                pass  # Windows doesn't support add_signal_handler
+    except Exception:
+        pass
+
+    async def _shutdown_watcher():
+        await shutdown_event.wait()
+        log.info("Flushing buffer before shutdown...")
+        try:
+            count = await buffer.flush_to_backend(uploader_inst)
+            log.info("Flushed %d buffered detections", count)
+        except Exception as e:
+            log.warning("Buffer flush on shutdown failed: %s", e)
+        # Cancel all tasks
+        for t in tasks:
+            t.cancel()
+
+    tasks.append(asyncio.create_task(_shutdown_watcher()))
+
+    try:
+        await asyncio.gather(*tasks, return_exceptions=True)
     finally:
         # Clean up threaded captures and devices on shutdown
         for cam in cam_objects.values():
             cam.stop()
         device_ctrl.disconnect()
+        log.info("Edge agent shut down cleanly")
 
 
 if __name__ == "__main__":
