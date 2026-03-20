@@ -50,6 +50,12 @@ export default function EdgeManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<EdgeAgent | null>(null);
   const [cmdType, setCmdType] = useState("ping");
   const [modelUpdateTarget, setModelUpdateTarget] = useState<EdgeAgent | null>(null);
+  const [addDeviceOpen, setAddDeviceOpen] = useState(false);
+  const [devName, setDevName] = useState("");
+  const [devIp, setDevIp] = useState("");
+  const [devType, setDevType] = useState("tplink");
+  const [devTestResult, setDevTestResult] = useState<boolean | null>(null);
+  const [devTestError, setDevTestError] = useState("");
 
   // Provision form
   const [provStoreId, setProvStoreId] = useState("");
@@ -133,6 +139,35 @@ export default function EdgeManagementPage() {
     onError: (err: any) => {
       showError(err?.response?.data?.detail || "Failed to push model");
     },
+  });
+
+  const testDeviceMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedAgent) throw new Error("No agent");
+      const storeId = selectedAgent.store_id;
+      const res = await api.post("/edge/proxy/test-device", { store_id: storeId, ip: devIp, type: devType });
+      return res.data.data as { reachable: boolean };
+    },
+    onSuccess: (data) => {
+      setDevTestResult(data.reachable);
+      if (!data.reachable) setDevTestError("Device unreachable on edge network");
+    },
+    onError: (err: any) => { setDevTestError(err?.response?.data?.detail || "Test failed"); setDevTestResult(null); },
+  });
+
+  const addDeviceMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedAgent) throw new Error("No agent");
+      return api.post("/edge/proxy/add-device", {
+        store_id: selectedAgent.store_id, name: devName, ip: devIp, type: devType,
+      });
+    },
+    onSuccess: () => {
+      setAddDeviceOpen(false);
+      setDevName(""); setDevIp(""); setDevTestResult(null); setDevTestError("");
+      success("Device added to edge");
+    },
+    onError: (err: any) => showError(err?.response?.data?.detail || "Failed to add device"),
   });
 
   const productionModels = modelsData ?? [];
@@ -293,6 +328,18 @@ export default function EdgeManagementPage() {
                 </div>
               )}
 
+              {/* Add IoT Device via Cloud */}
+              {selectedAgent.status === "online" && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => setAddDeviceOpen(true)}
+                    className="w-full rounded-md border border-dashed border-[#0D9488] px-3 py-2 text-xs text-[#0D9488] hover:bg-[#F0FDFA]"
+                  >
+                    + Add IoT Device
+                  </button>
+                </div>
+              )}
+
               <div className="mt-4">
                 <h4 className="mb-2 text-xs font-semibold text-[#78716C]">Send Command</h4>
                 <div className="flex gap-2">
@@ -318,6 +365,61 @@ export default function EdgeManagementPage() {
           )}
         </div>
       </div>
+
+      {/* Add IoT Device Modal */}
+      {addDeviceOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[400px] rounded-lg bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
+              <h2 className="text-sm font-semibold text-[#1C1917]">Add IoT Device via Edge</h2>
+              <button onClick={() => { setAddDeviceOpen(false); setDevTestResult(null); setDevTestError(""); }} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+            </div>
+            <div className="space-y-3 p-4">
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Device Name *</label>
+                <input value={devName} onChange={(e) => setDevName(e.target.value)}
+                  placeholder="e.g. Caution Sign Plug"
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">IP Address *</label>
+                <input value={devIp} onChange={(e) => { setDevIp(e.target.value); setDevTestResult(null); setDevTestError(""); }}
+                  placeholder="192.168.1.50"
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Type</label>
+                <select value={devType} onChange={(e) => setDevType(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  <option value="tplink">TP-Link Kasa</option>
+                  <option value="mqtt">MQTT</option>
+                  <option value="webhook">HTTP Webhook</option>
+                </select>
+              </div>
+              <button
+                onClick={() => testDeviceMutation.mutate()}
+                disabled={!devIp.trim() || testDeviceMutation.isPending}
+                className="flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+              >
+                {testDeviceMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : null}
+                Validate via Edge
+              </button>
+              {devTestResult === true && <p className="text-xs text-[#16A34A]">Device reachable on edge network</p>}
+              {devTestError && <p className="text-xs text-[#DC2626]">{devTestError}</p>}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[#E7E5E0] p-4">
+              <button onClick={() => setAddDeviceOpen(false)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
+              <button
+                onClick={() => addDeviceMutation.mutate()}
+                disabled={!devName.trim() || !devIp.trim() || devTestResult !== true || addDeviceMutation.isPending}
+                className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+              >
+                {addDeviceMutation.isPending ? "Adding..." : "Add Device"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Update Model Modal */}
       {modelUpdateTarget && (
