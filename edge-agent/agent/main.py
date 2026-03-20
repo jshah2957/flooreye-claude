@@ -491,8 +491,24 @@ async def cleanup_old_files_loop():
             now = datetime.now(timezone.utc)
             data_root = Path(config.DATA_PATH)
 
+            # Disk space check — emergency cleanup if >85%
+            try:
+                import shutil as _shutil
+                disk = _shutil.disk_usage(str(data_root))
+                disk_pct = int(disk.used / disk.total * 100)
+                if disk_pct > 85:
+                    log.warning("Disk at %d%% — running emergency cleanup (reducing retention to 7 days)", disk_pct)
+                    emergency_cutoff = now - timedelta(days=7)
+                else:
+                    emergency_cutoff = None
+            except Exception:
+                disk_pct = 0
+                emergency_cutoff = None
+
             # Clean detection frames — look for date dirs under detections/
             frame_cutoff = now - timedelta(days=config.FRAME_RETENTION_DAYS)
+            if emergency_cutoff and emergency_cutoff > frame_cutoff:
+                frame_cutoff = emergency_cutoff
             stores_dir = data_root / "stores"
             if stores_dir.exists():
                 removed_frames = 0

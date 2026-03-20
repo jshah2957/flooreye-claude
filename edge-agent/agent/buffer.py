@@ -23,11 +23,20 @@ class FrameBuffer:
             self._redis = aioredis.from_url(url)
         return self._redis
 
+    # Approximate max items before Redis maxmemory (avg ~200KB per item)
+    WARN_THRESHOLD = 0.8
+    dropped_count = 0
+
     async def push(self, detection: dict) -> int:
         """Push a detection to the buffer queue. Returns queue length."""
         r = await self._get_redis()
         data = json.dumps(detection)
         length = await r.rpush(self.QUEUE_KEY, data)
+        # Warn if buffer getting full (estimate: maxmemory_gb * 5000 items/GB)
+        max_items = self.max_gb * 5000
+        if length > max_items * self.WARN_THRESHOLD:
+            pct = int(length / max_items * 100)
+            log.warning("Buffer at ~%d%% capacity (%d items)", pct, length)
         log.debug(f"Buffered detection (queue size: {length})")
         return length
 
