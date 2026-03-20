@@ -82,6 +82,223 @@ Rebuild the camera setup and detection configuration flow so that:
 
 ---
 
+## MULTI-CAMERA DESIGN (5-10 CAMERAS PER EDGE DEVICE)
+
+### 1. Edge Performance: Inference Concurrency
+
+**Current architecture (preserved):**
+- One `ThreadedCameraCapture` per camera — background thread reads frames independently
+- `asyncio.Semaphore(MAX_CONCURRENT_INFERENCES=4)` limits parallel inference calls
+- Two inference modes:
+  - **Per-camera mode**: N async loops, each grabs semaphore → calls `/infer` → releases
+  - **Batch mode** (`BATCH_INFERENCE=true` + >1 camera): single loop collects all camera frames → one `/infer-batch` call
+
+**Why this already works for 10 cameras:**
+- Camera capture threads run in parallel (10 threads, each doing cv2.read independently)
+- Inference is the bottleneck (~40ms per frame). Semaphore prevents OOM from too many simultaneous ONNX runs
+- Batch mode is optimal for multi-camera: 10 frames stacked into one ONNX call ≈ 100-200ms total vs 400ms sequential
+- Frame interval respects `capture_fps` per camera — at 2 FPS, each camera processes every 500ms
+
+**New requirement: per-camera FPS from cloud config:**
+```python
+# Each camera can have its own capture_fps from cloud settings:
+cam_config = local_config.get_camera_config(camera_id)
+fps = cam_config.get("detection_settings", {}).get("capture_fps", 2)
+frame_interval = 1.0 / fps
+```
+
+**Resource budget for 10-camera edge device (typical Jetson Orin / x86 mini-PC):**
+
+| Resource | Per Camera | 10 Cameras | Notes |
+|----------|-----------|------------|-------|
+| Capture threads | 1 | 10 | Daemon threads, low CPU (~2% each during cv2.read) |
+| Memory (capture) | ~30 MB | ~300 MB | One 1080p frame buffer per camera |
+| Inference time | 40ms | 100-200ms batch | Batch mode amortizes overhead |
+| ONNX model | — | 1 copy (~10-50MB) | Singleton, shared across all inference calls |
+| Upload bandwidth | ~50 KB/detection | ~500 KB/s peak | Only wet/uncertain frames uploaded |
+| Redis buffer | ~2 MB per 100 items | ~20 MB | Failed uploads queued |
+| Dry references | ~5 MB (5 images) | ~50 MB total | Stored on disk, loaded only for Layer 4 |
+
+**Inference server is the shared singleton:**
+- `model_loader.py` loads ONE ONNX model into ONE `ort.InferenceSession`
+- All `/infer` and `/infer-batch` calls share the same session
+- Thread-safe via `threading.Lock` on model swap
+- No duplication — 10 cameras, 1 model in memory
+
+### 2. Per-Camera Config Structure
+
+**Local config directory layout for 10 cameras:**
+```
+/data/config/
+├── cameras.json                          # [{id, name, url, cloud_camera_id, ...}] × 10
+├── devices.json                          # [{id, name, ip, type, ...}]
+├── camera_configs/
+│   ├── cam-uuid-001.json                 # {roi, detection_settings, detection_enabled, config_version}
+│   ├── cam-uuid-002.json
+│   ├── ...
+│   └── cam-uuid-010.json
+└── dry_refs/
+    ├── cam-uuid-001/
+    │   ├── ref_0.jpg                     # ~1MB each
+    │   ├── ref_1.jpg
+    │   ├── ref_2.jpg
+    │   ├── ref_3.jpg
+    │   └── ref_4.jpg
+    ├── cam-uuid-002/
+    │   └── ...
+    └── cam-uuid-010/
+        └── ...
+```
+
+**Total disk usage estimate (10 cameras, 5 dry refs each):**
+- cameras.json: ~5 KB
+- 10 × camera_configs: ~10 KB
+- 10 × 5 dry ref images (640×640 JPEG @ ~100KB each): ~5 MB
+- **Total: ~5.1 MB** — negligible even on constrained hardware
+
+**Cloud pushes config PER CAMERA:**
+- `POST {edge}:8091/api/config/camera/{camera_id}` — one call per camera
+- Admin configures camera A → push only camera A's config
+- Admin configures camera B → push only camera B's config
+- Each camera has independent config_version, ACK status, readiness state
+
+### 3. Edge Web UI: Multi-Camera Dashboard
+
+**Camera list table (all 10 cameras):**
+
+| Column | Source | Description |
+|--------|--------|-------------|
+| Name | cameras.json | User-assigned name |
+| URL | cameras.json | RTSP URL (masked: `rtsp://***@192.168.1.100/stream`) |
+| Stream Status | live check | Online (green) / Offline (red) |
+| Detection Status | camera_config + readiness check | Waiting for config (yellow) / Active (green) / Paused (gray) |
+| Last Detection | detection loop telemetry | "3s ago" / "never" |
+| Current FPS | detection loop telemetry | "2.0 FPS" / "0 (paused)" |
+| Config Version | camera_config | "v3" / "none" |
+| Actions | — | Test / Remove |
+
+**Auto-refresh:** Dashboard polls `/status` every 5 seconds to update all camera statuses.
+
+**Per-camera detail (click to expand):**
+- ROI status: "Set (v2)" / "Not set"
+- Dry reference: "5 images (v1)" / "None"
+- Detection settings summary: confidence 0.70, min area 0.5%, K=3/M=5
+- Last config received: timestamp
+- Last detection: timestamp + result (wet/dry)
+
+### 4. Resource Management: Model + Dry References
+
+**ONNX Model (already a singleton):**
+- `ModelLoader` in inference-server loads ONE model
+- All 10 cameras share the same inference session
+- No change needed — this already works correctly
+- Memory: ~10-50MB for the model, regardless of camera count
+
+**Dry reference images (new — loaded on demand):**
+- Stored on disk at `/data/config/dry_refs/{camera_id}/`
+- NOT loaded into memory permanently
+- Loaded per-frame during Layer 4 validation only:
+  ```python
+  def _check_dry_reference(self, frame_b64, camera_id, delta_threshold):
+      ref_path = f"/data/config/dry_refs/{camera_id}/ref_0.jpg"
+      if not os.path.exists(ref_path):
+          return True  # no dry ref → pass
+      ref_img = cv2.imread(ref_path, cv2.IMREAD_GRAYSCALE)  # ~1ms read from disk
+      # ... compute delta ...
+  ```
+- At 2 FPS × 10 cameras = 20 reads/sec of ~100KB files — well within disk I/O budget
+- Optional optimization: LRU cache of last N dry ref images in memory (~5-10MB)
+
+**Dry reference LRU cache (optional, Session 6 sub-task):**
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=10)  # cache up to 10 cameras' first dry ref
+def _load_dry_ref_gray(camera_id: str) -> np.ndarray | None:
+    path = f"/data/config/dry_refs/{camera_id}/ref_0.jpg"
+    if not os.path.exists(path):
+        return None
+    return cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+```
+- Cache invalidated when new dry reference is pushed from cloud
+
+### 5. Cloud Dashboard: Camera Grouping by Edge Device
+
+**CamerasPage — grouped view:**
+```
+┌─────────────────────────────────────────────┐
+│ Edge Device: Store A - Agent 1  (online)    │
+│ 3 configured / 1 waiting / 1 paused         │
+├─────────────────────────────────────────────┤
+│ ☑ Entrance Camera   | Active    | 2.0 FPS  │
+│ ☑ Aisle 1 Camera    | Active    | 2.0 FPS  │
+│ ☑ Checkout Camera   | Active    | 1.5 FPS  │
+│ ☐ Back Room Camera  | Waiting   | —        │
+│ ☐ Loading Dock      | Paused    | —        │
+├─────────────────────────────────────────────┤
+│ Edge Device: Store B - Agent 2  (online)    │
+│ 5 configured / 0 waiting / 0 paused         │
+├─────────────────────────────────────────────┤
+│ ☑ ...                                       │
+└─────────────────────────────────────────────┘
+```
+
+**Grouping query:**
+```python
+# Group cameras by edge_agent_id
+pipeline = [
+    {"$match": {"org_id": org_id, "edge_agent_id": {"$ne": None}}},
+    {"$group": {
+        "_id": "$edge_agent_id",
+        "cameras": {"$push": "$$ROOT"},
+        "count": {"$sum": 1},
+    }},
+]
+```
+
+**Admin configures each camera independently:**
+- Click any camera → CameraDetailPage (same as today)
+- ROI, dry reference, detection settings — all per camera
+- Config push is per camera
+- ACK tracking is per camera
+- Quick toggle is per camera (switch on the camera card)
+
+### 6. Live Feed: Isolation from Detection
+
+**Problem:** Admin views live feed for 1 camera on cloud dashboard. This should NOT slow down the other 9 cameras' detection.
+
+**Current architecture (already handles this):**
+- Live feed on cloud: `GET /live/stream/{camera_id}/frame` — cloud connects to RTSP directly (not through edge)
+- Edge detection loops: camera threads run independently of cloud live feed
+- **No contention** — cloud reads from RTSP, edge reads from RTSP. Modern IP cameras support multiple RTSP clients.
+
+**If cloud reads through edge (new proxy mode):**
+For cameras only accessible from edge LAN, add a lightweight frame proxy:
+- Edge config receiver gets `GET /api/stream/{camera_id}/frame` endpoint
+- Returns latest frame from that camera's capture thread (already buffered)
+- Uses the same `ThreadedCameraCapture._latest_frame` — zero additional capture overhead
+- Cloud dashboard polls this endpoint instead of direct RTSP
+- Rate-limited to 2 FPS max to prevent bandwidth issues
+- Detection loop is NOT affected — it reads from the same buffer independently
+
+**New endpoint on edge config receiver (Session 4 addition):**
+```python
+@app.get("/api/stream/{camera_id}/frame")
+async def get_camera_frame(camera_id: str):
+    """Return latest frame from camera capture buffer. For cloud live feed proxy."""
+    cam = camera_manager.get_capture(camera_id)
+    if not cam or not cam.connected:
+        raise HTTPException(404, "Camera not connected")
+    success, _, frame_b64 = await asyncio.to_thread(cam.read_frame)
+    if not success:
+        raise HTTPException(502, "Frame capture failed")
+    return {"data": {"frame_base64": frame_b64, "camera_id": camera_id}}
+```
+
+This reads from the existing frame buffer — same frame the detection loop uses. No additional RTSP connection, no additional CPU load.
+
+---
+
 ## FILE CHANGES OVERVIEW
 
 ### NEW FILES (Edge)
@@ -185,12 +402,21 @@ class LocalConfigStore:
     import_from_env(camera_urls_raw: str) -> list[dict]
 ```
 
+**Multi-camera considerations:**
+- `cameras.json` holds up to 10 cameras with independent UUIDs and cloud_camera_ids
+- Each camera has its own config file: `camera_configs/{camera_id}.json`
+- Each camera has its own dry ref directory: `dry_refs/{camera_id}/`
+- `is_camera_ready(camera_id)` checks per-camera readiness independently
+- File locking must handle concurrent reads from detection loops + writes from config receiver
+- Total disk budget: ~5 MB for 10 cameras with 5 dry refs each
+
 **Sub-tasks:**
 1. Create `local_config.py` with `LocalConfigStore` class
-2. JSON read/write with file locking (thread-safe)
+2. JSON read/write with file locking (thread-safe for multi-camera concurrent access)
 3. Directory creation on first use (`/data/config/`, `/data/config/camera_configs/`, `/data/config/dry_refs/`)
 4. Migration helper: parse `CAMERA_URLS` env var into cameras.json if cameras.json doesn't exist yet
-5. Unit test: add/remove/list cameras and devices
+5. Per-camera config isolation: each camera's config is independent, pushing to one doesn't affect others
+6. Dry ref disk management: max 10 images per camera, overwrite on new push
 
 **Risk:** LOW — new code, no existing behavior changed yet
 
@@ -222,14 +448,16 @@ class LocalConfigStore:
 | POST | `/devices/{id}/test` | Test device connectivity |
 | GET | `/status` | Full agent status (cameras, devices, model, config) |
 
-**UI features:**
+**UI features (designed for 5-10 cameras):**
 - Simple HTML with minimal CSS (no React — keep lightweight)
-- Camera list table: name, URL (masked), status (online/offline), detection status (waiting/active/paused), last frame time
+- Camera list table with columns: Name, URL (masked), Stream Status (online/offline), Detection Status (waiting/active/paused), Last Detection, Current FPS, Config Version, Actions
+- Auto-refresh every 5 seconds via AJAX (`GET /status`)
 - "Add Camera" button → form (name, RTSP URL, stream type, location)
 - "Test Connection" button per camera → tries to pull a frame, shows success/fail
+- Click camera row to expand per-camera detail: ROI status, dry ref count, detection settings summary
 - Device list table: name, IP, type, status
 - "Add Device" button → form
-- Agent info: model version, backend connection, uptime
+- Agent summary header: model version, backend connection, uptime, total cameras, cameras detecting
 
 **Modified files:**
 - `edge-agent/Dockerfile.agent` — add `jinja2` dep, copy `web/` directory
@@ -322,7 +550,15 @@ config_ack_error: str | None = None      # error message if failed
 |--------|------|------|---------|
 | POST | `/api/config/camera/{camera_id}` | Edge token | Receive full camera config from cloud |
 | GET | `/api/config/camera/{camera_id}/status` | Edge token | Return current config status |
+| GET | `/api/config/cameras` | Edge token | Return all cameras with readiness status |
+| GET | `/api/stream/{camera_id}/frame` | Edge token | Live feed proxy — returns latest frame from capture buffer (for cloud dashboard) |
 | GET | `/api/health` | None | Health check |
+
+**Live feed proxy (for cameras only reachable from edge LAN):**
+- Returns latest frame from `ThreadedCameraCapture._latest_frame` — zero additional capture overhead
+- Detection loops are NOT affected (they read from the same buffer independently)
+- Rate-limited to 2 FPS max server-side
+- Cloud dashboard can poll this instead of direct RTSP when camera is behind edge
 
 **Config push payload:**
 ```json
@@ -466,15 +702,36 @@ await db.cameras.update_one(
 
 ---
 
-### Session 6: Edge Detection Blocking + Config Application (HIGH RISK, ~3 hrs)
+### Session 6: Edge Detection Blocking + Config Application + Multi-Camera (HIGH RISK, ~4 hrs)
 
-**Scope:** Edge agent blocks detection per camera until ROI + dry ref received. Applies all cloud config to inference and validation.
+**Scope:** Edge agent blocks detection per camera until ROI + dry ref received. Applies all cloud config to inference and validation. Handles 5-10 cameras with independent readiness.
 
 **Modified files:**
-- `edge-agent/agent/main.py` — camera loop checks readiness before detecting
-- `edge-agent/agent/validator.py` — add Layer 4 dry reference pixel comparison
+- `edge-agent/agent/main.py` — camera loop checks readiness before detecting; per-camera FPS; dynamic camera add/remove
+- `edge-agent/agent/validator.py` — add Layer 4 dry reference pixel comparison with LRU cache
 - `edge-agent/agent/config.py` — new config vars
 - `edge-agent/agent/capture.py` — initialize cameras from local_config
+
+**Multi-camera concurrency model (preserved + enhanced):**
+```
+10 cameras, each with independent:
+  - ThreadedCameraCapture (background thread, 1 per camera)
+  - Config readiness state (waiting/active/paused per camera)
+  - FPS setting (from cloud config per camera)
+  - ROI polygon (applied before inference per camera)
+  - Dry reference images (stored locally per camera)
+  - Detection history (Layer 3 temporal voting per camera)
+  - Alert cooldown (Layer 4 duplicate suppression per camera)
+
+Shared across all cameras:
+  - 1 ONNX model in inference-server (singleton)
+  - asyncio.Semaphore(MAX_CONCURRENT_INFERENCES=4)
+  - 1 Uploader instance (rate-limited per camera)
+  - 1 FrameBuffer (Redis, shared queue)
+  - 1 DetectionValidator (per-camera settings internally)
+```
+
+**Per-camera readiness check in detection loop:**
 
 **Detection blocking logic:**
 ```python
@@ -524,16 +781,21 @@ Each camera reports its status to the web UI and heartbeat:
 - `"offline"` — stream unreachable
 
 **Sub-tasks:**
-1. Modify camera loops to check `is_camera_ready()` before detecting
-2. Pass ROI to inference client (roi parameter already supported)
-3. Add dry reference pixel comparison to validator Layer 4
-4. Load dry ref images from local disk paths
-5. Apply `detection_enabled` flag from cloud config
-6. Report per-camera status in heartbeat
-7. Hot-reload: when config_receiver gets new config, running loops pick it up next cycle
-8. Backward compat: if cameras.json doesn't exist, fall back to CAMERA_URLS env
+1. Modify camera loops to check `is_camera_ready(camera_id)` before detecting — independently per camera
+2. Per-camera FPS: read `capture_fps` from cloud config, default 2 if not set
+3. Pass ROI to inference client (roi parameter already supported by `/infer` and `/infer-batch`)
+4. For batch mode: build batch from ONLY ready cameras; skip waiting/paused cameras
+5. Add dry reference pixel comparison to validator Layer 4 with LRU cache (`@lru_cache(maxsize=10)`)
+6. Invalidate dry ref cache when config_receiver stores new dry references
+7. Load dry ref images from local disk paths (`/data/config/dry_refs/{camera_id}/ref_0.jpg`)
+8. Apply `detection_enabled` flag from cloud config — per camera
+9. Report per-camera status in heartbeat: `cameras: {cam_id: {status, fps, last_detection, config_version}}`
+10. Hot-reload: when config_receiver gets new config, running loops pick it up next cycle (no restart)
+11. Dynamic camera add: new camera added via web UI → create ThreadedCameraCapture → start loop
+12. Dynamic camera remove: camera removed via web UI → stop capture thread → remove from loop
+13. Backward compat: if cameras.json doesn't exist, fall back to CAMERA_URLS env
 
-**Risk:** HIGH — changes core detection loop logic
+**Risk:** HIGH — changes core detection loop logic; must handle 10 cameras without race conditions
 
 ---
 
@@ -547,9 +809,12 @@ Each camera reports its status to the web UI and heartbeat:
 - `web/src/pages/edge/EdgeManagementPage.tsx`
 
 **CamerasPage changes:**
+- Group cameras by edge device (edge_agent_id). Show agent name + status as group header.
+- Per group: show summary "3 active / 1 waiting / 1 paused"
 - Add config status badge per camera card: "Waiting for config" (yellow) / "Active" (green) / "Paused" (gray) / "Config failed" (red)
 - Add quick detection toggle (switch) per camera card
 - Toggle calls `POST /cameras/{id}/toggle-detection`
+- Cloud-only cameras (no edge_agent_id) shown in separate "Cloud Cameras" group
 
 **CameraDetailPage changes:**
 - Overview tab: show config_status, last_config_push_at, last_config_ack_at, config_ack_error
@@ -610,12 +875,18 @@ Each camera reports its status to the web UI and heartbeat:
 
 **Tests:**
 1. **New flow**: Edge web UI → add camera → cloud registers → admin draws ROI → admin captures dry ref → cloud pushes config → edge ACKs → detection starts
-2. **Backward compat**: CAMERA_URLS env var still works if cameras.json doesn't exist
-3. **Offline edge**: Cloud pushes config → edge unreachable → queued as command → edge comes back → picks up from command queue
-4. **Config update**: Admin changes ROI on cloud → cloud pushes → edge swaps live
-5. **Detection blocking**: Camera without ROI shows "Waiting for config" → admin adds ROI + dry ref → camera starts detecting
-6. **Quick toggle**: Admin disables detection → edge stops → admin re-enables → edge resumes
-7. **Device management**: Add TP-Link device → test → trigger on wet detection
+2. **Multi-camera**: Add 5 cameras on edge → configure 3 on cloud → only 3 detect, 2 show "Waiting for config"
+3. **Independent config**: Push config to camera A → only camera A starts detecting, cameras B-E unchanged
+4. **Batch inference with mixed readiness**: 3 ready + 2 waiting → batch only includes 3 ready cameras
+5. **Per-camera FPS**: Camera A at 1 FPS, camera B at 3 FPS → verify independent frame intervals
+6. **Backward compat**: CAMERA_URLS env var still works if cameras.json doesn't exist
+7. **Offline edge**: Cloud pushes config → edge unreachable → queued as command → edge comes back → picks up from command queue
+8. **Config update**: Admin changes ROI on cloud → cloud pushes → edge swaps live without affecting other cameras
+9. **Detection blocking**: Camera without ROI shows "Waiting for config" → admin adds ROI + dry ref → camera starts detecting
+10. **Quick toggle**: Admin disables detection for 1 camera → only that camera stops → admin re-enables → resumes
+11. **Live feed isolation**: Admin views live feed for camera A → camera B-E detection FPS unaffected
+12. **Device management**: Add TP-Link device → test → trigger on wet detection
+13. **Resource check**: 10 cameras running → memory usage stable (<2GB agent + <500MB inference server)
 
 **Sub-tasks:**
 1. Verify all 7 flows
@@ -638,11 +909,11 @@ Each camera reports its status to the web UI and heartbeat:
 | 3 | Camera manager + cloud registration | MEDIUM | 2.5 hrs | Sessions 1, 2 |
 | 4 | Config receiver on edge | MEDIUM | 2.5 hrs | Session 1 |
 | 5 | Cloud config push + ACK tracking | MEDIUM | 3 hrs | Sessions 3, 4 |
-| 6 | Detection blocking + config application | HIGH | 3 hrs | Sessions 1-5 |
-| 7 | Frontend config status + quick toggle | LOW | 2 hrs | Session 5 |
+| 6 | Detection blocking + config application + multi-camera | HIGH | 4 hrs | Sessions 1-5 |
+| 7 | Frontend config status + quick toggle + device grouping | LOW | 2.5 hrs | Session 5 |
 | 8 | IoT device management on edge UI | LOW | 1.5 hrs | Sessions 1, 2 |
-| 9 | Integration testing + backward compat | LOW | 2 hrs | All above |
-| **Total** | | | **21.5 hrs** | |
+| 9 | Integration testing + multi-camera + backward compat | LOW | 2.5 hrs | All above |
+| **Total** | | | **23.5 hrs** | |
 
 **Dependency graph:**
 ```
