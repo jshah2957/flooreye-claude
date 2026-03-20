@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Globe,
@@ -235,7 +235,11 @@ export default function DetectionControlPage() {
             <div className="flex gap-2">
               {selectedScope !== "global" && settings && (
                 <button
-                  onClick={() => deleteMutation.mutate()}
+                  onClick={() => {
+                    if (window.confirm(`Reset ${selectedScope} settings to inherited values? This cannot be undone.`)) {
+                      deleteMutation.mutate();
+                    }
+                  }}
                   className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED]"
                 >
                   <RotateCcw size={12} /> Reset to Inherited
