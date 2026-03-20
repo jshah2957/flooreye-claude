@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Upload, Play, Loader2, AlertTriangle } from "lucide-react";
+import { Upload, Play, Loader2, AlertTriangle, Save } from "lucide-react";
+import AnnotatedFrame from "@/components/shared/AnnotatedFrame";
 
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -148,6 +149,11 @@ export default function RoboflowTestPage() {
             </p>
           ) : (
             <div className="space-y-4">
+              {/* Annotated frame overlay */}
+              {imageBase64 && result.predictions.length > 0 && (
+                <AnnotatedFrame rawBase64={imageBase64} predictions={result.predictions} />
+              )}
+
               {/* Verdict */}
               <div className={`rounded-md p-3 ${isWet ? "bg-[#FEE2E2]" : "bg-[#DCFCE7]"}`}>
                 <span className={`text-lg font-bold ${isWet ? "text-[#DC2626]" : "text-[#16A34A]"}`}>
