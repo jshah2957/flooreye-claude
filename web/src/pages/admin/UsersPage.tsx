@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Plus, Loader2, Trash2, X } from "lucide-react";
+import { Users, Plus, Loader2, Trash2, X, Pencil } from "lucide-react";
 
 import api from "@/lib/api";
 import type { User, PaginatedResponse } from "@/types";
@@ -16,6 +16,9 @@ export default function UsersPage() {
   const [roleFilter, setRoleFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
   const limit = 20;
 
   // Create form
@@ -57,6 +60,16 @@ export default function UsersPage() {
     onError: (err: any) => {
       showError(err?.response?.data?.detail || "Failed to deactivate user");
     },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: () => api.put(`/auth/users/${editTarget?.id}`, { name: editName, role: editRole }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setEditTarget(null);
+      success("User updated");
+    },
+    onError: (err: any) => showError(err?.response?.data?.detail || "Update failed"),
   });
 
   const users = data?.data ?? [];
@@ -111,8 +124,10 @@ export default function UsersPage() {
                   <td className="px-4 py-2"><StatusBadge status={u.is_active ? "active" : "disabled"} size="sm" /></td>
                   <td className="px-4 py-2 text-[#78716C]">{u.last_login ? new Date(u.last_login).toLocaleString() : "Never"}</td>
                   <td className="px-4 py-2 text-right">
+                    <button onClick={() => { setEditTarget(u); setEditName(u.name); setEditRole(u.role); }}
+                      className="rounded p-1 text-[#78716C] hover:bg-[#F0FDFA] hover:text-[#0D9488]"><Pencil size={12} /></button>
                     <button onClick={() => setDeleteTarget(u)}
-                      className="rounded p-1 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]"><Trash2 size={12} /></button>
+                      className="ml-1 rounded p-1 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]"><Trash2 size={12} /></button>
                   </td>
                 </tr>
               ))}
@@ -169,6 +184,49 @@ export default function UsersPage() {
               <button onClick={() => createMutation.mutate()} disabled={!email || !name || !password || createMutation.isPending}
                 className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50">
                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />} Create User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[400px] rounded-lg bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Edit User</h3>
+              <button onClick={() => setEditTarget(null)} className="text-[#78716C]"><X size={16} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Name</label>
+                <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Email</label>
+                <input value={editTarget.email} disabled
+                  className="w-full rounded-md border border-[#E7E5E0] bg-[#F8F7F4] px-3 py-2 text-sm text-[#78716C]" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Role</label>
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  <option value="viewer">Viewer</option>
+                  <option value="store_owner">Store Owner</option>
+                  <option value="operator">Operator</option>
+                  <option value="ml_engineer">ML Engineer</option>
+                  <option value="org_admin">Org Admin</option>
+                </select>
+              </div>
+              <p className="text-[10px] text-[#78716C]">Last login: {editTarget.last_login ? new Date(editTarget.last_login).toLocaleString() : "Never"}</p>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setEditTarget(null)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
+              <button onClick={() => editMutation.mutate()} disabled={editMutation.isPending}
+                className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50">
+                {editMutation.isPending ? "Saving..." : "Save"}
               </button>
             </div>
           </div>

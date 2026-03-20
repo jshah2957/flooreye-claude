@@ -80,6 +80,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate("/login", { replace: true });
   }, [navigate]);
 
+  // Idle timeout — auto-logout after 30 minutes of inactivity
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const IDLE_MS = 30 * 60 * 1000; // 30 minutes
+    const resetTimer = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        console.warn("Session idle timeout — logging out");
+        logout();
+      }, IDLE_MS);
+    };
+    const events = ["mousedown", "keydown", "scroll", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, resetTimer));
+    resetTimer();
+    return () => {
+      clearTimeout(timeout);
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+    };
+  }, [state.isAuthenticated, logout]);
+
   const value: AuthContextValue = {
     ...state,
     login,
