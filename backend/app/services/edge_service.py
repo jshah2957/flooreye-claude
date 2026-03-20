@@ -44,8 +44,12 @@ async def provision_agent(
     token = jwt.encode(payload, settings.EDGE_SECRET_KEY, algorithm="HS256")
     token_hash = hash_password(token)
 
+    # Generate edge API key (for authenticating cloud→edge requests)
+    import hashlib
+    edge_api_key = hashlib.sha256(token.encode()).hexdigest()[:32]
+
     # Generate docker-compose template
-    docker_compose = _generate_docker_compose(agent_id, store.get("name", name))
+    docker_compose = _generate_docker_compose(agent_id, store.get("name", name), org_id, store_id, edge_api_key)
 
     agent_doc = {
         "id": agent_id,
@@ -53,6 +57,7 @@ async def provision_agent(
         "store_id": store_id,
         "name": name,
         "token_hash": token_hash,
+        "edge_api_key": edge_api_key,
         "agent_version": None,
         "current_model_version": None,
         "status": "offline",

@@ -19,6 +19,17 @@ log = logging.getLogger("edge-agent.web")
 
 app = FastAPI(title="FloorEye Edge", docs_url=None, redoc_url=None)
 
+# Auth middleware
+try:
+    import sys
+    agent_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent")
+    if agent_dir not in sys.path:
+        sys.path.insert(0, agent_dir)
+    from auth_middleware import auth_middleware
+    app.middleware("http")(auth_middleware)
+except ImportError:
+    pass
+
 WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(WEB_DIR, "templates"))
 app.mount("/static", StaticFiles(directory=os.path.join(WEB_DIR, "static")), name="static")

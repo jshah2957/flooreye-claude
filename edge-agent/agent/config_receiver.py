@@ -17,6 +17,10 @@ log = logging.getLogger("edge-agent.config_receiver")
 
 app = FastAPI(title="FloorEye Edge Config Receiver", docs_url=None, redoc_url=None)
 
+# Auth middleware
+from auth_middleware import auth_middleware
+app.middleware("http")(auth_middleware)
+
 # Set by main.py before starting
 _local_config = None
 _capture_objects = {}  # {camera_id: ThreadedCameraCapture}

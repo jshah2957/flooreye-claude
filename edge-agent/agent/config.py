@@ -55,6 +55,18 @@ class EdgeConfig:
     CAPTURE_THREAD_TIMEOUT: int = int(os.getenv("CAPTURE_THREAD_TIMEOUT", "10"))
     BATCH_INFERENCE: bool = os.getenv("BATCH_INFERENCE", "true").lower() in ("true", "1", "yes")
 
+    # Ports (configurable for conflict avoidance)
+    WEB_UI_PORT: int = int(os.getenv("WEB_UI_PORT", "8090"))
+    CONFIG_RECEIVER_PORT: int = int(os.getenv("CONFIG_RECEIVER_PORT", "8091"))
+
+    # Network (for cloud→edge direct push)
+    TUNNEL_URL: str = os.getenv("TUNNEL_URL", "")
+    DIRECT_URL: str = os.getenv("DIRECT_URL", "")
+    BACKEND_URL_FALLBACK: str = os.getenv("BACKEND_URL_FALLBACK", "")
+
+    # Auth
+    EDGE_API_KEY: str = os.getenv("EDGE_API_KEY", "")
+
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 

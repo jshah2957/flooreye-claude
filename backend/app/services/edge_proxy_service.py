@@ -53,9 +53,15 @@ async def proxy_to_edge(agent: dict, path: str, body: dict, timeout: float = 15.
     edge_url = _get_edge_url(agent)
     full_url = f"{edge_url}{path}"
 
+    # Include edge API key for authentication
+    headers = {}
+    api_key = agent.get("edge_api_key", "")
+    if api_key:
+        headers["X-Edge-Key"] = api_key
+
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(full_url, json=body)
+            resp = await client.post(full_url, json=body, headers=headers)
             if resp.status_code == 200:
                 return resp.json()
             else:
