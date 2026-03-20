@@ -52,9 +52,16 @@ export interface Camera {
   inference_mode: "cloud" | "edge" | "hybrid";
   hybrid_threshold: number;
   edge_agent_id: string | null;
+  edge_camera_id: string | null;
   student_model_version: string | null;
   snapshot_base64: string | null;
   last_seen: string | null;
+  config_status: string | null;
+  config_version: number | null;
+  last_config_push_at: string | null;
+  last_config_ack_at: string | null;
+  config_ack_status: string | null;
+  config_ack_error: string | null;
   created_at: string;
   updated_at: string;
 }

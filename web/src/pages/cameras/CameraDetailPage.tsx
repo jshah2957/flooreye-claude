@@ -335,7 +335,51 @@ export default function CameraDetailPage() {
                 <dt className="text-[#78716C]">Created</dt>
                 <dd className="text-[#1C1917]">{new Date(camera.created_at).toLocaleString()}</dd>
               </div>
+              {camera.edge_agent_id && (
+                <>
+                  <div className="flex justify-between">
+                    <dt className="text-[#78716C]">Edge Config</dt>
+                    <dd>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                        camera.config_status === "received" ? "bg-[#DCFCE7] text-[#16A34A]" :
+                        camera.config_status === "failed" ? "bg-[#FEE2E2] text-[#DC2626]" :
+                        "bg-[#FEF9C3] text-[#CA8A04]"
+                      }`}>
+                        {camera.config_status || "waiting"}
+                      </span>
+                    </dd>
+                  </div>
+                  {camera.last_config_push_at && (
+                    <div className="flex justify-between">
+                      <dt className="text-[#78716C]">Last Push</dt>
+                      <dd className="text-[#1C1917] text-[11px]">{new Date(camera.last_config_push_at).toLocaleString()}</dd>
+                    </div>
+                  )}
+                  {camera.last_config_ack_at && (
+                    <div className="flex justify-between">
+                      <dt className="text-[#78716C]">Edge ACK</dt>
+                      <dd className="text-[#1C1917] text-[11px]">{new Date(camera.last_config_ack_at).toLocaleString()}</dd>
+                    </div>
+                  )}
+                  {camera.config_ack_error && (
+                    <div className="flex justify-between">
+                      <dt className="text-[#DC2626]">ACK Error</dt>
+                      <dd className="text-[#DC2626] text-[11px]">{camera.config_ack_error}</dd>
+                    </div>
+                  )}
+                </>
+              )}
             </dl>
+            {camera.edge_agent_id && (
+              <button
+                onClick={() => api.post(`/cameras/${camera.id}/push-config`).then(() => {
+                  queryClient.invalidateQueries({ queryKey: ["camera", id] });
+                })}
+                className="mt-3 flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA]"
+              >
+                Push Config to Edge
+              </button>
+            )}
           </div>
         </div>
       )}

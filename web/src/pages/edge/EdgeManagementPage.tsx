@@ -137,6 +137,18 @@ export default function EdgeManagementPage() {
 
   const productionModels = modelsData ?? [];
 
+  const { data: agentCamerasData } = useQuery({
+    queryKey: ["agent-cameras", selectedAgent?.id],
+    queryFn: async () => {
+      if (!selectedAgent) return [];
+      const res = await api.get("/cameras", { params: { limit: 20 } });
+      const all = res.data.data as { id: string; name: string; edge_agent_id: string; config_status: string; detection_enabled: boolean }[];
+      return all.filter((c: any) => c.edge_agent_id === selectedAgent.id);
+    },
+    enabled: !!selectedAgent,
+  });
+  const agentCameras = agentCamerasData ?? [];
+
   const agents = agentsData?.data ?? [];
   const storeMap = new Map((stores ?? []).map((s) => [s.id, s.name]));
 
@@ -256,6 +268,28 @@ export default function EdgeManagementPage() {
                   {metricBar(selectedAgent.ram_percent, "RAM")}
                   {metricBar(selectedAgent.disk_percent, "Disk")}
                   {selectedAgent.gpu_percent != null && metricBar(selectedAgent.gpu_percent, "GPU")}
+                </div>
+              )}
+
+              {agentCameras.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="mb-2 text-xs font-semibold text-[#78716C]">
+                    Cameras ({agentCameras.length})
+                  </h4>
+                  <div className="space-y-1">
+                    {agentCameras.map((cam: any) => (
+                      <div key={cam.id} className="flex items-center justify-between rounded border border-[#F5F5F4] px-2 py-1">
+                        <span className="text-[11px] text-[#1C1917]">{cam.name}</span>
+                        <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
+                          cam.config_status === "received" ? "bg-[#DCFCE7] text-[#16A34A]" :
+                          cam.config_status === "failed" ? "bg-[#FEE2E2] text-[#DC2626]" :
+                          "bg-[#FEF9C3] text-[#CA8A04]"
+                        }`}>
+                          {cam.config_status || "waiting"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

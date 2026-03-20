@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Camera as CameraIcon, Loader2, MoreVertical } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Search, Camera as CameraIcon, Loader2, MoreVertical, Power } from "lucide-react";
 
 import api from "@/lib/api";
 import type { Camera, Store, PaginatedResponse } from "@/types";
@@ -51,6 +51,16 @@ export default function CamerasPage() {
   });
 
   const storeMap = new Map((storesData ?? []).map((s) => [s.id, s.name]));
+
+  const toggleMutation = useMutation({
+    mutationFn: (camId: string) => api.post(`/cameras/${camId}/toggle-detection`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      success("Detection toggled");
+    },
+    onError: () => showError("Failed to toggle detection"),
+  });
+  function toggleDetection(camId: string) { toggleMutation.mutate(camId); }
 
   function modeLabel(mode: string) {
     if (mode === "cloud") return "Cloud";
@@ -212,11 +222,30 @@ export default function CamerasPage() {
                   {cam.last_seen && ` · Last seen ${new Date(cam.last_seen).toLocaleTimeString()}`}
                 </p>
                 <div className="mt-2 flex items-center gap-2">
-                  {cam.detection_enabled ? (
-                    <span className="text-xs text-[#16A34A]">Detection ON</span>
-                  ) : (
-                    <span className="text-xs text-[#78716C]">Detection OFF</span>
-                  )}
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleDetection(cam.id); }}
+                    className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium ${
+                      cam.detection_enabled
+                        ? "bg-[#DCFCE7] text-[#16A34A]"
+                        : "bg-[#F1F0ED] text-[#78716C]"
+                    }`}
+                  >
+                    <Power size={10} />
+                    {cam.detection_enabled ? "ON" : "OFF"}
+                  </button>
+                  {cam.config_status && cam.config_status !== "waiting" ? (
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                      cam.config_status === "received" ? "bg-[#DCFCE7] text-[#16A34A]" :
+                      cam.config_status === "failed" ? "bg-[#FEE2E2] text-[#DC2626]" :
+                      "bg-[#FEF9C3] text-[#CA8A04]"
+                    }`}>
+                      {cam.config_status}
+                    </span>
+                  ) : cam.edge_agent_id ? (
+                    <span className="rounded bg-[#FEF9C3] px-1.5 py-0.5 text-[10px] font-medium text-[#CA8A04]">
+                      Needs config
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
