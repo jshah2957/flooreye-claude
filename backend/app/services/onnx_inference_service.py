@@ -103,8 +103,10 @@ class OnnxInferenceService:
         # Download from S3 if not cached locally
         if not os.path.isfile(local_path):
             try:
-                from app.utils.s3_utils import download_file
-                await download_file(onnx_path, local_path)
+                from app.utils.s3_utils import download_from_s3
+                data = await download_from_s3(onnx_path)
+                with open(local_path, "wb") as f:
+                    f.write(data)
                 log.info("Downloaded model from S3: %s -> %s", onnx_path, local_path)
             except Exception:
                 log.exception("Failed to download model from S3: %s", onnx_path)

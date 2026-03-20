@@ -210,6 +210,63 @@ async def get_roboflow_classes(
     return await _fetch_roboflow_classes(db, org_id)
 
 
+@router.post("/pull-model")
+async def pull_model(
+    body: dict | None = None,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Pull the latest ONNX model from Roboflow, store in S3, register in model_versions.
+
+    Body (optional):
+        project_id: str — Roboflow project slug (defaults to ROBOFLOW_PROJECT_ID env)
+        version: int — specific version number (defaults to latest)
+    """
+    from app.services.roboflow_model_service import pull_model_from_roboflow
+
+    body = body or {}
+    org_id = current_user.get("org_id", "")
+    model = await pull_model_from_roboflow(
+        db,
+        org_id,
+        user_id=current_user["id"],
+        project_id=body.get("project_id"),
+        version=body.get("version"),
+    )
+    return {"data": model}
+
+
+@router.post("/pull-classes")
+async def pull_classes(
+    body: dict | None = None,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Pull class definitions from Roboflow project, store in class_definitions.
+
+    Body (optional):
+        project_id: str — Roboflow project slug
+        push_to_edge: bool — push classes to edge agents after pull
+    """
+    from app.services.roboflow_model_service import pull_classes_from_roboflow
+
+    body = body or {}
+    org_id = current_user.get("org_id", "")
+    result = await pull_classes_from_roboflow(
+        db,
+        org_id,
+        user_id=current_user["id"],
+        project_id=body.get("project_id"),
+    )
+
+    if body.get("push_to_edge"):
+        from app.services.edge_service import push_classes_to_edge
+        commands = await push_classes_to_edge(db, org_id, user_id=current_user["id"])
+        result["edge_push"] = {"agents_pushed": len(commands)}
+
+    return {"data": result}
+
+
 @router.post("/sync-classes")
 async def sync_roboflow_classes(
     body: dict | None = None,
