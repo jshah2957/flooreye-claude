@@ -23,6 +23,7 @@ from app.routers import (
     edge_cameras,
     edge_devices,
     edge_proxy,
+    inference_test,
     events,
     integrations,
     live_stream,
@@ -126,6 +127,7 @@ def create_app() -> FastAPI:
     application.include_router(annotations.router)
     application.include_router(roboflow.router)
     application.include_router(roboflow_test.router)
+    application.include_router(inference_test.router)
     application.include_router(models.router)
     application.include_router(training.router)
     application.include_router(active_learning.router)
