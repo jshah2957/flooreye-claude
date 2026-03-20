@@ -11,6 +11,7 @@ import {
   Trash2,
   Send,
   X,
+  Download,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -48,6 +49,7 @@ export default function EdgeManagementPage() {
   const [selectedAgent, setSelectedAgent] = useState<EdgeAgent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EdgeAgent | null>(null);
   const [cmdType, setCmdType] = useState("ping");
+  const [modelUpdateTarget, setModelUpdateTarget] = useState<EdgeAgent | null>(null);
 
   // Provision form
   const [provStoreId, setProvStoreId] = useState("");
@@ -109,6 +111,31 @@ export default function EdgeManagementPage() {
       showError(err?.response?.data?.detail || "Failed to send command");
     },
   });
+
+  const { data: modelsData } = useQuery({
+    queryKey: ["production-models"],
+    queryFn: async () => {
+      const res = await api.get("/models", { params: { status: "production", limit: 10 } });
+      return res.data.data as { id: string; version_str: string; model_size_mb: number; status: string }[];
+    },
+  });
+
+  const pushModelMutation = useMutation({
+    mutationFn: async ({ agentId, modelVersionId }: { agentId: string; modelVersionId: string }) => {
+      const res = await api.post(`/edge/agents/${agentId}/push-model`, { model_version_id: modelVersionId });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
+      setModelUpdateTarget(null);
+      success("Model update command sent");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to push model");
+    },
+  });
+
+  const productionModels = modelsData ?? [];
 
   const agents = agentsData?.data ?? [];
   const storeMap = new Map((stores ?? []).map((s) => [s.id, s.name]));
@@ -176,6 +203,19 @@ export default function EdgeManagementPage() {
                     {storeMap.get(agent.store_id) ?? "Unknown Store"} &middot; {agent.camera_count} cameras
                     {agent.agent_version && ` · v${agent.agent_version}`}
                   </p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="text-[10px] text-[#78716C]">
+                      Model: {agent.current_model_version ?? "None"}
+                    </span>
+                    {agent.status === "online" && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setModelUpdateTarget(agent); }}
+                        className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#0D9488] hover:bg-[#F0FDFA]"
+                      >
+                        <Download size={10} /> Update Model
+                      </button>
+                    )}
+                  </div>
                   {agent.status === "online" && (
                     <div className="mt-2 space-y-1">
                       {metricBar(agent.cpu_percent, "CPU")}
@@ -244,6 +284,45 @@ export default function EdgeManagementPage() {
           )}
         </div>
       </div>
+
+      {/* Update Model Modal */}
+      {modelUpdateTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[400px] rounded-lg bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
+              <h2 className="text-sm font-semibold text-[#1C1917]">Update Model — {modelUpdateTarget.name}</h2>
+              <button onClick={() => setModelUpdateTarget(null)} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+            </div>
+            <div className="p-4">
+              <p className="mb-2 text-xs text-[#78716C]">
+                Current: {modelUpdateTarget.current_model_version ?? "None"}
+              </p>
+              {productionModels.length === 0 ? (
+                <p className="py-4 text-center text-xs text-[#78716C]">No production models available. Pull a model from Roboflow first.</p>
+              ) : (
+                <div className="space-y-2">
+                  {productionModels.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between rounded-md border border-[#E7E5E0] p-3">
+                      <div>
+                        <p className="text-sm font-medium text-[#1C1917]">{m.version_str}</p>
+                        <p className="text-[10px] text-[#78716C]">{m.model_size_mb} MB</p>
+                      </div>
+                      <button
+                        onClick={() => pushModelMutation.mutate({ agentId: modelUpdateTarget.id, modelVersionId: m.id })}
+                        disabled={pushModelMutation.isPending}
+                        className="flex items-center gap-1 rounded-md bg-[#0D9488] px-3 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+                      >
+                        {pushModelMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+                        Deploy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Provision Drawer */}
       {provisionOpen && (
