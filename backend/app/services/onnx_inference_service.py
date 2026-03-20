@@ -22,7 +22,24 @@ from app.core.config import settings
 log = logging.getLogger(__name__)
 
 INPUT_SIZE = 640
-WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
+# Default fallback — actual alert classes loaded from DB at runtime
+_DEFAULT_WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
+_cached_alert_classes: set[str] | None = None
+
+
+async def _get_alert_classes(db=None) -> set[str]:
+    """Get alert-triggering class names. Caches result."""
+    global _cached_alert_classes
+    if _cached_alert_classes is not None:
+        return _cached_alert_classes
+    if db:
+        try:
+            from app.core.validation_constants import get_alert_class_names
+            _cached_alert_classes = await get_alert_class_names(db)
+            return _cached_alert_classes
+        except Exception:
+            pass
+    return _DEFAULT_WET_CLASSES
 
 
 class OnnxInferenceService:
@@ -145,7 +162,7 @@ class OnnxInferenceService:
         inference_ms = round((time.time() - t0) * 1000, 1)
 
         is_wet = any(
-            d.get("class_name", "").lower() in WET_CLASSES
+            d.get("class_name", "").lower() in _DEFAULT_WET_CLASSES
             or (not d.get("class_name") and d["class_id"] == 0)
             for d in detections
         )
@@ -177,7 +194,7 @@ class OnnxInferenceService:
             "is_wet": is_wet,
             "confidence": round(max_conf, 4),
             "wet_area_percent": round(
-                sum(p["area_percent"] for p in predictions if p["class_name"].lower() in WET_CLASSES),
+                sum(p["area_percent"] for p in predictions if p["class_name"].lower() in _DEFAULT_WET_CLASSES),
                 2,
             ),
         }

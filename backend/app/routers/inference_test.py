@@ -92,8 +92,9 @@ async def test_inference(
             model_source = "roboflow"
 
     # Compute summary
-    from app.core.validation_constants import WET_CLASS_NAMES
-    is_wet = any(p.get("class_name", "").lower() in WET_CLASS_NAMES for p in predictions)
+    from app.core.validation_constants import get_alert_class_names
+    alert_classes = await get_alert_class_names(db)
+    is_wet = any(p.get("class_name", "").lower() in alert_classes for p in predictions)
     max_conf = max((p.get("confidence", 0) for p in predictions), default=0)
 
     # Run validation if requested

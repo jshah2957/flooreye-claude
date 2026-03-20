@@ -18,7 +18,8 @@ from app.core.validation_constants import (
     DEFAULT_LAYER3_K,
     DEFAULT_LAYER3_M,
     DEFAULT_LAYER4_DELTA,
-    WET_CLASS_NAMES,
+    DEFAULT_WET_CLASS_NAMES,
+    get_alert_class_names,
 )
 
 
@@ -56,9 +57,12 @@ async def run_validation_pipeline(
 ) -> ValidationResult:
     """Run all 4 validation layers on inference predictions."""
 
+    # Get alert-triggering classes from DB (dynamic, not hardcoded)
+    alert_classes = await get_alert_class_names(db)
+
     wet_predictions = [
         p for p in predictions
-        if p.get("class_name") in WET_CLASS_NAMES
+        if p.get("class_name") in alert_classes
     ]
 
     if not wet_predictions:

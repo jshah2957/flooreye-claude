@@ -101,7 +101,8 @@ def _classify_severity(confidence: float, area_percent: float) -> str:
 
 def compute_detection_summary(predictions: list[dict]) -> dict:
     """Compute aggregate metrics from a list of predictions."""
-    wet_predictions = [p for p in predictions if p.get("class_name") in ("wet", "spill", "puddle", "water")]
+    from app.core.validation_constants import DEFAULT_WET_CLASS_NAMES
+    wet_predictions = [p for p in predictions if p.get("class_name") in DEFAULT_WET_CLASS_NAMES]
 
     is_wet = len(wet_predictions) > 0
     max_confidence = max((p["confidence"] for p in wet_predictions), default=0.0)

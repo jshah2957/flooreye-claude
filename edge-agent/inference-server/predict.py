@@ -16,9 +16,17 @@ from PIL import Image, ImageDraw
 INPUT_SIZE = 640
 
 # Class names loaded from a sidecar JSON file alongside the ONNX model.
-# Format: ["wet_floor", "dry_floor"] or similar.
-# Set via load_class_names() when the model is loaded.
 CLASS_NAMES: dict[int, str] = {}
+
+# Alert classes — loaded from cloud config, defaults from model classes
+# Updated via update_alert_classes() when cloud pushes class config
+ALERT_CLASSES: set[str] = {"wet_floor", "spill", "puddle", "water", "wet"}
+
+
+def update_alert_classes(class_names: set[str]):
+    """Update the set of classes that trigger alerts. Called by command_poller."""
+    global ALERT_CLASSES
+    ALERT_CLASSES = class_names
 
 
 def load_class_names(model_path: str) -> dict[int, str]:
@@ -339,9 +347,8 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
     inference_ms = round((time.time() - t0) * 1000, 1)
 
     # Detect wet floor by class name (not hardcoded class_id)
-    WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
     is_wet = any(
-        d.get("class_name", "").lower() in WET_CLASSES or
+        d.get("class_name", "").lower() in ALERT_CLASSES or
         (not d.get("class_name") and d["class_id"] == 0)  # fallback if no class names loaded
         for d in detections
     )
