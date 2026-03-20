@@ -137,44 +137,44 @@ export default function CameraDetailPage() {
     enabled: !!id && activeTab === "Dry Reference",
   });
 
-  // Live Feed polling
+  // Live Feed polling with detection overlay
   const [livePlaying, setLivePlaying] = useState(true);
   const [liveFrame, setLiveFrame] = useState<string | null>(null);
+  const [liveDetection, setLiveDetection] = useState(false);
+  const [liveInterval, setLiveInterval] = useState(2000);
+  const [liveError, setLiveError] = useState(0);
   const liveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (activeTab !== "Live Feed" || !livePlaying || !id) {
-      if (liveIntervalRef.current) {
-        clearInterval(liveIntervalRef.current);
-        liveIntervalRef.current = null;
-      }
+      if (liveIntervalRef.current) { clearInterval(liveIntervalRef.current); liveIntervalRef.current = null; }
       return;
     }
-
     let cancelled = false;
-
     const poll = async () => {
       try {
-        const res = await api.get(`/live/stream/${id}/frame`);
-        if (!cancelled && res.data?.data?.frame_base64) {
-          setLiveFrame(res.data.data.frame_base64);
+        if (liveDetection) {
+          // Run inference + get annotated frame
+          const res = await api.post("/inference/test", { camera_id: id, confidence: 0.5 });
+          if (!cancelled && res.data?.data?.annotated_frame_base64) {
+            setLiveFrame(res.data.data.annotated_frame_base64);
+            setLiveError(0);
+          }
+        } else {
+          const res = await api.get(`/live/stream/${id}/frame`);
+          if (!cancelled && res.data?.data?.frame_base64) {
+            setLiveFrame(res.data.data.frame_base64);
+            setLiveError(0);
+          }
         }
       } catch {
-        // Camera may not be streaming
+        setLiveError((p) => p + 1);
       }
     };
-
     poll();
-    liveIntervalRef.current = setInterval(poll, 2000);
-
-    return () => {
-      cancelled = true;
-      if (liveIntervalRef.current) {
-        clearInterval(liveIntervalRef.current);
-        liveIntervalRef.current = null;
-      }
-    };
-  }, [id, activeTab, livePlaying]);
+    liveIntervalRef.current = setInterval(poll, liveInterval);
+    return () => { cancelled = true; if (liveIntervalRef.current) { clearInterval(liveIntervalRef.current); liveIntervalRef.current = null; } };
+  }, [id, activeTab, livePlaying, liveDetection, liveInterval]);
 
   // Detection History
   const { data: detectionHistory, isLoading: historyLoading } = useQuery({
@@ -584,13 +584,24 @@ export default function CameraDetailPage() {
         <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-base font-semibold text-[#1C1917]">Live Feed</h3>
-            <button
-              onClick={() => setLivePlaying(!livePlaying)}
-              className="flex items-center gap-2 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
-            >
-              {livePlaying ? <Pause size={14} /> : <Play size={14} />}
-              {livePlaying ? "Pause" : "Play"}
-            </button>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px]">
+                <input type="checkbox" checked={liveDetection} onChange={(e) => setLiveDetection(e.target.checked)} className="accent-[#0D9488]" />
+                Detection Overlay
+              </label>
+              <select value={liveInterval} onChange={(e) => setLiveInterval(Number(e.target.value))}
+                className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px]">
+                <option value={1000}>1s</option>
+                <option value={2000}>2s</option>
+                <option value={3000}>3s</option>
+                <option value={5000}>5s</option>
+              </select>
+              <button onClick={() => setLivePlaying(!livePlaying)}
+                className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs font-medium text-[#1C1917] hover:bg-[#F1F0ED]">
+                {livePlaying ? <Pause size={12} /> : <Play size={12} />}
+                {livePlaying ? "Pause" : "Play"}
+              </button>
+            </div>
           </div>
           {liveFrame ? (
             <img
@@ -611,7 +622,14 @@ export default function CameraDetailPage() {
             </div>
           )}
           {livePlaying && liveFrame && (
-            <p className="mt-2 text-xs text-[#78716C]">Refreshing every 2 seconds</p>
+            <p className="mt-2 text-xs text-[#78716C]">
+              Refreshing every {liveInterval / 1000}s {liveDetection && "· Detection overlay ON"}
+            </p>
+          )}
+          {liveError >= 3 && (
+            <div className="mt-2 rounded bg-[#FEE2E2] px-3 py-2 text-xs text-[#DC2626]">
+              Camera offline — {liveError} consecutive failures. Retrying...
+            </div>
           )}
         </div>
       )}

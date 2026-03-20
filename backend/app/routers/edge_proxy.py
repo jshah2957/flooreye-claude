@@ -139,6 +139,20 @@ async def add_camera_via_edge(
     return {"data": {"cloud_camera_id": camera_id, "camera": camera_doc, "edge_ack": edge_ack}}
 
 
+@router.get("/stream-frame")
+async def stream_frame_via_edge(
+    store_id: str,
+    camera_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Get live frame from edge camera (proxied). For cameras only reachable from edge LAN."""
+    org_id = current_user.get("org_id", "")
+    agent = await find_store_agent(db, store_id, org_id)
+    result = await proxy_to_edge(agent, f"/api/stream/{camera_id}/frame", {}, timeout=10.0)
+    return result
+
+
 @router.post("/add-device")
 async def add_device_via_edge(
     body: dict,
