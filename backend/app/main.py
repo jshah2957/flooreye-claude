@@ -21,6 +21,7 @@ from app.routers import (
     devices,
     edge,
     edge_cameras,
+    edge_proxy,
     events,
     integrations,
     live_stream,
@@ -129,6 +130,7 @@ def create_app() -> FastAPI:
     application.include_router(active_learning.router)
     application.include_router(edge.router)
     application.include_router(edge_cameras.router)
+    application.include_router(edge_proxy.router)
     application.include_router(integrations.router)
     application.include_router(mobile.router)
     application.include_router(events.router)
