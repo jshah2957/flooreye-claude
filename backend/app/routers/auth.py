@@ -77,6 +77,32 @@ async def logout(response: Response):
     return {"data": {"ok": True}}
 
 
+@router.post("/logout-all")
+async def logout_all(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    response: Response = None,
+):
+    """Revoke all sessions for current user by blacklisting all active tokens."""
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    # Blacklist all existing tokens for this user (expire in 7 days max)
+    await db.token_blacklist.insert_one({
+        "user_id": current_user["id"],
+        "jti": "__all__",
+        "revoked_at": now,
+        "expires_at": now + timedelta(days=7),
+    })
+    # Also add individual revocation marker
+    await db.token_blacklist.update_many(
+        {"user_id": current_user["id"]},
+        {"$set": {"revoked_at": now}},
+    )
+    if response:
+        clear_refresh_cookie(response)
+    return {"data": {"ok": True, "message": "All sessions revoked"}}
+
+
 @router.post("/register")
 async def register(
     body: UserCreate,

@@ -36,6 +36,16 @@ async def get_current_user(
             detail="Invalid token type",
         )
 
+    # Check token blacklist (revoked tokens)
+    jti = payload.get("jti")
+    if jti:
+        blacklisted = await db.token_blacklist.find_one({"jti": jti})
+        if blacklisted:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
+
     user = await db.users.find_one({"id": payload["sub"]})
     if not user:
         raise HTTPException(

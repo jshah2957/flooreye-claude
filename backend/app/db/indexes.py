@@ -173,3 +173,10 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("id", ASCENDING)], unique=True),
         IndexModel([("agent_id", ASCENDING), ("status", ASCENDING)]),
     ])
+
+    # token_blacklist (TTL: auto-remove expired entries)
+    await db.token_blacklist.create_indexes([
+        IndexModel([("jti", ASCENDING)]),
+        IndexModel([("user_id", ASCENDING)]),
+        IndexModel([("expires_at", ASCENDING)], expireAfterSeconds=0),
+    ])

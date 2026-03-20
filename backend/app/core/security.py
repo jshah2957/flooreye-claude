@@ -19,12 +19,14 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_access_token(user_id: str, role: str, org_id: str | None) -> str:
+    import uuid
     now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "role": role,
         "org_id": org_id or "",
         "type": "access",
+        "jti": str(uuid.uuid4()),
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
@@ -32,10 +34,12 @@ def create_access_token(user_id: str, role: str, org_id: str | None) -> str:
 
 
 def create_refresh_token(user_id: str) -> str:
+    import uuid
     now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "type": "refresh",
+        "jti": str(uuid.uuid4()),
         "iat": now,
         "exp": now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     }
