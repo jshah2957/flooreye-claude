@@ -354,7 +354,7 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
         "max_confidence": max_conf,
         "num_detections": len(detections),
         "model_type": model_type,
-        "model_source": "roboflow" if model_type == "roboflow" else "yolo",
+        "model_source": "local_onnx",
     }
 
 
@@ -444,6 +444,6 @@ def run_batch_inference(
         r["batch_inference_time_ms"] = total_ms
         r["batch_size"] = len(frames)
         r["model_type"] = model_type
-        r["model_source"] = "roboflow" if model_type == "roboflow" else "yolo"
+        r["model_source"] = "local_onnx"
 
     return results

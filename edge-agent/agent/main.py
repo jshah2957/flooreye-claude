@@ -492,14 +492,14 @@ async def cleanup_old_files_loop():
 
 
 async def check_and_download_model(inference: InferenceClient):
-    """Check for newer Roboflow ONNX model and download if available."""
+    """Check for newer production model from cloud backend and download if available."""
     log.info("Checking for model updates...")
     try:
         # Get currently loaded model version from inference server
         health = await inference.health()
         current_version = health.get("model_version", "unknown")
 
-        # Query backend for latest Roboflow model
+        # Query backend for latest production model
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
                 f"{config.BACKEND_URL}/api/v1/edge/model/current",
@@ -512,7 +512,7 @@ async def check_and_download_model(inference: InferenceClient):
             data = resp.json().get("data", {})
             latest_version = data.get("model_version_id")
             if not latest_version:
-                log.info("No Roboflow model available from backend")
+                log.info("No production model available from backend")
                 return
 
             if latest_version == current_version:

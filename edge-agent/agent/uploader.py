@@ -85,7 +85,7 @@ class Uploader:
                 "wet_area_percent": result.get("wet_area_percent", 0.0),
                 "predictions": result.get("predictions", []),
                 "inference_time_ms": result.get("inference_time_ms", 0),
-                "model_source": result.get("model_source", "roboflow"),
+                "model_source": result.get("model_source", "local_onnx"),
                 "model_version": result.get("model_version"),
             }
         else:
@@ -97,7 +97,7 @@ class Uploader:
                 "wet_area_percent": result.get("wet_area_percent", 0.0),
                 "predictions": result.get("predictions", []),
                 "inference_time_ms": result.get("inference_time_ms", 0),
-                "model_source": result.get("model_source", "roboflow"),
+                "model_source": result.get("model_source", "local_onnx"),
                 "model_version": result.get("model_version"),
             }
 
@@ -136,7 +136,7 @@ class Uploader:
             "wet_area_percent": metadata.get("wet_area_percent", 0.0),
             "predictions": metadata.get("predictions", []),
             "inference_time_ms": metadata.get("inference_time_ms", 0),
-            "model_source": metadata.get("model_source", "roboflow"),
+            "model_source": metadata.get("model_source", "local_onnx"),
             "model_version": metadata.get("model_version"),
         }
         try:

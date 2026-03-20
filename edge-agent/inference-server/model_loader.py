@@ -22,8 +22,8 @@ class ModelLoader:
         self.session: ort.InferenceSession | None = None
         self.model_version = "unknown"
         self.model_path: str | None = None
-        self.model_type = "roboflow"  # "roboflow", "yolov8", or "nms_free"
-        self.model_source = "roboflow"  # "roboflow" or "yolo"
+        self.model_type = "yolov8"  # "roboflow", "yolov8", or "nms_free"
+        self.model_source = "local_onnx"  # always local — model origin doesn't matter
         self.load_time_ms = 0
         self.class_names: list[str] = []
         self._lock = threading.Lock()
@@ -101,7 +101,7 @@ class ModelLoader:
             # Detect model type using the unified detector
             from predict import detect_model_type
             self.model_type = detect_model_type(self.session)
-            self.model_source = "roboflow" if self.model_type == "roboflow" else "yolo"
+            self.model_source = "local_onnx"
 
             log.info(f"Model loaded: {self.model_version} ({self.model_type}, source={self.model_source}) in {self.load_time_ms}ms")
             return True
@@ -181,7 +181,7 @@ class ModelLoader:
             # Detect type
             from predict import detect_model_type, load_class_names as _load_predict_classes
             new_type = detect_model_type(new_session)
-            new_source = "roboflow" if new_type == "roboflow" else "yolo"
+            new_source = "local_onnx"
 
             # Atomic swap under lock
             with self._lock:

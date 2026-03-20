@@ -20,7 +20,7 @@ class EdgeConfig:
     CAPTURE_FPS: int = int(os.getenv("CAPTURE_FPS", "2"))
     INFERENCE_MODE: str = os.getenv("INFERENCE_MODE", "local")  # Legacy; edge always runs local ONNX
     HYBRID_THRESHOLD: float = float(os.getenv("HYBRID_THRESHOLD", "0.5"))  # Legacy; kept for compat
-    MODEL_SOURCE: str = os.getenv("MODEL_SOURCE", "roboflow")
+    MODEL_SOURCE: str = os.getenv("MODEL_SOURCE", "local_onnx")
     MODEL_CHECK_INTERVAL: int = int(os.getenv("MODEL_CHECK_INTERVAL", "3600"))  # Check for model updates every hour
     MODEL_CACHE_DIR: str = os.getenv("MODEL_CACHE_DIR", "/data/models")
     MAX_ESCALATIONS_PER_MIN: int = int(os.getenv("MAX_ESCALATIONS_PER_MIN", "10"))

@@ -367,10 +367,10 @@ async def current_model(
     agent: dict = Depends(get_edge_agent),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Return the latest production Roboflow model for this agent's org."""
+    """Return the latest production model for this agent's org."""
     model = await db.model_versions.find_one(
-        {"org_id": agent["org_id"], "model_source": "roboflow", "status": "production"},
-        sort=[("created_at", -1)],
+        {"org_id": agent["org_id"], "status": "production"},
+        sort=[("promoted_to_production_at", -1)],
     )
     if not model:
         return {"data": {"model_version_id": None}}
@@ -378,9 +378,9 @@ async def current_model(
         "model_version_id": model["id"],
         "version_str": model.get("version_str"),
         "checksum": model.get("checksum"),
-        "download_url": model.get("onnx_s3_path") or model.get("artifact_path", ""),
+        "download_url": model.get("onnx_path") or model.get("onnx_s3_path", ""),
         "format": "onnx",
-        "model_source": "roboflow",
+        "model_source": model.get("model_source", "local_onnx"),
     }}
 
 
