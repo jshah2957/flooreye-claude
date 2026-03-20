@@ -86,8 +86,22 @@ class DetectionValidator:
             if wet_count < l3_k:
                 return False, "temporal_check_pending"
 
-        # Layer 4: Duplicate suppression (cooldown between alerts)
+        # Layer 4a: Dry reference comparison (scene change detection)
         l4_enabled = self._get(camera_name, "layer4_enabled", True)
+        l4_delta = self._get(camera_name, "layer4_delta_threshold", 0.15)
+        if l4_enabled and hasattr(self, '_local_config') and self._local_config:
+            cam_local = next((c for c in self._local_config.list_cameras() if c["name"] == camera_name), None)
+            if cam_local:
+                cam_id = cam_local.get("cloud_camera_id") or cam_local["id"]
+                dry_paths = self._local_config.get_dry_reference_paths(cam_id)
+                if dry_paths:
+                    scene_changed = self._check_dry_reference(
+                        result.get("_frame_b64", ""), dry_paths[0], l4_delta
+                    )
+                    if not scene_changed:
+                        return False, "scene_unchanged_from_baseline"
+
+        # Layer 4b: Duplicate suppression (cooldown between alerts)
         l4_cooldown = self._get(camera_name, "layer4_cooldown_seconds", DEFAULT_COOLDOWN)
         if l4_enabled:
             now = time.time()
@@ -102,3 +116,41 @@ class DetectionValidator:
         self._history[camera_name][-1]["alerted"] = True
 
         return True, "passed"
+
+    def set_local_config(self, local_config):
+        """Set reference to local config for dry reference lookup."""
+        self._local_config = local_config
+
+    @staticmethod
+    def _check_dry_reference(frame_b64: str, ref_path: str, delta_threshold: float) -> bool:
+        """Compare current frame against dry reference. Returns True if scene changed."""
+        if not frame_b64 or not ref_path:
+            return True  # no comparison possible — pass
+        try:
+            import base64
+            import cv2
+            import numpy as np
+
+            # Load dry reference from disk (cached by OS)
+            ref_img = cv2.imread(ref_path, cv2.IMREAD_GRAYSCALE)
+            if ref_img is None:
+                return True
+
+            # Decode current frame
+            current_bytes = base64.b64decode(frame_b64)
+            current_arr = np.frombuffer(current_bytes, dtype=np.uint8)
+            current_img = cv2.imdecode(current_arr, cv2.IMREAD_GRAYSCALE)
+            if current_img is None:
+                return True
+
+            # Resize to match
+            h, w = current_img.shape[:2]
+            ref_img = cv2.resize(ref_img, (w, h))
+
+            # Compute mean absolute difference
+            diff = np.abs(current_img.astype(np.float32) / 255.0 - ref_img.astype(np.float32) / 255.0)
+            mean_diff = float(np.mean(diff))
+
+            return mean_diff >= delta_threshold
+        except Exception:
+            return True  # error → pass layer

@@ -201,8 +201,30 @@ async def threaded_camera_loop(
         if not await cam.reconnect():
             return
 
+    # Get local config for detection blocking + ROI
+    from local_config import local_config as _lc
+    _last_waiting_log = 0
+
     while True:
         t0 = time.time()
+
+        # Check per-camera readiness (blocks until ROI + dry ref from cloud)
+        cam_local = next((c for c in _lc.list_cameras() if c["name"] == cam.name), None)
+        if cam_local:
+            cam_id = cam_local.get("cloud_camera_id") or cam_local["id"]
+            if not _lc.is_camera_ready(cam_id):
+                if time.time() - _last_waiting_log > 60:
+                    log.info("[%s] Waiting for ROI + dry reference from cloud", cam.name)
+                    _last_waiting_log = time.time()
+                await asyncio.sleep(5)
+                continue
+            cam_cfg = _lc.get_camera_config(cam_id)
+            if cam_cfg and not cam_cfg.get("detection_settings", {}).get("detection_enabled", False):
+                await asyncio.sleep(5)
+                continue
+        else:
+            cam_cfg = None
+
         # read_frame blocks until a new frame is available (with timeout)
         ok, jpeg_bytes, frame_b64 = await asyncio.to_thread(cam.read_frame)
         if not ok:
@@ -211,11 +233,18 @@ async def threaded_camera_loop(
                     return
             continue
 
+        # Get ROI from cloud config for this camera
+        roi_points = None
+        if cam_cfg and cam_cfg.get("roi", {}).get("polygon_points"):
+            roi_points = cam_cfg["roi"]["polygon_points"]
+
         try:
             # Acquire semaphore to limit concurrent inferences
-            # Always use local ONNX inference (no cloud/hybrid mode)
             async with semaphore:
-                result = await inference.infer(frame_b64)
+                result = await inference.infer(frame_b64, roi=roi_points)
+
+            # Attach frame for dry reference comparison in validator
+            result["_frame_b64"] = frame_b64
 
             # Validate detection
             passed, reason = validator.validate(result, cam.name)
@@ -563,6 +592,30 @@ async def validation_settings_sync_loop(validator: "DetectionValidator"):
         await sync_validation_settings(validator)
 
 
+async def start_web_servers(lc, cam_mgr, cam_objects_ref):
+    """Start edge web UI (8090) and config receiver (8091) as background tasks."""
+    import uvicorn
+
+    # Initialize web UI
+    from web.app import app as web_app, init as web_init
+    web_init(lc, cam_mgr, {"agent_id": config.AGENT_ID, "model_version": "unknown"})
+
+    # Initialize config receiver
+    from config_receiver import app as receiver_app, init as receiver_init
+    receiver_init(lc, cam_objects_ref)
+
+    web_config = uvicorn.Config(web_app, host="0.0.0.0", port=8090, log_level="warning")
+    receiver_config = uvicorn.Config(receiver_app, host="0.0.0.0", port=8091, log_level="warning")
+
+    web_server = uvicorn.Server(web_config)
+    receiver_server = uvicorn.Server(receiver_config)
+
+    await asyncio.gather(
+        web_server.serve(),
+        receiver_server.serve(),
+    )
+
+
 async def main():
     log.info("=" * 60)
     log.info("FloorEye Edge Agent v2.0.0")
@@ -573,12 +626,21 @@ async def main():
     log.info(f"Max concurrent inferences: {config.MAX_CONCURRENT_INFERENCES}")
     log.info("=" * 60)
 
-    cameras = config.parse_cameras()
-    if not cameras:
-        log.error("No cameras configured! Set CAMERA_URLS env var.")
-        return
+    # Initialize local config store
+    from local_config import local_config as lc
 
-    log.info(f"Cameras configured: {list(cameras.keys())}")
+    # Backward compat: import cameras from CAMERA_URLS env if cameras.json is empty
+    if config.CAMERA_URLS_RAW and not lc.list_cameras():
+        lc.import_from_env(config.CAMERA_URLS_RAW)
+
+    # Load cameras from local config
+    local_cameras = lc.list_cameras()
+    cameras = {cam["name"]: cam["url"] for cam in local_cameras}
+
+    if not cameras:
+        log.warning("No cameras configured. Use edge web UI at port 8090 to add cameras.")
+
+    log.info(f"Cameras configured: {list(cameras.keys())} ({len(cameras)} total)")
 
     # Initialize components
     inference = InferenceClient()
@@ -592,6 +654,13 @@ async def main():
     if tplink_ctrl.enabled:
         log.info(f"TP-Link devices configured: {list(tplink_ctrl.devices.keys())}")
 
+    # Wire local config into validator for dry reference comparison
+    validator.set_local_config(lc)
+
+    # Camera manager for cloud registration
+    from camera_manager import CameraManager
+    cam_mgr = CameraManager(lc)
+
     # Semaphore to limit concurrent inference calls across all cameras
     inference_semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_INFERENCES)
 
@@ -603,6 +672,9 @@ async def main():
     # Register with backend
     await register_with_backend(cameras)
 
+    # Register all unregistered cameras with cloud
+    await cam_mgr.sync_all_cameras()
+
     # Check for model updates before starting detection
     await check_and_download_model(inference)
 
@@ -611,13 +683,24 @@ async def main():
 
     # Build threaded camera capture objects
     global _cam_objects
-    cam_objects = {
-        name: ThreadedCameraCapture(
-            name, url, config.CAPTURE_FPS, config.CAPTURE_THREAD_TIMEOUT
+    cam_objects = {}
+    for cam_info in local_cameras:
+        cam_name = cam_info["name"]
+        cam_url = cam_info["url"]
+        # Per-camera FPS from cloud config or global default
+        cam_cfg = lc.get_camera_config(cam_info.get("cloud_camera_id") or cam_info["id"])
+        fps = cam_cfg.get("detection_settings", {}).get("capture_fps", config.CAPTURE_FPS) if cam_cfg else config.CAPTURE_FPS
+        cam_objects[cam_name] = ThreadedCameraCapture(
+            cam_name, cam_url, fps, config.CAPTURE_THREAD_TIMEOUT
         )
-        for name, url in cameras.items()
-    }
     _cam_objects = cam_objects
+
+    # Update config receiver with capture objects for live feed proxy
+    try:
+        from config_receiver import update_captures
+        update_captures(cam_objects)
+    except Exception:
+        pass
 
     # Start all tasks — cameras run concurrently via asyncio.gather
     tasks = [
@@ -626,6 +709,7 @@ async def main():
         asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
         asyncio.create_task(cleanup_old_files_loop()),
         asyncio.create_task(validation_settings_sync_loop(validator)),
+        asyncio.create_task(start_web_servers(lc, cam_mgr, cam_objects)),
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))

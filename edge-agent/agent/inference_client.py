@@ -42,13 +42,14 @@ class InferenceClient:
         log.error("Inference server not available")
         return False
 
-    async def infer(self, frame_b64: str, confidence: float = 0.5) -> dict:
+    async def infer(self, frame_b64: str, confidence: float = 0.5,
+                    roi: list[dict] | None = None) -> dict:
         """Send a frame for inference. Returns prediction dict."""
         client = await self._get_client()
-        resp = await client.post(
-            f"{self.url}/infer",
-            json={"image_base64": frame_b64, "confidence": confidence},
-        )
+        payload = {"image_base64": frame_b64, "confidence": confidence}
+        if roi:
+            payload["roi"] = roi
+        resp = await client.post(f"{self.url}/infer", json=payload)
         return resp.json()
 
     async def infer_batch(self, frames: list[dict]) -> dict:
