@@ -43,7 +43,8 @@
       "Bash(grep -r layer4 /c/Users/jshah/flooreye --include=*.md -A 2 -B 2)",
       "Bash(grep -E \"\\\\.\\(tsx|ts|jsx|js\\)$\")",
       "Bash(find /c/Users/jshah/flooreye/web/src/pages -name *.tsx)",
-      "Bash(find /c/Users/jshah/flooreye/edge-agent -name *.py)"
+      "Bash(find /c/Users/jshah/flooreye/edge-agent -name *.py)",
+      "Bash(__NEW_LINE_737146a7bfd3a2da__ echo:*)"
     ]
   }
 }
