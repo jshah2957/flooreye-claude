@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, Query, Response, status
+from fastapi import APIRouter, Cookie, Depends, Query, Request, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.permissions import require_role
@@ -45,12 +45,17 @@ def _user_response(user: dict) -> UserResponse:
 @router.post("/login")
 async def login(
     body: LoginRequest,
+    request: Request,
     response: Response,
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     user = await auth_service.authenticate_user(db, body.email, body.password)
     access_token, refresh_token = auth_service.generate_tokens(user)
     set_refresh_cookie(response, refresh_token)
+    # Audit log
+    from app.services.audit_service import log_action
+    await log_action(db, user["id"], user["email"], user.get("org_id", ""),
+                     "login", "user", user["id"], request=request)
     return {"data": TokenResponse(access_token=access_token, user=_user_response(user))}
 
 
@@ -171,6 +176,9 @@ async def create_user(
 ):
     org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
     user = await auth_service.create_user(db, body, org_id, current_user_role=current_user["role"])
+    from app.services.audit_service import log_action
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "user_created", "user", user["id"], {"role": user["role"], "email": user["email"]})
     return {"data": _user_response(user)}
 
 
@@ -183,6 +191,9 @@ async def update_user(
 ):
     org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
     updated = await auth_service.update_user(db, user_id, body, org_id)
+    from app.services.audit_service import log_action
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "user_updated", "user", user_id, {"fields": list(body.model_dump(exclude_unset=True).keys())})
     return {"data": _user_response(updated)}
 
 
@@ -194,4 +205,7 @@ async def deactivate_user(
 ):
     org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
     await auth_service.deactivate_user(db, user_id, org_id)
+    from app.services.audit_service import log_action
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "user_deactivated", "user", user_id)
     return {"data": {"ok": True}}
