@@ -70,7 +70,7 @@ class Uploader:
     ) -> bool:
         """Upload a detection result (and optionally a frame) to the backend."""
         if self._rate_limited(camera_name):
-            return False
+            return True  # Rate limited = skipped, not failed (don't buffer)
 
         client = await self._get_client()
 
@@ -125,7 +125,7 @@ class Uploader:
     async def upload_frame(self, frame_b64: str, camera_name: str, metadata: dict) -> bool:
         """Upload a frame with metadata (for training data collection)."""
         if self._rate_limited(camera_name):
-            return False
+            return True  # Rate limited = skipped, not failed (don't buffer)
 
         client = await self._get_client()
         body = {

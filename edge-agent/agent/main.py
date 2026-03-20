@@ -331,8 +331,14 @@ async def threaded_camera_loop(
                 })
 
         except Exception as e:
-            if cam.frame_count % 30 == 1:
-                log.warning(f"[{cam.name}] Inference error: {e}")
+            _ie = getattr(cam, '_inference_errors', 0) + 1
+            cam._inference_errors = _ie
+            if _ie % 30 == 1:
+                log.warning(f"[{cam.name}] Inference error ({_ie}x): {e}")
+            if _ie > 10 and _ie % 10 == 0:
+                log.warning("[%s] Inference server may be down, backing off 30s", cam.name)
+                await asyncio.sleep(30)
+                continue
 
         elapsed = time.time() - t0
         await asyncio.sleep(max(0, cam.frame_interval - elapsed))
