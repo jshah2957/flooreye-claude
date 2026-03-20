@@ -160,3 +160,88 @@ async def test_inference_upload(
         {"image_base64": image_base64, "model_source": "local_onnx"},
         db=db, current_user=current_user,
     )
+
+
+@router.post("/test-clip")
+async def test_inference_clip(
+    file: UploadFile = File(...),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Run inference on uploaded video clip — frame by frame with annotations.
+
+    Extracts frames at ~2 FPS, runs inference on each, returns annotated results.
+    Max 100 frames, max 100MB file.
+    """
+    import tempfile
+    import cv2
+    import numpy as np
+
+    if not file.content_type or "video" not in file.content_type:
+        raise HTTPException(400, "File must be a video")
+    contents = await file.read()
+    if len(contents) > 100 * 1024 * 1024:
+        raise HTTPException(400, "Video too large (max 100MB)")
+
+    # Write to temp file for OpenCV
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+        tmp.write(contents)
+        tmp_path = tmp.name
+
+    try:
+        cap = cv2.VideoCapture(tmp_path)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        video_fps = cap.get(cv2.CAP_PROP_FPS) or 30
+        # Extract at ~2 FPS equivalent
+        frame_interval = max(1, int(video_fps / 2))
+        max_frames = min(100, total_frames // max(1, frame_interval))
+
+        results = []
+        for i in range(max_frames):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, i * frame_interval)
+            ret, frame = cap.read()
+            if not ret:
+                break
+            _, buf = cv2.imencode(".jpg", frame)
+            frame_b64 = base64.b64encode(buf).decode("utf-8")
+
+            # Run inference on this frame
+            try:
+                if settings.LOCAL_INFERENCE_ENABLED:
+                    from app.services.onnx_inference_service import run_local_inference
+                    inf_result = await run_local_inference(frame_b64, confidence=0.5, db=db)
+                else:
+                    from app.services.inference_service import run_roboflow_inference
+                    inf_result = await run_roboflow_inference(frame_b64)
+
+                predictions = inf_result.get("predictions", [])
+                annotated = draw_annotations(frame_b64, predictions)
+
+                from app.core.validation_constants import WET_CLASS_NAMES
+                is_wet = any(p.get("class_name", "").lower() in WET_CLASS_NAMES for p in predictions)
+
+                results.append({
+                    "frame_index": i,
+                    "annotated_frame_base64": annotated,
+                    "predictions": predictions,
+                    "is_wet": is_wet,
+                    "confidence": max((p.get("confidence", 0) for p in predictions), default=0),
+                    "inference_time_ms": inf_result.get("inference_time_ms", 0),
+                })
+            except Exception as e:
+                results.append({"frame_index": i, "error": str(e)})
+
+        cap.release()
+    finally:
+        import os
+        os.unlink(tmp_path)
+
+    wet_count = sum(1 for r in results if r.get("is_wet"))
+    return {
+        "data": {
+            "frames": results,
+            "total_frames_analyzed": len(results),
+            "wet_frames": wet_count,
+            "dry_frames": len(results) - wet_count,
+        }
+    }
