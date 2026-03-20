@@ -167,6 +167,114 @@ async def all_cameras_status():
     return {"data": result}
 
 
+@app.post("/api/test-camera-url")
+async def test_camera_url(request: Request):
+    """Test camera URL on edge local network. Called by cloud proxy."""
+    body = await request.json()
+    url = body.get("url", "").strip()
+    if not url:
+        return {"data": {"connected": False, "error": "url is required"}}
+
+    import cv2
+
+    def _test(u):
+        cap = cv2.VideoCapture(u)
+        if not cap.isOpened():
+            return False, None
+        ret, frame = cap.read()
+        cap.release()
+        if not ret or frame is None:
+            return False, None
+        _, buf = cv2.imencode(".jpg", frame)
+        return True, base64.b64encode(buf).decode("utf-8")
+
+    success, snapshot = await asyncio.to_thread(_test, url)
+    return {"data": {"connected": success, "snapshot": snapshot}}
+
+
+@app.post("/api/test-device-ip")
+async def test_device_ip(request: Request):
+    """Test IoT device connectivity on edge local network. Called by cloud proxy."""
+    body = await request.json()
+    ip = body.get("ip", "").strip()
+    device_type = body.get("type", "tplink")
+    if not ip:
+        return {"data": {"reachable": False, "error": "ip is required"}}
+
+    import socket
+
+    def _test(addr, port):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            sock.connect((addr, port))
+            sock.close()
+            return True
+        except Exception:
+            return False
+
+    port = 9999 if device_type == "tplink" else 80
+    reachable = await asyncio.to_thread(_test, ip, port)
+    return {"data": {"reachable": reachable}}
+
+
+@app.post("/api/cameras/add-from-cloud")
+async def add_camera_from_cloud(request: Request):
+    """Cloud tells edge to add a camera to local config. Pre-sets cloud_camera_id."""
+    body = await request.json()
+    name = body.get("name", "").strip()
+    url = body.get("url", "").strip()
+    cloud_camera_id = body.get("cloud_camera_id", "").strip()
+    if not name or not url:
+        raise HTTPException(400, "name and url are required")
+
+    # Add to local config with cloud ID pre-set
+    camera = _local_config.add_camera(
+        name=name,
+        url=url,
+        stream_type=body.get("stream_type", "rtsp"),
+        location=body.get("location", ""),
+    )
+    if cloud_camera_id:
+        _local_config.update_camera(camera["id"], cloud_camera_id=cloud_camera_id)
+        camera["cloud_camera_id"] = cloud_camera_id
+
+    log.info("Camera added from cloud: %s (cloud_id=%s)", name, cloud_camera_id)
+    return {
+        "status": "added",
+        "edge_camera_id": camera["id"],
+        "cloud_camera_id": cloud_camera_id,
+        "name": name,
+    }
+
+
+@app.post("/api/devices/add-from-cloud")
+async def add_device_from_cloud(request: Request):
+    """Cloud tells edge to add an IoT device to local config."""
+    body = await request.json()
+    name = body.get("name", "").strip()
+    ip = body.get("ip", "").strip()
+    if not name or not ip:
+        raise HTTPException(400, "name and ip are required")
+
+    device = _local_config.add_device(
+        name=name,
+        ip=ip,
+        device_type=body.get("type", "tplink"),
+        protocol=body.get("protocol", "tcp"),
+    )
+
+    # Reload controllers
+    try:
+        from web.app import _reload_device_controllers
+        _reload_device_controllers()
+    except Exception:
+        pass
+
+    log.info("Device added from cloud: %s (%s)", name, ip)
+    return {"status": "added", "device_id": device["id"], "name": name}
+
+
 @app.get("/api/stream/{camera_id}/frame")
 async def get_camera_frame(camera_id: str):
     """Live feed proxy — returns latest frame from camera capture buffer.
