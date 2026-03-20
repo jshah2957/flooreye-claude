@@ -18,6 +18,27 @@ from app.schemas.detection_control import (
 )
 from app.services import detection_control_service
 
+import logging
+_log = logging.getLogger(__name__)
+
+
+async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | None, user_id: str):
+    """Push updated settings to edge for cameras affected by this scope change."""
+    from app.services.edge_camera_service import push_config_to_edge
+    try:
+        if scope == "camera" and scope_id:
+            await push_config_to_edge(db, scope_id, org_id, user_id)
+        elif scope == "store" and scope_id:
+            cameras = await db.cameras.find({"store_id": scope_id, "edge_agent_id": {"$ne": None}}).to_list(100)
+            for cam in cameras:
+                await push_config_to_edge(db, cam["id"], org_id, user_id)
+        elif scope in ("org", "global"):
+            cameras = await db.cameras.find({"org_id": org_id, "edge_agent_id": {"$ne": None}}).to_list(200)
+            for cam in cameras:
+                await push_config_to_edge(db, cam["id"], org_id, user_id)
+    except Exception as e:
+        _log.warning("Failed to push settings to edge: %s", e)
+
 router = APIRouter(prefix="/api/v1/detection-control", tags=["detection-control"])
 
 
@@ -56,6 +77,8 @@ async def save_settings(
     doc = await detection_control_service.upsert_settings(
         db, org_id, body, current_user["id"]
     )
+    # Push updated settings to edge for affected cameras
+    await _push_settings_to_edge(db, org_id, body.scope, body.scope_id, current_user["id"])
     return {"data": _settings_response(doc)}
 
 
@@ -68,6 +91,8 @@ async def reset_settings(
 ):
     org_id = current_user.get("org_id", "")
     await detection_control_service.delete_settings(db, org_id, scope, scope_id)
+    # Push reset settings to edge for affected cameras
+    await _push_settings_to_edge(db, org_id, scope, scope_id, current_user["id"])
     return {"data": {"ok": True}}
 
 
