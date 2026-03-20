@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -15,18 +15,39 @@ from app.core.security import (
 from app.schemas.auth import UserCreate, UserUpdate, ProfileUpdate
 
 
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
+
 async def authenticate_user(db: AsyncIOMotorDatabase, email: str, password: str) -> dict:
     user = await db.users.find_one({"email": email})
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.get("is_active", False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account deactivated")
+
+    # Account lockout check
+    locked_until = user.get("locked_until")
+    if locked_until and locked_until > datetime.now(timezone.utc):
+        remaining = int((locked_until - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail=f"Account locked due to too many failed attempts. Try again in {remaining} minutes.",
+        )
+
     if not verify_password(password, user["password_hash"]):
+        # Increment failed attempts
+        attempts = user.get("failed_login_attempts", 0) + 1
+        updates: dict = {"failed_login_attempts": attempts}
+        if attempts >= MAX_FAILED_ATTEMPTS:
+            updates["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+        await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
+    # Successful login — reset failed attempts + lockout
     await db.users.update_one(
         {"_id": user["_id"]},
-        {"$set": {"last_login": datetime.now(timezone.utc)}},
+        {"$set": {"last_login": datetime.now(timezone.utc), "failed_login_attempts": 0, "locked_until": None}},
     )
     return user
 
