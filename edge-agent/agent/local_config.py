@@ -49,11 +49,27 @@ class LocalConfigStore:
                 with open(path, "r") as f:
                     return json.load(f)
             except (json.JSONDecodeError, OSError):
-                log.warning("Failed to read %s, returning default", path)
+                log.error("Config corrupted: %s — trying backup", path)
+                bak = path + ".bak"
+                if os.path.isfile(bak):
+                    try:
+                        with open(bak, "r") as f:
+                            data = json.load(f)
+                        import shutil
+                        shutil.copy2(bak, path)
+                        log.info("Restored config from backup: %s", bak)
+                        return data
+                    except Exception:
+                        log.error("Backup also corrupted: %s", bak)
                 return default if default is not None else []
 
     def _write_json(self, path: str, data):
         with self._lock:
+            # Backup current file before overwriting
+            if os.path.isfile(path):
+                import shutil
+                shutil.copy2(path, path + ".bak")
+            # Atomic write via temp file
             tmp = path + ".tmp"
             with open(tmp, "w") as f:
                 json.dump(data, f, indent=2, default=str)
