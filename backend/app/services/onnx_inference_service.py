@@ -93,10 +93,56 @@ class OnnxInferenceService:
                 "ONNX model loaded: %s (type=%s, classes=%d)",
                 model_path, model_type, len(class_names),
             )
+
+            # Cache extracted classes for DB sync
+            self._extracted_classes = class_names
             return True
         except Exception:
             log.exception("Failed to load ONNX model: %s", model_path)
             return False
+
+    async def sync_classes_to_db(self, db, org_id: str = "") -> int:
+        """Sync extracted model classes to detection_classes collection.
+
+        Creates/updates class entries from the loaded ONNX model.
+        Returns number of classes synced.
+        """
+        classes = getattr(self, "_extracted_classes", {})
+        if not classes:
+            return 0
+
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        count = 0
+        for class_id, class_name in classes.items():
+            await db.detection_classes.update_one(
+                {"name": class_name, "org_id": org_id} if org_id else {"name": class_name},
+                {"$set": {
+                    "name": class_name,
+                    "class_id": class_id,
+                    "org_id": org_id,
+                    "source": "model",
+                    "synced_at": now,
+                }, "$setOnInsert": {
+                    "display_label": class_name.replace("_", " ").title(),
+                    "color": "#00FFFF",
+                    "enabled": True,
+                    "alert_on_detect": class_name in self._class_names.values() and
+                        class_name.lower() in {"wet_floor", "spill", "puddle", "water", "wet"},
+                    "min_confidence": 0.5,
+                    "min_area_percent": 0.5,
+                    "created_at": now,
+                }},
+                upsert=True,
+            )
+            count += 1
+
+        # Invalidate cached alert classes
+        global _cached_alert_classes
+        _cached_alert_classes = None
+
+        log.info("Synced %d classes from model to DB", count)
+        return count
 
     async def load_production_model(self, db) -> bool:
         """Find the production model in DB, download from S3 if needed, and load it."""
@@ -129,7 +175,15 @@ class OnnxInferenceService:
                 log.exception("Failed to download model from S3: %s", onnx_path)
                 return False
 
-        return self.load_model(local_path)
+        loaded = self.load_model(local_path)
+        if loaded:
+            # Sync extracted classes to DB
+            try:
+                org_id = model.get("org_id", "")
+                await self.sync_classes_to_db(db, org_id)
+            except Exception as e:
+                log.warning("Class sync to DB failed (non-critical): %s", e)
+        return loaded
 
     def run_inference(self, frame_base64: str, confidence: float = 0.5) -> dict:
         """Run inference on a single base64-encoded frame."""
