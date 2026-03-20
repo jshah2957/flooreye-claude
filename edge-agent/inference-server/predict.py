@@ -416,7 +416,6 @@ def run_batch_inference(
         tensors.append(tensor)
 
     names = class_names if class_names else CLASS_NAMES
-    WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
 
     def _postprocess_frame(frame, frame_output, idx):
         confidence = frame.get("confidence", 0.5)
@@ -432,7 +431,7 @@ def run_batch_inference(
                 det["class_name"] = names.get(det["class_id"], f"class_{det['class_id']}")
 
         is_wet = any(
-            d.get("class_name", "").lower() in WET_CLASSES
+            d.get("class_name", "").lower() in ALERT_CLASSES
             or (not d.get("class_name") and d["class_id"] == 0)
             for d in detections
         )
