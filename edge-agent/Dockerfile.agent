@@ -10,6 +10,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY agent/ ./agent/
+COPY web/ ./web/
 
 WORKDIR /app/agent
+EXPOSE 8090 8091
 CMD ["python", "main.py"]

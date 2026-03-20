@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloorEye Edge Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>FloorEye Edge Agent</h1>
+        <div class="agent-info">
+            <span>Agent: {{ agent_info.get('agent_id', 'N/A')[:8] }}</span>
+            <span>Model: {{ agent_info.get('model_version', 'N/A') }}</span>
+            <span>Backend: <span id="backend-status">checking...</span></span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Cameras Section -->
+        <section>
+            <div class="section-header">
+                <h2>Cameras ({{ cameras|length }})</h2>
+                <button onclick="showAddCamera()" class="btn btn-primary">+ Add Camera</button>
+            </div>
+
+            <table id="cameras-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>URL</th>
+                        <th>Stream</th>
+                        <th>Detection</th>
+                        <th>Config</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cam in cameras %}
+                    <tr data-id="{{ cam.id }}">
+                        <td>{{ cam.name }}</td>
+                        <td class="url-cell">{{ cam.url[:30] }}...</td>
+                        <td><span class="badge badge-{{ cam.status }}">{{ cam.status }}</span></td>
+                        <td><span class="badge badge-{{ cam.detection_status }}">{{ cam.detection_status.replace('_', ' ') }}</span></td>
+                        <td>{{ 'v' ~ cam.get('config_version', '-') if cam.config_received else 'None' }}</td>
+                        <td>
+                            <button onclick="testCamera('{{ cam.id }}')" class="btn btn-sm">Test</button>
+                            <button onclick="removeCamera('{{ cam.id }}', '{{ cam.name }}')" class="btn btn-sm btn-danger">Remove</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not cameras %}
+                    <tr><td colspan="6" class="empty">No cameras configured. Click "Add Camera" to get started.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Devices Section -->
+        <section>
+            <div class="section-header">
+                <h2>IoT Devices ({{ devices|length }})</h2>
+                <button onclick="showAddDevice()" class="btn btn-primary">+ Add Device</button>
+            </div>
+
+            <table id="devices-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>IP</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dev in devices %}
+                    <tr>
+                        <td>{{ dev.name }}</td>
+                        <td>{{ dev.ip }}</td>
+                        <td>{{ dev.type }}</td>
+                        <td><span class="badge badge-{{ dev.status }}">{{ dev.status }}</span></td>
+                        <td>
+                            <button onclick="testDevice('{{ dev.id }}')" class="btn btn-sm">Test</button>
+                            <button onclick="removeDevice('{{ dev.id }}', '{{ dev.name }}')" class="btn btn-sm btn-danger">Remove</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not devices %}
+                    <tr><td colspan="5" class="empty">No devices configured.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <!-- Add Camera Modal -->
+    <div id="add-camera-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>Add Camera</h3>
+            <form onsubmit="submitAddCamera(event)">
+                <label>Name *<input type="text" id="cam-name" required placeholder="e.g. Entrance Camera"></label>
+                <label>RTSP URL *<input type="text" id="cam-url" required placeholder="rtsp://user:pass@192.168.1.100/stream"></label>
+                <label>Stream Type
+                    <select id="cam-type">
+                        <option value="rtsp">RTSP</option>
+                        <option value="hls">HLS</option>
+                        <option value="mjpeg">MJPEG</option>
+                        <option value="http">HTTP</option>
+                    </select>
+                </label>
+                <label>Location<input type="text" id="cam-location" placeholder="e.g. Main entrance, aisle 3"></label>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModals()" class="btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Camera</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Device Modal -->
+    <div id="add-device-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>Add IoT Device</h3>
+            <form onsubmit="submitAddDevice(event)">
+                <label>Name *<input type="text" id="dev-name" required placeholder="e.g. Caution Sign Plug"></label>
+                <label>IP Address *<input type="text" id="dev-ip" required placeholder="192.168.1.50"></label>
+                <label>Type
+                    <select id="dev-type">
+                        <option value="tplink">TP-Link Kasa</option>
+                        <option value="mqtt">MQTT</option>
+                        <option value="webhook">HTTP Webhook</option>
+                    </select>
+                </label>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModals()" class="btn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <script>
+        function showAddCamera() { document.getElementById('add-camera-modal').style.display = 'flex'; }
+        function showAddDevice() { document.getElementById('add-device-modal').style.display = 'flex'; }
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        }
+        function toast(msg, type) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast toast-' + (type || 'info');
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        async function submitAddCamera(e) {
+            e.preventDefault();
+            const body = {
+                name: document.getElementById('cam-name').value,
+                url: document.getElementById('cam-url').value,
+                stream_type: document.getElementById('cam-type').value,
+                location: document.getElementById('cam-location').value,
+            };
+            const res = await fetch('/cameras', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+            if (res.ok) { toast('Camera added', 'success'); closeModals(); location.reload(); }
+            else { const d = await res.json(); toast(d.detail || 'Failed', 'error'); }
+        }
+
+        async function submitAddDevice(e) {
+            e.preventDefault();
+            const body = {
+                name: document.getElementById('dev-name').value,
+                ip: document.getElementById('dev-ip').value,
+                type: document.getElementById('dev-type').value,
+            };
+            const res = await fetch('/devices', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+            if (res.ok) { toast('Device added', 'success'); closeModals(); location.reload(); }
+            else { toast('Failed to add device', 'error'); }
+        }
+
+        async function testCamera(id) {
+            toast('Testing connection...', 'info');
+            const res = await fetch(`/cameras/${id}/test`, { method: 'POST' });
+            const d = await res.json();
+            toast(d.data.connected ? 'Connected!' : 'Connection failed', d.data.connected ? 'success' : 'error');
+            location.reload();
+        }
+
+        async function removeCamera(id, name) {
+            if (!confirm(`Remove camera "${name}"?`)) return;
+            await fetch(`/cameras/${id}`, { method: 'DELETE' });
+            toast('Camera removed', 'success');
+            location.reload();
+        }
+
+        async function testDevice(id) {
+            toast('Testing device...', 'info');
+            const res = await fetch(`/devices/${id}/test`, { method: 'POST' });
+            const d = await res.json();
+            toast(d.data.reachable ? 'Device reachable!' : 'Device unreachable', d.data.reachable ? 'success' : 'error');
+        }
+
+        async function removeDevice(id, name) {
+            if (!confirm(`Remove device "${name}"?`)) return;
+            await fetch(`/devices/${id}`, { method: 'DELETE' });
+            toast('Device removed', 'success');
+            location.reload();
+        }
+
+        // Auto-refresh status every 5 seconds
+        setInterval(async () => {
+            try {
+                const res = await fetch('/status');
+                const data = await res.json();
+                document.getElementById('backend-status').textContent =
+                    data.agent.backend_connected ? 'Connected' : 'Disconnected';
+            } catch(e) {}
+        }, 5000);
+    </script>
+</body>
+</html>

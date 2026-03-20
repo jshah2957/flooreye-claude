@@ -35,11 +35,15 @@ services:
     container_name: flooreye-edge-agent
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "8090:8090"   # Edge web UI
+      - "8091:8091"   # Config receiver (cloud pushes here)
     volumes:
       - ./models:/models
       - ./data/buffer:/data/buffer
       - ./data/clips:/data/clips
       - ./data/frames:/data/frames
+      - ./data/config:/data/config  # Local camera/device config
     depends_on:
       inference-server:
         condition: service_healthy
