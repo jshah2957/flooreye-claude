@@ -374,6 +374,14 @@ async def save_roi(
         {"$set": {"mask_outside_roi": data.mask_outside, "updated_at": now}},
     )
 
+    # Push config to edge if camera is edge-managed
+    try:
+        from app.services.edge_camera_service import push_config_to_edge
+        await push_config_to_edge(db, camera_id, org_id, user_id)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Config push after ROI save failed: %s", e)
+
     return roi_doc
 
 
@@ -482,6 +490,14 @@ async def capture_dry_reference(
             "created_at": now,
         }
         await db.dry_references.insert_one(dry_ref_doc)
+
+        # Push config to edge if camera is edge-managed
+        try:
+            from app.services.edge_camera_service import push_config_to_edge
+            await push_config_to_edge(db, camera_id, org_id, user_id)
+        except Exception as push_err:
+            log.warning("Config push after dry ref capture failed: %s", push_err)
+
         return dry_ref_doc
 
     except HTTPException:

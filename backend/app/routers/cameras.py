@@ -247,3 +247,39 @@ async def get_dry_reference(
     if not dry_ref:
         return {"data": None}
     return {"data": _dry_ref_response(dry_ref)}
+
+
+@router.post("/{camera_id}/toggle-detection")
+async def toggle_detection(
+    camera_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Quick toggle detection on/off for a camera. Pushes change to edge."""
+    org_id = current_user.get("org_id", "")
+    camera = await camera_service.get_camera(db, camera_id, org_id)
+    new_enabled = not camera.get("detection_enabled", False)
+    await db.cameras.update_one(
+        {"id": camera_id},
+        {"$set": {"detection_enabled": new_enabled}},
+    )
+    # Push config to edge
+    try:
+        from app.services.edge_camera_service import push_config_to_edge
+        await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+    except Exception:
+        pass
+    return {"data": {"detection_enabled": new_enabled}}
+
+
+@router.post("/{camera_id}/push-config")
+async def push_config(
+    camera_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Manually re-push current config to edge for this camera."""
+    org_id = current_user.get("org_id", "")
+    from app.services.edge_camera_service import push_config_to_edge
+    result = await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+    return {"data": result}
