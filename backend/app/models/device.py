@@ -9,7 +9,7 @@ class Device(BaseModel):
     org_id: str
     store_id: str
     name: str
-    device_type: Literal["sign", "alarm", "light", "speaker", "other"]
+    device_type: Literal["sign", "alarm", "light", "speaker", "other", "tplink", "mqtt", "webhook"]
     control_method: Literal["http", "mqtt"] = "http"
     control_url: Optional[str] = None
     ip: Optional[str] = None

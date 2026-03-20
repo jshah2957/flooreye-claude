@@ -190,6 +190,26 @@ async def stop_clip_via_edge(
     return result
 
 
+@router.post("/device-control")
+async def control_device_via_edge(
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Turn IoT device on/off via edge. Body: {store_id, device_name, device_type, action: "on"|"off"}"""
+    store_id = body.get("store_id")
+    if not store_id:
+        raise HTTPException(400, "store_id required")
+    org_id = current_user.get("org_id", "")
+    agent = await find_store_agent(db, store_id, org_id)
+    result = await proxy_to_edge(agent, "/api/devices/control", {
+        "device_name": body.get("device_name", ""),
+        "device_type": body.get("device_type", "tplink"),
+        "action": body.get("action", "on"),
+    })
+    return result
+
+
 @router.post("/add-device")
 async def add_device_via_edge(
     body: dict,
@@ -219,7 +239,7 @@ async def add_device_via_edge(
         "org_id": org_id,
         "store_id": store_id,
         "name": name,
-        "device_type": device_type if device_type in ("sign", "alarm", "light", "speaker", "other") else "other",
+        "device_type": device_type if device_type in ("sign", "alarm", "light", "speaker", "other", "tplink", "mqtt", "webhook") else "other",
         "control_method": "mqtt" if device_type == "mqtt" else "http",
         "ip": ip,
         "protocol": body.get("protocol", "tcp"),

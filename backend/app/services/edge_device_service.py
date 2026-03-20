@@ -9,6 +9,17 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 log = logging.getLogger(__name__)
 
+# Normalize device types: accept both edge-native (tplink/mqtt/webhook)
+# and cloud-native (sign/alarm/light/speaker/other) types
+VALID_DEVICE_TYPES = {"sign", "alarm", "light", "speaker", "other", "tplink", "mqtt", "webhook"}
+
+
+def _normalize_device_type(device_type: str) -> str:
+    """Accept all device types — edge-native and cloud-native."""
+    if device_type in VALID_DEVICE_TYPES:
+        return device_type
+    return "other"
+
 
 async def register_edge_device(
     db: AsyncIOMotorDatabase,
@@ -43,7 +54,7 @@ async def register_edge_device(
         "org_id": org_id,
         "store_id": store_id,
         "name": name,
-        "device_type": device_type if device_type in ("sign", "alarm", "light", "speaker", "other") else "other",
+        "device_type": _normalize_device_type(device_type),
         "control_method": "mqtt" if device_type == "mqtt" else "http",
         "ip": ip,
         "protocol": protocol,

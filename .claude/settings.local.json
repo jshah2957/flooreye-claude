@@ -51,7 +51,9 @@
       "Bash(grep -r \"\\\\.mp4\\\\|VideoWriter\\\\|ffmpeg\\\\|write_video\" /c/Users/jshah/flooreye --include=*.py)",
       "Bash(__NEW_LINE_c1c4f7b527ed8956__ echo:*)",
       "Bash(__NEW_LINE_2d0f6de3eab346f8__ echo:*)",
-      "Bash(__NEW_LINE_08cd3d04c02ffc42__ echo:*)"
+      "Bash(__NEW_LINE_08cd3d04c02ffc42__ echo:*)",
+      "Bash(__NEW_LINE_0e0d19fd4b841be2__ echo:*)",
+      "Bash(grep:*)"
     ]
   }
 }
