@@ -594,7 +594,13 @@ async def validation_settings_sync_loop(validator: "DetectionValidator"):
 
 async def start_web_servers(lc, cam_mgr, cam_objects_ref):
     """Start edge web UI (8090) and config receiver (8091) as background tasks."""
+    import sys
     import uvicorn
+
+    # Add parent dir to path so we can import web/ package
+    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
 
     # Initialize web UI
     from web.app import app as web_app, init as web_init
