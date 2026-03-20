@@ -27,14 +27,16 @@ app.mount("/static", StaticFiles(directory=os.path.join(WEB_DIR, "static")), nam
 _local_config = None
 _camera_manager = None
 _agent_info = {}
+_tplink_ctrl = None
 
 
-def init(local_config, camera_manager=None, agent_info: dict | None = None):
+def init(local_config, camera_manager=None, agent_info: dict | None = None, tplink_ctrl=None):
     """Initialize with references to agent components."""
-    global _local_config, _camera_manager, _agent_info
+    global _local_config, _camera_manager, _agent_info, _tplink_ctrl
     _local_config = local_config
     _camera_manager = camera_manager
     _agent_info = agent_info or {}
+    _tplink_ctrl = tplink_ctrl
 
 
 # --- HTML Pages ---
@@ -146,6 +148,12 @@ async def test_camera_url(request: Request):
     return {"data": {"connected": success, "snapshot": snapshot}}
 
 
+def _reload_device_controllers():
+    """Reload TP-Link controller from local config after device changes."""
+    if _tplink_ctrl and _local_config:
+        _tplink_ctrl.reload_from_config(_local_config)
+
+
 # --- Device API ---
 
 @app.get("/devices")
@@ -164,6 +172,22 @@ async def add_device(request: Request):
     if not name or not ip:
         raise HTTPException(400, "name and ip are required")
     device = _local_config.add_device(name, ip, device_type, protocol)
+    _reload_device_controllers()
+    return {"data": device}
+
+
+@app.put("/devices/{device_id}")
+async def edit_device(device_id: str, request: Request):
+    body = await request.json()
+    device = _local_config.update_device(
+        device_id,
+        name=body.get("name", "").strip() or None,
+        ip=body.get("ip", "").strip() or None,
+        type=body.get("type") or None,
+    )
+    if not device:
+        raise HTTPException(404, "Device not found")
+    _reload_device_controllers()
     return {"data": device}
 
 
@@ -171,6 +195,7 @@ async def add_device(request: Request):
 async def remove_device(device_id: str):
     if not _local_config.remove_device(device_id):
         raise HTTPException(404, "Device not found")
+    _reload_device_controllers()
     return {"status": "removed"}
 
 

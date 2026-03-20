@@ -592,7 +592,7 @@ async def validation_settings_sync_loop(validator: "DetectionValidator"):
         await sync_validation_settings(validator)
 
 
-async def start_web_servers(lc, cam_mgr, cam_objects_ref):
+async def start_web_servers(lc, cam_mgr, cam_objects_ref, tplink_ctrl_ref=None):
     """Start edge web UI (8090) and config receiver (8091) as background tasks."""
     import sys
     import uvicorn
@@ -604,7 +604,7 @@ async def start_web_servers(lc, cam_mgr, cam_objects_ref):
 
     # Initialize web UI
     from web.app import app as web_app, init as web_init
-    web_init(lc, cam_mgr, {"agent_id": config.AGENT_ID, "model_version": "unknown"})
+    web_init(lc, cam_mgr, {"agent_id": config.AGENT_ID, "model_version": "unknown"}, tplink_ctrl=tplink_ctrl_ref)
 
     # Initialize config receiver
     from config_receiver import app as receiver_app, init as receiver_init
@@ -716,7 +716,7 @@ async def main():
         asyncio.create_task(buffer_flush_loop(buffer, uploader_inst)),
         asyncio.create_task(cleanup_old_files_loop()),
         asyncio.create_task(validation_settings_sync_loop(validator)),
-        asyncio.create_task(start_web_servers(lc, cam_mgr, cam_objects)),
+        asyncio.create_task(start_web_servers(lc, cam_mgr, cam_objects, tplink_ctrl)),
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))

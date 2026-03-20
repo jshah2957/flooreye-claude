@@ -154,6 +154,21 @@ class LocalConfigStore:
         log.info("Device removed: %s", device_id)
         return True
 
+    def update_device(self, device_id: str, **fields) -> dict | None:
+        devices = self.list_devices()
+        for dev in devices:
+            if dev["id"] == device_id:
+                dev.update(fields)
+                self._write_json(self._devices_path, devices)
+                return dev
+        return None
+
+    def get_device(self, device_id: str) -> dict | None:
+        for dev in self.list_devices():
+            if dev["id"] == device_id:
+                return dev
+        return None
+
     # --- Per-camera config (received from cloud) ---
 
     def get_camera_config(self, camera_id: str) -> dict | None:
