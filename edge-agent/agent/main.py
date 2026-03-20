@@ -89,6 +89,11 @@ async def heartbeat_loop(inference: InferenceClient):
                     cam_status[cname] = {"connected": cobj.connected, "frames": cobj.frame_count}
                 body["cameras"] = cam_status
                 body["camera_count"] = len(cam_status)
+                # Report tunnel/direct URL for cloud→edge direct push
+                if config.TUNNEL_URL:
+                    body["tunnel_url"] = config.TUNNEL_URL
+                if config.DIRECT_URL:
+                    body["direct_url"] = config.DIRECT_URL
                 await client.post(
                     f"{config.BACKEND_URL}/api/v1/edge/heartbeat",
                     json=body,

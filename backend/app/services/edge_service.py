@@ -236,6 +236,11 @@ async def process_heartbeat(
         "tunnel_latency_ms": data.get("tunnel_latency_ms"),
         "camera_count": data.get("camera_count", 0),
     }
+    # Store reachable URLs from heartbeat (for cloud→edge direct push)
+    if data.get("tunnel_url"):
+        updates["tunnel_url"] = data["tunnel_url"]
+    if data.get("direct_url"):
+        updates["direct_url"] = data["direct_url"]
 
     result = await db.edge_agents.find_one_and_update(
         {"id": agent_id},
