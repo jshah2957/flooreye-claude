@@ -12,12 +12,14 @@ from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-# Default thresholds (overridable via detection_control_settings)
-DEFAULT_LAYER1_CONFIDENCE = 0.70
-DEFAULT_LAYER2_MIN_AREA = 0.5
-DEFAULT_LAYER3_K = 3
-DEFAULT_LAYER3_M = 5
-DEFAULT_LAYER4_DELTA = 0.15
+from app.core.validation_constants import (
+    DEFAULT_LAYER1_CONFIDENCE,
+    DEFAULT_LAYER2_MIN_AREA,
+    DEFAULT_LAYER3_K,
+    DEFAULT_LAYER3_M,
+    DEFAULT_LAYER4_DELTA,
+    WET_CLASS_NAMES,
+)
 
 
 class ValidationResult:
@@ -56,7 +58,7 @@ async def run_validation_pipeline(
 
     wet_predictions = [
         p for p in predictions
-        if p.get("class_name") in ("wet", "spill", "puddle", "water")
+        if p.get("class_name") in WET_CLASS_NAMES
     ]
 
     if not wet_predictions:

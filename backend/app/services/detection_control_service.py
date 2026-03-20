@@ -33,18 +33,26 @@ _SETTING_FIELDS = [
     "hybrid_escalation_cooldown_seconds", "hybrid_save_escalated_frames",
 ]
 
-# Hardcoded global defaults
+from app.core.validation_constants import (
+    DEFAULT_LAYER1_CONFIDENCE,
+    DEFAULT_LAYER2_MIN_AREA,
+    DEFAULT_LAYER3_K,
+    DEFAULT_LAYER3_M,
+    DEFAULT_LAYER4_DELTA,
+)
+
+# Global defaults — layer thresholds from shared constants
 GLOBAL_DEFAULTS: dict = {
     "layer1_enabled": True,
-    "layer1_confidence": 0.70,
+    "layer1_confidence": DEFAULT_LAYER1_CONFIDENCE,
     "layer2_enabled": True,
-    "layer2_min_area_percent": 0.5,
+    "layer2_min_area_percent": DEFAULT_LAYER2_MIN_AREA,
     "layer3_enabled": True,
-    "layer3_k": 3,
-    "layer3_m": 5,
+    "layer3_k": DEFAULT_LAYER3_K,
+    "layer3_m": DEFAULT_LAYER3_M,
     "layer3_voting_mode": "majority",
     "layer4_enabled": True,
-    "layer4_delta_threshold": 0.15,
+    "layer4_delta_threshold": DEFAULT_LAYER4_DELTA,
     "layer4_auto_refresh": "never",
     "layer4_refresh_time": None,
     "layer4_stale_warning_days": 30,
