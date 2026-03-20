@@ -49,7 +49,7 @@ export default function RoboflowTestPage() {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       setImagePreview(dataUrl);
-      setImageBase64(dataUrl.split(",")[1]);
+      setImageBase64(dataUrl.split(",")[1] ?? null);
       setResult(null);
     };
     reader.readAsDataURL(file);
@@ -63,7 +63,7 @@ export default function RoboflowTestPage() {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       setImagePreview(dataUrl);
-      setImageBase64(dataUrl.split(",")[1]);
+      setImageBase64(dataUrl.split(",")[1] ?? null);
       setResult(null);
     };
     reader.readAsDataURL(file);
