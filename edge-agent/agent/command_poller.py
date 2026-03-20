@@ -73,6 +73,32 @@ class CommandPoller:
                         setattr(config, upper_key, value)
                         log.info(f"Config updated: {upper_key} = {value}")
                 result = {"applied": True, "keys": list(payload.keys())}
+            elif cmd_type == "update_classes":
+                classes = payload.get("classes", [])
+                if classes:
+                    # Update alert classes on inference server
+                    alert_names = set()
+                    for cls in classes:
+                        name = cls.get("name", "")
+                        if cls.get("alert_on_detect", True) and cls.get("enabled", True):
+                            alert_names.add(name)
+                    # Write classes to local config for persistence
+                    from local_config import local_config as lc
+                    import json
+                    import os
+                    classes_path = os.path.join(lc.config_dir, "alert_classes.json")
+                    with open(classes_path, "w") as f:
+                        json.dump(list(alert_names), f)
+                    # Update inference server in-memory
+                    try:
+                        from predict import update_alert_classes
+                        update_alert_classes(alert_names)
+                    except Exception:
+                        pass
+                    result = {"updated": True, "alert_classes": len(alert_names), "total_classes": len(classes)}
+                    log.info("Classes updated: %d alert classes from %d total", len(alert_names), len(classes))
+                else:
+                    result = {"updated": False, "reason": "no classes in payload"}
             elif cmd_type == "restart_agent":
                 log.warning("Restart command received — agent will restart")
                 result = {"restarting": True}

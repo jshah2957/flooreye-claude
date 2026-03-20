@@ -29,6 +29,21 @@ def update_alert_classes(class_names: set[str]):
     ALERT_CLASSES = class_names
 
 
+def load_saved_alert_classes(config_dir: str = "/data/config"):
+    """Load alert classes from saved config (persisted by update_classes command)."""
+    global ALERT_CLASSES
+    import os
+    path = os.path.join(config_dir, "alert_classes.json")
+    if os.path.isfile(path):
+        try:
+            with open(path, "r") as f:
+                names = json.load(f)
+            if isinstance(names, list) and names:
+                ALERT_CLASSES = set(names)
+        except Exception:
+            pass
+
+
 def load_class_names(model_path: str) -> dict[int, str]:
     """Load class names from a JSON file alongside the ONNX model.
 
