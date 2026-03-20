@@ -36,8 +36,8 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "8090:8090"   # Edge web UI
-      - "8091:8091"   # Config receiver (cloud pushes here)
+      - "${WEB_UI_PORT:-8090}:${WEB_UI_PORT:-8090}"
+      - "${CONFIG_RECEIVER_PORT:-8091}:${CONFIG_RECEIVER_PORT:-8091}"
     volumes:
       - ./models:/models
       - ./data/buffer:/data/buffer
@@ -52,10 +52,16 @@ services:
     networks:
       - flooreye-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8091/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -80,6 +86,10 @@ services:
       - ./data/redis:/data
     networks:
       - flooreye-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
 networks:
   flooreye-net:

@@ -84,40 +84,103 @@ async def provision_agent(
     }
 
 
-def _generate_docker_compose(agent_id: str, store_name: str) -> str:
+def _generate_docker_compose(agent_id: str, store_name: str,
+                             org_id: str = "", store_id: str = "",
+                             edge_api_key: str = "") -> str:
     return f"""# FloorEye Edge Agent — {store_name}
 # Agent ID: {agent_id}
 version: "3.8"
 services:
-  edge-agent:
-    image: flooreye/edge-agent:latest
-    restart: unless-stopped
-    environment:
-      - AGENT_ID={agent_id}
-      - BACKEND_URL={settings.BACKEND_URL}
-      - EDGE_TOKEN=${{EDGE_TOKEN}}
-    volumes:
-      - ./data:/app/data
-    depends_on:
-      - inference-server
-      - redis
-
   inference-server:
     image: flooreye/inference-server:latest
     restart: unless-stopped
     volumes:
-      - ./models:/app/models
+      - ./models:/models
     ports:
-      - "9001:9001"
+      - "127.0.0.1:8080:8080"
+    networks:
+      - flooreye-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
-  redis:
-    image: redis:7.2-alpine
+  edge-agent:
+    image: flooreye/edge-agent:latest
     restart: unless-stopped
+    env_file: .env
+    environment:
+      - AGENT_ID={agent_id}
+      - ORG_ID={org_id}
+      - STORE_ID={store_id}
+      - BACKEND_URL={settings.BACKEND_URL}
+      - EDGE_API_KEY={edge_api_key}
+    ports:
+      - "${{WEB_UI_PORT:-8090}}:${{WEB_UI_PORT:-8090}}"
+      - "${{CONFIG_RECEIVER_PORT:-8091}}:${{CONFIG_RECEIVER_PORT:-8091}}"
     volumes:
-      - redis-data:/data
+      - ./models:/models
+      - ./data/buffer:/data/buffer
+      - ./data/clips:/data/clips
+      - ./data/frames:/data/frames
+      - ./data/config:/data/config
+    depends_on:
+      inference-server:
+        condition: service_healthy
+      redis-buffer:
+        condition: service_started
+    networks:
+      - flooreye-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '4'
 
-volumes:
-  redis-data:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${{TUNNEL_TOKEN}}
+    networks:
+      - flooreye-net
+
+  redis-buffer:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory ${{MAX_BUFFER_GB:-2}}gb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - flooreye-net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+networks:
+  flooreye-net:
+    driver: bridge
 """
 
 
