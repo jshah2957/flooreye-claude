@@ -50,6 +50,7 @@ class ModelSource(StrEnum):
     ROBOFLOW = "roboflow"
     STUDENT = "student"
     HYBRID_ESCALATED = "hybrid_escalated"
+    LOCAL_ONNX = "local_onnx"
 
 
 class IncidentSeverity(StrEnum):

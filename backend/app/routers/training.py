@@ -1,14 +1,23 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.training import TrainingJobCreate, TrainingJobResponse
 from app.services import training_service
 
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
+
+
+def _check_training_enabled():
+    if not settings.SELF_TRAINING_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Self-training is paused. Use Roboflow for training.",
+        )
 
 
 _DEFAULT_CONFIG = {
@@ -37,6 +46,7 @@ async def list_jobs(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
+    _check_training_enabled()
     jobs, total = await training_service.list_jobs(
         db, current_user.get("org_id", ""), status_filter, limit, offset
     )
@@ -49,6 +59,7 @@ async def create_job(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
+    _check_training_enabled()
     job = await training_service.create_job(
         db, current_user.get("org_id", ""), body, current_user["id"]
     )
@@ -61,6 +72,7 @@ async def get_job(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
+    _check_training_enabled()
     job = await training_service.get_job(db, job_id, current_user.get("org_id", ""))
     return {"data": _job_response(job)}
 
@@ -71,5 +83,6 @@ async def cancel_job(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
+    _check_training_enabled()
     job = await training_service.cancel_job(db, job_id, current_user.get("org_id", ""))
     return {"data": _job_response(job)}

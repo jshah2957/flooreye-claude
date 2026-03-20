@@ -5,12 +5,21 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.dataset import AnnotationCreate, AnnotationResponse
 from app.services import dataset_service
 
 router = APIRouter(prefix="/api/v1/annotations", tags=["annotations"])
+
+
+def _check_annotations_enabled():
+    if not settings.SELF_TRAINING_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="In-app annotation is paused. Use Roboflow for annotation.",
+        )
 
 
 def _annotation_response(a: dict) -> AnnotationResponse:
@@ -72,6 +81,7 @@ async def save_annotations(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
 ):
+    _check_annotations_enabled()
     annotation = await dataset_service.save_annotation(
         db, current_user.get("org_id", ""), body, current_user["id"]
     )

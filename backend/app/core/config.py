@@ -76,10 +76,17 @@ class Settings(BaseSettings):
     TRAINING_DATA_DIR: str = "/app/training-data"
     MODELS_DIR: str = "/app/models"
 
-    # Roboflow Inference
+    # Roboflow
     ROBOFLOW_API_KEY: str = ""
     ROBOFLOW_MODEL_ID: str = ""
     ROBOFLOW_API_URL: str = "https://detect.roboflow.com"
+    ROBOFLOW_PROJECT_ID: str = ""
+    ROBOFLOW_PROJECT_VERSION: int = 0
+
+    # Model Pipeline
+    SELF_TRAINING_ENABLED: bool = False
+    LOCAL_INFERENCE_ENABLED: bool = True
+    ONNX_MODEL_CACHE_DIR: str = "/app/models"
 
     # Sentry (optional)
     SENTRY_DSN: str = ""
