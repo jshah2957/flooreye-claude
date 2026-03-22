@@ -23,6 +23,9 @@ import {
   Activity,
   Shield,
   ScrollText,
+  CheckCircle2,
+  Clock,
+  XCircle,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -749,6 +752,73 @@ export default function CameraDetailPage() {
               <p className="mt-2 text-xs font-medium text-amber-600">Edge unreachable -- retry later</p>
             )}
           </div>
+
+          {/* Config Sync Status */}
+          {camera.edge_agent_id && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
+              <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <RefreshCw size={16} className="text-[#0D9488]" />
+                Edge Config Sync
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Config Version</span>
+                  <span className="font-mono font-medium">v{camera.config_version || 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Sync Status</span>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    camera.config_status === 'received' ? 'bg-green-50 text-green-700' :
+                    camera.config_status === 'push_pending' ? 'bg-amber-50 text-amber-700' :
+                    camera.config_status === 'sync_failed' ? 'bg-red-50 text-red-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {camera.config_status === 'received' && <CheckCircle2 size={12} />}
+                    {camera.config_status === 'push_pending' && <Clock size={12} />}
+                    {camera.config_status === 'sync_failed' && <XCircle size={12} />}
+                    {camera.config_status === 'received' ? 'Synced' :
+                     camera.config_status === 'push_pending' ? 'Pending' :
+                     camera.config_status === 'sync_failed' ? 'Failed' :
+                     camera.config_status || 'Not pushed'}
+                  </span>
+                </div>
+                {camera.last_config_push_at && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Last Pushed</span>
+                    <span className="text-gray-700">{new Date(camera.last_config_push_at).toLocaleString()}</span>
+                  </div>
+                )}
+                {camera.last_config_ack_at && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Edge ACK</span>
+                    <span className="text-gray-700">{new Date(camera.last_config_ack_at).toLocaleString()}</span>
+                  </div>
+                )}
+                {camera.config_ack_error && (
+                  <div className="rounded-lg bg-red-50 p-2 text-xs text-red-700">
+                    Error: {camera.config_ack_error}
+                  </div>
+                )}
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.post(`/edge/agents/${camera.edge_agent_id}/push-config`, {
+                        camera_ids: [camera.id],
+                      });
+                      success("Config push triggered");
+                      queryClient.invalidateQueries({ queryKey: ["camera", camera.id] });
+                    } catch (err: any) {
+                      showError(err?.response?.data?.detail || "Failed to push config");
+                    }
+                  }}
+                  className="mt-2 w-full rounded-lg border border-[#0D9488] px-3 py-2 text-sm font-medium text-[#0D9488] hover:bg-[#0D9488]/5 transition-colors"
+                >
+                  <RefreshCw size={14} className="mr-1.5 inline" />
+                  Push Config Now
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

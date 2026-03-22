@@ -421,6 +421,7 @@ async def send_command(
     command_type: str,
     payload: dict,
     user_id: str,
+    retry_count: int = 0,
 ) -> dict:
     agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
     if not agent:
@@ -439,6 +440,7 @@ async def send_command(
         "acked_at": None,
         "result": None,
         "error": None,
+        "retry_count": retry_count,
     }
     await db.edge_commands.insert_one(cmd)
     return cmd
@@ -474,6 +476,32 @@ async def ack_command(
     )
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found")
+
+    # On failure, retry up to 3 times or mark camera as sync_failed
+    if ack_status == "failure":
+        cmd = await db.edge_commands.find_one({"id": command_id})
+        if cmd:
+            retry_count = cmd.get("retry_count", 0)
+            if retry_count < 3:
+                # Re-queue with incremented retry
+                await send_command(
+                    db, cmd["agent_id"], cmd.get("org_id", ""),
+                    command_type=cmd["command_type"],
+                    payload=cmd["payload"],
+                    user_id=cmd.get("sent_by", "system"),
+                    retry_count=retry_count + 1,
+                )
+                log.info("Re-queued command %s (retry %d/3)", command_id, retry_count + 1)
+            else:
+                # Max retries — mark camera as sync_failed
+                camera_id = cmd.get("payload", {}).get("camera_id")
+                if camera_id:
+                    await db.cameras.update_one(
+                        {"id": camera_id},
+                        {"$set": {"config_status": "sync_failed", "config_ack_error": error or "max retries exceeded"}}
+                    )
+                    log.warning("Config sync failed for camera %s after 3 retries", camera_id)
+
     return doc
 
 
@@ -819,3 +847,30 @@ async def mark_stale_agents_offline(
         )
         count += 1
     return count
+
+
+async def check_config_staleness(db: AsyncIOMotorDatabase, agent_id: str, camera_configs: dict) -> list:
+    """Compare edge-reported config versions against cloud versions.
+    Returns list of cameras that need config updates.
+    """
+    if not camera_configs:
+        return []
+
+    camera_ids = list(camera_configs.keys())
+    cameras = await db.cameras.find(
+        {"id": {"$in": camera_ids}, "edge_agent_id": agent_id},
+        {"id": 1, "config_version": 1, "_id": 0}
+    ).to_list(500)
+
+    stale = []
+    for cam in cameras:
+        cloud_ver = cam.get("config_version", 0)
+        edge_info = camera_configs.get(cam["id"], {})
+        edge_ver = edge_info.get("config_version", 0) if isinstance(edge_info, dict) else 0
+        if cloud_ver > edge_ver:
+            stale.append({
+                "camera_id": cam["id"],
+                "cloud_version": cloud_ver,
+                "edge_version": edge_ver,
+            })
+    return stale

@@ -24,7 +24,7 @@ import logging
 _log = logging.getLogger(__name__)
 
 
-async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | None, user_id: str) -> int:
+async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | None, user_id: str) -> dict:
     """Push updated detection settings to edge for cameras affected by this scope change.
 
     Scope resolution:
@@ -32,38 +32,98 @@ async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | No
     - store: push to all edge cameras in that store
     - org / global: push to all edge cameras in the org
 
-    Returns count of cameras pushed.
+    Returns detailed push results per camera.
     """
     from app.services.edge_camera_service import push_config_to_edge
-    count = 0
+    results = {"pushed": 0, "queued": 0, "failed": 0, "skipped": 0, "details": []}
     try:
         if scope == "camera" and scope_id:
             result = await push_config_to_edge(db, scope_id, org_id, user_id)
-            if result.get("status") != "skipped":
-                count = 1
+            st = result.get("status", "unknown")
+            if st == "skipped":
+                results["skipped"] += 1
+            elif st == "pushed":
+                results["pushed"] += 1
+            elif st == "queued":
+                results["queued"] += 1
+            else:
+                results["failed"] += 1
+            results["details"].append({
+                "camera_id": scope_id,
+                "camera_name": "",
+                "status": st,
+                "config_version": result.get("config_version"),
+                "error": None,
+            })
         elif scope == "store" and scope_id:
             cameras = await db.cameras.find(
                 {"org_id": org_id, "store_id": scope_id, "edge_agent_id": {"$ne": None}}
             ).to_list(500)
             for cam in cameras:
                 try:
-                    await push_config_to_edge(db, cam["id"], org_id, user_id)
-                    count += 1
+                    result = await push_config_to_edge(db, cam["id"], org_id, user_id)
+                    st = result.get("status", "unknown")
+                    if st == "skipped":
+                        results["skipped"] += 1
+                    elif st == "pushed":
+                        results["pushed"] += 1
+                    elif st == "queued":
+                        results["queued"] += 1
+                    else:
+                        results["failed"] += 1
+                    results["details"].append({
+                        "camera_id": cam["id"],
+                        "camera_name": cam.get("name", ""),
+                        "status": st,
+                        "config_version": result.get("config_version"),
+                        "error": None,
+                    })
                 except Exception as e:
                     _log.warning("Failed to push config to camera %s: %s", cam["id"], e)
+                    results["failed"] += 1
+                    results["details"].append({
+                        "camera_id": cam["id"],
+                        "camera_name": cam.get("name", ""),
+                        "status": "failed",
+                        "config_version": None,
+                        "error": str(e),
+                    })
         elif scope in ("org", "global"):
             cameras = await db.cameras.find(
                 {"org_id": org_id, "edge_agent_id": {"$ne": None}}
             ).to_list(1000)
             for cam in cameras:
                 try:
-                    await push_config_to_edge(db, cam["id"], org_id, user_id)
-                    count += 1
+                    result = await push_config_to_edge(db, cam["id"], org_id, user_id)
+                    st = result.get("status", "unknown")
+                    if st == "skipped":
+                        results["skipped"] += 1
+                    elif st == "pushed":
+                        results["pushed"] += 1
+                    elif st == "queued":
+                        results["queued"] += 1
+                    else:
+                        results["failed"] += 1
+                    results["details"].append({
+                        "camera_id": cam["id"],
+                        "camera_name": cam.get("name", ""),
+                        "status": st,
+                        "config_version": result.get("config_version"),
+                        "error": None,
+                    })
                 except Exception as e:
                     _log.warning("Failed to push config to camera %s: %s", cam["id"], e)
+                    results["failed"] += 1
+                    results["details"].append({
+                        "camera_id": cam["id"],
+                        "camera_name": cam.get("name", ""),
+                        "status": "failed",
+                        "config_version": None,
+                        "error": str(e),
+                    })
     except Exception as e:
         _log.warning("Failed to push settings to edge: %s", e)
-    return count
+    return results
 
 router = APIRouter(prefix="/api/v1/detection-control", tags=["detection-control"])
 
@@ -108,9 +168,9 @@ async def save_settings(
                      "detection_settings_saved", "detection_settings", doc.get("id"),
                      {"scope": body.scope, "scope_id": body.scope_id}, request)
     # Push updated settings to edge for affected cameras
-    push_count = await _push_settings_to_edge(db, org_id, body.scope, body.scope_id, current_user["id"])
+    push_results = await _push_settings_to_edge(db, org_id, body.scope, body.scope_id, current_user["id"])
     resp = _settings_response(doc)
-    return {"data": resp, "edge_push": {"cameras_pushed": push_count}}
+    return {"data": resp, "edge_push": push_results}
 
 
 @router.delete("/settings")
@@ -294,8 +354,8 @@ async def save_class_overrides(
                      "class_overrides_saved", "class_override", scope_id,
                      {"scope": scope, "override_count": len(body)}, request)
     # Push updated config to affected edge cameras
-    push_count = await _push_settings_to_edge(db, org_id, scope, scope_id, current_user["id"])
-    return {"data": [_class_override_response(r) for r in results], "edge_push": {"cameras_pushed": push_count}}
+    push_results = await _push_settings_to_edge(db, org_id, scope, scope_id, current_user["id"])
+    return {"data": [_class_override_response(r) for r in results], "edge_push": push_results}
 
 
 # ── History, Bulk, Export/Import ─────────────────────────────────
@@ -404,5 +464,28 @@ async def import_config(
             upsert=True,
         )
     # Push imported settings to affected edge cameras
-    push_count = await _push_settings_to_edge(db, org_id, scope, scope_id, current_user["id"])
-    return {"data": {"ok": True, "imported_settings": bool(settings_data), "imported_overrides": len(overrides), "edge_push": {"cameras_pushed": push_count}}}
+    push_results = await _push_settings_to_edge(db, org_id, scope, scope_id, current_user["id"])
+    return {"data": {"ok": True, "imported_settings": bool(settings_data), "imported_overrides": len(overrides), "edge_push": push_results}}
+
+
+@router.get("/sync-status")
+async def get_sync_status(
+    camera_ids: str = Query(..., description="Comma-separated camera IDs"),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Return current config sync status for given camera IDs."""
+    ids = [cid.strip() for cid in camera_ids.split(",") if cid.strip()]
+    if not ids:
+        return {"data": []}
+    org_id = current_user.get("org_id", "")
+    query = {"id": {"$in": ids}}
+    if org_id:
+        query["org_id"] = org_id
+    cameras = await db.cameras.find(
+        query,
+        {"id": 1, "name": 1, "config_version": 1, "config_status": 1,
+         "last_config_push_at": 1, "last_config_ack_at": 1, "config_ack_status": 1,
+         "config_ack_error": 1, "_id": 0}
+    ).to_list(100)
+    return {"data": cameras}

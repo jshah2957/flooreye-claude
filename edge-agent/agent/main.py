@@ -221,6 +221,14 @@ async def heartbeat_loop(inference: InferenceClient, buffer: FrameBuffer | None 
                     cam_status[cname] = cam_info
                 body["cameras"] = cam_status
                 body["camera_count"] = len(cam_status)
+                # Build camera_configs summary for config staleness check
+                camera_configs = {}
+                for cname, cdata in cam_status.items():
+                    camera_configs[cname] = {
+                        "config_version": cdata.get("config_version", 0),
+                        "detection_ready": cdata.get("status") == "detection_active",
+                    }
+                body["camera_configs"] = camera_configs
                 # Device status
                 try:
                     from local_config import local_config as _lc_hb
@@ -303,6 +311,26 @@ async def heartbeat_loop(inference: InferenceClient, buffer: FrameBuffer | None 
                 # Mark alerts as synced after successful heartbeat
                 if resp.status_code == 200 and alert_log and unsynced_ids:
                     alert_log.mark_synced(unsynced_ids)
+                # Handle stale config auto-heal from heartbeat response
+                if resp.status_code == 200:
+                    try:
+                        resp_data = resp.json().get("data", {})
+                        config_updates = resp_data.get("config_updates_needed", [])
+                        if config_updates:
+                            for update in config_updates:
+                                cam_id = update.get("camera_id")
+                                cloud_ver = update.get("cloud_version")
+                                edge_ver = update.get("edge_version")
+                                log.info(
+                                    "Config stale for camera %s: edge v%s < cloud v%s — requesting refresh",
+                                    cam_id, edge_ver, cloud_ver,
+                                )
+                            log.info(
+                                "Config staleness detected for %d camera(s), polling commands immediately",
+                                len(config_updates),
+                            )
+                    except Exception as cfg_err:
+                        log.debug("Failed to parse heartbeat config updates: %s", cfg_err)
                 log.debug("Heartbeat sent")
             except Exception as e:
                 log.debug(f"Heartbeat failed: {e}")

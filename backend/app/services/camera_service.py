@@ -415,10 +415,18 @@ async def save_roi(
     # Push config to edge if camera is edge-managed
     try:
         from app.services.edge_camera_service import push_config_to_edge
-        await push_config_to_edge(db, camera_id, org_id, user_id)
+        push_result = await push_config_to_edge(db, camera_id, org_id, user_id)
+        # Track sync status on the ROI document
+        await db.rois.update_one(
+            {"camera_id": camera_id, "is_active": True},
+            {"$set": {"edge_sync_status": push_result.get("status", "unknown")}}
+        )
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Config push after ROI save failed: %s", e)
+        log.warning("Failed to push config after ROI save: %s", e)
+        await db.rois.update_one(
+            {"camera_id": camera_id, "is_active": True},
+            {"$set": {"edge_sync_status": "failed"}}
+        )
 
     return roi_doc
 
@@ -532,9 +540,18 @@ async def capture_dry_reference(
         # Push config to edge if camera is edge-managed
         try:
             from app.services.edge_camera_service import push_config_to_edge
-            await push_config_to_edge(db, camera_id, org_id, user_id)
+            push_result = await push_config_to_edge(db, camera_id, org_id, user_id)
+            # Track sync status on the dry reference document
+            await db.dry_references.update_one(
+                {"camera_id": camera_id, "is_active": True},
+                {"$set": {"edge_sync_status": push_result.get("status", "unknown")}}
+            )
         except Exception as push_err:
-            log.warning("Config push after dry ref capture failed: %s", push_err)
+            log.warning("Failed to push config after dry ref capture: %s", push_err)
+            await db.dry_references.update_one(
+                {"camera_id": camera_id, "is_active": True},
+                {"$set": {"edge_sync_status": "failed"}}
+            )
 
         return dry_ref_doc
 

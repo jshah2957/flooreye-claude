@@ -88,6 +88,8 @@ async def receive_camera_config(camera_id: str, request: Request):
         "dry_ref_loaded": False,
         "dry_ref_count": 0,
         "detection_ready": False,
+        "detection_settings_applied": False,
+        "incident_settings_applied": False,
         "acked_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -148,6 +150,17 @@ async def receive_camera_config(camera_id: str, request: Request):
             "received_at": datetime.now(timezone.utc).isoformat(),
         }
         _local_config.save_camera_config(camera_id, config_to_save)
+
+        # Track which settings were applied
+        if config_to_save.get("detection_settings"):
+            ack["detection_settings_applied"] = True
+        if body.get("incident_settings"):
+            # Store incident settings alongside detection settings
+            _local_config.save_camera_config(camera_id, {
+                **config_to_save,
+                "incident_settings": body["incident_settings"],
+            })
+            ack["incident_settings_applied"] = True
 
         # Also update by cloud_camera_id if needed
         cam = _local_config.get_camera_by_cloud_id(camera_id)

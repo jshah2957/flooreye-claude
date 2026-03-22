@@ -31,6 +31,7 @@ class HeartbeatRequest(BaseModel):
     tunnel_status: Optional[str] = None
     tunnel_latency_ms: Optional[float] = None
     camera_count: int = 0
+    camera_configs: Optional[dict] = None  # {camera_id: {config_version: int, detection_ready: bool}}
 
 
 class FrameUploadRequest(BaseModel):

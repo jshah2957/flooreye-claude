@@ -118,7 +118,11 @@ class CommandPoller:
             # ACK the command
             await client.post(
                 f"{config.BACKEND_URL}/api/v1/edge/commands/{cmd_id}/ack",
-                json={"result": result, "status": "completed"},
+                json={
+                    "result": result,
+                    "status": "completed",
+                    "retry_count": cmd.get("retry_count", 0),
+                },
                 headers=config.auth_headers(),
             )
             log.info(f"Command {cmd_type} completed and ACKed")
@@ -128,7 +132,11 @@ class CommandPoller:
             try:
                 await client.post(
                     f"{config.BACKEND_URL}/api/v1/edge/commands/{cmd_id}/ack",
-                    json={"result": {"error": str(e)}, "status": "failed"},
+                    json={
+                        "result": {"error": str(e)},
+                        "status": "failed",
+                        "retry_count": cmd.get("retry_count", 0),
+                    },
                     headers=config.auth_headers(),
                 )
             except Exception:

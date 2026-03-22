@@ -19,6 +19,7 @@ import {
 import api from "@/lib/api";
 import type { Store, Camera as CameraType, PaginatedResponse } from "@/types";
 import { useToast } from "@/components/ui/Toast";
+import { SyncTracker } from '../../components/detection/SyncTracker';
 
 type Scope = "global" | "org" | "store" | "camera";
 
@@ -45,6 +46,9 @@ export default function DetectionControlPage() {
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set());
   const [treeSearch, setTreeSearch] = useState("");
   const [copyLoading, setCopyLoading] = useState(false);
+  const [pushInFlight, setPushInFlight] = useState(false);
+  const [syncCameraIds, setSyncCameraIds] = useState<string[]>([]);
+  const [showSyncTracker, setShowSyncTracker] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
     message: string;
@@ -109,22 +113,49 @@ export default function DetectionControlPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.put("/detection-control/settings", {
-        scope: selectedScope,
-        scope_id: selectedScopeId,
-        ...formData,
-      });
-      return res.data;
+      setPushInFlight(true);
+      try {
+        const res = await api.put("/detection-control/settings", {
+          scope: selectedScope,
+          scope_id: selectedScopeId,
+          ...formData,
+        });
+        return res.data;
+      } finally {
+        setPushInFlight(false);
+      }
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
       queryClient.invalidateQueries({ queryKey: ["dc-inheritance"] });
       setFormDirty(false);
-      const pushCount = data?.edge_push?.cameras_pushed ?? 0;
-      if (pushCount > 0) {
-        success(`Settings saved — pushed to ${pushCount} edge camera(s)`);
+
+      const push = data?.edge_push;
+      if (!push) {
+        success("Settings saved");
+        return;
+      }
+
+      // Show categorized feedback
+      const parts: string[] = [];
+      if (push.pushed > 0) parts.push(`${push.pushed} synced`);
+      if (push.queued > 0) parts.push(`${push.queued} queued`);
+      if (push.failed > 0) parts.push(`${push.failed} failed`);
+
+      if (push.failed > 0) {
+        showError(`Settings saved — ${parts.join(", ")}`);
+      } else if (parts.length > 0) {
+        success(`Settings saved — ${parts.join(", ")}`);
       } else {
         success("Settings saved");
+      }
+
+      // Show sync tracker if cameras were pushed
+      const details = push.details || [];
+      const cameraIds = details.map((d: any) => d.camera_id).filter(Boolean);
+      if (cameraIds.length > 0) {
+        setSyncCameraIds(cameraIds);
+        setShowSyncTracker(true);
       }
     },
     onError: (err: any) => {
@@ -282,11 +313,16 @@ export default function DetectionControlPage() {
                 )}
                 <button
                   onClick={() => saveMutation.mutate()}
-                  disabled={!formDirty || saveMutation.isPending}
+                  disabled={!formDirty || saveMutation.isPending || pushInFlight}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#0D9488] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {saveMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
-                  Save
+                  {pushInFlight ? (
+                    <><Loader2 size={12} className="animate-spin" /> Pushing to edge...</>
+                  ) : saveMutation.isPending ? (
+                    <><Loader2 size={12} className="animate-spin" /> Saving...</>
+                  ) : (
+                    <><Save size={12} /> Save</>
+                  )}
                 </button>
                 {selectedScope === "camera" && selectedScopeId && (
                   <select
@@ -473,6 +509,19 @@ export default function DetectionControlPage() {
               )}
             </div>
           </div>
+
+          {showSyncTracker && syncCameraIds.length > 0 && (
+            <SyncTracker
+              cameraIds={syncCameraIds}
+              onComplete={() => {
+                queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
+              }}
+              onDismiss={() => {
+                setShowSyncTracker(false);
+                setSyncCameraIds([]);
+              }}
+            />
+          )}
         </div>
 
         {/* Right: Inheritance Viewer */}

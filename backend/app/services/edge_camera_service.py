@@ -244,17 +244,22 @@ async def push_config_to_edge(
     ack_result = None
 
     if edge_url:
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
-                resp = await client.post(
-                    f"{edge_url}:8091/api/config/camera/{camera_id}",
-                    json=config_payload,
-                )
-                if resp.status_code == 200:
-                    ack_result = resp.json()
-        except Exception as e:
-            log.warning("Direct push to edge failed (will queue command): %s", e)
+        import asyncio as _asyncio
+        for attempt in range(2):
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
+                    resp = await client.post(
+                        f"{edge_url}:8091/api/config/camera/{camera_id}",
+                        json=config_payload,
+                    )
+                    if resp.status_code == 200:
+                        ack_result = resp.json()
+                        break
+            except Exception as e:
+                log.warning("Direct push attempt %d/2 to edge failed: %s", attempt + 1, e)
+                if attempt == 0:
+                    await _asyncio.sleep(2)
 
     # Update camera with push status
     update = {

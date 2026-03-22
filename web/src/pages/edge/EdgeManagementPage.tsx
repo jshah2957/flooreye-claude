@@ -14,6 +14,7 @@ import {
   Download,
   Pencil,
   Check,
+  XCircle,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -577,14 +578,24 @@ export default function EdgeManagementPage() {
                           <span className={`inline-block h-2 w-2 rounded-full ${cam.detection_enabled ? "bg-green-500" : "bg-gray-300"}`} />
                           <span className="text-xs text-gray-900">{cam.name}</span>
                         </div>
-                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${
-                          cam.config_status === "received" ? "bg-green-50 text-green-700" :
-                          cam.config_status === "failed" ? "bg-red-50 text-red-600" :
-                          !cam.edge_agent_id ? "bg-gray-100 text-gray-500" :
-                          "bg-amber-50 text-amber-700"
-                        }`}>
-                          {cam.config_status || "waiting"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {cam.config_version && (
+                            <span className="text-xs text-gray-400 font-mono">v{cam.config_version}</span>
+                          )}
+                          {cam.config_status === 'sync_failed' && (
+                            <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">
+                              <XCircle size={10} /> Sync failed
+                            </span>
+                          )}
+                          <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                            cam.config_status === "received" ? "bg-green-50 text-green-700" :
+                            cam.config_status === "failed" ? "bg-red-50 text-red-600" :
+                            !cam.edge_agent_id ? "bg-gray-100 text-gray-500" :
+                            "bg-amber-50 text-amber-700"
+                          }`}>
+                            {cam.config_status || "waiting"}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

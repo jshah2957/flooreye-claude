@@ -250,7 +250,12 @@ async def heartbeat(
         {"agent_id": agent["id"], "status": "pending"}
     )
 
-    return {"data": {"ok": True, "pending_commands": pending_count}}
+    # Check config staleness for cameras reported by edge
+    from app.services.edge_service import check_config_staleness
+    camera_configs = body.camera_configs if hasattr(body, 'camera_configs') and body.camera_configs else {}
+    config_updates = await check_config_staleness(db, agent["id"], camera_configs)
+
+    return {"data": {"ok": True, "pending_commands": pending_count, "config_updates_needed": config_updates}}
 
 
 @router.post("/frame")
