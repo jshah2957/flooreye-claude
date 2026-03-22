@@ -158,7 +158,8 @@ POST     /api/v1/detection/run/{camera_id}         Manual detection trigger     
 GET      /api/v1/detection/history                 Detection history (filters:   Viewer+
                                                    camera, store, date, wet,
                                                    model_source,
-                                                   min_confidence)
+                                                   min_confidence,
+                                                   incident_id)
 
 GET      /api/v1/detection/history/{id}            Single detection with         Viewer+
                                                    frame_base64
@@ -176,6 +177,14 @@ GET      /api/v1/detection/flagged/export          Export flagged as JSON or    
 
 POST      /api/v1/detection/flagged/upload-to-      Upload flagged to Roboflow    Admin+
          roboflow
+
+POST     /api/v1/detection/flagged/bulk-flag       Bulk flag multiple             Admin+
+                                                    detections. Body:
+                                                    { detection_ids: [] }
+
+POST     /api/v1/detection/flagged/bulk-unflag     Bulk unflag multiple           Admin+
+                                                    detections. Body:
+                                                    { detection_ids: [] }
 
 GET      /api/v1/continuous/status                  Background detection          Admin+
                                                     service status
@@ -532,6 +541,113 @@ GET      /api/v1/mobile/profile/notification-prefs         User's push         S
 D15–D20. (Validation, Incidents, Devices, Notifications, Logs, Storage APIs)
 (All standard endpoints as defined previously — all prefixed /api/v1/ )
 
+
+D15a. AUDIT LOGS API (NEW)
+Method   Endpoint                                 Description                    Auth
+
+GET      /api/v1/audit-logs                       List audit logs with filters   Admin+
+                                                  (?user_id, ?action,
+                                                  ?resource_type, ?date_from,
+                                                  ?date_to, ?limit, ?offset)
+
+GET      /api/v1/audit-logs/export                Export audit logs as CSV        Admin+
+                                                  (same filters as list)
+
+Response fields: id, org_id, user_id, user_email, action, resource_type,
+resource_id, details, ip_address, user_agent, timestamp
+
+
+D15b. NOTIFICATION ENHANCEMENTS (NEW)
+Method   Endpoint                                           Description                Auth
+
+POST     /api/v1/notifications/rules/{rule_id}/test         Send test notification      Admin+
+                                                            via rule's channel
+                                                            (returns delivery result)
+
+GET      /api/v1/notifications/deliveries                   List deliveries with        Admin+
+                                                            filters (?status=sent|
+                                                            failed|skipped_quiet_hours|
+                                                            skipped_prefs, ?channel=
+                                                            email|webhook|sms|push,
+                                                            ?rule_id, ?date_from,
+                                                            ?date_to, ?limit, ?offset)
+
+
+D15c. DEVICE ENHANCEMENTS (NEW)
+Method   Endpoint                                           Description                Auth
+
+PUT      /api/v1/devices/{device_id}/assign                 Assign cameras to device    Admin+
+                                                            Body: { camera_ids: [],
+                                                            trigger_on_any: bool,
+                                                            auto_off_seconds: int }
+
+POST     /api/v1/devices/{device_id}/reactivate             Reactivate a device         Operator+
+                                                            (set status back to
+                                                            "online", clear errors)
+
+
+
+D16. REVIEW API (NEW — Phase 7 Detection Fix Plan)
+Human review workflow for flagged detections.
+
+Method   Endpoint                                     Description                          Auth
+
+POST     /api/v1/review/{detection_id}                Submit review decision for a         Operator+
+                                                      detection. Body: { decision:
+                                                      "confirmed"|"rejected"|"uncertain",
+                                                      notes: Optional[str] }
+
+GET      /api/v1/review                               List review decisions (filters:      Viewer+
+                                                      ?detection_id, ?decision,
+                                                      ?reviewed_by, ?date_from,
+                                                      ?date_to, ?limit, ?offset)
+
+GET      /api/v1/review/stats                         Review statistics: total reviewed,   Viewer+
+                                                      confirmed/rejected/uncertain counts,
+                                                      review rate, avg review time
+
+POST     /api/v1/review/bulk                          Bulk submit review decisions.        Admin+
+                                                      Body: { decisions: [
+                                                      { detection_id, decision, notes }
+                                                      ] }
+
+
+D17. MOBILE ENHANCEMENTS (NEW — Phase 7 Detection Fix Plan)
+Additional mobile endpoints for incident resolution and frame viewing.
+
+Method   Endpoint                                     Description                          Auth
+
+PUT      /api/v1/mobile/alerts/{id}/resolve           Resolve incident from mobile.        Store
+                                                      Body: { notes: Optional[str] }       Owner+
+
+POST     /api/v1/mobile/alerts/{id}/notes             Add notes to an incident from        Store
+                                                      mobile. Body: { notes: str }         Owner+
+
+GET      /api/v1/mobile/detections/{id}/frame         Get annotated detection frame         Store
+                                                      (JPEG base64, optimized for          Owner+
+                                                      mobile display)
+
+
+D18. INCIDENT ENHANCEMENTS (NEW — Phase 7 Detection Fix Plan)
+Bulk operations, export, and notes for incident management.
+
+Method   Endpoint                                     Description                          Auth
+
+GET      /api/v1/events/export                        Export incidents as CSV/JSON.         Admin+
+                                                      Filters: ?status, ?severity,
+                                                      ?store_id, ?camera_id,
+                                                      ?date_from, ?date_to,
+                                                      ?format=csv|json
+
+POST     /api/v1/events/bulk-acknowledge              Bulk acknowledge incidents.           Operator+
+                                                      Body: { event_ids: [] }
+
+POST     /api/v1/events/bulk-resolve                  Bulk resolve incidents.               Operator+
+                                                      Body: { event_ids: [],
+                                                      notes: Optional[str] }
+
+PUT      /api/v1/events/{id}/notes                    Update notes on an incident.         Operator+
+                                                      Body: { notes: str }
 
 
 D21. WEBSOCKET CHANNELS

@@ -44,7 +44,9 @@ Collection                    Purpose
 
  devices                      IoT devices (signs, alarms, lights)
 
- audit_logs                   User action audit trail
+ system_logs                  System event logs (TTL 30d)
+
+ audit_logs                   User action audit trail (TTL 365d)
 G2. ALL COLLECTION SCHEMAS
 users
 
@@ -235,14 +237,15 @@ detection_logs
      inference_time_ms: float
      frame_base64: Optional[str]      # Stored in S3, path here OR inline for recent
      frame_s3_path: Optional[str]
+     annotated_frame_s3_path: Optional[str]  # S3 path for bbox-annotated frame
      predictions: List[Prediction]
      model_source: Literal["roboflow", "student", "hybrid_escalated"]
      model_version_id: Optional[str]
-     student_confidence: Optional[float] # Original student conf before escalation
-     escalated: bool = False
+     roboflow_sync_status: Optional[str]     # "not_sent" | "sent" | "labeled" | "imported"
      is_flagged: bool = False
      in_training_set: bool = False
      incident_id: Optional[str]      # FK → events.id
+     # Note: student_confidence and escalated removed — no longer written by detection service
      # Indexes: camera_id, store_id, org_id, timestamp, is_wet, is_flagged
 
 
@@ -259,15 +262,17 @@ events (incidents)
         max_confidence: float
         max_wet_area_percent: float
         severity: Literal["low", "medium", "high", "critical"]
-        status: Literal["new", "acknowledged", "resolved", "false_positive"] = "new"
+        status: Literal["new", "acknowledged", "resolved", "false_positive", "auto_resolved"] = "new"
         acknowledged_by: Optional[str]   # User ID
         acknowledged_at: Optional[datetime]
         resolved_by: Optional[str]
         resolved_at: Optional[datetime]
         detection_count: int = 1
-        devices_triggered: List[str] = [] # Device IDs
+        top_class_name: Optional[str]           # Highest-confidence class from detections
+        device_trigger_enabled: Optional[bool]  # Whether device triggers are enabled for this incident
+        devices_triggered: List[str] = []       # Device IDs — auto-populated by incident service
         notes: Optional[str]
-        roboflow_sync_status: Literal["not_sent", "sent", "labeled", "imported"] = "not_
+        roboflow_sync_status: Literal["not_sent", "sent", "labeled", "imported"] = "not_sent"
         created_at: datetime
         # Indexes: store_id, camera_id, org_id, status, severity, start_time
                                                                                      
@@ -448,6 +453,22 @@ detection_control_settings
      min_severity_to_create: Optional[str]
      auto_notify_on_create: Optional[bool]
      trigger_devices_on_create: Optional[bool]
+     # Severity thresholds (Phase 7 — detection fix plan)
+     severity_low_min: Optional[float]           # Min confidence for "low" severity
+     severity_low_max: Optional[float]           # Max confidence for "low" severity
+     severity_medium_min: Optional[float]
+     severity_medium_max: Optional[float]
+     severity_high_min: Optional[float]
+     severity_high_max: Optional[float]
+     severity_critical_min: Optional[float]
+     severity_critical_max: Optional[float]
+     severity_area_weight: Optional[float]       # Weight for area_percent in severity calc
+     severity_confidence_weight: Optional[float] # Weight for confidence in severity calc
+     # Active learning
+     active_learning_enabled: Optional[bool]
+     active_learning_sample_rate: Optional[float]   # 0.0–1.0 — fraction of frames to sample
+     active_learning_uncertainty_threshold: Optional[float]  # Flag if confidence below this
+     active_learning_max_daily: Optional[int]       # Max frames to auto-flag per day
      # Hybrid
      hybrid_escalation_threshold: Optional[float]
      hybrid_max_escalations_per_min: Optional[int]
@@ -475,6 +496,11 @@ detection_class_overrides
         min_area_percent: Optional[float]
         severity_mapping: Optional[Literal["low", "medium", "high", "critical"]]
         alert_on_detect: Optional[bool]
+        # Per-class incident overrides (Phase 7 — detection fix plan)
+        incident_enabled: Optional[bool]              # Whether this class creates incidents
+        incident_severity_override: Optional[Literal["low", "medium", "high", "critical"]]
+        incident_grouping_separate: Optional[bool]    # Group this class separately from others
+        device_trigger_enabled: Optional[bool]        # Whether this class triggers IoT devices
         updated_by: str
         updated_at: datetime
         # Unique index: (org_id, scope, scope_id, class_id)
@@ -555,5 +581,86 @@ notification_deliveries
         sent_at: datetime
         # Index: org_id, rule_id, status, sent_at
                                                                                          
-═══════════════════════════════════════════════════════
+
+
+devices
+
+    python
+
+    class Device(BaseModel):
+        id: str
+        org_id: str
+        store_id: str
+        name: str
+        device_type: Literal["sign", "alarm", "light", "speaker",
+                              "tplink", "mqtt", "webhook", "other"]
+        ip: Optional[str]                    # Device IP address
+        protocol: Optional[str]              # Communication protocol
+        edge_agent_id: Optional[str]         # FK -> edge_agents.id
+        edge_device_id: Optional[str]        # Device ID on edge agent
+        assigned_cameras: List[str] = []     # Camera IDs this device monitors
+        trigger_on_any: bool = True          # Trigger on any assigned camera detection
+        auto_off_seconds: int = 600          # Auto-deactivate after N seconds
+        config: Dict[str, Any] = {}          # Device-specific config (IP, port, etc.)
+        status: Literal["online", "offline", "triggered", "error"] = "offline"
+        last_triggered: Optional[datetime]
+        is_active: bool = True
+        created_at: datetime
+        updated_at: datetime
+        # Indexes: org_id, store_id, device_type, status
+
+
+system_logs
+
+    python
+
+    class SystemLog(BaseModel):
+        id: str                              # UUID
+        org_id: str
+        level: Literal["info", "warning", "error", "critical"]
+        source: str                          # e.g., "edge_agent", "inference", "worker"
+        message: str
+        details: Dict[str, Any] = {}
+        timestamp: datetime
+        # TTL: 30 days (configurable via SYSTEM_LOG_RETENTION_DAYS)
+        # Indexes: (org_id, timestamp DESC), (level), (source)
+
+
+audit_logs
+
+    python
+
+    class AuditLog(BaseModel):
+        id: str                              # UUID
+        org_id: str
+        user_id: str                         # FK -> users.id
+        user_email: str                      # Denormalized for display
+        action: str                          # e.g., "create", "update", "delete", "login"
+        resource_type: str                   # e.g., "store", "camera", "user", "model"
+        resource_id: Optional[str] = None    # ID of affected resource
+        details: Dict[str, Any] = {}         # Action-specific context
+        ip_address: Optional[str] = None
+        user_agent: Optional[str] = None
+        timestamp: datetime
+        # TTL: 365 days (configurable via AUDIT_LOG_RETENTION_DAYS)
+        # Indexes: (org_id, timestamp DESC), (user_id), (action), (resource_type)
+
+
+
+review_decisions
+
+    python
+
+    class ReviewDecision(BaseModel):
+        id: str                              # UUID
+        org_id: str
+        detection_id: str                    # FK → detection_logs.id
+        decision: Literal["confirmed", "rejected", "uncertain"]
+        reviewed_by: str                     # FK → users.id
+        reviewed_at: datetime
+        notes: Optional[str] = None
+        previous_decision: Optional[str] = None  # Previous decision if re-reviewed
+        # Indexes: (org_id, detection_id), (reviewed_by), (decision)
+
+═══════════════════════════════════════════════════════
 
