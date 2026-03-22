@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import AppRoutes from "@/routes";
 
 export default function App() {
@@ -14,7 +15,9 @@ export default function App() {
         <ToastProvider>
           <BrowserRouter>
             <AuthProvider>
-              <AppRoutes />
+              <NotificationProvider>
+                <AppRoutes />
+              </NotificationProvider>
             </AuthProvider>
           </BrowserRouter>
         </ToastProvider>

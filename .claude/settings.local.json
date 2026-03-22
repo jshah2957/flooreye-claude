@@ -54,7 +54,28 @@
       "Bash(__NEW_LINE_08cd3d04c02ffc42__ echo:*)",
       "Bash(__NEW_LINE_0e0d19fd4b841be2__ echo:*)",
       "Bash(grep:*)",
-      "Bash(__NEW_LINE_2b64bfbd26f9fc1b__ echo:*)"
+      "Bash(__NEW_LINE_2b64bfbd26f9fc1b__ echo:*)",
+      "Bash(git update-index:*)",
+      "Bash(bash -n C:/Users/jshah/flooreye/edge-agent/install.sh)",
+      "Bash(for f:*)",
+      "Bash(do python:*)",
+      "Bash(echo \"OK: $f\")",
+      "Bash(echo \"FAIL: $f\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(xargs head:*)",
+      "Bash(find . -name system_log* -o -name *system*log*)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(cd:*)",
+      "Bash(wc -l backend/app/routers/*.py)",
+      "Bash(python3 -c \":*)",
+      "Bash(find /c/Users/jshah/flooreye -name *onnx*inference* -o -name *inference*onnx*)",
+      "Bash(find /c/Users/jshah/flooreye -path *test* -name *detection* -type f)",
+      "Bash(find /c/Users/jshah/flooreye/edge-agent -type f \\\\\\(-name *.sh -o -name *.yml -o -name *.yaml -o -name *.json \\\\\\))",
+      "Bash(git:*)",
+      "Bash(wc:*)",
+      "Bash(grep -v \"//.*#\")",
+      "Bash(wc -l mobile/app/\\\\\\(tabs\\\\\\)/*.tsx)",
+      "Bash(do test:*)"
     ]
   }
 }

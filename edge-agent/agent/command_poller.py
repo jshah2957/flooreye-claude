@@ -15,11 +15,11 @@ class CommandPoller:
 
     def __init__(self, inference_client):
         self.inference = inference_client
-        self.poll_interval = 30
+        self.poll_interval = config.COMMAND_POLL_INTERVAL
 
     async def poll_loop(self):
         """Continuously poll for commands."""
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=config.BACKEND_REQUEST_TIMEOUT) as client:
             while True:
                 try:
                     resp = await client.get(
@@ -84,11 +84,12 @@ class CommandPoller:
                             alert_names.add(name)
                     # Write classes to local config for persistence
                     from local_config import local_config as lc
-                    import json
                     import os
                     classes_path = os.path.join(lc.config_dir, "alert_classes.json")
-                    with open(classes_path, "w") as f:
-                        json.dump(list(alert_names), f)
+                    lc._write_json(classes_path, list(alert_names))
+                    # Store full class overrides for edge incident engine
+                    overrides_path = os.path.join(lc.config_dir, "class_overrides.json")
+                    lc._write_json(overrides_path, classes)
                     # Update inference server in-memory
                     try:
                         from predict import update_alert_classes
@@ -96,9 +97,17 @@ class CommandPoller:
                     except Exception:
                         pass
                     result = {"updated": True, "alert_classes": len(alert_names), "total_classes": len(classes)}
-                    log.info("Classes updated: %d alert classes from %d total", len(alert_names), len(classes))
+                    log.info("Classes updated: %d alert classes from %d total (overrides stored)", len(alert_names), len(classes))
                 else:
                     result = {"updated": False, "reason": "no classes in payload"}
+            elif cmd_type == "update_notification_rules":
+                rules = payload.get("notification_rules", [])
+                from local_config import local_config as lc
+                import os
+                rules_path = os.path.join(lc.config_dir, "notification_rules.json")
+                lc._write_json(rules_path, rules)
+                result = {"updated": True, "rules_count": len(rules)}
+                log.info("Notification rules updated: %d rules stored", len(rules))
             elif cmd_type == "restart_agent":
                 log.warning("Restart command received — agent will restart")
                 result = {"restarting": True}

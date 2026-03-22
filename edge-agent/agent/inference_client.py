@@ -18,7 +18,7 @@ class InferenceClient:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=30)
+            self._client = httpx.AsyncClient(timeout=config.INFERENCE_SERVER_TIMEOUT)
         return self._client
 
     async def wait_for_ready(self, max_wait: int = 120) -> bool:

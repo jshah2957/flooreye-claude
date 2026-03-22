@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 
 interface ConfirmDialogProps {
@@ -24,16 +24,26 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   const [typed, setTyped] = useState("");
 
+  // Close on ESC key
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
   const canConfirm = confirmText ? typed === confirmText : true;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" role="dialog" aria-modal="true" aria-label={title}>
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-[#1C1917]">{title}</h3>
-          <button onClick={onCancel} className="text-[#78716C] hover:text-[#1C1917]">
+          <button onClick={onCancel} className="text-[#78716C] hover:text-[#1C1917]" aria-label="Close dialog">
             <X size={18} />
           </button>
         </div>

@@ -23,7 +23,7 @@ class CameraManager:
     async def register_camera(self, camera: dict) -> str | None:
         """Register a camera with cloud backend. Returns cloud_camera_id or None."""
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=config.BACKEND_REQUEST_TIMEOUT) as client:
                 resp = await client.post(
                     f"{config.BACKEND_URL}/api/v1/edge/cameras/register",
                     headers=config.auth_headers(),
@@ -53,7 +53,7 @@ class CameraManager:
     async def unregister_camera(self, cloud_camera_id: str) -> bool:
         """Unregister a camera from cloud backend."""
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=config.BACKEND_REQUEST_TIMEOUT) as client:
                 resp = await client.delete(
                     f"{config.BACKEND_URL}/api/v1/edge/cameras/{cloud_camera_id}",
                     headers=config.auth_headers(),

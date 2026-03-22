@@ -17,6 +17,44 @@
     </header>
 
     <main>
+        <!-- System Status Section -->
+        <section id="system-status-section">
+            <div class="section-header">
+                <h2>System Status</h2>
+                <span id="last-refresh" style="font-size:11px; color:#a8a29e;">refreshing...</span>
+            </div>
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-label">CPU</div>
+                    <div class="status-value" id="sys-cpu">--</div>
+                    <div class="status-bar"><div class="status-bar-fill" id="sys-cpu-bar" style="width:0%"></div></div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">RAM</div>
+                    <div class="status-value" id="sys-ram">--</div>
+                    <div class="status-bar"><div class="status-bar-fill" id="sys-ram-bar" style="width:0%"></div></div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Disk</div>
+                    <div class="status-value" id="sys-disk">--</div>
+                    <div class="status-bar"><div class="status-bar-fill" id="sys-disk-bar" style="width:0%"></div></div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Model</div>
+                    <div class="status-value" id="sys-model">{{ agent_info.get('model_version', 'N/A') }}</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Cameras</div>
+                    <div class="status-value" id="sys-cameras">{{ cameras|length }}</div>
+                    <div class="status-sub" id="sys-cameras-detail">--</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">Devices</div>
+                    <div class="status-value" id="sys-devices">{{ devices|length }}</div>
+                </div>
+            </div>
+        </section>
+
         <!-- Cameras Section -->
         <section>
             <div class="section-header">
@@ -69,26 +107,51 @@
                         <th>Name</th>
                         <th>IP</th>
                         <th>Type</th>
+                        <th>Protocol</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for dev in devices %}
-                    <tr>
+                    <tr data-id="{{ dev.id }}">
                         <td>{{ dev.name }}</td>
                         <td>{{ dev.ip }}</td>
                         <td>{{ dev.type }}</td>
+                        <td>{{ dev.get('protocol', 'tcp') }}</td>
                         <td><span class="badge badge-{{ dev.status }}">{{ dev.status }}</span></td>
                         <td>
+                            <button onclick="showEditDevice('{{ dev.id }}', '{{ dev.name }}', '{{ dev.ip }}', '{{ dev.type }}', '{{ dev.get('protocol', 'tcp') }}')" class="btn btn-sm">Edit</button>
                             <button onclick="testDevice('{{ dev.id }}')" class="btn btn-sm">Test</button>
                             <button onclick="removeDevice('{{ dev.id }}', '{{ dev.name }}')" class="btn btn-sm btn-danger">Remove</button>
                         </td>
                     </tr>
                     {% endfor %}
                     {% if not devices %}
-                    <tr><td colspan="5" class="empty">No devices configured.</td></tr>
+                    <tr><td colspan="6" class="empty">No devices configured.</td></tr>
                     {% endif %}
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Recent Alerts Section -->
+        <section id="alerts-section">
+            <div class="section-header">
+                <h2>Recent Alerts</h2>
+                <span id="alerts-count" style="font-size:12px; color:#a8a29e;">loading...</span>
+            </div>
+
+            <table id="alerts-table">
+                <thead>
+                    <tr>
+                        <th>Event Type</th>
+                        <th>Camera</th>
+                        <th>Timestamp</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-tbody">
+                    <tr><td colspan="4" class="empty">Loading alerts...</td></tr>
                 </tbody>
             </table>
         </section>
@@ -128,12 +191,20 @@
             <label>Name *<input type="text" id="dev-name" required placeholder="e.g. Caution Sign Plug"></label>
             <label>IP Address *<input type="text" id="dev-ip" required placeholder="192.168.1.50"></label>
             <label>Type
-                <select id="dev-type">
+                <select id="dev-type" onchange="updateDevProtocolHint()">
                     <option value="tplink">TP-Link Kasa</option>
-                    <option value="mqtt">MQTT</option>
+                    <option value="mqtt">MQTT Broker</option>
                     <option value="webhook">HTTP Webhook</option>
                 </select>
             </label>
+            <label>Protocol
+                <select id="dev-protocol">
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                    <option value="http">HTTP</option>
+                </select>
+            </label>
+            <div id="dev-protocol-hint" style="font-size:11px; color:#78716c; margin:-8px 0 8px 0;">TP-Link: port 9999 (TCP) &bull; MQTT: port 1883 (TCP) &bull; Webhook: port 80 (HTTP)</div>
             <div id="dev-test-result" style="display:none; margin:12px 0;"></div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModals()" class="btn">Cancel</button>
@@ -143,20 +214,90 @@
         </div>
     </div>
 
+    <!-- Edit Device Modal -->
+    <div id="edit-device-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>Edit IoT Device</h3>
+            <input type="hidden" id="edit-dev-id">
+            <label>Name *<input type="text" id="edit-dev-name" required></label>
+            <label>IP Address *<input type="text" id="edit-dev-ip" required></label>
+            <label>Type
+                <select id="edit-dev-type">
+                    <option value="tplink">TP-Link Kasa</option>
+                    <option value="mqtt">MQTT</option>
+                    <option value="webhook">HTTP Webhook</option>
+                </select>
+            </label>
+            <label>Protocol
+                <select id="edit-dev-protocol">
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                    <option value="http">HTTP</option>
+                </select>
+            </label>
+            <div id="edit-dev-status" style="display:none; margin:12px 0;"></div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
+                <button type="button" onclick="submitEditDevice()" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirm Delete Modal -->
     <div id="confirm-modal" class="modal" style="display:none;">
         <div class="modal-content">
-            <h3 id="confirm-title">Confirm</h3>
-            <p id="confirm-msg" style="margin:12px 0; font-size:13px; color:#78716c;"></p>
+            <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
+                <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div>
+                    <h3 id="confirm-title" style="margin-bottom:4px;">Confirm</h3>
+                    <p id="confirm-msg" style="font-size:13px; color:#78716c; margin:0;"></p>
+                </div>
+            </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                <button type="button" id="confirm-btn" class="btn btn-danger">Confirm</button>
+                <button type="button" id="confirm-btn" class="btn btn-danger-solid">Delete</button>
             </div>
         </div>
     </div>
 
     <!-- Toast -->
     <div id="toast" class="toast" style="display:none;"></div>
+
+    <!-- Logout button in header -->
+    <script>
+        // Add logout button to header
+        document.addEventListener('DOMContentLoaded', () => {
+            const header = document.querySelector('header .agent-info');
+            if (header) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.textContent = 'Logout';
+                logoutBtn.className = 'btn btn-sm';
+                logoutBtn.style.cssText = 'margin-left:12px; padding:4px 12px; font-size:12px; border:1px solid #d6d3d1; border-radius:4px; background:transparent; cursor:pointer;';
+                logoutBtn.onclick = () => {
+                    sessionStorage.removeItem('edge_api_key');
+                    document.cookie = 'edge_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                    window.location.href = '/';
+                };
+                header.appendChild(logoutBtn);
+            }
+        });
+    </script>
+
+    <script>
+        // Auth helper — injects X-Edge-Key header into all fetch calls
+        const _edgeApiKey = sessionStorage.getItem('edge_api_key') || '';
+        const _origFetch = window.fetch;
+        window.fetch = function(url, opts) {
+            opts = opts || {};
+            opts.headers = opts.headers || {};
+            if (_edgeApiKey && !opts.headers['X-Edge-Key']) {
+                opts.headers['X-Edge-Key'] = _edgeApiKey;
+            }
+            return _origFetch.call(this, url, opts);
+        };
+    </script>
 
     <script>
         let _camTestPassed = false;
@@ -179,6 +320,9 @@
             document.getElementById('dev-test-result').style.display = 'none';
             document.getElementById('dev-name').value = '';
             document.getElementById('dev-ip').value = '';
+            document.getElementById('dev-type').value = 'tplink';
+            document.getElementById('dev-protocol').value = 'tcp';
+            updateDevProtocolHint();
             document.getElementById('add-device-modal').style.display = 'flex';
         }
         function closeModals() {
@@ -192,11 +336,13 @@
             t.style.display = 'block';
             setTimeout(() => t.style.display = 'none', 3000);
         }
-        function showConfirm(title, msg, action) {
+        function showConfirm(title, msg, action, btnLabel) {
             document.getElementById('confirm-title').textContent = title;
             document.getElementById('confirm-msg').textContent = msg;
+            const confirmBtn = document.getElementById('confirm-btn');
+            confirmBtn.textContent = btnLabel || 'Delete';
             _confirmAction = action;
-            document.getElementById('confirm-btn').onclick = async () => {
+            confirmBtn.onclick = async () => {
                 if (_confirmAction) await _confirmAction();
                 closeModals();
                 location.reload();
@@ -306,10 +452,27 @@
                 name: document.getElementById('dev-name').value,
                 ip: document.getElementById('dev-ip').value,
                 type: document.getElementById('dev-type').value,
+                protocol: document.getElementById('dev-protocol').value,
             };
             const res = await fetch('/devices', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
             if (res.ok) { toast('Device added', 'success'); closeModals(); location.reload(); }
             else { toast('Failed to add device', 'error'); }
+        }
+
+        function updateDevProtocolHint() {
+            const type = document.getElementById('dev-type').value;
+            const protocolSelect = document.getElementById('dev-protocol');
+            const hint = document.getElementById('dev-protocol-hint');
+            if (type === 'tplink') {
+                protocolSelect.value = 'tcp';
+                hint.textContent = 'TP-Link Kasa uses TCP port 9999 for local control';
+            } else if (type === 'mqtt') {
+                protocolSelect.value = 'tcp';
+                hint.textContent = 'MQTT broker uses TCP port 1883 (or 8883 for TLS)';
+            } else if (type === 'webhook') {
+                protocolSelect.value = 'http';
+                hint.textContent = 'HTTP webhook receives POST requests on port 80/443';
+            }
         }
 
         // --- Existing camera/device row actions ---
@@ -355,15 +518,178 @@
             });
         }
 
-        // Auto-refresh status every 5 seconds
-        setInterval(async () => {
+        function showEditDevice(id, name, ip, type, protocol) {
+            document.getElementById('edit-dev-id').value = id;
+            document.getElementById('edit-dev-name').value = name;
+            document.getElementById('edit-dev-ip').value = ip;
+            document.getElementById('edit-dev-type').value = type;
+            document.getElementById('edit-dev-protocol').value = protocol || 'tcp';
+            document.getElementById('edit-dev-status').style.display = 'none';
+            document.getElementById('edit-device-modal').style.display = 'flex';
+        }
+
+        async function submitEditDevice() {
+            const id = document.getElementById('edit-dev-id').value;
+            const body = {
+                name: document.getElementById('edit-dev-name').value.trim(),
+                ip: document.getElementById('edit-dev-ip').value.trim(),
+                type: document.getElementById('edit-dev-type').value,
+                protocol: document.getElementById('edit-dev-protocol').value,
+            };
+            if (!body.name || !body.ip) {
+                toast('Name and IP are required', 'error');
+                return;
+            }
+            const statusEl = document.getElementById('edit-dev-status');
+            try {
+                const res = await fetch(`/devices/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(body),
+                });
+                if (res.ok) {
+                    toast('Device updated — controller reloaded', 'success');
+                    closeModals();
+                    location.reload();
+                } else {
+                    const d = await res.json();
+                    statusEl.innerHTML = '<span style="color:#dc2626;">' + (d.detail || 'Update failed') + '</span>';
+                    statusEl.style.display = 'block';
+                }
+            } catch(e) {
+                statusEl.innerHTML = '<span style="color:#dc2626;">Error: ' + e.message + '</span>';
+                statusEl.style.display = 'block';
+            }
+        }
+
+        // --- Auto-refresh every 5 seconds ---
+        function updateStatusUI(data) {
+            // Backend connection
+            document.getElementById('backend-status').textContent =
+                data.agent.backend_connected ? 'Connected' : 'Disconnected';
+
+            // System metrics
+            const sys = data.system || {};
+            if (sys.cpu_percent !== undefined) {
+                document.getElementById('sys-cpu').textContent = sys.cpu_percent + '%';
+                document.getElementById('sys-cpu-bar').style.width = sys.cpu_percent + '%';
+                document.getElementById('sys-cpu-bar').className = 'status-bar-fill' + (sys.cpu_percent > 80 ? ' bar-danger' : sys.cpu_percent > 60 ? ' bar-warn' : '');
+            }
+            if (sys.ram_percent !== undefined) {
+                document.getElementById('sys-ram').textContent = sys.ram_used_gb + ' / ' + sys.ram_total_gb + ' GB (' + sys.ram_percent + '%)';
+                document.getElementById('sys-ram-bar').style.width = sys.ram_percent + '%';
+                document.getElementById('sys-ram-bar').className = 'status-bar-fill' + (sys.ram_percent > 85 ? ' bar-danger' : sys.ram_percent > 70 ? ' bar-warn' : '');
+            }
+            if (sys.disk_percent !== undefined) {
+                document.getElementById('sys-disk').textContent = sys.disk_used_gb + ' / ' + sys.disk_total_gb + ' GB (' + sys.disk_percent + '%)';
+                document.getElementById('sys-disk-bar').style.width = sys.disk_percent + '%';
+                document.getElementById('sys-disk-bar').className = 'status-bar-fill' + (sys.disk_percent > 90 ? ' bar-danger' : sys.disk_percent > 75 ? ' bar-warn' : '');
+            }
+            if (data.agent.model_version) {
+                document.getElementById('sys-model').textContent = data.agent.model_version;
+            }
+
+            // Camera/device counts
+            document.getElementById('sys-cameras').textContent = data.cameras_total || 0;
+            document.getElementById('sys-cameras-detail').textContent =
+                (data.cameras_detecting || 0) + ' detecting, ' + (data.cameras_waiting || 0) + ' waiting';
+            document.getElementById('sys-devices').textContent = (data.devices || []).length;
+
+            // Update camera table rows (status badges)
+            (data.cameras || []).forEach(cam => {
+                const row = document.querySelector(`#cameras-table tr[data-id="${cam.id}"]`);
+                if (row) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells[2]) cells[2].innerHTML = `<span class="badge badge-${cam.status}">${cam.status}</span>`;
+                    if (cells[3]) cells[3].innerHTML = `<span class="badge badge-${cam.detection_status}">${(cam.detection_status || '').replace(/_/g, ' ')}</span>`;
+                }
+            });
+
+            // Update device table rows (status badges)
+            (data.devices || []).forEach(dev => {
+                const row = document.querySelector(`#devices-table tr[data-id="${dev.id}"]`);
+                if (row) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells[3]) cells[3].innerHTML = `<span class="badge badge-${dev.status}">${dev.status}</span>`;
+                }
+            });
+
+            // Timestamp
+            document.getElementById('last-refresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
+        }
+
+        async function refreshStatus() {
             try {
                 const res = await fetch('/status');
                 const data = await res.json();
-                document.getElementById('backend-status').textContent =
-                    data.agent.backend_connected ? 'Connected' : 'Disconnected';
+                updateStatusUI(data);
             } catch(e) {}
-        }, 5000);
+        }
+
+        // --- Alert log auto-refresh ---
+        async function refreshAlerts() {
+            try {
+                const res = await fetch('/api/alerts?limit=25');
+                const data = await res.json();
+                const tbody = document.getElementById('alerts-tbody');
+                const countEl = document.getElementById('alerts-count');
+
+                if (!data.data || data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty">No recent alerts.</td></tr>';
+                    countEl.textContent = '0 alerts';
+                    return;
+                }
+
+                countEl.textContent = data.total + ' alert' + (data.total !== 1 ? 's' : '') +
+                    (data.unsynced_count > 0 ? ' (' + data.unsynced_count + ' unsynced)' : '');
+
+                let html = '';
+                data.data.forEach(alert => {
+                    const ts = alert.timestamp ? new Date(alert.timestamp).toLocaleString() : '--';
+                    const eventType = (alert.event_type || 'unknown').replace(/_/g, ' ');
+                    const camera = alert.camera_id || alert.camera_name || '--';
+
+                    // Build details string from available fields
+                    let details = '';
+                    if (alert.confidence !== undefined && alert.confidence !== null) {
+                        details += 'conf: ' + (typeof alert.confidence === 'number' ? alert.confidence.toFixed(2) : alert.confidence);
+                    }
+                    if (alert.wet_area_percent !== undefined && alert.wet_area_percent !== null) {
+                        details += (details ? ', ' : '') + 'area: ' + alert.wet_area_percent + '%';
+                    }
+                    if (alert.message) {
+                        details += (details ? ' — ' : '') + alert.message;
+                    }
+                    if (alert.details) {
+                        details += (details ? ' — ' : '') + (typeof alert.details === 'string' ? alert.details : JSON.stringify(alert.details));
+                    }
+                    if (!details) details = '--';
+
+                    // Truncate long details
+                    if (details.length > 120) details = details.substring(0, 117) + '...';
+
+                    const syncBadge = alert.synced
+                        ? ''
+                        : ' <span style="font-size:10px; color:#f59e0b; font-weight:600;">UNSYNCED</span>';
+
+                    html += '<tr>' +
+                        '<td><span class="badge badge-' + (alert.event_type || 'info') + '">' + eventType + '</span></td>' +
+                        '<td>' + camera + '</td>' +
+                        '<td style="white-space:nowrap;">' + ts + syncBadge + '</td>' +
+                        '<td style="font-size:12px; color:#78716c; max-width:300px; overflow:hidden; text-overflow:ellipsis;">' + details + '</td>' +
+                        '</tr>';
+                });
+                tbody.innerHTML = html;
+            } catch(e) {
+                // Silently fail — alerts are informational
+            }
+        }
+
+        // Initial load + interval
+        refreshStatus();
+        refreshAlerts();
+        setInterval(refreshStatus, 5000);
+        setInterval(refreshAlerts, 10000);
     </script>
 </body>
 </html>

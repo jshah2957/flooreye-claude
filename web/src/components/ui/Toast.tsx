@@ -25,9 +25,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const addToast = useCallback((type: ToastType, message: string) => {
     const id = ++nextId;
     setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    // Error toasts persist until explicitly dismissed
+    if (type !== "error") {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 4000);
+    }
   }, []);
 
   const removeToast = useCallback((id: number) => {
@@ -58,7 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {/* Toast container */}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2" role="alert" aria-live="assertive">
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -66,7 +69,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           >
             {iconMap[t.type]}
             <span className="text-sm font-medium text-[#1C1917]">{t.message}</span>
-            <button onClick={() => removeToast(t.id)} className="ml-2 text-[#78716C] hover:text-[#1C1917]">
+            <button
+              onClick={() => removeToast(t.id)}
+              className="ml-2 text-[#78716C] hover:text-[#1C1917]"
+              aria-label="Close notification"
+            >
               <X size={14} />
             </button>
           </div>

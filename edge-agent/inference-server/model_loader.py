@@ -13,6 +13,48 @@ import requests
 
 log = logging.getLogger("inference-server.loader")
 
+# ONNX files are protobuf-encoded ModelProto messages.  The first field
+# (ir_version, field number 1, wire type 0 = varint) is encoded as tag
+# byte 0x08.  Every valid ONNX file therefore starts with b'\x08'.
+_ONNX_MAGIC_TAG = b"\x08"
+
+
+def validate_model_file(path: str) -> tuple[bool, str]:
+    """Validate an ONNX model file before loading.
+
+    Checks:
+      1. File exists on disk.
+      2. File size > 1000 bytes (guards against truncated downloads).
+      3. First bytes contain the expected ONNX protobuf tag (0x08).
+
+    Returns:
+        (is_valid, reason) -- reason is empty string when valid.
+    """
+    if not os.path.isfile(path):
+        return False, f"Model file not found: {path}"
+
+    file_size = os.path.getsize(path)
+    if file_size <= 1000:
+        return False, (
+            f"Model file too small (likely corrupt): {path} ({file_size} bytes)"
+        )
+
+    # Read first 4 bytes and check ONNX protobuf magic tag
+    try:
+        with open(path, "rb") as f:
+            header = f.read(4)
+        if len(header) < 4:
+            return False, f"Could not read header from {path}"
+        if not header.startswith(_ONNX_MAGIC_TAG):
+            return False, (
+                f"Invalid ONNX magic bytes in {path}: "
+                f"got {header.hex()} (expected first byte 08)"
+            )
+    except OSError as e:
+        return False, f"Cannot read model file {path}: {e}"
+
+    return True, ""
+
 
 class ModelLoader:
     """Loads and manages ONNX model sessions."""
@@ -22,11 +64,17 @@ class ModelLoader:
         self.session: ort.InferenceSession | None = None
         self.model_version = "unknown"
         self.model_path: str | None = None
-        self.model_type = "yolov8"  # "roboflow", "yolov8", or "nms_free"
+        self.model_type = "yolov8"  # "custom_export", "yolov8", or "nms_free"
         self.model_source = "local_onnx"  # always local — model origin doesn't matter
         self.load_time_ms = 0
         self.class_names: list[str] = []
         self._lock = threading.Lock()
+        # Previous working session kept as fallback for failed loads
+        self._prev_session: ort.InferenceSession | None = None
+        self._prev_model_path: str | None = None
+        self._prev_model_version: str = "unknown"
+        self._prev_model_type: str = "yolov8"
+        self._prev_class_names: list[str] = []
 
     def find_latest_model(self) -> str | None:
         """Find the most recent .onnx file in the models directory."""
@@ -49,6 +97,8 @@ class ModelLoader:
           1. {model_stem}_classes.json
           2. class_names.json
           3. classes.json
+
+        Falls back to .bak files if the primary file is corrupted.
         """
         import json
         model_dir = os.path.dirname(model_path)
@@ -61,33 +111,67 @@ class ModelLoader:
         ]
 
         for path in candidates:
-            if os.path.isfile(path):
+            # Try primary file first, then .bak
+            for variant in [path, path + ".bak"]:
+                if not os.path.isfile(variant):
+                    continue
                 try:
-                    with open(path, "r") as f:
+                    with open(variant, "r") as f:
                         data = json.load(f)
+                    result = None
                     if isinstance(data, list):
-                        return data
-                    if isinstance(data, dict):
-                        # {"0": "wet", "1": "dry"} -> ["wet", "dry"]
+                        result = data
+                    elif isinstance(data, dict):
                         max_key = max(int(k) for k in data.keys())
-                        return [data.get(str(i), f"class_{i}") for i in range(max_key + 1)]
-                except Exception as e:
-                    log.warning(f"Failed to load class names from {path}: {e}")
+                        result = [data.get(str(i), f"class_{i}") for i in range(max_key + 1)]
+                    if result is not None:
+                        if variant.endswith(".bak"):
+                            log.warning("Recovered class names from backup: %s", variant)
+                            import shutil
+                            shutil.copy2(variant, path)
+                        return result
+                except (json.JSONDecodeError, OSError) as e:
+                    log.warning("Failed to load class names from %s: %s", variant, e)
 
         return []
 
+    def _save_current_as_fallback(self):
+        """Snapshot the current working session so it can be restored on failure."""
+        if self.session is not None:
+            self._prev_session = self.session
+            self._prev_model_path = self.model_path
+            self._prev_model_version = self.model_version
+            self._prev_model_type = self.model_type
+            self._prev_class_names = list(self.class_names)
+
+    def _restore_fallback(self):
+        """Restore the previously working session after a failed load."""
+        if self._prev_session is not None:
+            self.session = self._prev_session
+            self.model_path = self._prev_model_path
+            self.model_version = self._prev_model_version
+            self.model_type = self._prev_model_type
+            self.class_names = list(self._prev_class_names)
+            log.warning(
+                "Restored previous model as fallback: %s (%s)",
+                self.model_version, self.model_type,
+            )
+
     def load(self, path: str) -> bool:
-        """Load an ONNX model into an inference session."""
-        # Validate file before attempting load
-        if not os.path.isfile(path):
-            log.error("Model file not found: %s", path)
-            return False
-        if os.path.getsize(path) < 1000:
-            log.error("Model file too small (likely corrupt): %s (%d bytes)", path, os.path.getsize(path))
+        """Load an ONNX model into an inference session.
+
+        Validates the file (existence, size, ONNX magic bytes) before
+        attempting to create an ORT session.  On any failure the
+        previously loaded session is restored automatically.
+        """
+        # Full file validation (exists, size, magic bytes)
+        valid, reason = validate_model_file(path)
+        if not valid:
+            log.error("Model validation failed: %s", reason)
             return False
 
-        log.info(f"Loading ONNX model from {path}")
-        old_session = self.session  # Keep fallback
+        log.info("Loading ONNX model from %s", path)
+        self._save_current_as_fallback()
         t0 = time.time()
         try:
             sess_options = self._build_session_options()
@@ -112,13 +196,15 @@ class ModelLoader:
             self.model_type = detect_model_type(self.session)
             self.model_source = "local_onnx"
 
-            log.info(f"Model loaded: {self.model_version} ({self.model_type}, source={self.model_source}) in {self.load_time_ms}ms")
+            log.info(
+                "Model loaded: %s (%s, source=%s) in %sms",
+                self.model_version, self.model_type,
+                self.model_source, self.load_time_ms,
+            )
             return True
         except Exception as e:
-            log.error(f"Failed to load model {path}: {e}")
-            if old_session:
-                self.session = old_session  # Restore previous working model
-                log.warning("Restored previous model as fallback")
+            log.error("Failed to load model %s: %s", path, e)
+            self._restore_fallback()
             return False
 
     def load_latest(self) -> bool:
@@ -175,6 +261,12 @@ class ModelLoader:
 
     def swap_model(self, new_path: str) -> bool:
         """Hot-swap: load new model, verify with dummy inference, swap reference atomically."""
+        # Validate file before attempting hot-swap
+        valid, reason = validate_model_file(new_path)
+        if not valid:
+            log.error("Model swap validation failed: %s", reason)
+            return False
+
         log.info(f"Hot-swapping model to {new_path}")
         try:
             sess_options = self._build_session_options()

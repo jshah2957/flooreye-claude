@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 import cv2
 import numpy as np
 
+from config import config
+
 log = logging.getLogger("edge-agent.clip_recorder")
 
 
@@ -24,7 +26,7 @@ class ClipRecorder:
         self._active: dict[str, dict] = {}  # camera_name -> recording state
 
     async def start_recording(
-        self, camera_name: str, capture, duration: int = 30, fps: int = 2,
+        self, camera_name: str, capture, duration: int = config.CLIP_DEFAULT_DURATION, fps: int = config.CLIP_RECORDING_FPS,
     ) -> dict:
         """Start recording a clip from a camera capture thread."""
         if camera_name in self._active:
@@ -84,7 +86,7 @@ class ClipRecorder:
                     fourcc = cv2.VideoWriter_fourcc(*"MJPG")
                     writer = cv2.VideoWriter(filepath, fourcc, fps, (w, h))
                     # Save thumbnail (first frame)
-                    thumb = cv2.resize(frame, (280, 175))
+                    thumb = cv2.resize(frame, (config.CLIP_THUMBNAIL_WIDTH, config.CLIP_THUMBNAIL_HEIGHT))
                     cv2.imwrite(thumb_path, thumb)
 
                 writer.write(frame)

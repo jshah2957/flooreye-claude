@@ -66,13 +66,14 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number];
 
-function RoiHistory({ cameraId }: { cameraId: string }) {
+function RoiHistory({ cameraId, snapshotBase64 }: { cameraId: string; snapshotBase64?: string }) {
   const [open, setOpen] = useState(false);
+  const [previewVersion, setPreviewVersion] = useState<ROIData | null>(null);
   const { data } = useQuery({
     queryKey: ["roi-history", cameraId],
     queryFn: async () => {
       const res = await api.get(`/cameras/${cameraId}/roi/history`);
-      return res.data.data as { version: number; is_active: boolean; created_by: string; created_at: string }[];
+      return res.data.data as ROIData[];
     },
     enabled: open,
   });
@@ -86,15 +87,129 @@ function RoiHistory({ cameraId }: { cameraId: string }) {
       {open && history.length > 0 && (
         <div className="mt-2 space-y-1">
           {history.map((r) => (
-            <div key={r.version} className="flex items-center justify-between rounded border border-[#F5F5F4] px-3 py-1.5 text-xs">
-              <span className="text-[#1C1917]">v{r.version} {r.is_active && <span className="ml-1 rounded bg-[#DCFCE7] px-1 text-[10px] text-[#16A34A]">active</span>}</span>
-              <span className="text-[#78716C]">{new Date(r.created_at).toLocaleString()}</span>
+            <div
+              key={r.version}
+              onClick={() => setPreviewVersion(previewVersion?.version === r.version ? null : r)}
+              className={`flex cursor-pointer items-center justify-between rounded border px-3 py-1.5 text-xs transition-colors ${
+                previewVersion?.version === r.version
+                  ? "border-[#0D9488] bg-[#F0FDFA]"
+                  : "border-[#F5F5F4] hover:border-[#E7E5E0] hover:bg-[#F8F7F4]"
+              }`}
+            >
+              <span className="text-[#1C1917]">
+                v{r.version}
+                {r.is_active && <span className="ml-1 rounded bg-[#DCFCE7] px-1 text-[10px] text-[#16A34A]">active</span>}
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[#78716C]">{r.polygon_points.length} points</span>
+                <span className="text-[#78716C]">{new Date(r.created_at).toLocaleString()}</span>
+              </div>
             </div>
           ))}
         </div>
       )}
+      {/* Read-only polygon overlay preview */}
+      {previewVersion && (
+        <div className="mt-3 rounded-lg border border-[#E7E5E0] bg-[#F8F7F4] p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-medium text-[#1C1917]">
+              Preview: v{previewVersion.version}
+              {previewVersion.mask_outside && <span className="ml-2 text-[10px] text-[#78716C]">(mask outside)</span>}
+            </span>
+            <button onClick={() => setPreviewVersion(null)} className="text-xs text-[#78716C] hover:text-[#1C1917]">
+              <X size={14} />
+            </button>
+          </div>
+          <RoiPreviewOverlay snapshotBase64={snapshotBase64} points={previewVersion.polygon_points} />
+        </div>
+      )}
     </div>
   );
+}
+
+function RoiPreviewOverlay({ snapshotBase64, points }: { snapshotBase64?: string; points: { x: number; y: number }[] }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dimensions, setDimensions] = useState({ w: 640, h: 360 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const draw = (imgW: number, imgH: number) => {
+      canvas.width = imgW;
+      canvas.height = imgH;
+      setDimensions({ w: imgW, h: imgH });
+
+      // Draw polygon
+      if (points.length >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(points[0]!.x * imgW, points[0]!.y * imgH);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i]!.x * imgW, points[i]!.y * imgH);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "rgba(13, 148, 136, 0.15)";
+        ctx.fill();
+        ctx.strokeStyle = "#0D9488";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw vertices
+        for (const p of points) {
+          ctx.beginPath();
+          ctx.arc(p.x * imgW, p.y * imgH, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#0D9488";
+          ctx.fill();
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    };
+
+    if (snapshotBase64) {
+      const img = new Image();
+      img.onload = () => {
+        const displayW = Math.min(img.width, 640);
+        const scale = displayW / img.width;
+        const displayH = img.height * scale;
+        canvas.width = displayW;
+        canvas.height = displayH;
+        ctx.drawImage(img, 0, 0, displayW, displayH);
+        draw(displayW, displayH);
+      };
+      img.src = `data:image/jpeg;base64,${snapshotBase64}`;
+    } else {
+      // No snapshot — draw on grey background
+      draw(640, 360);
+      ctx.fillStyle = "#E7E5E0";
+      ctx.fillRect(0, 0, 640, 360);
+      // Re-draw polygon on top
+      if (points.length >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(points[0]!.x * 640, points[0]!.y * 360);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i]!.x * 640, points[i]!.y * 360);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "rgba(13, 148, 136, 0.15)";
+        ctx.fill();
+        ctx.strokeStyle = "#0D9488";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        for (const p of points) {
+          ctx.beginPath();
+          ctx.arc(p.x * 640, p.y * 360, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#0D9488";
+          ctx.fill();
+        }
+      }
+    }
+  }, [snapshotBase64, points]);
+
+  return <canvas ref={canvasRef} className="w-full rounded" style={{ maxWidth: dimensions.w }} />;
 }
 
 export default function CameraDetailPage() {
@@ -105,9 +220,13 @@ export default function CameraDetailPage() {
   const [showUrl, setShowUrl] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editStreamUrl, setEditStreamUrl] = useState("");
+  const [editShowStreamUrl, setEditShowStreamUrl] = useState(false);
   const [editFloorType, setEditFloorType] = useState("tile");
   const [editFps, setEditFps] = useState(2);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"idle" | "pushing" | "pushed" | "unreachable">("idle");
+  const [roiPushStatus, setRoiPushStatus] = useState<"idle" | "pushing" | "received" | "unreachable">("idle");
   const navigate = useNavigate();
 
   const { data: camera, isLoading } = useQuery({
@@ -210,12 +329,20 @@ export default function CameraDetailPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: () => api.put(`/cameras/${id}`, { name: editName, floor_type: editFloorType, fps_config: editFps }),
+    mutationFn: () => {
+      const payload: Record<string, unknown> = {
+        name: editName,
+        floor_type: editFloorType,
+        fps_config: editFps,
+      };
+      if (editStreamUrl) payload.stream_url = editStreamUrl;
+      return api.put(`/cameras/${id}`, payload);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["camera", id] });
       queryClient.invalidateQueries({ queryKey: ["cameras"] });
       setEditOpen(false);
-      success("Camera updated");
+      success(camera?.edge_agent_id ? "Camera updated — config pushed to edge" : "Camera updated");
     },
     onError: (err: any) => showError(err?.response?.data?.detail || "Update failed"),
   });
@@ -295,7 +422,7 @@ export default function CameraDetailPage() {
               Test
             </button>
             <button
-              onClick={() => { setEditName(camera.name); setEditFloorType(camera.floor_type); setEditFps(camera.fps_config); setEditOpen(true); }}
+              onClick={() => { setEditName(camera.name); setEditStreamUrl(""); setEditShowStreamUrl(false); setEditFloorType(camera.floor_type); setEditFps(camera.fps_config); setEditOpen(true); }}
               className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm text-[#1C1917] hover:bg-[#F1F0ED]"
             >
               <Pencil size={14} /> Edit
@@ -315,37 +442,67 @@ export default function CameraDetailPage() {
       {/* Edit Modal */}
       {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[400px] rounded-lg bg-white p-6 shadow-lg">
+          <div className="w-[440px] rounded-lg bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#1C1917]">Edit Camera</h3>
-              <button onClick={() => setEditOpen(false)} className="text-[#78716C]"><X size={16} /></button>
+              <button onClick={() => setEditOpen(false)} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
             </div>
             <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs text-[#78716C]">Name</label>
                 <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">RTSP / Stream URL</label>
+                <div className="relative">
+                  <input
+                    type={editShowStreamUrl ? "text" : "password"}
+                    value={editStreamUrl}
+                    onChange={(e) => setEditStreamUrl(e.target.value)}
+                    placeholder="rtsp://..."
+                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 pr-9 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditShowStreamUrl(!editShowStreamUrl)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#78716C] hover:text-[#1C1917]"
+                  >
+                    {editShowStreamUrl ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <p className="mt-1 text-[10px] text-[#A8A29E]">Leave empty to keep current URL</p>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-[#78716C]">Floor Type</label>
                 <select value={editFloorType} onChange={(e) => setEditFloorType(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-                  {["tile","wood","concrete","carpet","vinyl","linoleum"].map(t => <option key={t} value={t}>{t}</option>)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]">
+                  {["tile","wood","concrete","carpet","vinyl","linoleum"].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                 </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-[#78716C]">FPS ({editFps})</label>
                 <input type="range" min={1} max={30} value={editFps} onChange={(e) => setEditFps(Number(e.target.value))}
-                  className="w-full" />
+                  className="w-full accent-[#0D9488]" />
+                <div className="flex justify-between text-[10px] text-[#A8A29E]">
+                  <span>1</span>
+                  <span>15</span>
+                  <span>30</span>
+                </div>
               </div>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setEditOpen(false)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
-              <button onClick={() => editMutation.mutate()} disabled={editMutation.isPending}
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setEditOpen(false)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED]">Cancel</button>
+              <button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim()}
                 className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50">
-                {editMutation.isPending ? "Saving..." : "Save"}
+                {editMutation.isPending ? "Saving..." : "Save Changes"}
               </button>
             </div>
+            {camera.edge_agent_id && (
+              <p className="mt-3 text-[10px] text-[#A8A29E]">
+                This camera is edge-managed. Config will be pushed to edge agent after save.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -485,24 +642,46 @@ export default function CameraDetailPage() {
                       <dd className="text-[#1C1917] text-[11px]">{new Date(camera.last_config_ack_at).toLocaleString()}</dd>
                     </div>
                   )}
-                  {camera.config_ack_error && (
-                    <div className="flex justify-between">
-                      <dt className="text-[#DC2626]">ACK Error</dt>
-                      <dd className="text-[#DC2626] text-[11px]">{camera.config_ack_error}</dd>
-                    </div>
-                  )}
                 </>
               )}
             </dl>
+            {/* Config ACK error alert */}
+            {camera.config_ack_error && (
+              <div className="mt-3 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-4 py-3">
+                <p className="text-xs font-semibold text-[#DC2626]">Edge Config Error</p>
+                <p className="mt-1 text-xs text-[#DC2626]">{camera.config_ack_error}</p>
+              </div>
+            )}
             {camera.edge_agent_id && (
               <button
-                onClick={() => api.post(`/cameras/${camera.id}/push-config`).then(() => {
-                  queryClient.invalidateQueries({ queryKey: ["camera", id] });
-                })}
-                className="mt-3 flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA]"
+                onClick={() => {
+                  setPushStatus("pushing");
+                  api.post(`/cameras/${camera.id}/push-config`)
+                    .then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["camera", id] });
+                      setPushStatus("pushed");
+                      success("Config pushed to edge");
+                    })
+                    .catch(() => {
+                      setPushStatus("unreachable");
+                      showError("Edge agent unreachable");
+                    });
+                }}
+                disabled={pushStatus === "pushing"}
+                className="mt-3 flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
               >
-                Push Config to Edge
+                {pushStatus === "pushing" ? (
+                  <><Loader2 size={12} className="animate-spin" /> Pushing...</>
+                ) : (
+                  "Push Config to Edge"
+                )}
               </button>
+            )}
+            {pushStatus === "pushed" && (
+              <p className="mt-2 text-xs text-[#16A34A]">Edge received config</p>
+            )}
+            {pushStatus === "unreachable" && (
+              <p className="mt-2 text-xs text-[#D97706]">Edge unreachable -- retry later</p>
             )}
           </div>
         </div>
@@ -522,9 +701,38 @@ export default function CameraDetailPage() {
             initialPoints={roi?.polygon_points}
             initialMaskOutside={roi?.mask_outside}
             cameraId={camera.id}
+            onSave={() => {
+              if (camera.edge_agent_id) {
+                setRoiPushStatus("pushing");
+                api.post(`/cameras/${camera.id}/push-config`)
+                  .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["camera", id] });
+                    setRoiPushStatus("received");
+                  })
+                  .catch(() => {
+                    setRoiPushStatus("unreachable");
+                  });
+              }
+            }}
           />
+          {/* ROI push status feedback */}
+          {roiPushStatus === "pushing" && (
+            <div className="mt-3 flex items-center gap-2 rounded-md bg-[#F0FDFA] px-3 py-2 text-xs text-[#0D9488]">
+              <Loader2 size={12} className="animate-spin" /> Pushing ROI config to edge...
+            </div>
+          )}
+          {roiPushStatus === "received" && (
+            <div className="mt-3 rounded-md bg-[#DCFCE7] px-3 py-2 text-xs text-[#16A34A]">
+              Edge received updated ROI config
+            </div>
+          )}
+          {roiPushStatus === "unreachable" && (
+            <div className="mt-3 rounded-md bg-[#FEF3C7] px-3 py-2 text-xs text-[#D97706]">
+              Edge unreachable -- ROI saved but config push failed
+            </div>
+          )}
           {/* ROI Version History */}
-          <RoiHistory cameraId={camera.id} />
+          <RoiHistory cameraId={camera.id} snapshotBase64={camera.snapshot_base64 ?? undefined} />
         </div>
       )}
 

@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { getAccessToken } from "@/lib/api";
 
+const AUTH_CLOSE_CODES = [4001, 4003];
+const MESSAGE_BUFFER_SIZE = 10;
+
 interface UseWebSocketOptions {
   /** WebSocket channel path, e.g. "/ws/live-detections" */
   url: string;
@@ -15,6 +18,8 @@ interface UseWebSocketReturn {
   send: (data: unknown) => void;
   connect: () => void;
   disconnect: () => void;
+  /** Last N messages received (survives reconnects) */
+  messageBuffer: unknown[];
 }
 
 export function useWebSocket({
@@ -28,6 +33,9 @@ export function useWebSocket({
   const reconnectDelay = useRef(1000);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
+  const messageBufferRef = useRef<unknown[]>([]);
+  const [messageBuffer, setMessageBuffer] = useState<unknown[]>([]);
+  const shouldReconnectRef = useRef(true);
 
   const getWsUrl = useCallback(() => {
     const token = getAccessToken();
@@ -38,8 +46,16 @@ export function useWebSocket({
   }, [url]);
 
   const connect = useCallback(() => {
+    // Don't connect if no valid token
+    const token = getAccessToken();
+    if (!token) {
+      setConnected(false);
+      return;
+    }
+
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
+    shouldReconnectRef.current = true;
     const ws = new WebSocket(getWsUrl());
 
     ws.onopen = () => {
@@ -50,19 +66,36 @@ export function useWebSocket({
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        // Add to rolling message buffer
+        messageBufferRef.current = [
+          ...messageBufferRef.current.slice(-(MESSAGE_BUFFER_SIZE - 1)),
+          data,
+        ];
+        setMessageBuffer([...messageBufferRef.current]);
         onMessageRef.current?.(data);
       } catch {
         // Non-JSON message, ignore
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       setConnected(false);
-      // Exponential backoff reconnect: 1s, 2s, 4s, 8s, max 30s
-      reconnectTimer.current = setTimeout(() => {
-        reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
-        connect();
-      }, reconnectDelay.current);
+
+      // Auth error codes — don't reconnect, redirect to login
+      if (AUTH_CLOSE_CODES.includes(event.code)) {
+        shouldReconnectRef.current = false;
+        window.location.href = "/login";
+        return;
+      }
+
+      // Only reconnect if not intentionally disconnected
+      if (shouldReconnectRef.current) {
+        // Exponential backoff reconnect: 1s, 2s, 4s, 8s, max 30s
+        reconnectTimer.current = setTimeout(() => {
+          reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
+          connect();
+        }, reconnectDelay.current);
+      }
     };
 
     ws.onerror = () => {
@@ -73,6 +106,7 @@ export function useWebSocket({
   }, [getWsUrl]);
 
   const disconnect = useCallback(() => {
+    shouldReconnectRef.current = false;
     if (reconnectTimer.current) {
       clearTimeout(reconnectTimer.current);
     }
@@ -96,5 +130,5 @@ export function useWebSocket({
     };
   }, [autoConnect, connect, disconnect]);
 
-  return { connected, send, connect, disconnect };
+  return { connected, send, connect, disconnect, messageBuffer };
 }

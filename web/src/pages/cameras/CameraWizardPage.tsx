@@ -24,11 +24,18 @@ interface EdgeAgent {
   status: string;
 }
 
+interface TestCameraResult {
+  connected: boolean;
+  snapshot_base64: string | null;
+  error: string | null;
+  resolution: string | null;
+}
+
 export default function CameraWizardPage() {
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
 
-  // Step state
+  // Step state (0 = Select Store, 1 = Details + Validate, 2 = Complete)
   const [step, setStep] = useState(0);
 
   // Step 1: Store selection
@@ -39,7 +46,7 @@ export default function CameraWizardPage() {
   const [camUrl, setCamUrl] = useState("");
   const [streamType, setStreamType] = useState("rtsp");
   const [location, setLocation] = useState("");
-  const [testResult, setTestResult] = useState<{ connected: boolean; snapshot: string | null } | null>(null);
+  const [testResult, setTestResult] = useState<TestCameraResult | null>(null);
   const [testError, setTestError] = useState("");
 
   // Step 3: Result
@@ -67,7 +74,6 @@ export default function CameraWizardPage() {
 
   // Map store → agent
   const agentByStore = new Map(agents.map((a) => [a.store_id, a]));
-  const selectedAgent = agentByStore.get(storeId);
 
   function storeEdgeStatus(sid: string): "online" | "offline" | "none" {
     const agent = agentByStore.get(sid);
@@ -85,11 +91,13 @@ export default function CameraWizardPage() {
         url: camUrl,
         stream_type: streamType,
       });
-      return res.data.data as { connected: boolean; snapshot: string | null };
+      return res.data as TestCameraResult;
     },
     onSuccess: (data) => {
       setTestResult(data);
-      if (!data.connected) setTestError("Camera not reachable on edge network");
+      if (!data.connected) {
+        setTestError(data.error || "Camera not reachable on edge network");
+      }
     },
     onError: (err: any) => {
       setTestError(err?.response?.data?.detail || "Validation failed");
@@ -119,11 +127,30 @@ export default function CameraWizardPage() {
     },
   });
 
-  // Reset test when URL changes
+  // Reset test when URL or stream type changes
   function handleUrlChange(val: string) {
     setCamUrl(val);
     setTestResult(null);
     setTestError("");
+  }
+
+  function handleStreamTypeChange(val: string) {
+    setStreamType(val);
+    setTestResult(null);
+    setTestError("");
+  }
+
+  // Reset wizard to step 1
+  function resetWizard() {
+    setStep(0);
+    setStoreId("");
+    setCamName("");
+    setCamUrl("");
+    setStreamType("rtsp");
+    setLocation("");
+    setTestResult(null);
+    setTestError("");
+    setCreatedCameraId(null);
   }
 
   const canProceedStep0 = storeId && storeEdgeStatus(storeId) === "online";
@@ -133,19 +160,31 @@ export default function CameraWizardPage() {
     <div className="mx-auto max-w-2xl">
       {/* Header */}
       <div className="mb-6">
-        <button onClick={() => navigate("/cameras")} className="mb-2 flex items-center gap-1 text-sm text-[#78716C] hover:text-[#0D9488]">
+        <button
+          onClick={() => navigate("/cameras")}
+          className="mb-2 flex items-center gap-1 text-sm text-[#78716C] hover:text-[#0D9488]"
+        >
           <ArrowLeft size={14} /> Back to Cameras
         </button>
         <h1 className="text-xl font-semibold text-[#1C1917]">Add Camera</h1>
-        <p className="text-sm text-[#78716C]">Camera connectivity is tested through the edge device on the store's local network.</p>
+        <p className="text-sm text-[#78716C]">
+          Camera connectivity is validated through the edge device on the store's local network.
+        </p>
       </div>
 
       {/* Step indicators */}
       <div className="mb-6 flex gap-2">
-        {["Select Store", "Camera Details", "Done"].map((label, i) => (
-          <div key={label} className={`flex-1 rounded-full py-1.5 text-center text-xs font-medium ${
-            i === step ? "bg-[#0D9488] text-white" : i < step ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#F1F0ED] text-[#78716C]"
-          }`}>
+        {["Select Store", "Details + Validate", "Complete"].map((label, i) => (
+          <div
+            key={label}
+            className={`flex-1 rounded-full py-1.5 text-center text-xs font-medium ${
+              i === step
+                ? "bg-[#0D9488] text-white"
+                : i < step
+                  ? "bg-[#DCFCE7] text-[#16A34A]"
+                  : "bg-[#F1F0ED] text-[#78716C]"
+            }`}
+          >
             {label}
           </div>
         ))}
@@ -156,18 +195,22 @@ export default function CameraWizardPage() {
         <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
           <h2 className="mb-4 text-base font-semibold text-[#1C1917]">Select Store</h2>
           <p className="mb-4 text-xs text-[#78716C]">
-            Choose the store where this camera is located. The store must have an online edge device.
+            Choose the store where this camera is located. Only stores with an online edge agent can
+            be selected.
           </p>
           <div className="space-y-2">
             {stores.map((s) => {
               const edgeStatus = storeEdgeStatus(s.id);
               const agent = agentByStore.get(s.id);
+              const isOnline = edgeStatus === "online";
               return (
                 <label
                   key={s.id}
                   className={`flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors ${
-                    storeId === s.id ? "border-[#0D9488] bg-[#F0FDFA]" : "border-[#E7E5E0] hover:border-[#0D9488]/50"
-                  } ${edgeStatus !== "online" ? "opacity-50" : ""}`}
+                    storeId === s.id
+                      ? "border-[#0D9488] bg-[#F0FDFA]"
+                      : "border-[#E7E5E0] hover:border-[#0D9488]/50"
+                  } ${!isOnline ? "cursor-not-allowed opacity-50" : ""}`}
                 >
                   <div className="flex items-center gap-3">
                     <input
@@ -176,7 +219,7 @@ export default function CameraWizardPage() {
                       value={s.id}
                       checked={storeId === s.id}
                       onChange={() => setStoreId(s.id)}
-                      disabled={edgeStatus !== "online"}
+                      disabled={!isOnline}
                       className="accent-[#0D9488]"
                     />
                     <div>
@@ -191,10 +234,14 @@ export default function CameraWizardPage() {
                   </div>
                   <div>
                     {edgeStatus === "online" && (
-                      <span className="flex items-center gap-1 text-xs text-[#16A34A]"><Wifi size={12} /> Online</span>
+                      <span className="flex items-center gap-1 text-xs text-[#16A34A]">
+                        <Wifi size={12} /> Online
+                      </span>
                     )}
                     {edgeStatus === "offline" && (
-                      <span className="flex items-center gap-1 text-xs text-[#DC2626]"><WifiOff size={12} /> Offline</span>
+                      <span className="flex items-center gap-1 text-xs text-[#DC2626]">
+                        <WifiOff size={12} /> Offline
+                      </span>
                     )}
                     {edgeStatus === "none" && (
                       <span className="text-xs text-[#78716C]">No edge device</span>
@@ -204,7 +251,9 @@ export default function CameraWizardPage() {
               );
             })}
             {stores.length === 0 && (
-              <p className="py-8 text-center text-sm text-[#78716C]">No stores found. Create a store first.</p>
+              <p className="py-8 text-center text-sm text-[#78716C]">
+                No stores found. Create a store first.
+              </p>
             )}
           </div>
           <div className="mt-6 flex justify-end">
@@ -226,22 +275,35 @@ export default function CameraWizardPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-xs font-medium text-[#78716C]">Camera Name *</label>
-              <input value={camName} onChange={(e) => setCamName(e.target.value)}
+              <label className="mb-1 block text-xs font-medium text-[#78716C]">
+                Camera Name *
+              </label>
+              <input
+                value={camName}
+                onChange={(e) => setCamName(e.target.value)}
                 placeholder="e.g. Entrance Camera"
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-[#78716C]">RTSP URL *</label>
-              <input value={camUrl} onChange={(e) => handleUrlChange(e.target.value)}
+              <input
+                value={camUrl}
+                onChange={(e) => handleUrlChange(e.target.value)}
                 placeholder="rtsp://admin:pass@192.168.1.100/stream"
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 font-mono text-sm outline-none focus:border-[#0D9488]" />
+                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 font-mono text-sm outline-none focus:border-[#0D9488]"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#78716C]">Stream Type</label>
-                <select value={streamType} onChange={(e) => setStreamType(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                <label className="mb-1 block text-xs font-medium text-[#78716C]">
+                  Stream Type
+                </label>
+                <select
+                  value={streamType}
+                  onChange={(e) => handleStreamTypeChange(e.target.value)}
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                >
                   <option value="rtsp">RTSP</option>
                   <option value="hls">HLS</option>
                   <option value="mjpeg">MJPEG</option>
@@ -250,9 +312,12 @@ export default function CameraWizardPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-[#78716C]">Location</label>
-                <input value={location} onChange={(e) => setLocation(e.target.value)}
+                <input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Main entrance"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                />
               </div>
             </div>
           </div>
@@ -264,26 +329,35 @@ export default function CameraWizardPage() {
               disabled={!camUrl.trim() || testMutation.isPending}
               className="flex items-center gap-2 rounded-md border border-[#0D9488] px-4 py-2 text-sm font-medium text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
             >
-              {testMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-              Validate via Edge
+              {testMutation.isPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Camera size={14} />
+              )}
+              {testMutation.isPending ? "Validating..." : "Validate via Edge"}
             </button>
           </div>
 
-          {/* Test result */}
+          {/* Test result — success */}
           {testResult && testResult.connected && (
             <div className="mt-4 rounded-lg border border-[#DCFCE7] bg-[#F0FDF4] p-4">
               <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[#16A34A]">
                 <CheckCircle size={16} /> Camera connected successfully
               </div>
-              {testResult.snapshot && (
+              {testResult.resolution && (
+                <p className="mb-2 text-xs text-[#78716C]">Resolution: {testResult.resolution}</p>
+              )}
+              {testResult.snapshot_base64 && (
                 <img
-                  src={`data:image/jpeg;base64,${testResult.snapshot}`}
-                  alt="Preview"
+                  src={`data:image/jpeg;base64,${testResult.snapshot_base64}`}
+                  alt="Preview frame"
                   className="mt-2 max-h-[300px] rounded-md border border-[#E7E5E0]"
                 />
               )}
             </div>
           )}
+
+          {/* Test result — failure */}
           {testError && (
             <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] p-4 text-sm text-[#DC2626]">
               <XCircle size={16} /> {testError}
@@ -292,8 +366,10 @@ export default function CameraWizardPage() {
 
           {/* Navigation */}
           <div className="mt-6 flex justify-between">
-            <button onClick={() => setStep(0)}
-              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]">
+            <button
+              onClick={() => setStep(0)}
+              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]"
+            >
               <ArrowLeft size={14} /> Back
             </button>
             <button
@@ -302,37 +378,43 @@ export default function CameraWizardPage() {
               className="flex items-center gap-2 rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
             >
               {addMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-              Add Camera
+              {addMutation.isPending ? "Adding..." : "Add Camera"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Done */}
+      {/* Step 2: Complete */}
       {step === 2 && (
         <div className="rounded-lg border border-[#E7E5E0] bg-white p-6 text-center">
-          <CheckCircle size={48} className="mx-auto mb-4 text-[#16A34A]" />
-          <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Camera Added</h2>
-          <p className="mb-1 text-sm text-[#78716C]">
-            "{camName}" has been added to the cloud and edge device.
-          </p>
-          <p className="mb-6 text-sm text-[#D97706]">
-            Next: Configure ROI (floor boundary) and capture dry reference images to start detection.
-          </p>
-          <div className="flex justify-center gap-3">
-            <button
-              onClick={() => navigate(`/cameras/${createdCameraId}`)}
-              className="rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
-            >
-              Configure Camera
-            </button>
-            <button
-              onClick={() => { setStep(0); setCamName(""); setCamUrl(""); setLocation(""); setTestResult(null); setTestError(""); setCreatedCameraId(null); }}
-              className="rounded-md border border-[#E7E5E0] px-5 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]"
-            >
-              Add Another
-            </button>
-          </div>
+          {addMutation.isPending ? (
+            <>
+              <Loader2 size={48} className="mx-auto mb-4 animate-spin text-[#0D9488]" />
+              <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Adding camera...</h2>
+            </>
+          ) : (
+            <>
+              <CheckCircle size={48} className="mx-auto mb-4 text-[#16A34A]" />
+              <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Camera Added</h2>
+              <p className="mb-6 text-sm text-[#78716C]">
+                Configure ROI and dry reference to start detection.
+              </p>
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={() => navigate(`/cameras/${createdCameraId}`)}
+                  className="rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+                >
+                  Go to Camera Detail
+                </button>
+                <button
+                  onClick={resetWizard}
+                  className="rounded-md border border-[#E7E5E0] px-5 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]"
+                >
+                  Add Another Camera
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

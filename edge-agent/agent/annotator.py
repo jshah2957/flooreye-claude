@@ -11,10 +11,13 @@ Saves two versions:
 import base64
 import logging
 import os
+import re
 from datetime import datetime, timezone
 
 import cv2
 import numpy as np
+
+from config import config
 
 log = logging.getLogger("edge-agent.annotator")
 
@@ -53,7 +56,7 @@ def annotate_frame(
         h, w = frame.shape[:2]
 
         # Save clean version first (before drawing)
-        _, clean_buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        _, clean_buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, config.CLEAN_JPEG_QUALITY])
         clean_b64 = base64.b64encode(clean_buf).decode()
 
         # Draw annotations
@@ -66,7 +69,7 @@ def annotate_frame(
         _draw_info_bar(frame, timestamp_str, store_name, camera_name, w, h)
 
         # Encode annotated version
-        _, ann_buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        _, ann_buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, config.ANNOTATED_JPEG_QUALITY])
         annotated_b64 = base64.b64encode(ann_buf).decode()
 
         return annotated_b64, clean_b64
@@ -143,6 +146,18 @@ def _draw_info_bar(frame, timestamp: str, store: str, camera: str, w: int, h: in
     cv2.putText(frame, info, (8, h - 8), font, 0.45, (255, 255, 255), 1)
 
 
+def _sanitize_name(name: str) -> str:
+    """Sanitize a name for use as a directory component.
+
+    Lowercases, replaces spaces with underscores, strips all non-alphanumeric/underscore/hyphen chars.
+    """
+    if not name:
+        return "unknown"
+    name = name.strip().lower().replace(" ", "_")
+    name = re.sub(r"[^a-z0-9_\-]", "", name)
+    return name or "unknown"
+
+
 def save_detection_frames(
     annotated_b64: str | None,
     clean_b64: str | None,
@@ -150,9 +165,21 @@ def save_detection_frames(
     camera_name: str,
     class_name: str,
     confidence: float,
+    detection_type: str = "wet",
     base_path: str = "/data",
 ) -> dict:
-    """Save annotated + clean frames to local disk with proper naming.
+    """Save annotated + clean frames to local disk with proper folder hierarchy.
+
+    Directory structure:
+      /data/detections/{store_name}/{camera_name}/{YYYY-MM-DD}/annotated/
+      /data/detections/{store_name}/{camera_name}/{YYYY-MM-DD}/clean/
+
+    Filename format:
+      {HH-MM-SS}_{detection_type}_{class}_{conf}_annotated.jpg
+      {HH-MM-SS}_{detection_type}_{class}_{conf}_clean.jpg
+
+    Args:
+        detection_type: "wet", "dry", or "uncertain"
 
     Returns dict with file paths saved.
     """
@@ -161,11 +188,11 @@ def save_detection_frames(
     time_str = now.strftime("%H-%M-%S")
     conf_str = f"{confidence:.2f}"
 
-    # Build paths matching S3 convention:
-    # /data/stores/{store}/cameras/{camera}/detections/{YYYY-MM-DD}/{suffix}/{HH-MM-SS}_{class}_{conf}_{suffix}.jpg
-    store_dir = store_name.replace(" ", "_").lower() if store_name else "unknown"
-    cam_dir = camera_name.replace(" ", "_").lower() if camera_name else "unknown"
-    det_base = os.path.join(base_path, "stores", store_dir, "cameras", cam_dir, "detections", date_dir)
+    store_dir = _sanitize_name(store_name)
+    cam_dir = _sanitize_name(camera_name)
+    det_type = detection_type if detection_type in ("wet", "dry", "uncertain") else "wet"
+
+    det_base = os.path.join(base_path, "detections", store_dir, cam_dir, date_dir)
 
     saved = {}
 
@@ -173,7 +200,7 @@ def save_detection_frames(
     if annotated_b64:
         ann_dir = os.path.join(det_base, "annotated")
         os.makedirs(ann_dir, exist_ok=True)
-        ann_file = f"{time_str}_{class_name}_{conf_str}_annotated.jpg"
+        ann_file = f"{time_str}_{det_type}_{class_name}_{conf_str}_annotated.jpg"
         ann_path = os.path.join(ann_dir, ann_file)
         with open(ann_path, "wb") as f:
             f.write(base64.b64decode(annotated_b64))
@@ -183,13 +210,13 @@ def save_detection_frames(
     if clean_b64:
         clean_dir = os.path.join(det_base, "clean")
         os.makedirs(clean_dir, exist_ok=True)
-        clean_file = f"{time_str}_{class_name}_{conf_str}_clean.jpg"
+        clean_file = f"{time_str}_{det_type}_{class_name}_{conf_str}_clean.jpg"
         clean_path = os.path.join(clean_dir, clean_file)
         with open(clean_path, "wb") as f:
             f.write(base64.b64decode(clean_b64))
         saved["clean_path"] = clean_path
 
     if saved:
-        log.info(f"Frames saved: {list(saved.keys())}")
+        log.info(f"Frames saved ({det_type}): {list(saved.keys())}")
 
     return saved

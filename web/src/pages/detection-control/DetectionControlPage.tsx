@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Globe,
@@ -11,6 +11,9 @@ import {
   Save,
   Loader2,
   RotateCcw,
+  AlertTriangle,
+  Copy,
+  X,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -34,6 +37,13 @@ export default function DetectionControlPage() {
   const [selectedLabel, setSelectedLabel] = useState("Global Defaults");
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set());
   const [treeSearch, setTreeSearch] = useState("");
+  const [copyLoading, setCopyLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Load stores + cameras for tree
   const { data: stores } = useQuery({
@@ -242,9 +252,12 @@ export default function DetectionControlPage() {
               {selectedScope !== "global" && settings && (
                 <button
                   onClick={() => {
-                    if (window.confirm(`Reset ${selectedScope} settings to inherited values? This cannot be undone.`)) {
-                      deleteMutation.mutate();
-                    }
+                    setConfirmDialog({
+                      title: "Reset to Inherited",
+                      message: `Reset settings for this ${selectedScope}? It will inherit from parent scope.`,
+                      confirmLabel: "Reset",
+                      onConfirm: () => deleteMutation.mutate(),
+                    });
                   }}
                   className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED]"
                 >
@@ -261,22 +274,52 @@ export default function DetectionControlPage() {
               </button>
               {selectedScope === "camera" && selectedScopeId && (
                 <select
+                  disabled={copyLoading}
                   onChange={async (e) => {
                     const srcId = e.target.value;
+                    const selectEl = e.target;
                     if (!srcId) return;
-                    if (!window.confirm(`Copy settings from selected camera to this camera?`)) { e.target.value = ""; return; }
+                    selectEl.value = "";
+                    setCopyLoading(true);
                     try {
-                      await api.post("/detection-control/bulk-apply", {
-                        source_scope: "camera", source_scope_id: srcId,
-                        target_camera_ids: [selectedScopeId],
-                      });
-                      queryClient.invalidateQueries({ queryKey: ["dc-settings"] });
-                    } catch { /* ignore */ }
-                    e.target.value = "";
+                      const res = await api.get(`/detection-control/effective/${srcId}`);
+                      const srcSettings = res.data?.data?.settings;
+                      if (srcSettings && typeof srcSettings === "object") {
+                        const copiedFields: Record<string, unknown> = {};
+                        const settingKeys = [
+                          "layer1_enabled", "layer1_confidence",
+                          "layer2_enabled", "layer2_min_area_percent",
+                          "layer3_enabled", "layer3_k", "layer3_m", "layer3_voting_mode",
+                          "layer4_enabled", "layer4_delta_threshold", "layer4_auto_refresh", "layer4_stale_warning_days",
+                          "detection_enabled", "capture_fps", "detection_interval_seconds", "cooldown_after_alert_seconds",
+                          "auto_create_incident", "incident_grouping_window_seconds", "auto_close_after_minutes", "auto_notify_on_create",
+                          "min_severity_to_create", "auto_trigger_devices_on_create",
+                          "severity_critical_confidence", "severity_critical_area",
+                          "severity_high_confidence", "severity_high_area",
+                          "severity_medium_confidence", "severity_medium_count",
+                          "hybrid_escalation_threshold", "hybrid_max_escalations_per_min", "hybrid_save_escalated_frames",
+                        ];
+                        for (const key of settingKeys) {
+                          if (srcSettings[key] !== undefined && srcSettings[key] !== null) {
+                            copiedFields[key] = srcSettings[key];
+                          }
+                        }
+                        setFormData(copiedFields);
+                        setFormDirty(true);
+                        const srcCam = (cameras ?? []).find((c) => c.id === srcId);
+                        success(`Settings loaded from "${srcCam?.name ?? srcId}" — review and click Save`);
+                      } else {
+                        showError("Source camera has no effective settings");
+                      }
+                    } catch (err: any) {
+                      showError(err?.response?.data?.detail || "Failed to load source settings");
+                    } finally {
+                      setCopyLoading(false);
+                    }
                   }}
-                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px] text-[#78716C] outline-none"
+                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px] text-[#78716C] outline-none disabled:opacity-50"
                 >
-                  <option value="">Copy from camera...</option>
+                  <option value="">{copyLoading ? "Loading..." : "Copy from camera..."}</option>
                   {(cameras ?? []).filter((c: any) => c.id !== selectedScopeId).map((c: any) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -335,10 +378,55 @@ export default function DetectionControlPage() {
 
               {/* Incident Generation */}
               <SettingsSection title="Incident Generation">
-                <ToggleField label="Auto Create" field="auto_create_incident" value={getFieldValue("auto_create_incident")} onChange={updateField} />
-                <NumberField label="Grouping Window (s)" field="incident_grouping_window_seconds" value={getFieldValue("incident_grouping_window_seconds")} min={30} max={1800} onChange={updateField} />
-                <NumberField label="Auto Close (min)" field="auto_close_after_minutes" value={getFieldValue("auto_close_after_minutes")} min={1} max={1440} onChange={updateField} />
-                <ToggleField label="Notify on Create" field="auto_notify_on_create" value={getFieldValue("auto_notify_on_create")} onChange={updateField} />
+                <ToggleField label="Auto-Create Incidents" field="auto_create_incident" value={getFieldValue("auto_create_incident")} onChange={updateField} />
+                <SliderField label="Grouping Window" field="incident_grouping_window_seconds" value={getFieldValue("incident_grouping_window_seconds")}
+                  min={30} max={3600} step={30} format={(v) => {
+                    if (v >= 60) return `${Math.floor(v / 60)}m ${v % 60 ? `${v % 60}s` : ""}`.trim();
+                    return `${v}s`;
+                  }} onChange={updateField} />
+                <SelectField label="Min Severity to Create" field="min_severity_to_create" value={getFieldValue("min_severity_to_create")}
+                  options={["low", "medium", "high", "critical"]} onChange={updateField} />
+                <SliderField label="Auto-Close Timeout" field="auto_close_after_minutes" value={getFieldValue("auto_close_after_minutes")}
+                  min={5} max={1440} step={5} format={(v) => {
+                    if (v >= 60) return `${Math.floor(v / 60)}h ${v % 60 ? `${v % 60}m` : ""}`.trim();
+                    return `${v}m`;
+                  }} onChange={updateField} />
+                <ToggleField label="Auto-Notify on Create" field="auto_notify_on_create" value={getFieldValue("auto_notify_on_create")} onChange={updateField} />
+                <ToggleField label="Auto-Trigger Devices on Create" field="auto_trigger_devices_on_create" value={getFieldValue("auto_trigger_devices_on_create")} onChange={updateField} />
+              </SettingsSection>
+
+              {/* Severity Thresholds */}
+              <SettingsSection title="Severity Thresholds">
+                <div className="mb-2 text-[10px] text-[#A8A29E]">
+                  Define the confidence and wet area thresholds that determine incident severity levels.
+                </div>
+                <div className="rounded-md border border-[#DC2626]/20 bg-[#FEF2F2] p-2.5">
+                  <div className="mb-2 text-xs font-semibold text-[#DC2626]">Critical</div>
+                  <SliderField label="Min Confidence" field="severity_critical_confidence" value={getFieldValue("severity_critical_confidence")}
+                    min={0} max={1} step={0.05} format={(v) => `${(v * 100).toFixed(0)}%`} onChange={updateField} />
+                  <div className="mt-2">
+                    <SliderField label="Min Wet Area %" field="severity_critical_area" value={getFieldValue("severity_critical_area")}
+                      min={0} max={50} step={0.5} format={(v) => `${v.toFixed(1)}%`} onChange={updateField} />
+                  </div>
+                </div>
+                <div className="rounded-md border border-[#EA580C]/20 bg-[#FFF7ED] p-2.5">
+                  <div className="mb-2 text-xs font-semibold text-[#EA580C]">High</div>
+                  <SliderField label="Min Confidence" field="severity_high_confidence" value={getFieldValue("severity_high_confidence")}
+                    min={0} max={1} step={0.05} format={(v) => `${(v * 100).toFixed(0)}%`} onChange={updateField} />
+                  <div className="mt-2">
+                    <SliderField label="Min Wet Area %" field="severity_high_area" value={getFieldValue("severity_high_area")}
+                      min={0} max={50} step={0.5} format={(v) => `${v.toFixed(1)}%`} onChange={updateField} />
+                  </div>
+                </div>
+                <div className="rounded-md border border-[#D97706]/20 bg-[#FFFBEB] p-2.5">
+                  <div className="mb-2 text-xs font-semibold text-[#D97706]">Medium</div>
+                  <SliderField label="Min Confidence" field="severity_medium_confidence" value={getFieldValue("severity_medium_confidence")}
+                    min={0} max={1} step={0.05} format={(v) => `${(v * 100).toFixed(0)}%`} onChange={updateField} />
+                  <div className="mt-2">
+                    <NumberField label="Min Detection Count" field="severity_medium_count" value={getFieldValue("severity_medium_count")}
+                      min={1} max={100} onChange={updateField} />
+                  </div>
+                </div>
               </SettingsSection>
 
               {/* Hybrid */}
@@ -380,6 +468,52 @@ export default function DetectionControlPage() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setConfirmDialog(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-[#E7E5E0] bg-white p-5 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FEF3C7]">
+                <AlertTriangle size={16} className="text-[#D97706]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-[#1C1917]">{confirmDialog.title}</h3>
+                <p className="mt-1 text-xs text-[#78716C]">{confirmDialog.message}</p>
+              </div>
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="shrink-0 text-[#A8A29E] hover:text-[#78716C]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+                className="rounded-md bg-[#DC2626] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#B91C1C]"
+              >
+                {confirmDialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

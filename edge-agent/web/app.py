@@ -8,8 +8,10 @@ import asyncio
 import base64
 import logging
 import os
+import shutil
 
 import cv2
+import psutil
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -27,8 +29,8 @@ try:
         sys.path.insert(0, agent_dir)
     from auth_middleware import auth_middleware
     app.middleware("http")(auth_middleware)
-except ImportError:
-    pass
+except ImportError as e:
+    log.warning("Auth middleware not loaded — edge web UI is UNPROTECTED: %s", e)
 
 WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 templates = Jinja2Templates(directory=os.path.join(WEB_DIR, "templates"))
@@ -40,17 +42,29 @@ _camera_manager = None
 _device_manager = None
 _agent_info = {}
 _tplink_ctrl = None
+_webhook_ctrl = None
+_alert_log = None
 
 
 def init(local_config, camera_manager=None, device_manager=None,
-         agent_info: dict | None = None, tplink_ctrl=None):
+         agent_info: dict | None = None, tplink_ctrl=None, webhook_ctrl=None,
+         alert_log=None):
     """Initialize with references to agent components."""
-    global _local_config, _camera_manager, _device_manager, _agent_info, _tplink_ctrl
+    global _local_config, _camera_manager, _device_manager, _agent_info, _tplink_ctrl, _webhook_ctrl, _alert_log
     _local_config = local_config
     _camera_manager = camera_manager
     _device_manager = device_manager
     _agent_info = agent_info or {}
     _tplink_ctrl = tplink_ctrl
+    _webhook_ctrl = webhook_ctrl
+    _alert_log = alert_log
+
+
+# --- Health (public, no auth) ---
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "service": "web_ui"}
 
 
 # --- HTML Pages ---
@@ -61,11 +75,19 @@ async def dashboard(request: Request):
     devices = _local_config.list_devices() if _local_config else []
     for cam in cameras:
         cam["detection_status"] = _local_config.get_camera_detection_status(cam["id"])
+    # Fetch recent alerts for initial render
+    alerts = []
+    if _alert_log:
+        try:
+            alerts = _alert_log.get_recent(limit=25)
+        except Exception:
+            pass
     return templates.TemplateResponse("index.html", {
         "request": request,
         "cameras": cameras,
         "devices": devices,
         "agent_info": _agent_info,
+        "alerts": alerts,
     })
 
 
@@ -163,9 +185,13 @@ async def test_camera_url(request: Request):
 
 
 def _reload_device_controllers():
-    """Reload TP-Link controller from local config after device changes."""
+    """Reload device controllers from local config after device changes."""
     if _tplink_ctrl and _local_config:
         _tplink_ctrl.reload_from_config(_local_config)
+    if _webhook_ctrl and _local_config:
+        _webhook_ctrl.reload_from_config(_local_config)
+    if _device_manager and _local_config and hasattr(_device_manager, "reload_from_config"):
+        _device_manager.reload_from_config(_local_config)
 
 
 # --- Device API ---
@@ -207,6 +233,7 @@ async def edit_device(device_id: str, request: Request):
         name=body.get("name", "").strip() or None,
         ip=body.get("ip", "").strip() or None,
         type=body.get("type") or None,
+        protocol=body.get("protocol") or None,
     )
     if not device:
         raise HTTPException(404, "Device not found")
@@ -232,7 +259,7 @@ async def remove_device(device_id: str):
 
 @app.post("/devices/test-ip")
 async def test_device_ip(request: Request):
-    """Test device IP before adding."""
+    """Test device IP before adding. Uses type-specific connectivity checks."""
     body = await request.json()
     ip = body.get("ip", "").strip()
     device_type = body.get("type", "tplink")
@@ -241,7 +268,7 @@ async def test_device_ip(request: Request):
 
     import socket
 
-    def _test(addr, port):
+    def _test_tcp(addr, port):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(3)
@@ -251,9 +278,29 @@ async def test_device_ip(request: Request):
         except Exception:
             return False
 
-    port = 9999 if device_type == "tplink" else 80
-    reachable = await asyncio.to_thread(_test, ip, port)
-    return {"data": {"reachable": reachable}}
+    def _test_http(addr):
+        import urllib.request
+        import urllib.error
+        try:
+            req = urllib.request.Request(f"http://{addr}/", method="GET")
+            with urllib.request.urlopen(req, timeout=3):
+                return True
+        except urllib.error.HTTPError:
+            return True  # 4xx/5xx means host is reachable
+        except Exception:
+            return False
+
+    if device_type == "tplink":
+        reachable = await asyncio.to_thread(_test_tcp, ip, 9999)
+    elif device_type == "mqtt":
+        reachable = await asyncio.to_thread(_test_tcp, ip, 1883)
+    elif device_type == "webhook":
+        reachable = await asyncio.to_thread(_test_http, ip)
+    else:
+        reachable = await asyncio.to_thread(_test_tcp, ip, 80)
+
+    port_info = {"tplink": 9999, "mqtt": 1883, "webhook": 80}.get(device_type, 80)
+    return {"data": {"reachable": reachable, "port_tested": port_info}}
 
 
 @app.post("/devices/{device_id}/test")
@@ -265,7 +312,7 @@ async def test_device(device_id: str):
 
     import socket
 
-    def _test_device(ip, port=9999):
+    def _test_tcp(ip, port):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(3)
@@ -275,10 +322,30 @@ async def test_device(device_id: str):
         except Exception:
             return False
 
-    port = 9999 if device["type"] == "tplink" else 80
-    reachable = await asyncio.to_thread(_test_device, device["ip"], port)
+    def _test_http(ip):
+        import urllib.request
+        import urllib.error
+        try:
+            req = urllib.request.Request(f"http://{ip}/", method="GET")
+            with urllib.request.urlopen(req, timeout=3):
+                return True
+        except urllib.error.HTTPError:
+            return True
+        except Exception:
+            return False
+
+    dev_type = device.get("type", "tplink")
+    if dev_type == "tplink":
+        reachable = await asyncio.to_thread(_test_tcp, device["ip"], 9999)
+    elif dev_type == "mqtt":
+        reachable = await asyncio.to_thread(_test_tcp, device["ip"], 1883)
+    elif dev_type == "webhook":
+        reachable = await asyncio.to_thread(_test_http, device["ip"])
+    else:
+        reachable = await asyncio.to_thread(_test_tcp, device["ip"], 80)
+
     status = "online" if reachable else "offline"
-    _local_config.update_camera(device_id)  # update_camera works for any list item by ID
+    _local_config.update_device(device_id, status=status)
     return {"data": {"reachable": reachable, "status": status}}
 
 
@@ -290,6 +357,12 @@ async def agent_status():
     devices = _local_config.list_devices() if _local_config else []
     for cam in cameras:
         cam["detection_status"] = _local_config.get_camera_detection_status(cam["id"])
+
+    # System metrics
+    cpu_percent = psutil.cpu_percent(interval=0)
+    mem = psutil.virtual_memory()
+    disk = shutil.disk_usage("/")
+
     return {
         "agent": _agent_info,
         "cameras": cameras,
@@ -297,4 +370,54 @@ async def agent_status():
         "cameras_total": len(cameras),
         "cameras_detecting": sum(1 for c in cameras if c.get("detection_status") == "detection_active"),
         "cameras_waiting": sum(1 for c in cameras if c.get("detection_status") == "waiting_for_config"),
+        "system": {
+            "cpu_percent": cpu_percent,
+            "ram_total_gb": round(mem.total / (1024 ** 3), 1),
+            "ram_used_gb": round(mem.used / (1024 ** 3), 1),
+            "ram_percent": mem.percent,
+            "disk_total_gb": round(disk.total / (1024 ** 3), 1),
+            "disk_used_gb": round(disk.used / (1024 ** 3), 1),
+            "disk_percent": round(disk.used / disk.total * 100, 1),
+        },
+    }
+
+
+# --- Alert Log API ---
+
+@app.get("/api/alerts")
+async def list_alerts(limit: int = 50, event_type: str | None = None,
+                      camera_id: str | None = None, unsynced_only: bool = False):
+    """Return local alert event history.
+
+    Query params:
+        limit: Max events to return (default 50, max 500).
+        event_type: Filter by event type (e.g. "wet_detection").
+        camera_id: Filter by camera ID.
+        unsynced_only: If true, return only events not yet synced to cloud.
+    """
+    if not _alert_log:
+        return {"data": [], "total": 0, "unsynced_count": 0}
+
+    limit = min(max(limit, 1), 500)
+
+    if unsynced_only:
+        events = _alert_log.get_unsynced()
+        # Newest first
+        events = list(reversed(events))
+    else:
+        events = _alert_log.get_recent(limit=500)  # Get a larger set for filtering
+
+    # Apply filters
+    if event_type:
+        events = [e for e in events if e.get("event_type") == event_type]
+    if camera_id:
+        events = [e for e in events if e.get("camera_id") == camera_id]
+
+    # Apply limit after filtering
+    events = events[:limit]
+
+    return {
+        "data": events,
+        "total": len(events),
+        "unsynced_count": _alert_log.get_unsynced_count(),
     }

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/api";
+import { INTERVALS } from "@/constants";
 import type {
   Store,
   Camera as CameraType,
@@ -70,7 +71,7 @@ export default function DashboardPage() {
   );
 
   // ── Data queries with 30s auto-refresh (DASH-1) ──
-  const refetchInterval = 30000;
+  const refetchInterval = INTERVALS.DASHBOARD_REFRESH_MS;
 
   const { data: storesData, isLoading: storesLoading } = useQuery({
     queryKey: ["dashboard-stores"],
@@ -126,7 +127,7 @@ export default function DashboardPage() {
       const pingMs = Date.now() - start;
       return { ...res.data, pingMs };
     },
-    refetchInterval: 60000,
+    refetchInterval: INTERVALS.HEALTH_REFRESH_MS,
   });
 
   const { data: edgeData } = useQuery({
@@ -135,7 +136,7 @@ export default function DashboardPage() {
       const res = await api.get("/edge/agents", { params: { limit: 100 } });
       return res.data;
     },
-    refetchInterval: 60000,
+    refetchInterval: INTERVALS.HEALTH_REFRESH_MS,
   });
 
   const { data: integrationStatus } = useQuery({
@@ -144,7 +145,7 @@ export default function DashboardPage() {
       const res = await api.get("/integrations/status");
       return res.data?.data ?? [];
     },
-    refetchInterval: 60000,
+    refetchInterval: INTERVALS.HEALTH_REFRESH_MS,
   });
 
   // WebSocket for live detections
@@ -230,7 +231,7 @@ export default function DashboardPage() {
       }
     };
     poll();
-    const interval = setInterval(poll, 2000);
+    const interval = setInterval(poll, INTERVALS.LIVE_POLL_MS);
     const ageInterval = setInterval(
       () => setFrameAge((a) => a + 1),
       1000

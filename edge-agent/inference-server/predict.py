@@ -1,7 +1,7 @@
 """ONNX inference: preprocessing, inference, and postprocessing.
 
 Supports YOLOv8 output [1, 84, 8400], YOLO26 output [1, 300, 6],
-and Roboflow ONNX exports (YOLOv8-based or RF-DETR format).
+and custom ONNX exports (YOLOv8-based or DETR format).
 """
 
 import base64
@@ -13,7 +13,16 @@ import time
 import numpy as np
 from PIL import Image, ImageDraw
 
-INPUT_SIZE = 640
+# Try to import edge config; fall back to env var / default if unavailable
+try:
+    from config import config as _edge_config
+    INPUT_SIZE = _edge_config.ONNX_INPUT_SIZE
+    NMS_IOU_THRESHOLD = _edge_config.NMS_IOU_THRESHOLD
+    MAX_DETECTIONS_PER_FRAME = _edge_config.MAX_DETECTIONS_PER_FRAME
+except ImportError:
+    INPUT_SIZE = int(os.getenv("ONNX_INPUT_SIZE", "640"))
+    NMS_IOU_THRESHOLD = float(os.getenv("NMS_IOU_THRESHOLD", "0.5"))
+    MAX_DETECTIONS_PER_FRAME = int(os.getenv("MAX_DETECTIONS_PER_FRAME", "20"))
 
 # Class names loaded from a sidecar JSON file alongside the ONNX model.
 CLASS_NAMES: dict[int, str] = {}
@@ -30,18 +39,29 @@ def update_alert_classes(class_names: set[str]):
 
 
 def load_saved_alert_classes(config_dir: str = "/data/config"):
-    """Load alert classes from saved config (persisted by update_classes command)."""
+    """Load alert classes from saved config (persisted by update_classes command).
+
+    Falls back to .bak file if the primary file is corrupted.
+    """
     global ALERT_CLASSES
-    import os
+    import logging
+    _log = logging.getLogger("inference-server.predict")
     path = os.path.join(config_dir, "alert_classes.json")
-    if os.path.isfile(path):
-        try:
-            with open(path, "r") as f:
-                names = json.load(f)
-            if isinstance(names, list) and names:
-                ALERT_CLASSES = set(names)
-        except Exception:
-            pass
+    for candidate in [path, path + ".bak"]:
+        if os.path.isfile(candidate):
+            try:
+                with open(candidate, "r") as f:
+                    names = json.load(f)
+                if isinstance(names, list) and names:
+                    ALERT_CLASSES = set(names)
+                    if candidate.endswith(".bak"):
+                        _log.warning("Recovered alert_classes from backup: %s", candidate)
+                        # Restore backup to primary path
+                        import shutil
+                        shutil.copy2(candidate, path)
+                    return
+            except (json.JSONDecodeError, OSError) as e:
+                _log.warning("Failed to read %s: %s", candidate, e)
 
 
 def load_class_names(model_path: str) -> dict[int, str]:
@@ -51,9 +71,13 @@ def load_class_names(model_path: str) -> dict[int, str]:
       1. {model_name}_classes.json  (e.g., model_classes.json)
       2. class_names.json in the same directory
       3. classes.json in the same directory
+
+    Falls back to .bak files if the primary file is corrupted.
     Returns {class_id: class_name} dict, or empty dict if not found.
     """
     global CLASS_NAMES
+    import logging
+    _log = logging.getLogger("inference-server.predict")
     model_dir = os.path.dirname(model_path)
     model_stem = os.path.splitext(os.path.basename(model_path))[0]
 
@@ -64,20 +88,25 @@ def load_class_names(model_path: str) -> dict[int, str]:
     ]
 
     for path in candidates:
-        if os.path.isfile(path):
+        for variant in [path, path + ".bak"]:
+            if not os.path.isfile(variant):
+                continue
             try:
-                with open(path, "r") as f:
+                with open(variant, "r") as f:
                     data = json.load(f)
-                # Accept list ["wet", "dry"] or dict {"0": "wet", "1": "dry"}
                 if isinstance(data, list):
                     CLASS_NAMES = {i: name for i, name in enumerate(data)}
                 elif isinstance(data, dict):
                     CLASS_NAMES = {int(k): v for k, v in data.items()}
                 else:
-                    CLASS_NAMES = {}
+                    continue
+                if variant.endswith(".bak"):
+                    _log.warning("Recovered class_names from backup: %s", variant)
+                    import shutil
+                    shutil.copy2(variant, path)
                 return CLASS_NAMES
-            except Exception:
-                pass
+            except (json.JSONDecodeError, OSError) as e:
+                _log.warning("Failed to load class names from %s: %s", variant, e)
 
     CLASS_NAMES = {}
     return CLASS_NAMES
@@ -91,7 +120,7 @@ def preprocess(img: Image.Image) -> np.ndarray:
     return np.expand_dims(arr, 0)  # [1, 3, 640, 640]
 
 
-def _nms_iou(boxes: list[dict], iou_thresh: float = 0.5) -> list[dict]:
+def _nms_iou(boxes: list[dict], iou_thresh: float = NMS_IOU_THRESHOLD) -> list[dict]:
     """Simple IoU-based NMS for YOLOv8 output."""
     if not boxes:
         return boxes
@@ -123,7 +152,7 @@ def _nms_iou(boxes: list[dict], iou_thresh: float = 0.5) -> list[dict]:
                 break
         if not overlap:
             keep.append(box)
-    return keep[:20]
+    return keep[:MAX_DETECTIONS_PER_FRAME]
 
 
 def postprocess_yolov8(output: np.ndarray, conf_thresh: float) -> list[dict]:
@@ -188,28 +217,28 @@ def postprocess_nms_free(output: np.ndarray, conf_thresh: float) -> list[dict]:
         })
 
     detections.sort(key=lambda d: d["confidence"], reverse=True)
-    return detections[:20]
+    return detections[:MAX_DETECTIONS_PER_FRAME]
 
 
-def postprocess_roboflow(output: np.ndarray, conf_thresh: float, session=None) -> list[dict]:
-    """Parse Roboflow ONNX output -- auto-detects format.
+def postprocess_custom_export(output: np.ndarray, conf_thresh: float, session=None) -> list[dict]:
+    """Parse custom ONNX export output -- auto-detects format.
 
-    Roboflow models exported as YOLOv8 produce [1, 4+C, N] (same as YOLOv8).
-    RF-DETR or custom exports may produce [1, N, 6+] with [x1, y1, x2, y2, score, class_id].
+    Custom-trained models exported as YOLOv8 produce [1, 4+C, N] (same as YOLOv8).
+    DETR or custom exports may produce [1, N, 6+] with [x1, y1, x2, y2, score, class_id].
     """
     shape = output.shape
-    # RF-DETR style: [1, N, 5-7] where last dim is small
+    # DETR style: [1, N, 5-7] where last dim is small
     if len(shape) == 3 and 5 <= shape[2] <= 7:
-        return _postprocess_roboflow_detr(output, conf_thresh)
-    # YOLOv8-based Roboflow export: [1, 4+C, N] where second dim > third dim
+        return _postprocess_detr(output, conf_thresh)
+    # YOLOv8-based custom export: [1, 4+C, N] where second dim > third dim
     if len(shape) == 3 and shape[1] > shape[2]:
         return postprocess_yolov8(output, conf_thresh)
     # Fallback: try YOLOv8 postprocessing
     return postprocess_yolov8(output, conf_thresh)
 
 
-def _postprocess_roboflow_detr(output: np.ndarray, conf_thresh: float) -> list[dict]:
-    """Parse RF-DETR output [1, N, 6]: [x1, y1, x2, y2, score, class_id]."""
+def _postprocess_detr(output: np.ndarray, conf_thresh: float) -> list[dict]:
+    """Parse DETR output [1, N, 6]: [x1, y1, x2, y2, score, class_id]."""
     preds = output[0]  # [N, 6]
     detections = []
     for pred in preds:
@@ -235,24 +264,24 @@ def _postprocess_roboflow_detr(output: np.ndarray, conf_thresh: float) -> list[d
             },
         })
     detections.sort(key=lambda d: d["confidence"], reverse=True)
-    return detections[:20]
+    return detections[:MAX_DETECTIONS_PER_FRAME]
 
 
 def detect_model_type(session) -> str:
     """Detect model type from ONNX metadata and output shape.
 
     Detection order:
-    1. ONNX producer metadata containing 'roboflow'
-    2. Class names file exists alongside model (indicates Roboflow custom export)
-    3. Output shape heuristics: YOLO26 [1,300,6], RF-DETR [1,N,5-7], Roboflow
+    1. ONNX producer metadata indicating a custom export tool
+    2. Class names file exists alongside model (indicates custom-trained export)
+    3. Output shape heuristics: NMS-free [1,300,6], DETR [1,N,5-7], custom
        small-class-count [1, 4+C, N] where C is small, YOLOv8 fallback
     """
-    # Check ONNX metadata for Roboflow producer tag
+    # Check ONNX metadata for known export tool producers
     try:
         meta = session.get_modelmeta()
         producer = (meta.producer_name or "").lower()
-        if "roboflow" in producer:
-            return "roboflow"
+        if "roboflow" in producer or "custom" in producer:
+            return "custom_export"
     except Exception:
         pass
 
@@ -262,23 +291,23 @@ def detect_model_type(session) -> str:
     if len(output_shape) == 3 and output_shape[1] == 300 and output_shape[2] == 6:
         return "nms_free"
 
-    # RF-DETR style: [1, N, 5-7] where N is large and last dim is small
+    # DETR style: [1, N, 5-7] where N is large and last dim is small
     if (len(output_shape) == 3
             and isinstance(output_shape[2], int) and 5 <= output_shape[2] <= 7
             and isinstance(output_shape[1], int) and output_shape[1] > 100):
-        return "roboflow"
+        return "custom_export"
 
-    # Roboflow custom export with few classes: [1, 4+C, N] where C is small
+    # Custom export with few classes: [1, 4+C, N] where C is small
     # e.g., [1, 6, 8400] for 2-class (wet/dry) model => channels = 4+2 = 6
     if (len(output_shape) == 3
             and isinstance(output_shape[1], int)
             and 5 <= output_shape[1] <= 14):
-        # 4 box coords + 1-10 classes => likely Roboflow custom training
-        return "roboflow"
+        # 4 box coords + 1-10 classes => likely custom-trained model
+        return "custom_export"
 
     # Check if class_names file exists (loaded globally)
     if CLASS_NAMES:
-        return "roboflow"
+        return "custom_export"
 
     # YOLOv8: [1, 84, 8400] or similar (80 COCO classes + 4 box coords)
     return "yolov8"
@@ -346,8 +375,8 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
     if model_type is None:
         model_type = detect_model_type(session)
 
-    if model_type == "roboflow":
-        detections = postprocess_roboflow(outputs[0], confidence, session)
+    if model_type in ("roboflow", "custom_export"):
+        detections = postprocess_custom_export(outputs[0], confidence, session)
     elif model_type == "nms_free":
         detections = postprocess_nms_free(outputs[0], confidence)
     else:
@@ -419,8 +448,8 @@ def run_batch_inference(
 
     def _postprocess_frame(frame, frame_output, idx):
         confidence = frame.get("confidence", 0.5)
-        if model_type == "roboflow":
-            detections = postprocess_roboflow(frame_output, confidence, session)
+        if model_type in ("roboflow", "custom_export"):
+            detections = postprocess_custom_export(frame_output, confidence, session)
         elif model_type == "nms_free":
             detections = postprocess_nms_free(frame_output, confidence)
         else:

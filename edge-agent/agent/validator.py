@@ -2,11 +2,18 @@
 
 Thresholds are configurable per camera via settings synced from cloud backend.
 Falls back to sensible defaults if cloud is unreachable.
+
+Dry reference images are cached via LRU to avoid repeated disk I/O.
+Cache is invalidated when config_receiver stores new dry refs.
 """
 
 import logging
+import threading
 import time
 from collections import defaultdict
+from functools import lru_cache
+
+from config import config
 
 log = logging.getLogger("edge-agent.validator")
 
@@ -15,18 +22,64 @@ DEFAULT_CONFIDENCE = 0.30
 DEFAULT_MIN_AREA = 0.001  # 0.1% of frame
 DEFAULT_K = 2
 DEFAULT_M = 5
-DEFAULT_COOLDOWN = 300  # 5 minutes
+
+
+def _load_dry_ref_image(ref_path: str):
+    """Load and decode a dry reference image from disk. Returns grayscale numpy array or None.
+
+    This is wrapped in an LRU cache at the module level so decoded images
+    are kept in memory (up to 10 cameras worth of refs).
+    """
+    try:
+        import cv2
+        img = cv2.imread(ref_path, cv2.IMREAD_GRAYSCALE)
+        return img
+    except Exception:
+        return None
+
+
+# LRU cache for decoded dry reference images — avoids repeated disk I/O
+# maxsize=10 means we cache refs for up to 10 cameras
+@lru_cache(maxsize=10)
+def _cached_load_dry_ref(ref_path: str, _cache_bust: int = 0):
+    """LRU-cached wrapper for loading dry reference images.
+
+    The _cache_bust parameter is incremented when the cache needs invalidation
+    (e.g., when new dry refs are pushed from cloud).
+    """
+    return _load_dry_ref_image(ref_path)
+
+
+# Per-camera cache bust counters for dry ref invalidation
+_dry_ref_cache_version: dict[str, int] = {}
+_dry_ref_cache_lock = threading.Lock()
+
+
+def _get_dry_ref_cache_version(camera_id: str) -> int:
+    """Get the current cache bust version for a camera's dry refs."""
+    with _dry_ref_cache_lock:
+        return _dry_ref_cache_version.get(camera_id, 0)
+
+
+def _increment_dry_ref_cache_version(camera_id: str):
+    """Increment the cache bust version, forcing next load to read from disk."""
+    with _dry_ref_cache_lock:
+        _dry_ref_cache_version[camera_id] = _dry_ref_cache_version.get(camera_id, 0) + 1
+    # Also clear the entire LRU cache to free memory from old refs
+    _cached_load_dry_ref.cache_clear()
+    log.info("Dry reference cache invalidated for camera %s", camera_id)
 
 
 class DetectionValidator:
     """Validates detection results through 4 layers before accepting as real.
 
     Thresholds can be configured per camera via update_settings().
+    Dry reference images are LRU-cached and invalidated on config push.
     """
 
     def __init__(self):
         self._history: dict[str, list[dict]] = defaultdict(list)
-        self._max_history = 20
+        self._max_history = config.VALIDATOR_MAX_HISTORY
         # Per-camera settings from cloud: {camera_name: {layer1_confidence, ...}}
         self._settings: dict[str, dict] = {}
 
@@ -45,11 +98,44 @@ class DetectionValidator:
         val = cam_settings.get(key)
         return val if val is not None else default
 
-    def validate(self, result: dict, camera_name: str) -> tuple[bool, str]:
-        """Run 4-layer validation. Returns (passed, reason)."""
+    def validate(self, result: dict, camera_name: str, class_overrides: dict | None = None) -> tuple[bool, str]:
+        """Run 4-layer validation with per-class override support.
+
+        Args:
+            result: inference result dict
+            camera_name: camera identifier
+            class_overrides: per-class config from cloud (name → {min_confidence, min_area_percent, ...})
+
+        Returns (passed, reason).
+        """
         predictions = result.get("predictions", [])
         is_wet = result.get("is_wet", False)
         max_conf = result.get("max_confidence", 0)
+
+        # Per-class filtering: apply per-class min_confidence and min_area_percent
+        if class_overrides and predictions:
+            filtered_preds = []
+            for pred in predictions:
+                cls_name = pred.get("class_name", "")
+                override = class_overrides.get(cls_name, {})
+                cls_min_conf = override.get("min_confidence")
+                cls_min_area = override.get("min_area_percent")
+                pred_conf = pred.get("confidence", 0)
+                pred_area = pred.get("area_percent", 0)
+                # Skip prediction if below per-class thresholds
+                if cls_min_conf is not None and pred_conf < cls_min_conf:
+                    continue
+                if cls_min_area is not None and pred_area < cls_min_area:
+                    continue
+                filtered_preds.append(pred)
+            if not filtered_preds and predictions:
+                return False, "per_class_filtered"
+            predictions = filtered_preds
+            # Recalculate max_conf from filtered predictions
+            if predictions:
+                max_conf = max(p.get("confidence", 0) for p in predictions)
+                result["predictions"] = predictions
+                result["max_confidence"] = max_conf
 
         # Layer 1: Confidence threshold
         l1_enabled = self._get(camera_name, "layer1_enabled", True)
@@ -96,13 +182,14 @@ class DetectionValidator:
                 dry_paths = self._local_config.get_dry_reference_paths(cam_id)
                 if dry_paths:
                     scene_changed = self._check_dry_reference(
-                        result.get("_frame_b64", ""), dry_paths[0], l4_delta
+                        result.get("_frame_b64", ""), dry_paths[0], l4_delta,
+                        camera_id=cam_id,
                     )
                     if not scene_changed:
                         return False, "scene_unchanged_from_baseline"
 
         # Layer 4b: Duplicate suppression (cooldown between alerts)
-        l4_cooldown = self._get(camera_name, "layer4_cooldown_seconds", DEFAULT_COOLDOWN)
+        l4_cooldown = self._get(camera_name, "layer4_cooldown_seconds", config.DEFAULT_COOLDOWN_SECONDS)
         if l4_enabled:
             now = time.time()
             recent_alerts = [
@@ -121,9 +208,26 @@ class DetectionValidator:
         """Set reference to local config for dry reference lookup."""
         self._local_config = local_config
 
+    def invalidate_dry_ref_cache(self, camera_id: str):
+        """Invalidate the LRU cache for a camera's dry reference images.
+
+        Called by config_receiver when new dry refs are pushed from cloud.
+        Also resolves cloud_camera_id to local camera_id if needed.
+        """
+        _increment_dry_ref_cache_version(camera_id)
+        # Also invalidate by local camera ID (in case cloud ID was passed)
+        if hasattr(self, '_local_config') and self._local_config:
+            cam = self._local_config.get_camera_by_cloud_id(camera_id)
+            if cam and cam["id"] != camera_id:
+                _increment_dry_ref_cache_version(cam["id"])
+
     @staticmethod
-    def _check_dry_reference(frame_b64: str, ref_path: str, delta_threshold: float) -> bool:
-        """Compare current frame against dry reference. Returns True if scene changed."""
+    def _check_dry_reference(frame_b64: str, ref_path: str, delta_threshold: float,
+                             camera_id: str = "") -> bool:
+        """Compare current frame against dry reference. Returns True if scene changed.
+
+        Uses LRU-cached dry ref images to avoid repeated disk reads.
+        """
         if not frame_b64 or not ref_path:
             return True  # no comparison possible — pass
         try:
@@ -131,8 +235,9 @@ class DetectionValidator:
             import cv2
             import numpy as np
 
-            # Load dry reference from disk (cached by OS)
-            ref_img = cv2.imread(ref_path, cv2.IMREAD_GRAYSCALE)
+            # Load dry reference from LRU cache (keyed by path + cache version)
+            cache_version = _get_dry_ref_cache_version(camera_id) if camera_id else 0
+            ref_img = _cached_load_dry_ref(ref_path, cache_version)
             if ref_img is None:
                 return True
 
@@ -145,10 +250,10 @@ class DetectionValidator:
 
             # Resize to match
             h, w = current_img.shape[:2]
-            ref_img = cv2.resize(ref_img, (w, h))
+            ref_resized = cv2.resize(ref_img, (w, h))
 
             # Compute mean absolute difference
-            diff = np.abs(current_img.astype(np.float32) / 255.0 - ref_img.astype(np.float32) / 255.0)
+            diff = np.abs(current_img.astype(np.float32) / 255.0 - ref_resized.astype(np.float32) / 255.0)
             mean_diff = float(np.mean(diff))
 
             return mean_diff >= delta_threshold

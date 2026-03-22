@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
 
+  # ── Inference Server (ONNX Runtime) ──────────────────────────
   inference-server:
     build:
       context: .
@@ -28,6 +29,7 @@ services:
               count: 1
               capabilities: [gpu]
 
+  # ── Edge Agent (capture, validation, upload) ─────────────────
   edge-agent:
     build:
       context: .
@@ -36,14 +38,15 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "${WEB_UI_PORT:-8090}:${WEB_UI_PORT:-8090}"
-      - "${CONFIG_RECEIVER_PORT:-8091}:${CONFIG_RECEIVER_PORT:-8091}"
+      - "${WEB_UI_PORT:-8090}:8090"
+      - "${CONFIG_RECEIVER_PORT:-8091}:8091"
     volumes:
       - ./models:/models
       - ./data/buffer:/data/buffer
       - ./data/clips:/data/clips
       - ./data/frames:/data/frames
-      - ./data/config:/data/config  # Local camera/device config
+      - ./data/config:/data/config
+      - ./data/redis:/data/redis
     depends_on:
       inference-server:
         condition: service_healthy
@@ -63,6 +66,7 @@ services:
           memory: 4G
           cpus: '4'
 
+  # ── Cloudflare Tunnel (secure ingress) ───────────────────────
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: flooreye-cloudflared
@@ -72,7 +76,14 @@ services:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     networks:
       - flooreye-net
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "info"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
+  # ── Redis Buffer (frame queue + offline buffer) ──────────────
   redis-buffer:
     image: redis:7-alpine
     container_name: flooreye-redis
@@ -86,6 +97,12 @@ services:
       - ./data/redis:/data
     networks:
       - flooreye-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       resources:
         limits:

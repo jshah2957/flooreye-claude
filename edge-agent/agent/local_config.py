@@ -64,6 +64,13 @@ class LocalConfigStore:
                 return default if default is not None else []
 
     def _write_json(self, path: str, data):
+        """Atomically write JSON data to path with backup recovery.
+
+        1. Back up current file to {path}.bak
+        2. Write to temp file {path}.tmp
+        3. Atomic rename temp -> target via os.replace()
+        If write fails at any step, the .bak file remains intact for recovery.
+        """
         with self._lock:
             # Backup current file before overwriting
             if os.path.isfile(path):
@@ -71,9 +78,21 @@ class LocalConfigStore:
                 shutil.copy2(path, path + ".bak")
             # Atomic write via temp file
             tmp = path + ".tmp"
-            with open(tmp, "w") as f:
-                json.dump(data, f, indent=2, default=str)
-            os.replace(tmp, path)
+            try:
+                with open(tmp, "w") as f:
+                    json.dump(data, f, indent=2, default=str)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp, path)
+            except Exception:
+                # Clean up temp file on failure; .bak remains intact
+                try:
+                    if os.path.isfile(tmp):
+                        os.remove(tmp)
+                except OSError:
+                    pass
+                log.error("Failed to write config: %s — backup preserved at %s.bak", path, path)
+                raise
 
     # --- Camera CRUD ---
 
@@ -171,11 +190,16 @@ class LocalConfigStore:
         return True
 
     def update_device(self, device_id: str, **fields) -> dict | None:
+        # Filter out None values so callers can pass optional fields safely
+        fields = {k: v for k, v in fields.items() if v is not None}
+        if not fields:
+            return self.get_device(device_id)
         devices = self.list_devices()
         for dev in devices:
             if dev["id"] == device_id:
                 dev.update(fields)
                 self._write_json(self._devices_path, devices)
+                log.info("Device updated: %s — fields: %s", device_id, list(fields.keys()))
                 return dev
         return None
 

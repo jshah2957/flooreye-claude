@@ -45,6 +45,16 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        "flash-row": {
+          "0%": { backgroundColor: "rgb(240 253 250)" },
+          "50%": { backgroundColor: "rgb(204 251 241)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+      },
+      animation: {
+        "flash-row": "flash-row 2s ease-out",
+      },
     },
   },
   plugins: [],

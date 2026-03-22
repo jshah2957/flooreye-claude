@@ -22,7 +22,7 @@ class DeviceManager:
     async def register_device(self, device: dict) -> str | None:
         """Register a device with cloud backend. Returns cloud_device_id or None."""
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=config.BACKEND_REQUEST_TIMEOUT) as client:
                 resp = await client.post(
                     f"{config.BACKEND_URL}/api/v1/edge/devices/register",
                     headers=config.auth_headers(),
@@ -51,7 +51,7 @@ class DeviceManager:
     async def unregister_device(self, cloud_device_id: str) -> bool:
         """Unregister a device from cloud backend."""
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=config.BACKEND_REQUEST_TIMEOUT) as client:
                 resp = await client.delete(
                     f"{config.BACKEND_URL}/api/v1/edge/devices/{cloud_device_id}",
                     headers=config.auth_headers(),

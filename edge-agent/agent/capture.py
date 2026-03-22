@@ -8,6 +8,8 @@ import time
 
 import cv2
 
+from config import config
+
 log = logging.getLogger("edge-agent.capture")
 
 
@@ -37,17 +39,29 @@ class CameraCapture:
         self.connected = False
         return False
 
-    async def reconnect(self, max_retries: int = 20) -> bool:
-        """Attempt reconnection with backoff."""
+    async def reconnect(self, max_retries: int = config.CAPTURE_RECONNECT_MAX_RETRIES) -> bool:
+        """Attempt reconnection with exponential backoff. Never gives up.
+
+        After max_retries attempts, enters infinite retry loop.
+        Backoff schedule: 1s, 2s, 4s, 8s, 16s, 30s, capped at config value.
+        """
         self.release()
-        for attempt in range(1, max_retries + 1):
-            wait = min(2 ** attempt, 30)
-            log.warning(f"[{self.name}] Reconnecting (attempt {attempt}/{max_retries}) in {wait}s")
+        attempt = 0
+        while True:
+            attempt += 1
+            # Backoff: 1, 2, 4, 8, 16, 30, capped
+            wait = min(2 ** min(attempt, 6), config.CAPTURE_BACKOFF_CAP_SECONDS)
+            if attempt <= max_retries:
+                log.warning(f"[{self.name}] Reconnecting (attempt {attempt}/{max_retries}) in {wait}s")
+            else:
+                log.warning(f"[{self.name}] Reconnecting (attempt {attempt}, beyond max_retries) in {wait}s")
             await asyncio.sleep(wait)
-            if self.connect():
-                return True
-        log.error(f"[{self.name}] Failed to reconnect after {max_retries} attempts")
-        return False
+            try:
+                if self.connect():
+                    log.info(f"[{self.name}] Reconnected successfully after {attempt} attempts")
+                    return True
+            except Exception as e:
+                log.error(f"[{self.name}] Reconnect attempt {attempt} raised exception: {e}")
 
     def read_frame(self) -> tuple[bool, bytes | None, str | None]:
         """Read a frame and return (success, jpeg_bytes, base64_string)."""
@@ -60,7 +74,7 @@ class CameraCapture:
             return False, None, None
 
         self.frame_count += 1
-        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, config.CAPTURE_JPEG_QUALITY])
         jpeg_bytes = buf.tobytes()
         b64 = base64.b64encode(jpeg_bytes).decode()
         return True, jpeg_bytes, b64
@@ -90,7 +104,7 @@ class ThreadedCameraCapture:
     The background thread releases the GIL during cv2.VideoCapture.read().
     """
 
-    def __init__(self, name: str, url: str, target_fps: int = 2, timeout: int = 10):
+    def __init__(self, name: str, url: str, target_fps: int = 2, timeout: int = config.CAPTURE_FRAME_READ_TIMEOUT):
         self.name = name
         self.url = url
         self.target_fps = target_fps
@@ -164,22 +178,34 @@ class ThreadedCameraCapture:
             return False, None, None
 
         self.frame_count += 1
-        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, config.CAPTURE_JPEG_QUALITY])
         jpeg_bytes = buf.tobytes()
         b64 = base64.b64encode(jpeg_bytes).decode()
         return True, jpeg_bytes, b64
 
-    async def reconnect(self, max_retries: int = 20) -> bool:
-        """Stop capture thread, release stream, and attempt reconnection with backoff."""
+    async def reconnect(self, max_retries: int = config.CAPTURE_RECONNECT_MAX_RETRIES) -> bool:
+        """Stop capture thread, release stream, and attempt reconnection with backoff.
+
+        Never gives up. After max_retries attempts, continues with retry loop.
+        Backoff schedule: 1s, 2s, 4s, 8s, 16s, 30s, capped at config value.
+        """
         self.stop()
-        for attempt in range(1, max_retries + 1):
-            wait = min(2 ** attempt, 30)
-            log.warning(f"[{self.name}] ThreadedCapture reconnecting (attempt {attempt}/{max_retries}) in {wait}s")
+        attempt = 0
+        while True:
+            attempt += 1
+            # Backoff: 1, 2, 4, 8, 16, 30, capped
+            wait = min(2 ** min(attempt, 6), config.CAPTURE_BACKOFF_CAP_SECONDS)
+            if attempt <= max_retries:
+                log.warning(f"[{self.name}] ThreadedCapture reconnecting (attempt {attempt}/{max_retries}) in {wait}s")
+            else:
+                log.warning(f"[{self.name}] ThreadedCapture reconnecting (attempt {attempt}, beyond max_retries) in {wait}s")
             await asyncio.sleep(wait)
-            if self.start():
-                return True
-        log.error(f"[{self.name}] ThreadedCapture failed to reconnect after {max_retries} attempts")
-        return False
+            try:
+                if self.start():
+                    log.info(f"[{self.name}] ThreadedCapture reconnected after {attempt} attempts")
+                    return True
+            except Exception as e:
+                log.error(f"[{self.name}] ThreadedCapture reconnect attempt {attempt} raised exception: {e}")
 
     def stop(self):
         """Stop the capture thread and release resources."""

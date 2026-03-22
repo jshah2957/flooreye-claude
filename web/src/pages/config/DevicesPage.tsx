@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Radio, Trash2, Loader2, Zap, X, Power, Link2 } from "lucide-react";
+import { Plus, Radio, Trash2, Loader2, Zap, X, Power, Link2, Clock, History, PlayCircle } from "lucide-react";
 
 import api from "@/lib/api";
+import { INTERVALS } from "@/constants";
 import type { Store, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
@@ -25,6 +26,156 @@ interface Device {
   auto_off_seconds?: number;
 }
 
+/* ── Auto-off countdown hook ── */
+function useCountdown(device: Device): string | null {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (device.status !== "triggered" || !device.auto_off_seconds || !device.last_triggered) {
+      setRemaining(null);
+      return;
+    }
+
+    const calculate = () => {
+      const triggeredAt = new Date(device.last_triggered!).getTime();
+      const offAt = triggeredAt + device.auto_off_seconds! * 1000;
+      const left = Math.max(0, Math.floor((offAt - Date.now()) / 1000));
+      setRemaining(left);
+    };
+
+    calculate();
+    const interval = setInterval(calculate, 1000);
+    return () => clearInterval(interval);
+  }, [device.status, device.auto_off_seconds, device.last_triggered]);
+
+  if (remaining === null || remaining <= 0) return null;
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+/* ── Countdown display component ── */
+function AutoOffCountdown({ device }: { device: Device }) {
+  const countdown = useCountdown(device);
+  if (!countdown) return null;
+  return (
+    <span className="ml-2 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+      <Clock size={10} /> Auto-off in {countdown}
+    </span>
+  );
+}
+
+/* ── Trigger History Modal ── */
+function TriggerHistoryModal({ device, onClose }: { device: Device; onClose: () => void }) {
+  // Fetch device detail for latest info
+  const { data, isLoading } = useQuery({
+    queryKey: ["device-detail", device.id],
+    queryFn: async () => {
+      const res = await api.get(`/devices/${device.id}`);
+      return res.data.data as Device;
+    },
+  });
+
+  const detail = data ?? device;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-[440px] rounded-lg bg-white p-6 shadow-lg">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#1C1917]">Trigger History -- {detail.name}</h3>
+          <button onClick={onClose} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 size={20} className="animate-spin text-[#0D9488]" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="rounded-md border border-[#E7E5E0] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-[#78716C]">Current Status</span>
+                <StatusBadge status={detail.status} size="sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-[#78716C]">Type:</span>{" "}
+                  <span className="font-medium text-[#1C1917]">{detail.device_type}</span>
+                </div>
+                <div>
+                  <span className="text-[#78716C]">Control:</span>{" "}
+                  <span className="font-medium text-[#1C1917]">{detail.control_method}</span>
+                </div>
+                {detail.auto_off_seconds && (
+                  <div>
+                    <span className="text-[#78716C]">Auto-off:</span>{" "}
+                    <span className="font-medium text-[#1C1917]">{detail.auto_off_seconds}s</span>
+                  </div>
+                )}
+                {detail.ip && (
+                  <div>
+                    <span className="text-[#78716C]">IP:</span>{" "}
+                    <span className="font-medium text-[#1C1917]">{detail.ip}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-md border border-[#E7E5E0] p-3">
+              <span className="mb-2 block text-xs font-medium text-[#78716C]">Last Trigger Event</span>
+              {detail.last_triggered ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Zap size={12} className="text-amber-500" />
+                    <span className="text-sm font-medium text-[#1C1917]">
+                      {new Date(detail.last_triggered).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#78716C]">
+                    Relative: {formatRelativeTime(detail.last_triggered)}
+                  </p>
+                  {detail.status === "triggered" && detail.auto_off_seconds && (
+                    <p className="text-[10px] text-amber-600">
+                      Expected auto-off at:{" "}
+                      {new Date(new Date(detail.last_triggered).getTime() + detail.auto_off_seconds * 1000).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-[#A8A29E]">This device has never been triggered.</p>
+              )}
+            </div>
+
+            <p className="text-[10px] text-[#A8A29E]">
+              Full trigger history with latency and incident links requires a dedicated history endpoint.
+              Showing latest trigger state from the device record.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-end">
+          <button onClick={onClose}
+            className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F5F5F4]">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatRelativeTime(isoStr: string): string {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export default function DevicesPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
@@ -33,6 +184,7 @@ export default function DevicesPage() {
   const [assignTarget, setAssignTarget] = useState<Device | null>(null);
   const [assignCameras, setAssignCameras] = useState<string[]>([]);
   const [assignTriggerAny, setAssignTriggerAny] = useState(true);
+  const [historyTarget, setHistoryTarget] = useState<Device | null>(null);
   const [name, setName] = useState("");
   const [storeId, setStoreId] = useState("");
   const [deviceType, setDeviceType] = useState("tplink");
@@ -55,12 +207,14 @@ export default function DevicesPage() {
     },
   });
 
+  /* Polling every 30s for real-time device status */
   const { data: devicesData, isLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
       const res = await api.get("/devices", { params: { limit: 200 } });
       return res.data;
     },
+    refetchInterval: INTERVALS.DEVICE_STATUS_POLL_MS,
   });
 
   const createMutation = useMutation({
@@ -102,6 +256,16 @@ export default function DevicesPage() {
     onError: (err: any) => showError(err?.response?.data?.detail || "Failed"),
   });
 
+  /* Test Device trigger mutation */
+  const triggerMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/devices/${id}/trigger`),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
+      success("Device triggered successfully");
+    },
+    onError: (err: any) => showError(err?.response?.data?.detail || "Trigger failed"),
+  });
+
   const devices: Device[] = devicesData?.data ?? [];
   const cameras = camerasData ?? [];
   const storeMap = new Map((stores ?? []).map((s) => [s.id, s.name]));
@@ -140,19 +304,25 @@ export default function DevicesPage() {
                   <Radio size={16} className="text-[#78716C]" />
                   <span className="font-medium text-[#1C1917]">{d.name}</span>
                 </div>
-                <StatusBadge status={d.status} size="sm" />
+                <div className="flex items-center gap-1">
+                  <StatusBadge status={d.status} size="sm" />
+                  <AutoOffCountdown device={d} />
+                </div>
               </div>
               <p className="text-xs text-[#78716C]">
-                {typeLabel(d.device_type)} &middot; {storeMap.get(d.store_id) ?? "—"}
-                {d.ip && ` · ${d.ip}`}
-                {d.edge_agent_id && " · Edge"}
+                {typeLabel(d.device_type)} &middot; {storeMap.get(d.store_id) ?? "\u2014"}
+                {d.ip && ` \u00b7 ${d.ip}`}
+                {d.edge_agent_id && " \u00b7 Edge"}
               </p>
               {d.last_triggered && (
-                <p className="mt-1 text-[10px] text-[#78716C]">Last triggered: {new Date(d.last_triggered).toLocaleString()}</p>
+                <p className="mt-1 text-[10px] text-[#78716C]">
+                  Last triggered: {new Date(d.last_triggered).toLocaleString()}
+                  <span className="ml-1 text-[#A8A29E]">({formatRelativeTime(d.last_triggered)})</span>
+                </p>
               )}
               <p className="mt-1 text-[10px] text-[#78716C]">
                 {d.trigger_on_any ? "Triggers on any camera" : `Assigned to ${d.assigned_cameras?.length ?? 0} camera(s)`}
-                {d.auto_off_seconds ? ` · Auto-off: ${d.auto_off_seconds}s` : ""}
+                {d.auto_off_seconds ? ` \u00b7 Auto-off: ${d.auto_off_seconds}s` : ""}
               </p>
               <div className="mt-3 flex gap-2">
                 <button onClick={() => toggleMutation.mutate({ id: d.id, action: d.status === "triggered" ? "off" : "on" })}
@@ -161,6 +331,20 @@ export default function DevicesPage() {
                     d.status === "triggered" ? "bg-[#DC2626] hover:bg-red-700" : "bg-[#16A34A] hover:bg-green-700"
                   }`}>
                   <Power size={10} /> {d.status === "triggered" ? "Turn OFF" : "Turn ON"}
+                </button>
+                <button onClick={() => triggerMutation.mutate(d.id)}
+                  disabled={triggerMutation.isPending}
+                  title="Test device trigger"
+                  className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F0FDFA] disabled:opacity-50">
+                  {triggerMutation.isPending && triggerMutation.variables === d.id
+                    ? <Loader2 size={10} className="animate-spin" />
+                    : <PlayCircle size={10} />}
+                  Test
+                </button>
+                <button onClick={() => setHistoryTarget(d)}
+                  title="Trigger history"
+                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F0FDFA]">
+                  <History size={10} />
                 </button>
                 <button onClick={() => { setAssignTarget(d); setAssignCameras(d.assigned_cameras ?? []); setAssignTriggerAny(d.trigger_on_any ?? true); }}
                   className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F0FDFA]">
@@ -176,12 +360,17 @@ export default function DevicesPage() {
         </div>
       )}
 
+      {/* Trigger History Modal */}
+      {historyTarget && (
+        <TriggerHistoryModal device={historyTarget} onClose={() => setHistoryTarget(null)} />
+      )}
+
       {/* Camera Assignment Modal */}
       {assignTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-[420px] rounded-lg bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Assign Cameras — {assignTarget.name}</h3>
+              <h3 className="text-sm font-semibold">Assign Cameras -- {assignTarget.name}</h3>
               <button onClick={() => setAssignTarget(null)} className="text-[#78716C]"><X size={16} /></button>
             </div>
             <label className="mb-3 flex items-center gap-2 text-xs">
