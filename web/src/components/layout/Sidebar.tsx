@@ -5,7 +5,6 @@ import {
   Film,
   History,
   AlertTriangle,
-  ClipboardCheck,
   Database,
   BrainCircuit,
   FlaskConical,
@@ -27,9 +26,13 @@ import {
   ShieldCheck,
   Building2,
   Settings,
+  UserCog,
 } from "lucide-react";
-import type { UserRole } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type { UserRole, Incident, PaginatedResponse } from "@/types";
 import { cn } from "@/lib/utils";
+import { UI_LIMITS } from "@/constants";
 
 interface SidebarProps {
   role: UserRole;
@@ -59,10 +62,12 @@ const OPERATOR_PLUS: UserRole[] = ["super_admin", "org_admin", "ml_engineer", "o
 /** Simplified sidebar for store_owner and viewer roles */
 const SIMPLE_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Notification Center", path: "/notification-center", icon: Bell },
   { label: "Store Status", path: "/stores", icon: Building2 },
   { label: "Alerts", path: "/incidents", icon: AlertTriangle },
   { label: "Live Cameras", path: "/monitoring", icon: Camera },
   { label: "Settings", path: "/notifications", icon: Settings },
+  { label: "Notification Preferences", path: "/profile/notification-preferences", icon: UserCog },
 ];
 
 const NAV_SECTIONS: NavSection[] = [
@@ -70,6 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "MONITORING",
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, minRole: ALL_ROLES },
+      { label: "Notification Center", path: "/notification-center", icon: Bell, minRole: ALL_ROLES },
       { label: "Live Monitoring", path: "/monitoring", icon: Monitor, minRole: OPERATOR_PLUS },
       { label: "Recorded Clips", path: "/clips", icon: Film, minRole: ALL_ROLES },
       { label: "Compliance Report", path: "/compliance", icon: ShieldCheck, minRole: ALL_ROLES },
@@ -80,7 +86,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Detection History", path: "/detection/history", icon: History, minRole: ALL_ROLES },
       { label: "Incident Management", path: "/incidents", icon: AlertTriangle, minRole: OPERATOR_PLUS },
-      { label: "Review Queue", path: "/review", icon: ClipboardCheck, minRole: OPERATOR_PLUS },
     ],
   },
   {
@@ -137,6 +142,12 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "User Manual", path: "/docs", icon: BookOpen, minRole: ALL_ROLES },
     ],
   },
+  {
+    title: "PROFILE",
+    items: [
+      { label: "Notification Preferences", path: "/profile/notification-preferences", icon: UserCog, minRole: ALL_ROLES },
+    ],
+  },
 ];
 
 function hasAccess(allowedRoles: UserRole[] | undefined, userRole: UserRole): boolean {
@@ -146,6 +157,19 @@ function hasAccess(allowedRoles: UserRole[] | undefined, userRole: UserRole): bo
 
 export default function Sidebar({ role, collapsed = false }: SidebarProps) {
   const isAdmin = role === "super_admin" || role === "org_admin" || role === "ml_engineer";
+
+  const { data: unreadCount } = useQuery({
+    queryKey: ["unread-incident-count"],
+    queryFn: async () => {
+      const res = await api.get<PaginatedResponse<Incident>>("/events", {
+        params: { status: "new", limit: 1 },
+      });
+      return res.data.meta?.total ?? 0;
+    },
+    refetchInterval: 30000, // refresh every 30 seconds
+  });
+
+  const badgeCount = unreadCount ?? 0;
 
   return (
     <aside
@@ -188,7 +212,16 @@ export default function Sidebar({ role, collapsed = false }: SidebarProps) {
                     }
                   >
                     <item.icon size={18} />
-                    {!collapsed && <span>{item.label}</span>}
+                    {!collapsed && (
+                      <span className="flex flex-1 items-center justify-between">
+                        <span>{item.label}</span>
+                        {item.path === "/notification-center" && badgeCount > 0 && (
+                          <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#DC2626] px-1.5 text-[10px] font-bold text-white">
+                            {badgeCount > UI_LIMITS.BADGE_MAX_DISPLAY ? `${UI_LIMITS.BADGE_MAX_DISPLAY}+` : badgeCount}
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </NavLink>
                 ))}
             </div>
@@ -215,7 +248,16 @@ export default function Sidebar({ role, collapsed = false }: SidebarProps) {
                 }
               >
                 <item.icon size={18} />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && (
+                  <span className="flex flex-1 items-center justify-between">
+                    <span>{item.label}</span>
+                    {item.path === "/notification-center" && badgeCount > 0 && (
+                      <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#DC2626] px-1.5 text-[10px] font-bold text-white">
+                        {badgeCount > UI_LIMITS.BADGE_MAX_DISPLAY ? `${UI_LIMITS.BADGE_MAX_DISPLAY}+` : badgeCount}
+                      </span>
+                    )}
+                  </span>
+                )}
               </NavLink>
             ))}
           </div>

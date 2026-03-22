@@ -167,10 +167,7 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
         "predictions": predictions,
         "model_source": model_source,
         "model_version_id": None,
-        "student_confidence": None,
-        "escalated": False,
         "is_flagged": False,
-        "in_training_set": False,
         "incident_id": None,
     }
     await db.detection_logs.insert_one(detection_doc)

@@ -21,8 +21,6 @@ import NotificationsPage from "@/pages/config/NotificationsPage";
 import DevicesPage from "@/pages/config/DevicesPage";
 import DatasetPage from "@/pages/ml/DatasetPage";
 import ModelRegistryPage from "@/pages/ml/ModelRegistryPage";
-// TrainingJobsPage removed — self-training paused, use Roboflow
-import ReviewQueuePage from "@/pages/detection/ReviewQueuePage";
 import ClipsPage from "@/pages/clips/ClipsPage";
 import LogsPage from "@/pages/admin/LogsPage";
 import UsersPage from "@/pages/admin/UsersPage";
@@ -30,12 +28,13 @@ import RoboflowPage from "@/pages/integrations/RoboflowPage";
 import StoragePage from "@/pages/config/StoragePage";
 import TestInferencePage from "@/pages/ml/TestInferencePage";
 import RoboflowTestPage from "@/pages/ml/RoboflowTestPage";
-// AnnotationPage, AutoLabelPage, TrainingExplorerPage removed — use Roboflow for annotation/training
 import ClassManagerPage from "@/pages/detection-control/ClassManagerPage";
 import ApiTesterPage from "@/pages/integrations/ApiTesterPage";
 import ManualPage from "@/pages/admin/ManualPage";
 import CompliancePage from "@/pages/compliance/CompliancePage";
 import MonitoringPage from "@/pages/monitoring/MonitoringPage";
+import NotificationCenterPage from "@/pages/notifications/NotificationCenterPage";
+import NotificationPreferencesPage from "@/pages/profile/NotificationPreferencesPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -122,11 +121,8 @@ export default function AppRoutes() {
         <Route path="/detection/history" element={<DetectionHistoryPage />} />
         <Route path="/incidents" element={<IncidentsPage />} />
         <Route path="/incidents/:id" element={<IncidentsPage />} />
-        <Route path="/review" element={<ReviewQueuePage />} />
-
-        {/* ML & Training */}
+        {/* ML & Data */}
         <Route path="/dataset" element={<DatasetPage />} />
-        {/* Removed: /dataset/annotate/:id, /dataset/auto-label, /training/explorer, /training/jobs */}
         <Route path="/models" element={<ModelRegistryPage />} />
         <Route path="/ml/test-inference" element={<TestInferencePage />} />
         <Route path="/ml/roboflow-test" element={<RoboflowTestPage />} />
@@ -139,6 +135,8 @@ export default function AppRoutes() {
         <Route path="/cameras/:id" element={<CameraDetailPage />} />
         <Route path="/devices" element={<DevicesPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/notification-center" element={<NotificationCenterPage />} />
+        <Route path="/profile/notification-preferences" element={<NotificationPreferencesPage />} />
         <Route path="/settings/storage" element={<StoragePage />} />
 
         {/* Detection Control */}

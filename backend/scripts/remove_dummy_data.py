@@ -19,7 +19,6 @@ COLLECTIONS = [
     "dataset_frames",
     "annotations",
     "model_versions",
-    "training_jobs",
     "notification_deliveries",
     "clips",
 ]

@@ -31,6 +31,11 @@ _SETTING_FIELDS = [
     "auto_notify_on_create", "trigger_devices_on_create",
     "hybrid_escalation_threshold", "hybrid_max_escalations_per_min",
     "hybrid_escalation_cooldown_seconds", "hybrid_save_escalated_frames",
+    "severity_critical_min_confidence", "severity_critical_min_area",
+    "severity_high_min_confidence", "severity_high_min_area",
+    "severity_medium_min_confidence", "severity_medium_min_count",
+    "prediction_severity_critical_confidence", "prediction_severity_critical_area",
+    "prediction_severity_high_confidence", "prediction_severity_high_area",
 ]
 
 from app.core.validation_constants import (
@@ -75,6 +80,18 @@ GLOBAL_DEFAULTS: dict = {
     "hybrid_max_escalations_per_min": 10,
     "hybrid_escalation_cooldown_seconds": 30,
     "hybrid_save_escalated_frames": True,
+    # Incident severity thresholds (used by incident_service._classify_incident_severity)
+    "severity_critical_min_confidence": 0.90,
+    "severity_critical_min_area": 5.0,
+    "severity_high_min_confidence": 0.75,
+    "severity_high_min_area": 2.0,
+    "severity_medium_min_confidence": 0.50,
+    "severity_medium_min_count": 3,
+    # Prediction severity thresholds (used by inference_service._classify_severity)
+    "prediction_severity_critical_confidence": 0.85,
+    "prediction_severity_critical_area": 5.0,
+    "prediction_severity_high_confidence": 0.70,
+    "prediction_severity_high_area": 2.0,
 }
 
 
@@ -226,6 +243,59 @@ async def get_class_overrides(
     return await cursor.to_list(length=1000)
 
 
+async def resolve_class_override_for_camera(
+    db: AsyncIOMotorDatabase,
+    org_id: str,
+    camera_id: str,
+    class_name: str,
+) -> dict | None:
+    """
+    Resolve the effective class override for a specific class on a camera.
+
+    Inheritance order: global → org → store → camera.
+    Returns a merged dict of override fields, or None if no overrides exist.
+    """
+    camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
+    if not camera:
+        return None
+
+    store_id = camera.get("store_id")
+
+    # Build list of scopes to check (most general → most specific)
+    scopes = [
+        ("global", None),
+        ("org", org_id),
+    ]
+    if store_id:
+        scopes.append(("store", store_id))
+    scopes.append(("camera", camera_id))
+
+    # Merge overrides through the inheritance chain
+    merged: dict | None = None
+    _override_fields = [
+        "enabled", "min_confidence", "min_area_percent", "severity_mapping",
+        "alert_on_detect", "incident_enabled", "incident_severity_override",
+        "incident_grouping_separate", "device_trigger_enabled",
+    ]
+
+    for scope_name, scope_id in scopes:
+        doc = await db.detection_class_overrides.find_one({
+            **org_query(org_id),
+            "scope": scope_name,
+            "scope_id": scope_id,
+            "class_name": class_name,
+        })
+        if doc:
+            if merged is None:
+                merged = {}
+            for field in _override_fields:
+                val = doc.get(field)
+                if val is not None:
+                    merged[field] = val
+
+    return merged
+
+
 async def upsert_class_overrides(
     db: AsyncIOMotorDatabase,
     org_id: str,
@@ -251,6 +321,10 @@ async def upsert_class_overrides(
             "min_area_percent": ov.get("min_area_percent"),
             "severity_mapping": ov.get("severity_mapping"),
             "alert_on_detect": ov.get("alert_on_detect"),
+            "incident_enabled": ov.get("incident_enabled"),
+            "incident_severity_override": ov.get("incident_severity_override"),
+            "incident_grouping_separate": ov.get("incident_grouping_separate"),
+            "device_trigger_enabled": ov.get("device_trigger_enabled"),
             "updated_by": user_id,
             "updated_at": now,
         }
@@ -353,6 +427,10 @@ async def export_settings(
                 "min_area_percent": o.get("min_area_percent"),
                 "severity_mapping": o.get("severity_mapping"),
                 "alert_on_detect": o.get("alert_on_detect"),
+                "incident_enabled": o.get("incident_enabled"),
+                "incident_severity_override": o.get("incident_severity_override"),
+                "incident_grouping_separate": o.get("incident_grouping_separate"),
+                "device_trigger_enabled": o.get("device_trigger_enabled"),
             }
             for o in overrides
         ],

@@ -79,7 +79,7 @@ async def add_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
 ):
-    frame = await dataset_service.create_frame(db, current_user.get("org_id", ""), body)
+frame = await dataset_service.create_frame(db, current_user.get("org_id", ""), body)
     return {"data": _frame_response(frame)}
 
 
@@ -89,7 +89,7 @@ async def delete_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await dataset_service.delete_frame(db, frame_id, current_user.get("org_id", ""))
+await dataset_service.delete_frame(db, frame_id, current_user.get("org_id", ""))
     return {"data": {"ok": True}}
 
 
@@ -99,7 +99,7 @@ async def bulk_delete_frames(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+org_id = current_user.get("org_id", "")
     frame_ids = body.get("frame_ids", [])
     if not frame_ids:
         return {"data": {"deleted": 0}}
@@ -116,7 +116,7 @@ async def assign_split(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    frame = await dataset_service.update_split(
+frame = await dataset_service.update_split(
         db, frame_id, current_user.get("org_id", ""), body.get("split", "unassigned")
     )
     return {"data": _frame_response(frame)}
@@ -226,82 +226,6 @@ async def update_sync_settings(
     return {"data": result}
 
 
-@router.post("/auto-label")
-async def start_auto_label(
-    body: dict,
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: dict = Depends(require_role("ml_engineer")),
-):
-    if not settings.SELF_TRAINING_ENABLED:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Auto-labeling is paused. Use Roboflow for annotation.",
-        )
-    from app.workers.auto_label_worker import run_auto_label
-
-    org_id = current_user.get("org_id", "")
-    now = datetime.now(timezone.utc)
-    job = {
-        "id": str(uuid.uuid4()),
-        "org_id": org_id,
-        "job_type": "auto_label",
-        "type": "auto_label",
-        "model_id": body.get("model_id", ""),
-        "frame_ids": body.get("frame_ids", []),
-        "frame_count": len(body.get("frame_ids", [])),
-        "confidence_threshold": body.get("confidence_threshold", 0.5),
-        "status": "pending",
-        "progress": 0,
-        "results": [],
-        "created_by": current_user["id"],
-        "created_at": now,
-        "updated_at": now,
-    }
-    await db.training_jobs.insert_one(job)
-    job.pop("_id", None)
-
-    # Dispatch Celery auto-label task
-    run_auto_label.delay(job["id"], org_id, body.get("limit", 100))
-
-    return {"data": job}
-
-
-@router.get("/auto-label/{job_id}")
-async def auto_label_status(
-    job_id: str,
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: dict = Depends(require_role("ml_engineer")),
-):
-    from fastapi import HTTPException
-    org_id = current_user.get("org_id", "")
-    job = await db.training_jobs.find_one({"id": job_id, "org_id": org_id, "job_type": "auto_label"})
-    if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auto-label job not found")
-    job.pop("_id", None)
-    return {"data": job}
-
-
-@router.post("/auto-label/{job_id}/approve")
-async def approve_auto_label(
-    job_id: str,
-    body: dict,
-    db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: dict = Depends(require_role("ml_engineer")),
-):
-    from fastapi import HTTPException
-    org_id = current_user.get("org_id", "")
-    now = datetime.now(timezone.utc)
-    job = await db.training_jobs.find_one({"id": job_id, "org_id": org_id, "job_type": "auto_label"})
-    if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Auto-label job not found")
-    approved_ids = body.get("approved_frame_ids", [])
-    await db.training_jobs.update_one(
-        {"id": job_id},
-        {"$set": {"status": "approved", "approved_frame_ids": approved_ids, "approved_by": current_user["id"], "approved_at": now, "updated_at": now}},
-    )
-    return {"data": {"ok": True, "approved_count": len(approved_ids)}}
-
-
 @router.get("/export/coco")
 async def export_coco(
     split: Optional[str] = Query(None),
@@ -312,8 +236,8 @@ async def export_coco(
     query = {"org_id": org_id}
     if split:
         query["split"] = split
-    frames = await db.dataset_frames.find(query).to_list(length=10000)
-    annotations = await db.annotations.find({"org_id": org_id}).to_list(length=50000)
+    frames = await db.dataset_frames.find(query).to_list(length=settings.QUERY_LIMIT_LARGE)
+    annotations = await db.annotations.find({"org_id": org_id}).to_list(length=settings.QUERY_LIMIT_XLARGE)
 
     # Build COCO format
     ann_by_frame = {}

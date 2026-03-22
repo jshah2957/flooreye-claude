@@ -84,8 +84,8 @@ export interface Detection {
   student_confidence: number | null;
   escalated: boolean;
   is_flagged: boolean;
-  in_training_set: boolean;
   incident_id: string | null;
+  roboflow_sync_status: string | null;
 }
 
 export interface Prediction {

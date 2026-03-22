@@ -55,7 +55,7 @@ async def main():
     print("=" * 50)
 
     created = {"detection_logs": 0, "events": 0, "dataset_frames": 0,
-               "annotations": 0, "model_versions": 0, "training_jobs": 0,
+               "annotations": 0, "model_versions": 0,
                "notification_deliveries": 0, "clips": 0}
 
     # 1. Detection Logs (50)
@@ -92,7 +92,6 @@ async def main():
             "student_confidence": round(random.uniform(0.3, 0.95), 4) if is_wet else None,
             "escalated": random.random() < 0.2,
             "is_flagged": random.random() < 0.1,
-            "in_training_set": False,
             "incident_id": None,
             "dummy_data": True,
         }
@@ -206,32 +205,7 @@ async def main():
         await db.model_versions.insert_one(doc)
         created["model_versions"] += 1
 
-    # 6. Training Jobs (2)
-    print("Creating 2 training_jobs...")
-    for i in range(2):
-        start = now_minus(hours=random.randint(24, 72))
-        doc = {
-            "id": uid(),
-            "org_id": cameras[0].get("org_id"),
-            "name": f"dummy_training_{i+1}",
-            "status": "completed",
-            "architecture": "yolov8n",
-            "epochs": 50,
-            "current_epoch": 50,
-            "batch_size": 16,
-            "learning_rate": 0.001,
-            "train_frames": random.randint(100, 500),
-            "val_frames": random.randint(20, 100),
-            "best_mAP": round(random.uniform(0.6, 0.9), 4),
-            "started_at": start,
-            "completed_at": start + timedelta(hours=random.randint(1, 4)),
-            "created_at": start,
-            "dummy_data": True,
-        }
-        await db.training_jobs.insert_one(doc)
-        created["training_jobs"] += 1
-
-    # 7. Notification Deliveries (10)
+    # 6. Notification Deliveries (10)
     print("Creating 10 notification_deliveries...")
     for i in range(10):
         doc = {

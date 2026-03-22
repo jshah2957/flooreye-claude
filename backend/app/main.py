@@ -10,8 +10,7 @@ from app.db.database import connect_db, close_db
 from app.db.indexes import ensure_indexes
 from app.db.database import get_db
 from app.routers import (
-    active_learning,
-    annotations,
+    audit_logs,
     auth,
     cameras,
     clips,
@@ -36,7 +35,6 @@ from app.routers import (
     roboflow_test,
     storage,
     stores,
-    training,
     validation,
     websockets,
 )
@@ -124,13 +122,10 @@ def create_app() -> FastAPI:
     application.include_router(live_stream.router)
     application.include_router(clips.router)
     application.include_router(dataset.router)
-    application.include_router(annotations.router)
     application.include_router(roboflow.router)
     application.include_router(roboflow_test.router)
     application.include_router(inference_test.router)
     application.include_router(models.router)
-    application.include_router(training.router)
-    application.include_router(active_learning.router)
     application.include_router(edge.router)
     application.include_router(edge_cameras.router)
     application.include_router(edge_devices.router)
@@ -139,6 +134,7 @@ def create_app() -> FastAPI:
     application.include_router(mobile.router)
     application.include_router(events.router)
     application.include_router(notifications.router)
+    application.include_router(audit_logs.router)
     application.include_router(devices.router)
     application.include_router(logs.router)
     application.include_router(storage.router)

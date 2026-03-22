@@ -86,10 +86,6 @@ class DatasetSplit(StrEnum):
 
 
 class LabelSource(StrEnum):
-    TEACHER_ROBOFLOW = "teacher_roboflow"
-    HUMAN_VALIDATED = "human_validated"
-    HUMAN_CORRECTED = "human_corrected"
-    STUDENT_PSEUDOLABEL = "student_pseudolabel"
     MANUAL_UPLOAD = "manual_upload"
     UNKNOWN = "unknown"
 

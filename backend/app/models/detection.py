@@ -32,12 +32,12 @@ class DetectionLog(BaseModel):
     wet_area_percent: float
     inference_time_ms: float
     frame_base64: Optional[str] = None
-    frame_s3_path: Optional[str] = None
+    frame_s3_path: Optional[str] = None  # clean frame S3 path
+    annotated_frame_s3_path: Optional[str] = None  # annotated frame S3 path
     predictions: list[Prediction] = []
     model_source: Literal["roboflow", "student", "hybrid_escalated"]
     model_version_id: Optional[str] = None
     student_confidence: Optional[float] = None
     escalated: bool = False
     is_flagged: bool = False
-    in_training_set: bool = False
     incident_id: Optional[str] = None

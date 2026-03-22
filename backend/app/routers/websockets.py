@@ -11,7 +11,6 @@ Channels:
   /ws/live-frame/{camera_id}   — live frame stream for a camera
   /ws/incidents                — new/updated incident notifications
   /ws/edge-status              — edge agent heartbeat updates (admin+)
-  /ws/training-job/{job_id}    — training job progress
   /ws/system-logs              — real-time log streaming (admin+)
   /ws/detection-control        — config hot-reload confirmation (admin+)
 
@@ -242,19 +241,6 @@ async def _verify_camera_org(websocket: WebSocket, camera_id: str, payload: dict
     return True
 
 
-async def _verify_training_job_org(websocket: WebSocket, job_id: str, payload: dict) -> bool:
-    """Verify the training job belongs to the user's org. Returns True if allowed."""
-    if _is_super_admin(payload):
-        return True
-    db = get_db()
-    job = await db.training_jobs.find_one({"id": job_id}, {"org_id": 1})
-    if not job:
-        await websocket.close(code=4003, reason="Training job not found")
-        return False
-    if job.get("org_id") != payload.get("org_id"):
-        await websocket.close(code=4003, reason="Org mismatch")
-        return False
-    return True
 
 
 # ── WebSocket Endpoints ─────────────────────────────────────────
@@ -325,25 +311,6 @@ async def edge_status(websocket: WebSocket, token: str | None = Query(None)):
 
     org_id = payload.get("org_id", "")
     channel = f"edge-status:{org_id}"
-    await manager.connect(channel, websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(channel, websocket)
-
-
-@router.websocket("/ws/training-job/{job_id}")
-async def training_job(websocket: WebSocket, job_id: str, token: str | None = Query(None)):
-    payload = await _validate_ws_token(websocket, token)
-    if not payload:
-        return
-
-    # C-004: Verify training job belongs to user's org
-    if not await _verify_training_job_org(websocket, job_id, payload):
-        return
-
-    channel = f"training-job:{job_id}"
     await manager.connect(channel, websocket)
     try:
         while True:

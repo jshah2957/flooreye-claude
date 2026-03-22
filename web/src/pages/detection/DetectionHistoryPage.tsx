@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
   Grid3X3,
   List,
   Flag,
-  Star,
   X,
   Loader2,
   Eye as EyeIcon,
+  Download,
+  CheckSquare,
+  Square,
+  Calendar,
 } from "lucide-react";
 
 import api from "@/lib/api";
+import { PAGE_SIZES, confidenceColorClass } from "@/constants";
 import type { Detection, Store, Camera, PaginatedResponse } from "@/types";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
@@ -19,13 +23,48 @@ import { useToast } from "@/components/ui/Toast";
 
 type ViewMode = "gallery" | "table";
 
+function toISODate(dateStr: string): string {
+  return dateStr ? new Date(dateStr + "T00:00:00").toISOString() : "";
+}
+
+function downloadCSV(detections: Detection[], cameraMap: Map<string, string>, storeMap: Map<string, string>) {
+  const headers = [
+    "ID", "Camera", "Store", "Timestamp", "Is Wet", "Confidence",
+    "Wet Area %", "Inference Time (ms)", "Model Source", "Flagged",
+  ];
+  const rows = detections.map((d) => [
+    d.id,
+    cameraMap.get(d.camera_id) ?? d.camera_id,
+    storeMap.get(d.store_id) ?? d.store_id,
+    new Date(d.timestamp).toISOString(),
+    d.is_wet ? "Yes" : "No",
+    (d.confidence * 100).toFixed(1),
+    d.wet_area_percent.toFixed(1),
+    d.inference_time_ms.toFixed(0),
+    d.model_source,
+    d.is_flagged ? "Yes" : "No",
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `detections_${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function DetectionHistoryPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
   const [view, setView] = useState<ViewMode>("gallery");
   const [page, setPage] = useState(0);
   const [selectedDetection, setSelectedDetection] = useState<Detection | null>(null);
-  const limit = 20;
+  const limit = PAGE_SIZES.DETECTION_HISTORY;
 
   // Filters
   const [storeFilter, setStoreFilter] = useState("");
@@ -34,6 +73,30 @@ export default function DetectionHistoryPage() {
   const [modelFilter, setModelFilter] = useState("");
   const [minConfidence, setMinConfidence] = useState(0);
   const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback((ids: string[]) => {
+    setSelectedIds((prev) => {
+      const allSelected = ids.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(ids);
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -52,7 +115,7 @@ export default function DetectionHistoryPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["detections", page, storeFilter, cameraFilter, wetFilter, modelFilter, minConfidence],
+    queryKey: ["detections", page, storeFilter, cameraFilter, wetFilter, modelFilter, minConfidence, dateFrom, dateTo],
     queryFn: async () => {
       const params: Record<string, unknown> = { offset: page * limit, limit };
       if (storeFilter) params.store_id = storeFilter;
@@ -61,6 +124,8 @@ export default function DetectionHistoryPage() {
       if (wetFilter === "dry") params.is_wet = false;
       if (modelFilter) params.model_source = modelFilter;
       if (minConfidence > 0) params.min_confidence = minConfidence / 100;
+      if (dateFrom) params.date_from = toISODate(dateFrom);
+      if (dateTo) params.date_to = toISODate(dateTo);
       const res = await api.get<PaginatedResponse<Detection>>("/detection/history", { params });
       return res.data;
     },
@@ -77,14 +142,18 @@ export default function DetectionHistoryPage() {
     },
   });
 
-  const trainingMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/detection/history/${id}/add-to-training`),
+  // Bulk mutations
+  const bulkFlagMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.allSettled(ids.map((id) => api.post(`/detection/history/${id}/flag`)));
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["detections"] });
-      success("Added to training set");
+      success(`Flagged ${selectedIds.size} detection(s)`);
+      clearSelection();
     },
-    onError: (err: any) => {
-      showError(err?.response?.data?.detail || "Failed to add to training set");
+    onError: () => {
+      showError("Some detections failed to flag");
     },
   });
 
@@ -96,21 +165,31 @@ export default function DetectionHistoryPage() {
   const storeMap = new Map((stores ?? []).map((s) => [s.id, s.name]));
 
   function confColor(conf: number) {
-    if (conf >= 0.7) return "text-[#16A34A]";
-    if (conf >= 0.5) return "text-[#D97706]";
-    return "text-[#DC2626]";
+    return confidenceColorClass(conf);
   }
 
   function clearFilters() {
     setStoreFilter(""); setCameraFilter(""); setWetFilter(""); setModelFilter("");
-    setMinConfidence(0); setFlaggedOnly(false); setPage(0);
+    setMinConfidence(0); setFlaggedOnly(false); setDateFrom(""); setDateTo(""); setPage(0);
   }
+
+  const hasFilters = storeFilter || cameraFilter || wetFilter || modelFilter || minConfidence > 0 || flaggedOnly || dateFrom || dateTo;
+  const filteredIds = filtered.map((d) => d.id);
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[#1C1917]">Detection History</h1>
-        <p className="text-sm text-[#78716C]">{total} detections total</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-[#1C1917]">Detection History</h1>
+          <p className="text-sm text-[#78716C]">{total} detections total</p>
+        </div>
+        <button
+          onClick={() => downloadCSV(filtered, cameraMap, storeMap)}
+          disabled={filtered.length === 0}
+          className="flex items-center gap-2 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50"
+        >
+          <Download size={14} /> Export CSV
+        </button>
       </div>
 
       {/* Filter Bar */}
@@ -149,7 +228,28 @@ export default function DetectionHistoryPage() {
             className="rounded border-[#E7E5E0]" />
           Flagged
         </label>
-        {(storeFilter || cameraFilter || wetFilter || modelFilter || minConfidence > 0 || flaggedOnly) && (
+      </div>
+
+      {/* Date Range Row */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Calendar size={14} className="text-[#78716C]" />
+          <span className="text-[#78716C]">From:</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+            className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-sm outline-none focus:border-[#0D9488]"
+          />
+          <span className="text-[#78716C]">To:</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+            className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-sm outline-none focus:border-[#0D9488]"
+          />
+        </div>
+        {hasFilters && (
           <button onClick={clearFilters} className="text-sm text-[#0D9488] hover:underline">Clear Filters</button>
         )}
         <div className="flex-1" />
@@ -165,6 +265,25 @@ export default function DetectionHistoryPage() {
         </div>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-[#0D9488] bg-[#F0FDFA] px-4 py-2.5">
+          <span className="text-sm font-medium text-[#0D9488]">
+            {selectedIds.size} selected
+          </span>
+          <button
+            onClick={() => bulkFlagMutation.mutate(Array.from(selectedIds))}
+            disabled={bulkFlagMutation.isPending}
+            className="flex items-center gap-1.5 rounded-md bg-[#DC2626] px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            <Flag size={12} /> Flag Selected ({selectedIds.size})
+          </button>
+          <button onClick={clearSelection} className="ml-auto text-xs text-[#78716C] hover:text-[#1C1917]">
+            Clear selection
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       {isLoading ? (
         <div className="flex h-64 items-center justify-center">
@@ -175,41 +294,48 @@ export default function DetectionHistoryPage() {
       ) : view === "gallery" ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((d) => (
-            <div key={d.id} onClick={() => setSelectedDetection(d)}
-              className="cursor-pointer rounded-lg border border-[#E7E5E0] bg-white overflow-hidden hover:border-[#0D9488] transition-colors">
-              {d.frame_base64 ? (
-                <img src={`data:image/jpeg;base64,${d.frame_base64}`} alt="Detection"
-                  className="h-[175px] w-full object-cover bg-gray-100" />
-              ) : (
-                <div className="flex h-[175px] items-center justify-center bg-gray-100 text-xs text-[#78716C]">No frame</div>
-              )}
-              <div className="p-3">
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={d.is_wet ? "critical" : "online"} />
-                  <span className={`text-sm font-semibold ${confColor(d.confidence)}`}>
-                    {(d.confidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-[#78716C]">
-                  {cameraMap.get(d.camera_id) ?? "Unknown"} &middot; {storeMap.get(d.store_id) ?? ""}
-                </p>
-                <div className="mt-1 flex items-center justify-between">
-                  <StatusBadge status={d.model_source} size="sm" />
-                  <span className="text-[10px] text-[#78716C]">
-                    {new Date(d.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); flagMutation.mutate(d.id); }}
-                    className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] ${d.is_flagged ? "bg-[#FEE2E2] text-[#DC2626]" : "bg-gray-50 text-[#78716C] hover:bg-gray-100"}`}>
-                    <Flag size={10} /> {d.is_flagged ? "Flagged" : "Flag"}
-                  </button>
-                  {!d.in_training_set && (
-                    <button onClick={(e) => { e.stopPropagation(); trainingMutation.mutate(d.id); }}
-                      className="flex items-center gap-1 rounded bg-gray-50 px-2 py-1 text-[10px] text-[#78716C] hover:bg-gray-100">
-                      <Star size={10} /> Training
+            <div key={d.id}
+              className="relative cursor-pointer rounded-lg border border-[#E7E5E0] bg-white overflow-hidden hover:border-[#0D9488] transition-colors">
+              {/* Checkbox overlay */}
+              <div
+                className="absolute left-2 top-2 z-10"
+                onClick={(e) => { e.stopPropagation(); toggleSelected(d.id); }}
+              >
+                {selectedIds.has(d.id) ? (
+                  <CheckSquare size={18} className="text-[#0D9488]" />
+                ) : (
+                  <Square size={18} className="text-white drop-shadow-md hover:text-[#0D9488]" />
+                )}
+              </div>
+              <div onClick={() => setSelectedDetection(d)}>
+                {d.frame_base64 ? (
+                  <img src={`data:image/jpeg;base64,${d.frame_base64}`} alt="Detection"
+                    className="h-[175px] w-full object-cover bg-gray-100" />
+                ) : (
+                  <div className="flex h-[175px] items-center justify-center bg-gray-100 text-xs text-[#78716C]">No frame</div>
+                )}
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <StatusBadge status={d.is_wet ? "critical" : "online"} />
+                    <span className={`text-sm font-semibold ${confColor(d.confidence)}`}>
+                      {(d.confidence * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[#78716C]">
+                    {cameraMap.get(d.camera_id) ?? "Unknown"} &middot; {storeMap.get(d.store_id) ?? ""}
+                  </p>
+                  <div className="mt-1 flex items-center justify-between">
+                    <StatusBadge status={d.model_source} size="sm" />
+                    <span className="text-[10px] text-[#78716C]">
+                      {new Date(d.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <button onClick={(e) => { e.stopPropagation(); flagMutation.mutate(d.id); }}
+                      className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] ${d.is_flagged ? "bg-[#FEE2E2] text-[#DC2626]" : "bg-gray-50 text-[#78716C] hover:bg-gray-100"}`}>
+                      <Flag size={10} /> {d.is_flagged ? "Flagged" : "Flag"}
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -220,6 +346,15 @@ export default function DetectionHistoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#E7E5E0] bg-[#F8F7F4]">
+                <th className="px-3 py-2 text-left">
+                  <button onClick={() => toggleSelectAll(filteredIds)}>
+                    {filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id)) ? (
+                      <CheckSquare size={16} className="text-[#0D9488]" />
+                    ) : (
+                      <Square size={16} className="text-[#78716C]" />
+                    )}
+                  </button>
+                </th>
                 <th className="px-3 py-2 text-left font-medium text-[#78716C]">Frame</th>
                 <th className="px-3 py-2 text-left font-medium text-[#78716C]">Result</th>
                 <th className="px-3 py-2 text-left font-medium text-[#78716C]">Confidence</th>
@@ -233,8 +368,18 @@ export default function DetectionHistoryPage() {
             </thead>
             <tbody>
               {filtered.map((d) => (
-                <tr key={d.id} className="border-b border-[#E7E5E0] hover:bg-[#F8F7F4] cursor-pointer"
+                <tr key={d.id}
+                  className={`border-b border-[#E7E5E0] hover:bg-[#F8F7F4] cursor-pointer ${selectedIds.has(d.id) ? "bg-[#F0FDFA]" : ""}`}
                   onClick={() => setSelectedDetection(d)}>
+                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => toggleSelected(d.id)}>
+                      {selectedIds.has(d.id) ? (
+                        <CheckSquare size={16} className="text-[#0D9488]" />
+                      ) : (
+                        <Square size={16} className="text-[#78716C]" />
+                      )}
+                    </button>
+                  </td>
                   <td className="px-3 py-2">
                     {d.frame_base64 ? (
                       <img src={`data:image/jpeg;base64,${d.frame_base64}`} className="h-[50px] w-[80px] rounded object-cover" alt="" />
@@ -243,8 +388,8 @@ export default function DetectionHistoryPage() {
                   <td className="px-3 py-2"><StatusBadge status={d.is_wet ? "critical" : "online"} /></td>
                   <td className={`px-3 py-2 font-medium ${confColor(d.confidence)}`}>{(d.confidence * 100).toFixed(1)}%</td>
                   <td className="px-3 py-2 text-[#78716C]">{d.wet_area_percent.toFixed(1)}%</td>
-                  <td className="px-3 py-2 text-[#78716C]">{cameraMap.get(d.camera_id) ?? "—"}</td>
-                  <td className="px-3 py-2 text-[#78716C]">{storeMap.get(d.store_id) ?? "—"}</td>
+                  <td className="px-3 py-2 text-[#78716C]">{cameraMap.get(d.camera_id) ?? "---"}</td>
+                  <td className="px-3 py-2 text-[#78716C]">{storeMap.get(d.store_id) ?? "---"}</td>
                   <td className="px-3 py-2 text-[#78716C]">{new Date(d.timestamp).toLocaleString()}</td>
                   <td className="px-3 py-2"><StatusBadge status={d.model_source} size="sm" /></td>
                   <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
@@ -263,7 +408,7 @@ export default function DetectionHistoryPage() {
       {/* Pagination */}
       {total > limit && (
         <div className="mt-4 flex items-center justify-between text-sm text-[#78716C]">
-          <span>Showing {page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}</span>
+          <span>Showing {page * limit + 1}--{Math.min((page + 1) * limit, total)} of {total}</span>
           <div className="flex gap-2">
             <button disabled={page === 0} onClick={() => setPage(page - 1)}
               className="rounded-md border border-[#E7E5E0] px-3 py-1 hover:bg-[#F1F0ED] disabled:opacity-50">Previous</button>
@@ -279,7 +424,6 @@ export default function DetectionHistoryPage() {
           cameraName={cameraMap.get(selectedDetection.camera_id) ?? "Unknown"}
           storeName={storeMap.get(selectedDetection.store_id) ?? "Unknown"}
           onFlag={() => { flagMutation.mutate(selectedDetection.id); setSelectedDetection(null); }}
-          onTraining={() => { trainingMutation.mutate(selectedDetection.id); setSelectedDetection(null); }}
         />
       )}
     </div>
@@ -287,10 +431,10 @@ export default function DetectionHistoryPage() {
 }
 
 function DetectionModal({
-  detection: d, onClose, cameraName, storeName, onFlag, onTraining,
+  detection: d, onClose, cameraName, storeName, onFlag,
 }: {
   detection: Detection; onClose: () => void; cameraName: string; storeName: string;
-  onFlag: () => void; onTraining: () => void;
+  onFlag: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -338,12 +482,6 @@ function DetectionModal({
                 className="flex items-center justify-center gap-2 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm hover:bg-[#F1F0ED]">
                 <Flag size={14} /> {d.is_flagged ? "Unflag" : "Flag as Incorrect"}
               </button>
-              {!d.in_training_set && (
-                <button onClick={onTraining}
-                  className="flex items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm text-white hover:bg-[#0F766E]">
-                  <Star size={14} /> Add to Training Set
-                </button>
-              )}
             </div>
           </div>
         </div>

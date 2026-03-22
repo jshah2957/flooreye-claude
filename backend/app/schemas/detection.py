@@ -39,8 +39,8 @@ class DetectionResponse(BaseModel):
     student_confidence: Optional[float] = None
     escalated: bool
     is_flagged: bool
-    in_training_set: bool
     incident_id: Optional[str] = None
+    roboflow_sync_status: Optional[str] = None
 
 
 class DetectionListResponse(BaseModel):
@@ -56,6 +56,18 @@ class ManualDetectionRequest(BaseModel):
 class FlagToggleResponse(BaseModel):
     id: str
     is_flagged: bool
+
+
+class BulkFlagRequest(BaseModel):
+    detection_ids: list[str]
+
+
+class BulkFlagResponse(BaseModel):
+    updated: int
+
+
+class RoboflowUploadRequest(BaseModel):
+    detection_ids: Optional[list[str]] = None
 
 
 class ContinuousStatusResponse(BaseModel):

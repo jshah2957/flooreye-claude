@@ -4,13 +4,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.detection import (
+    BulkFlagRequest,
     DetectionListResponse,
     DetectionResponse,
     FlagToggleResponse,
     ManualDetectionRequest,
+    RoboflowUploadRequest,
 )
 from app.services import detection_service
 
@@ -37,8 +40,8 @@ def _detection_response(d: dict) -> DetectionResponse:
         student_confidence=d.get("student_confidence"),
         escalated=d.get("escalated", False),
         is_flagged=d.get("is_flagged", False),
-        in_training_set=d.get("in_training_set", False),
         incident_id=d.get("incident_id"),
+        roboflow_sync_status=d.get("roboflow_sync_status"),
     )
 
 
@@ -62,12 +65,13 @@ async def run_detection(
 async def detection_history(
     camera_id: Optional[str] = Query(None),
     store_id: Optional[str] = Query(None),
+    incident_id: Optional[str] = Query(None),
     is_wet: Optional[bool] = Query(None),
     model_source: Optional[str] = Query(None),
     min_confidence: Optional[float] = Query(None),
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(settings.DETECTION_HISTORY_DEFAULT_LIMIT, ge=1, le=settings.DETECTION_HISTORY_MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
@@ -77,6 +81,7 @@ async def detection_history(
         current_user.get("org_id", ""),
         camera_id=camera_id,
         store_id=store_id,
+        incident_id=incident_id,
         is_wet=is_wet,
         model_source=model_source,
         min_confidence=min_confidence,
@@ -115,21 +120,35 @@ async def flag_detection(
     return {"data": result}
 
 
-@router.post("/detection/history/{detection_id}/add-to-training")
-async def add_to_training(
-    detection_id: str,
+@router.post("/detection/flagged/bulk-flag")
+async def bulk_flag(
+    body: BulkFlagRequest,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
 ):
-    result = await detection_service.add_to_training(
-        db, detection_id, current_user.get("org_id", "")
+    """Set is_flagged=True on multiple detections at once."""
+    updated = await detection_service.bulk_set_flag(
+        db, current_user.get("org_id", ""), body.detection_ids, flagged=True
     )
-    return {"data": result}
+    return {"data": {"updated": updated}}
+
+
+@router.post("/detection/flagged/bulk-unflag")
+async def bulk_unflag(
+    body: BulkFlagRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Set is_flagged=False on multiple detections at once."""
+    updated = await detection_service.bulk_set_flag(
+        db, current_user.get("org_id", ""), body.detection_ids, flagged=False
+    )
+    return {"data": {"updated": updated}}
 
 
 @router.get("/detection/flagged")
 async def list_flagged(
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(settings.DETECTION_HISTORY_DEFAULT_LIMIT, ge=1, le=settings.DETECTION_HISTORY_MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
@@ -156,15 +175,28 @@ async def export_flagged(
 
 @router.post("/detection/flagged/upload-to-roboflow")
 async def upload_flagged_to_roboflow(
+    body: RoboflowUploadRequest = RoboflowUploadRequest(),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    """Upload all flagged detections to Roboflow for review/labeling."""
+    """Upload flagged detections to Roboflow for review/labeling.
+
+    If `detection_ids` is provided, only those specific detections are uploaded.
+    Otherwise, all flagged detections are uploaded (existing behavior).
+    """
     from app.core.org_filter import org_query
     org_id = current_user.get("org_id", "")
-    flagged = await db.detection_logs.find(
-        {**org_query(org_id), "is_flagged": True}
-    ).to_list(length=1000)
+
+    if body.detection_ids:
+        # Upload only the specified detections
+        query = {**org_query(org_id), "id": {"$in": body.detection_ids}}
+    else:
+        # Upload all flagged detections
+        query = {**org_query(org_id), "is_flagged": True}
+
+    flagged = await db.detection_logs.find(query).to_list(
+        length=settings.ROBOFLOW_UPLOAD_BATCH_MAX
+    )
 
     uploaded = 0
     for det in flagged:
@@ -172,7 +204,10 @@ async def upload_flagged_to_roboflow(
             uploaded += 1
             await db.detection_logs.update_one(
                 {"id": det["id"]},
-                {"$set": {"uploaded_to_roboflow": True}},
+                {"$set": {
+                    "uploaded_to_roboflow": True,
+                    "roboflow_sync_status": "pending",
+                }},
             )
 
     # Dispatch Celery task for the actual upload

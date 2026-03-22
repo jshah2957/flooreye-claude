@@ -49,6 +49,18 @@ class SettingsUpsert(BaseModel):
     hybrid_max_escalations_per_min: Optional[int] = None
     hybrid_escalation_cooldown_seconds: Optional[int] = None
     hybrid_save_escalated_frames: Optional[bool] = None
+    # Incident severity thresholds
+    severity_critical_min_confidence: Optional[float] = None
+    severity_critical_min_area: Optional[float] = None
+    severity_high_min_confidence: Optional[float] = None
+    severity_high_min_area: Optional[float] = None
+    severity_medium_min_confidence: Optional[float] = None
+    severity_medium_min_count: Optional[int] = None
+    # Prediction severity thresholds
+    prediction_severity_critical_confidence: Optional[float] = None
+    prediction_severity_critical_area: Optional[float] = None
+    prediction_severity_high_confidence: Optional[float] = None
+    prediction_severity_high_area: Optional[float] = None
 
 
 class SettingsResponse(BaseModel):
@@ -89,6 +101,18 @@ class SettingsResponse(BaseModel):
     hybrid_max_escalations_per_min: Optional[int] = None
     hybrid_escalation_cooldown_seconds: Optional[int] = None
     hybrid_save_escalated_frames: Optional[bool] = None
+    # Incident severity thresholds
+    severity_critical_min_confidence: Optional[float] = None
+    severity_critical_min_area: Optional[float] = None
+    severity_high_min_confidence: Optional[float] = None
+    severity_high_min_area: Optional[float] = None
+    severity_medium_min_confidence: Optional[float] = None
+    severity_medium_min_count: Optional[int] = None
+    # Prediction severity thresholds
+    prediction_severity_critical_confidence: Optional[float] = None
+    prediction_severity_critical_area: Optional[float] = None
+    prediction_severity_high_confidence: Optional[float] = None
+    prediction_severity_high_area: Optional[float] = None
     updated_by: str
     updated_at: datetime
     created_at: datetime
@@ -121,6 +145,11 @@ class ClassOverrideUpsert(BaseModel):
     min_area_percent: Optional[float] = None
     severity_mapping: Optional[Literal["low", "medium", "high", "critical"]] = None
     alert_on_detect: Optional[bool] = None
+    # Incident / device control per class
+    incident_enabled: Optional[bool] = None  # whether this class creates incidents (default True)
+    incident_severity_override: Optional[Literal["low", "medium", "high", "critical"]] = None
+    incident_grouping_separate: Optional[bool] = None  # separate incidents per class
+    device_trigger_enabled: Optional[bool] = None  # whether this class triggers devices (default True)
 
 
 class ClassOverrideResponse(BaseModel):
@@ -135,6 +164,10 @@ class ClassOverrideResponse(BaseModel):
     min_area_percent: Optional[float] = None
     severity_mapping: Optional[str] = None
     alert_on_detect: Optional[bool] = None
+    incident_enabled: Optional[bool] = None
+    incident_severity_override: Optional[str] = None
+    incident_grouping_separate: Optional[bool] = None
+    device_trigger_enabled: Optional[bool] = None
     updated_by: str
     updated_at: datetime
 

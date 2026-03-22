@@ -77,6 +77,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("status", ASCENDING)]),
         IndexModel([("severity", ASCENDING)]),
         IndexModel([("org_id", ASCENDING), ("camera_id", ASCENDING), ("status", ASCENDING), ("start_time", DESCENDING)]),
+        IndexModel([("edge_incident_id", ASCENDING)], sparse=True),
     ])
 
     # clips
@@ -112,13 +113,6 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("status", ASCENDING)]),
     ])
 
-    # training_jobs
-    await db.training_jobs.create_indexes([
-        IndexModel([("id", ASCENDING)], unique=True),
-        IndexModel([("org_id", ASCENDING)]),
-        IndexModel([("status", ASCENDING)]),
-    ])
-
     # detection_control_settings
     await db.detection_control_settings.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
@@ -143,6 +137,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await db.notification_rules.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
         IndexModel([("org_id", ASCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("is_active", ASCENDING), ("min_severity", ASCENDING)]),
     ])
 
     # notification_deliveries
@@ -151,6 +146,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("rule_id", ASCENDING)]),
         IndexModel([("org_id", ASCENDING), ("sent_at", DESCENDING)]),
         IndexModel([("status", ASCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("rule_id", ASCENDING), ("status", ASCENDING), ("sent_at", DESCENDING)]),
+        IndexModel([("incident_id", ASCENDING), ("rule_id", ASCENDING), ("recipient", ASCENDING)]),
     ])
 
     # devices (IoT)
@@ -161,17 +158,33 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     ])
 
     # audit_logs
+    from app.core.config import settings as _settings
+    _audit_ttl = _settings.AUDIT_LOG_RETENTION_DAYS * 86400  # days → seconds
     await db.audit_logs.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
-        IndexModel([("org_id", ASCENDING), ("timestamp", DESCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("created_at", DESCENDING)]),
         IndexModel([("user_id", ASCENDING)]),
         IndexModel([("action", ASCENDING)]),
+        IndexModel([("resource_type", ASCENDING)]),
+        IndexModel([("created_at", ASCENDING)], expireAfterSeconds=_audit_ttl),
     ])
 
     # edge_commands
     await db.edge_commands.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
         IndexModel([("agent_id", ASCENDING), ("status", ASCENDING)]),
+    ])
+
+    # system_logs (TTL: auto-remove old entries based on retention setting)
+    from app.core.config import settings
+    ttl_seconds = settings.SYSTEM_LOG_RETENTION_DAYS * 86400  # days → seconds
+
+    await db.system_logs.create_indexes([
+        IndexModel([("id", ASCENDING)], unique=True),
+        IndexModel([("org_id", ASCENDING), ("timestamp", DESCENDING)]),
+        IndexModel([("level", ASCENDING)]),
+        IndexModel([("source", ASCENDING)]),
+        IndexModel([("timestamp", ASCENDING)], expireAfterSeconds=ttl_seconds),
     ])
 
     # token_blacklist (TTL: auto-remove expired entries)

@@ -1,7 +1,5 @@
 import logging
 import uuid
-import random
-import time
 import base64
 import asyncio
 from datetime import datetime, timezone
@@ -19,6 +17,7 @@ from app.services.onnx_inference_service import run_local_inference
 from app.services.validation_pipeline import run_validation_pipeline
 from app.core.org_filter import org_query
 from app.services.detection_control_service import resolve_effective_settings
+from app.services.system_log_service import emit_system_log
 from app.utils.s3_utils import upload_frame
 
 # Projection to exclude heavy fields from list queries
@@ -135,16 +134,10 @@ async def run_manual_detection(
         "predictions": predictions,
         "model_source": source,
         "model_version_id": None,
-        "student_confidence": None,
-        "escalated": False,
         "is_flagged": False,
-        "in_training_set": False,
         "incident_id": None,
     }
     await db.detection_logs.insert_one(detection_doc)
-
-    # Auto-collect frames for dataset pipeline
-    await _auto_collect_frame(db, detection_doc, frame_base64)
 
     # Broadcast detection via WebSocket (all detections, not just wet)
     try:
@@ -157,8 +150,12 @@ async def run_manual_detection(
     except Exception as e:
         log.warning(f"WebSocket broadcast failed for detection {detection_doc['id']}: {e}")
 
-    # If validated wet, create/update incident
+    # If validated wet, log system event and create/update incident
     if validation.is_wet:
+        await emit_system_log(
+            db, org_id, "info", "detection", "Wet floor detected",
+            {"camera_id": camera_id, "confidence": summary["confidence"], "store_id": camera["store_id"]},
+        )
         from app.services.incident_service import create_or_update_incident
         incident = await create_or_update_incident(db, detection_doc)
         if incident:
@@ -169,66 +166,6 @@ async def run_manual_detection(
             )
 
     return detection_doc
-
-
-async def _auto_collect_frame(
-    db: AsyncIOMotorDatabase, detection_doc: dict, frame_base64: str,
-) -> None:
-    """Auto-save detection frames to dataset_frames for training pipeline.
-
-    Wet frames with confidence > 0.7 are always saved.
-    Dry frames are saved at 1-in-10 rate (based on detection count modulo 10).
-    Split assignment: 80% train, 10% val, 10% test.
-    """
-    try:
-        is_wet = detection_doc.get("is_wet", False)
-        confidence = detection_doc.get("confidence", 0)
-
-        should_save = False
-        label = "dry"
-
-        if is_wet and confidence > 0.7:
-            should_save = True
-            label = "wet"
-        else:
-            # For dry frames, save ~10% using random sampling (O(1) instead of O(N) count_documents)
-            should_save = random.random() < 0.1
-
-        if not should_save or not frame_base64:
-            return
-
-        # Assign split: 80% train, 10% val, 10% test
-        r = random.random()
-        if r < 0.8:
-            split = "train"
-        elif r < 0.9:
-            split = "val"
-        else:
-            split = "test"
-
-        now = datetime.now(timezone.utc)
-        frame_doc = {
-            "id": str(uuid.uuid4()),
-            "org_id": detection_doc.get("org_id"),
-            "store_id": detection_doc.get("store_id"),
-            "camera_id": detection_doc.get("camera_id"),
-            "detection_id": detection_doc.get("id"),
-            "frame_path": detection_doc.get("frame_s3_path", ""),
-            "thumbnail_path": None,
-            "label_class": label,
-            "floor_type": None,
-            "label_source": "student_pseudolabel",
-            "teacher_logits": None,
-            "teacher_confidence": None,
-            "annotations_id": None,
-            "roboflow_sync_status": "not_sent",
-            "split": split,
-            "included": True,
-            "created_at": now,
-        }
-        await db.dataset_frames.insert_one(frame_doc)
-    except Exception as e:
-        log.warning(f"Auto-collect frame failed for detection {detection_doc.get('id')}: {e}")
 
 
 async def get_detection(db: AsyncIOMotorDatabase, detection_id: str, org_id: str) -> dict:
@@ -243,6 +180,7 @@ async def list_detections(
     org_id: str,
     camera_id: str | None = None,
     store_id: str | None = None,
+    incident_id: str | None = None,
     is_wet: bool | None = None,
     model_source: str | None = None,
     min_confidence: float | None = None,
@@ -256,6 +194,8 @@ async def list_detections(
         query["camera_id"] = camera_id
     if store_id:
         query["store_id"] = store_id
+    if incident_id:
+        query["incident_id"] = incident_id
     if is_wet is not None:
         query["is_wet"] = is_wet
     if model_source:
@@ -291,15 +231,6 @@ async def toggle_flag(db: AsyncIOMotorDatabase, detection_id: str, org_id: str) 
     return {"id": detection_id, "is_flagged": new_flag}
 
 
-async def add_to_training(db: AsyncIOMotorDatabase, detection_id: str, org_id: str) -> dict:
-    detection = await get_detection(db, detection_id, org_id)
-    await db.detection_logs.update_one(
-        {"id": detection_id},
-        {"$set": {"in_training_set": True}},
-    )
-    return {"id": detection_id, "in_training_set": True}
-
-
 async def list_flagged(
     db: AsyncIOMotorDatabase,
     org_id: str,
@@ -318,9 +249,26 @@ async def list_flagged(
     return detections, total
 
 
+async def bulk_set_flag(
+    db: AsyncIOMotorDatabase,
+    org_id: str,
+    detection_ids: list[str],
+    flagged: bool,
+) -> int:
+    """Set is_flagged on multiple detections at once. Returns count of updated docs."""
+    if not detection_ids:
+        return 0
+    query = {**org_query(org_id), "id": {"$in": detection_ids}}
+    result = await db.detection_logs.update_many(
+        query,
+        {"$set": {"is_flagged": flagged}},
+    )
+    return result.modified_count
+
+
 async def export_flagged(db: AsyncIOMotorDatabase, org_id: str) -> list[dict]:
     """Export all flagged detections for this org."""
     cursor = db.detection_logs.find(
         {**org_query(org_id), "is_flagged": True}, _LIST_PROJECTION
     ).sort("timestamp", -1)
-    return await cursor.to_list(length=10000)
+    return await cursor.to_list(length=settings.QUERY_LIMIT_LARGE)

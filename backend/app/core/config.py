@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Application
     ENVIRONMENT: str = "development"
     BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5173"
+    FRONTEND_URL: str = "https://app.puddlewatch.com"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     LOG_LEVEL: str = "INFO"
 
@@ -84,9 +84,59 @@ class Settings(BaseSettings):
     ROBOFLOW_PROJECT_VERSION: int = 0
 
     # Model Pipeline
-    SELF_TRAINING_ENABLED: bool = False
     LOCAL_INFERENCE_ENABLED: bool = True
     ONNX_MODEL_CACHE_DIR: str = "/app/models"
+
+    # Detection
+    DETECTION_HISTORY_DEFAULT_LIMIT: int = 20
+    DETECTION_HISTORY_MAX_LIMIT: int = 100
+    FLAGGED_EXPORT_MAX: int = 10000
+    ROBOFLOW_UPLOAD_BATCH_MAX: int = 1000
+
+    # Incidents
+    INCIDENT_DEDUP_WINDOW_SECONDS: int = 300
+    INCIDENT_DISPATCH_LOCK_SECONDS: int = 10
+    AUTO_CLOSE_CHECK_INTERVAL_MINUTES: int = 5
+
+    # Devices
+    DEVICE_TRIGGER_RATE_LIMIT_PER_MIN: int = 10
+    DEVICE_AUTO_OFF_DEFAULT_SECONDS: int = 600
+
+    # Roboflow
+    ROBOFLOW_API_TIMEOUT: int = 30
+    ROBOFLOW_SYNC_BATCH_SIZE: int = 50
+
+    # System Logs
+    SYSTEM_LOG_RETENTION_DAYS: int = 30
+
+    # Audit Logs
+    AUDIT_LOG_RETENTION_DAYS: int = 365
+    AUDIT_LOG_FAIL_MODE: str = "warn"  # "warn" = fire-and-forget, "raise" = strict compliance
+    AUDIT_LOG_DEDUP_WINDOW_SECONDS: int = 2
+
+    # Auth Security
+    AUTH_MAX_FAILED_ATTEMPTS: int = 5
+    AUTH_LOCKOUT_MINUTES: int = 15
+
+    # Notification Workers
+    NOTIFICATION_CIRCUIT_BREAKER_THRESHOLD: int = 5
+    NOTIFICATION_CIRCUIT_BREAKER_RECOVERY_SECONDS: int = 60
+
+    # Edge Agent Monitoring
+    EDGE_AGENT_STALE_THRESHOLD_MINUTES: int = 5
+    EDGE_AGENT_DISK_WARNING_PERCENT: int = 85
+    EDGE_AGENT_BUFFER_WARNING_MB: int = 1600
+
+    # HTTP Timeouts (seconds)
+    HTTP_TIMEOUT_FAST: int = 5
+    HTTP_TIMEOUT_DEFAULT: int = 10
+    HTTP_TIMEOUT_MEDIUM: int = 15
+    HTTP_TIMEOUT_SLOW: int = 30
+    HTTP_TIMEOUT_DOWNLOAD: int = 120
+
+    # Query Limits
+    QUERY_LIMIT_LARGE: int = 10000
+    QUERY_LIMIT_XLARGE: int = 50000
 
     # Sentry (optional)
     SENTRY_DSN: str = ""
