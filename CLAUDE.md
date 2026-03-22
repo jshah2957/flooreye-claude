@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 20 — Full audit + fix cycle complete. All backend stubs implemented, edge agent + ML pipeline built, UI pages completed.
+Session 28 — Complete UI redesign + Edge sync fixes + Integration bug fixes. Google Stitch SDK integrated.
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -63,6 +63,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 17: ML models/schemas/services/routers (dataset, annotations, model registry, training), training worker, Dataset/Models/Training web pages — Phase 9 COMPLETE
 - Session 18: Review Queue, Clips, System Logs, User Management, Roboflow, Storage, Test Inference pages — Phase 10 COMPLETE
 - Session 19: pytest suite (24 tests), GitHub Actions CI/CD, Docker production builds, rate limiter, EAS config — Phase 11 COMPLETE — ALL PHASES DONE
+- Session 28: Google Stitch SDK integration + Complete UI redesign (all 3 apps, 101 files, +16,536/-5,379 lines) + Edge config sync fixes (14 files, detailed push feedback, heartbeat staleness check, retry with backoff, SyncTracker component) + Integration bug fixes (status mismatch, form validation, real SMTP/S3 tests, camera credentials encryption, encryption key hardening)
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
@@ -79,7 +80,10 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Phase 11 — Polish, Security, Production: COMPLETE
 
 ## Dependency Log
-No libraries installed yet. All versions pinned in:
+Session 28 additions:
+- web: framer-motion ^11.x (page transitions, animations)
+- stitch/: @google/stitch-sdk ^0.0.3 (UI generation pipeline)
+All versions pinned in:
 - backend/requirements.txt (production)
 - backend/requirements-dev.txt (testing/linting)
 - training/requirements-training.txt (ML pipeline)
@@ -90,7 +94,20 @@ No libraries installed yet. All versions pinned in:
 None yet. All field names must come from docs/schemas.md.
 
 ## Blocked Items
-- forgot-password / reset-password endpoints return 501 — require SMTP integration (Phase 5)
+- forgot-password / reset-password endpoints return 501 — require SMTP integration
+
+## Session 28 New Files
+- stitch/ — Google Stitch SDK pipeline (DESIGN.md, generate-ui.js, download-outputs.js, 5 generated screens)
+- web/src/components/ui/ — 16 shared UI components (Button, Input, Badge, Modal, Drawer, DataTable, PageHeader, Tabs, SearchInput, Skeleton, StatCard, etc.)
+- web/src/components/ThemeProvider.tsx — Dark mode context with localStorage
+- web/src/components/AnimatedPage.tsx — Framer Motion page transitions
+- web/src/lib/animations.ts — Reusable animation variants
+- web/src/index.css — CSS custom properties (light + dark mode)
+- web/src/components/detection/SyncTracker.tsx — Real-time edge config sync tracker
+- docs/UI_REDESIGN_PLAN.md — 12-session UI redesign plan
+- docs/UI_REDESIGN_REPORT.md — Before/after change report
+- docs/EDGE_SYNC_FIX_PLAN.md — Edge sync fix plan
+- docs/stitch-ui-prompts.md — UI descriptions for Stitch generation
 
 ## Installed Skill Frameworks
 - **obra/superpowers** (53 files): Agentic methodology — parallel agents, TDD, systematic debugging, code review, plan execution. Location: .claude/skills/superpowers/
