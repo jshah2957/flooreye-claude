@@ -8,15 +8,14 @@ import {
   X,
   Pencil,
   Mail,
-  Link,
-  Phone,
+  Link2,
+  MessageSquare,
   BellRing,
-  Send,
+  Play,
   Clock,
 } from "lucide-react";
 
 import api from "@/lib/api";
-import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
@@ -60,19 +59,28 @@ const TIMEZONES = [
   "UTC",
 ];
 
-function ChannelIcon({ channel }: { channel: string }) {
-  switch (channel) {
-    case "email":
-      return <Mail size={14} className="text-blue-600" />;
-    case "webhook":
-      return <Link size={14} className="text-purple-600" />;
-    case "sms":
-      return <Phone size={14} className="text-green-600" />;
-    case "push":
-      return <BellRing size={14} className="text-amber-600" />;
-    default:
-      return <Bell size={14} className="text-[#78716C]" />;
-  }
+const CHANNEL_CONFIG: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
+  email: { icon: Mail, color: "text-blue-600", bg: "bg-blue-50", label: "Email" },
+  webhook: { icon: Link2, color: "text-purple-600", bg: "bg-purple-50", label: "Webhook" },
+  sms: { icon: MessageSquare, color: "text-green-600", bg: "bg-green-50", label: "SMS" },
+  push: { icon: BellRing, color: "text-amber-600", bg: "bg-amber-50", label: "Push" },
+};
+
+const SEVERITY_BADGE: Record<string, string> = {
+  low: "bg-blue-50 text-blue-700",
+  medium: "bg-amber-50 text-amber-700",
+  high: "bg-orange-50 text-orange-700",
+  critical: "bg-red-50 text-red-700",
+};
+
+function ChannelIconBadge({ channel }: { channel: string }) {
+  const cfg = CHANNEL_CONFIG[channel] ?? { icon: Bell, color: "text-gray-500", bg: "bg-gray-50", label: channel };
+  const Icon = cfg.icon;
+  return (
+    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${cfg.bg}`}>
+      <Icon size={16} className={cfg.color} />
+    </div>
+  );
 }
 
 function channelRecipientLabel(channel: string, recipients: string[]): string {
@@ -247,7 +255,6 @@ export default function NotificationsPage() {
       setTestingRuleId(null);
     },
     onError: (err: any) => {
-      // If 404/405 the endpoint may not exist yet -- still show a friendly message
       if (
         err?.response?.status === 404 ||
         err?.response?.status === 405
@@ -281,178 +288,211 @@ export default function NotificationsPage() {
   const deliveries = deliveriesData?.data ?? [];
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#1C1917]">
-          Notification Settings
-        </h1>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Notification Settings</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage notification rules and delivery history</p>
+        </div>
         <button
           onClick={openCreateDrawer}
-          className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0F766E]"
         >
           <Plus size={16} /> New Rule
         </button>
       </div>
 
-      <div className="mb-4 flex gap-1 border-b border-[#E7E5E0]">
+      {/* Tabs */}
+      <div className="mb-6 flex gap-1 border-b border-gray-200">
         {(["rules", "history"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize ${
+            className={`relative px-5 py-3 text-sm font-medium transition-colors ${
               tab === t
-                ? "border-b-2 border-[#0D9488] text-[#0D9488]"
-                : "text-[#78716C]"
+                ? "text-[#0D9488]"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             {t === "rules" ? `Rules (${rules.length})` : "Delivery History"}
+            {tab === t && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0D9488]" />
+            )}
           </button>
         ))}
       </div>
 
+      {/* Rules Tab */}
       {tab === "rules" &&
         (isLoading ? (
-          <div className="flex h-40 items-center justify-center">
-            <Loader2
-              size={24}
-              className="animate-spin text-[#0D9488]"
-            />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-gray-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-40 rounded bg-gray-200" />
+                    <div className="h-3 w-64 rounded bg-gray-200" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : rules.length === 0 ? (
           <EmptyState
             icon={Bell}
             title="No notification rules"
-            description="Create a rule to receive alerts."
+            description="Create a rule to receive alerts when incidents are detected."
             actionLabel="New Rule"
             onAction={openCreateDrawer}
           />
         ) : (
           <div className="space-y-3">
-            {rules.map((rule) => (
-              <div
-                key={rule.id}
-                className="flex items-center justify-between rounded-lg border border-[#E7E5E0] bg-white p-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <ChannelIcon channel={rule.channel} />
-                    <span className="font-medium text-[#1C1917]">
-                      {rule.name || rule.channel}
-                    </span>
-                    <StatusBadge status={rule.channel} size="sm" />
-                    {!rule.is_active && (
-                      <StatusBadge status="disabled" size="sm" />
-                    )}
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#78716C]">
-                    <span className="flex items-center gap-1">
-                      <ChannelIcon channel={rule.channel} />
-                      {channelRecipientLabel(rule.channel, rule.recipients)}
-                    </span>
-                    <span>&middot;</span>
-                    <span>
-                      Min severity: {rule.min_severity}
-                    </span>
-                    <span>&middot;</span>
-                    <span>
-                      Min conf:{" "}
-                      {((rule.min_confidence ?? 0) * 100).toFixed(0)}%
-                    </span>
-                    {rule.quiet_hours_enabled && (
-                      <>
-                        <span>&middot;</span>
-                        <span className="flex items-center gap-1 text-amber-600">
-                          <Clock size={11} />
-                          Quiet {rule.quiet_hours_start}&ndash;
-                          {rule.quiet_hours_end}{" "}
-                          {rule.quiet_hours_timezone || ""}
+            {rules.map((rule) => {
+              const cfg = CHANNEL_CONFIG[rule.channel] ?? { label: rule.channel };
+              return (
+                <div
+                  key={rule.id}
+                  className="group rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <div className="flex items-start gap-4">
+                    <ChannelIconBadge channel={rule.channel} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-gray-900">
+                          {rule.name || cfg.label}
                         </span>
-                      </>
-                    )}
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${SEVERITY_BADGE[rule.min_severity] ?? "bg-gray-100 text-gray-600"}`}>
+                          {rule.min_severity}
+                        </span>
+                        {!rule.is_active && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                            Disabled
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                        <span>{channelRecipientLabel(rule.channel, rule.recipients)}</span>
+                        <span className="hidden sm:inline">&middot;</span>
+                        <span>
+                          Confidence: {((rule.min_confidence ?? 0) * 100).toFixed(0)}%
+                        </span>
+                        {rule.quiet_hours_enabled && (
+                          <>
+                            <span className="hidden sm:inline">&middot;</span>
+                            <span className="inline-flex items-center gap-1 text-amber-600">
+                              <Clock size={11} />
+                              Quiet {rule.quiet_hours_start}&ndash;{rule.quiet_hours_end}{" "}
+                              {rule.quiet_hours_timezone || ""}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={() => handleTestSend(rule.id)}
+                        disabled={testingRuleId === rule.id}
+                        title="Test Send"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50"
+                      >
+                        {testingRuleId === rule.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Play size={14} />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => openEditDrawer(rule)}
+                        title="Edit"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-teal-50 hover:text-[#0D9488]"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(rule.id)}
+                        title="Delete"
+                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="ml-3 flex items-center gap-1">
-                  <button
-                    onClick={() => handleTestSend(rule.id)}
-                    disabled={testingRuleId === rule.id}
-                    title="Test Send"
-                    className="rounded p-1.5 text-[#78716C] hover:bg-[#E0F2FE] hover:text-[#0284C7] disabled:opacity-50"
-                  >
-                    {testingRuleId === rule.id ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Send size={14} />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => openEditDrawer(rule)}
-                    title="Edit"
-                    className="rounded p-1.5 text-[#78716C] hover:bg-[#F0F9FF] hover:text-[#0D9488]"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(rule.id)}
-                    title="Delete"
-                    className="rounded p-1.5 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
 
+      {/* History Tab */}
       {tab === "history" && (
-        <div className="overflow-x-auto rounded-lg border border-[#E7E5E0] bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#E7E5E0] bg-[#F8F7F4]">
-                <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                  Channel
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                  Recipient
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                  Status
-                </th>
-                <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                  Sent
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveries.map((d: any) => (
-                <tr key={d.id} className="border-b border-[#E7E5E0]">
-                  <td className="px-4 py-2">
-                    <StatusBadge status={d.channel} size="sm" />
-                  </td>
-                  <td className="px-4 py-2 text-[#78716C]">{d.recipient}</td>
-                  <td className="px-4 py-2">
-                    <StatusBadge
-                      status={d.status === "sent" ? "online" : "error"}
-                      size="sm"
-                    />
-                  </td>
-                  <td className="px-4 py-2 text-[#78716C]">
-                    {new Date(d.sent_at).toLocaleString()}
-                  </td>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/80">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Channel
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Recipient
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Sent
+                  </th>
                 </tr>
-              ))}
-              {deliveries.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-4 py-8 text-center text-[#78716C]"
-                  >
-                    No deliveries yet
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {deliveries.map((d: any) => (
+                  <tr key={d.id} className="transition-colors hover:bg-gray-50">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                        d.channel === "email" ? "bg-blue-50 text-blue-700" :
+                        d.channel === "webhook" ? "bg-purple-50 text-purple-700" :
+                        d.channel === "sms" ? "bg-green-50 text-green-700" :
+                        "bg-amber-50 text-amber-700"
+                      }`}>
+                        {d.channel}
+                      </span>
+                    </td>
+                    <td className="max-w-[200px] truncate px-4 py-3 text-gray-600">{d.recipient}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${
+                        d.status === "sent" ? "bg-green-50 text-green-700" :
+                        d.status === "pending" ? "bg-amber-50 text-amber-700" :
+                        "bg-red-50 text-red-700"
+                      }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${
+                          d.status === "sent" ? "bg-green-500" :
+                          d.status === "pending" ? "bg-amber-500" :
+                          "bg-red-500"
+                        }`} />
+                        {d.status === "sent" ? "Delivered" : d.status === "pending" ? "Pending" : "Failed"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
+                      {new Date(d.sent_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {deliveries.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-4 py-12 text-center text-gray-400"
+                    >
+                      <Bell size={24} className="mx-auto mb-2 text-gray-300" />
+                      No deliveries yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -471,55 +511,65 @@ export default function NotificationsPage() {
 
       {/* Create / Edit Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40" role="dialog" aria-modal="true" aria-label={editingRule ? "Edit Notification Rule" : "New Notification Rule"}>
-          <div className="h-full w-[420px] overflow-y-auto bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-              <h2 className="text-lg font-semibold text-[#1C1917]">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={editingRule ? "Edit Notification Rule" : "New Notification Rule"}>
+          <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">
                 {editingRule ? "Edit Notification Rule" : "New Notification Rule"}
               </h2>
               <button
                 onClick={closeDrawer}
-                className="text-[#78716C] hover:text-[#1C1917]"
+                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
                 aria-label="Close drawer"
               >
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-6">
               {/* Name */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                  Name
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Rule Name
                 </label>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Critical spill alerts"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-colors focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                 />
               </div>
 
               {/* Channel */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                  Channel *
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Channel <span className="text-red-500">*</span>
                 </label>
-                <select
-                  value={channel}
-                  onChange={(e) => setChannel(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-                >
-                  <option value="email">Email</option>
-                  <option value="webhook">Webhook</option>
-                  <option value="sms">SMS</option>
-                  <option value="push">Push</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(CHANNEL_CONFIG).map(([key, cfg]) => {
+                    const Icon = cfg.icon;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setChannel(key)}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
+                          channel === key
+                            ? "border-[#0D9488] bg-teal-50 text-[#0D9488] ring-2 ring-[#0D9488]/20"
+                            : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Icon size={16} />
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Recipients */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                  Recipients (comma-separated) *
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Recipients <span className="text-red-500">*</span>
                 </label>
                 <input
                   value={recipients}
@@ -533,9 +583,9 @@ export default function NotificationsPage() {
                           ? "+15551234567"
                           : "device-token-abc123"
                   }
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-colors focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                 />
-                <p className="mt-1 text-xs text-[#A8A29E]">
+                <p className="mt-1.5 text-xs text-gray-400">
                   {channel === "email" && "Enter email addresses separated by commas"}
                   {channel === "webhook" && "Enter webhook URL(s) separated by commas"}
                   {channel === "sms" && "Enter phone numbers in E.164 format (+1...)"}
@@ -545,13 +595,13 @@ export default function NotificationsPage() {
 
               {/* Min Severity */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                  Min Severity
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Minimum Severity
                 </label>
                 <select
                   value={minSeverity}
                   onChange={(e) => setMinSeverity(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none transition-colors focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -562,26 +612,31 @@ export default function NotificationsPage() {
 
               {/* Min Confidence */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                  Min Confidence ({(minConfidence * 100).toFixed(0)}%)
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  Minimum Confidence
                 </label>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={minConfidence}
-                  onChange={(e) =>
-                    setMinConfidence(parseFloat(e.target.value))
-                  }
-                  className="w-full"
-                />
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={minConfidence}
+                    onChange={(e) =>
+                      setMinConfidence(parseFloat(e.target.value))
+                    }
+                    className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-gray-200 accent-[#0D9488]"
+                  />
+                  <span className="w-12 rounded-md bg-gray-100 px-2 py-1 text-center text-sm font-medium text-gray-700">
+                    {(minConfidence * 100).toFixed(0)}%
+                  </span>
+                </div>
               </div>
 
               {/* Active toggle (edit mode only) */}
               {editingRule && (
-                <div className="flex items-center justify-between rounded-md border border-[#E7E5E0] px-3 py-2.5">
-                  <span className="text-sm font-medium text-[#1C1917]">
+                <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                  <span className="text-sm font-medium text-gray-700">
                     Rule Active
                   </span>
                   <button
@@ -589,13 +644,13 @@ export default function NotificationsPage() {
                     role="switch"
                     aria-checked={isActive}
                     onClick={() => setIsActive(!isActive)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      isActive ? "bg-[#0D9488]" : "bg-[#D6D3D1]"
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      isActive ? "bg-[#0D9488]" : "bg-gray-300"
                     }`}
                   >
                     <span
-                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                        isActive ? "translate-x-[18px]" : "translate-x-[3px]"
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        isActive ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -603,12 +658,12 @@ export default function NotificationsPage() {
               )}
 
               {/* Quiet Hours Section */}
-              <div className="rounded-md border border-[#E7E5E0] p-3">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-[#78716C]" />
-                    <span className="text-sm font-medium text-[#1C1917]">
-                      Enable Quiet Hours
+                    <Clock size={16} className="text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700">
+                      Quiet Hours
                     </span>
                   </div>
                   <button
@@ -616,28 +671,28 @@ export default function NotificationsPage() {
                     role="switch"
                     aria-checked={quietHoursEnabled}
                     onClick={() => setQuietHoursEnabled(!quietHoursEnabled)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      quietHoursEnabled ? "bg-[#0D9488]" : "bg-[#D6D3D1]"
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      quietHoursEnabled ? "bg-[#0D9488]" : "bg-gray-300"
                     }`}
                   >
                     <span
-                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
                         quietHoursEnabled
-                          ? "translate-x-[18px]"
-                          : "translate-x-[3px]"
+                          ? "translate-x-6"
+                          : "translate-x-1"
                       }`}
                     />
                   </button>
                 </div>
 
                 {quietHoursEnabled && (
-                  <div className="mt-3 space-y-3">
-                    <p className="text-xs text-[#A8A29E]">
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs text-gray-400">
                       Notifications will be suppressed during quiet hours.
                     </p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-[#78716C]">
+                        <label className="mb-1 block text-xs font-medium text-gray-500">
                           Start Time
                         </label>
                         <input
@@ -646,11 +701,11 @@ export default function NotificationsPage() {
                           onChange={(e) =>
                             setQuietHoursStart(e.target.value)
                           }
-                          className="w-full rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm outline-none focus:border-[#0D9488]"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-[#78716C]">
+                        <label className="mb-1 block text-xs font-medium text-gray-500">
                           End Time
                         </label>
                         <input
@@ -659,12 +714,12 @@ export default function NotificationsPage() {
                           onChange={(e) =>
                             setQuietHoursEnd(e.target.value)
                           }
-                          className="w-full rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm outline-none focus:border-[#0D9488]"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-[#78716C]">
+                      <label className="mb-1 block text-xs font-medium text-gray-500">
                         Timezone
                       </label>
                       <select
@@ -672,7 +727,7 @@ export default function NotificationsPage() {
                         onChange={(e) =>
                           setQuietHoursTimezone(e.target.value)
                         }
-                        className="w-full rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm outline-none focus:border-[#0D9488]"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                       >
                         {TIMEZONES.map((tz) => (
                           <option key={tz} value={tz}>
@@ -689,7 +744,7 @@ export default function NotificationsPage() {
               <button
                 onClick={handleSave}
                 disabled={!recipients || isSaving}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSaving && (
                   <Loader2 size={14} className="animate-spin" />

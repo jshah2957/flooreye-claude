@@ -12,6 +12,10 @@ import {
   CheckSquare,
   Square,
   Calendar,
+  Star,
+  History,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -114,7 +118,7 @@ export default function DetectionHistoryPage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["detections", page, storeFilter, cameraFilter, wetFilter, modelFilter, minConfidence, dateFrom, dateTo],
     queryFn: async () => {
       const params: Record<string, unknown> = { offset: page * limit, limit };
@@ -175,164 +179,248 @@ export default function DetectionHistoryPage() {
 
   const hasFilters = storeFilter || cameraFilter || wetFilter || modelFilter || minConfidence > 0 || flaggedOnly || dateFrom || dateTo;
   const filteredIds = filtered.map((d) => d.id);
+  const totalPages = Math.ceil(total / limit);
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen">
+      {/* Page Header */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#1C1917]">Detection History</h1>
-          <p className="text-sm text-[#78716C]">{total} detections total</p>
+          <h1 className="text-2xl font-bold text-gray-900">Detection History</h1>
+          <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} detections total</p>
         </div>
         <button
           onClick={() => downloadCSV(filtered, cameraMap, storeMap)}
           disabled={filtered.length === 0}
-          className="flex items-center gap-2 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Download size={14} /> Export CSV
+          <Download size={16} /> Export CSV
         </button>
       </div>
 
       {/* Filter Bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <select value={storeFilter} onChange={(e) => { setStoreFilter(e.target.value); setPage(0); }}
-          className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-          <option value="">All Stores</option>
-          {(stores ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-        <select value={cameraFilter} onChange={(e) => { setCameraFilter(e.target.value); setPage(0); }}
-          className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-          <option value="">All Cameras</option>
-          {(cameras ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select value={wetFilter} onChange={(e) => { setWetFilter(e.target.value); setPage(0); }}
-          className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-          <option value="">All Results</option>
-          <option value="wet">Wet Only</option>
-          <option value="dry">Dry Only</option>
-        </select>
-        <select value={modelFilter} onChange={(e) => { setModelFilter(e.target.value); setPage(0); }}
-          className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-          <option value="">All Models</option>
-          <option value="roboflow">Roboflow</option>
-          <option value="student">Student</option>
-          <option value="hybrid_escalated">Hybrid</option>
-        </select>
-        <div className="flex items-center gap-2 text-sm text-[#78716C]">
-          <span>Min conf:</span>
-          <input type="range" min={0} max={100} value={minConfidence}
-            onChange={(e) => { setMinConfidence(parseInt(e.target.value)); setPage(0); }} className="w-20" />
-          <span className="w-8">{minConfidence}%</span>
-        </div>
-        <label className="flex items-center gap-1.5 text-sm text-[#1C1917]">
-          <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)}
-            className="rounded border-[#E7E5E0]" />
-          Flagged
-        </label>
-      </div>
+      <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <select value={storeFilter} onChange={(e) => { setStoreFilter(e.target.value); setPage(0); }}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]">
+            <option value="">All Stores</option>
+            {(stores ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
 
-      {/* Date Range Row */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 text-sm">
-          <Calendar size={14} className="text-[#78716C]" />
-          <span className="text-[#78716C]">From:</span>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
-            className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-sm outline-none focus:border-[#0D9488]"
-          />
-          <span className="text-[#78716C]">To:</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
-            className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-sm outline-none focus:border-[#0D9488]"
-          />
-        </div>
-        {hasFilters && (
-          <button onClick={clearFilters} className="text-sm text-[#0D9488] hover:underline">Clear Filters</button>
-        )}
-        <div className="flex-1" />
-        <div className="flex gap-1 rounded-md border border-[#E7E5E0]">
-          <button onClick={() => setView("gallery")}
-            className={`p-2 ${view === "gallery" ? "bg-[#0D9488] text-white" : "text-[#78716C]"} rounded-l-md`}>
-            <Grid3X3 size={14} />
-          </button>
-          <button onClick={() => setView("table")}
-            className={`p-2 ${view === "table" ? "bg-[#0D9488] text-white" : "text-[#78716C]"} rounded-r-md`}>
-            <List size={14} />
-          </button>
-        </div>
-      </div>
+          <select value={cameraFilter} onChange={(e) => { setCameraFilter(e.target.value); setPage(0); }}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]">
+            <option value="">All Cameras</option>
+            {(cameras ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
 
-      {/* Bulk Action Bar */}
-      {selectedIds.size > 0 && (
-        <div className="mb-4 flex items-center gap-3 rounded-lg border border-[#0D9488] bg-[#F0FDFA] px-4 py-2.5">
-          <span className="text-sm font-medium text-[#0D9488]">
-            {selectedIds.size} selected
-          </span>
+          {/* Result toggle pills */}
+          <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+            {[
+              { value: "", label: "All" },
+              { value: "wet", label: "Wet" },
+              { value: "dry", label: "Dry" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { setWetFilter(opt.value); setPage(0); }}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  wetFilter === opt.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Confidence slider */}
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span className="text-xs font-medium">Confidence:</span>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={minConfidence}
+              onChange={(e) => { setMinConfidence(parseInt(e.target.value)); setPage(0); }}
+              className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-gray-200 accent-[#0D9488]"
+            />
+            <span className="w-8 text-xs font-semibold text-[#0D9488]">{minConfidence}%</span>
+          </div>
+
+          {/* Flagged toggle */}
           <button
-            onClick={() => bulkFlagMutation.mutate(Array.from(selectedIds))}
-            disabled={bulkFlagMutation.isPending}
-            className="flex items-center gap-1.5 rounded-md bg-[#DC2626] px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            onClick={() => setFlaggedOnly(!flaggedOnly)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+              flaggedOnly
+                ? "border-amber-300 bg-amber-50 text-amber-700"
+                : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+            }`}
           >
-            <Flag size={12} /> Flag Selected ({selectedIds.size})
+            <Star size={12} className={flaggedOnly ? "fill-amber-400" : ""} />
+            Flagged
           </button>
-          <button onClick={clearSelection} className="ml-auto text-xs text-[#78716C] hover:text-[#1C1917]">
-            Clear selection
+
+          {/* Date range */}
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar size={14} className="text-gray-400" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+              className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 outline-none transition-colors focus:border-[#0D9488]"
+            />
+            <span className="text-gray-400">to</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+              className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-700 outline-none transition-colors focus:border-[#0D9488]"
+            />
+          </div>
+
+          {hasFilters && (
+            <button onClick={clearFilters} className="text-xs font-medium text-[#0D9488] hover:text-[#0F766E] hover:underline">
+              Clear all filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* View Toggle */}
+      <div className="mb-4 flex items-center justify-end">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+          <button
+            onClick={() => setView("gallery")}
+            className={`rounded-md p-2 transition-colors ${view === "gallery" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}
+          >
+            <Grid3X3 size={16} />
           </button>
+          <button
+            onClick={() => setView("table")}
+            className={`rounded-md p-2 transition-colors ${view === "table" ? "bg-gray-100 text-gray-900" : "text-gray-400 hover:text-gray-600"}`}
+          >
+            <List size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Error State */}
+      {isError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Failed to load detections. Please try again.
         </div>
       )}
 
-      {/* Content */}
+      {/* Loading Skeleton */}
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 size={24} className="animate-spin text-[#0D9488]" />
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+              <div className="aspect-video bg-gray-200" />
+              <div className="p-3 space-y-2">
+                <div className="flex justify-between">
+                  <div className="h-5 w-14 rounded-full bg-gray-200" />
+                  <div className="h-5 w-10 rounded bg-gray-200" />
+                </div>
+                <div className="h-3 w-3/4 rounded bg-gray-100" />
+                <div className="h-3 w-1/2 rounded bg-gray-100" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState icon={EyeIcon} title="No detections found" description="Adjust filters or run a detection." />
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white py-20">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+            <History size={24} className="text-gray-400" />
+          </div>
+          <h3 className="mt-4 text-base font-semibold text-gray-900">No detections found</h3>
+          <p className="mt-1 text-sm text-gray-500">Adjust filters or run a detection.</p>
+        </div>
       ) : view === "gallery" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        /* Gallery View */
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {filtered.map((d) => (
-            <div key={d.id}
-              className="relative cursor-pointer rounded-lg border border-[#E7E5E0] bg-white overflow-hidden hover:border-[#0D9488] transition-colors">
-              {/* Checkbox overlay */}
+            <div
+              key={d.id}
+              className="group relative cursor-pointer rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm transition-all hover:ring-2 hover:ring-[#0D9488]/30 hover:shadow-md"
+            >
+              {/* Checkbox */}
               <div
-                className="absolute left-2 top-2 z-10"
+                className="absolute left-2.5 top-2.5 z-10"
                 onClick={(e) => { e.stopPropagation(); toggleSelected(d.id); }}
               >
                 {selectedIds.has(d.id) ? (
-                  <CheckSquare size={18} className="text-[#0D9488]" />
+                  <CheckSquare size={20} className="text-[#0D9488] drop-shadow" />
                 ) : (
-                  <Square size={18} className="text-white drop-shadow-md hover:text-[#0D9488]" />
+                  <Square size={20} className="text-white/80 drop-shadow-md opacity-0 transition-opacity group-hover:opacity-100" />
                 )}
               </div>
+
+              {/* Wet/Dry Badge */}
+              <div className="absolute left-2.5 bottom-[calc(100%-theme(spacing.2)-theme(height.6))] top-auto z-10">
+                {/* Positioned via overlay */}
+              </div>
+
               <div onClick={() => setSelectedDetection(d)}>
-                {d.frame_base64 ? (
-                  <img src={`data:image/jpeg;base64,${d.frame_base64}`} alt="Detection"
-                    className="h-[175px] w-full object-cover bg-gray-100" />
-                ) : (
-                  <div className="flex h-[175px] items-center justify-center bg-gray-100 text-xs text-[#78716C]">No frame</div>
-                )}
-                <div className="p-3">
-                  <div className="flex items-center justify-between">
-                    <StatusBadge status={d.is_wet ? "critical" : "online"} />
-                    <span className={`text-sm font-semibold ${confColor(d.confidence)}`}>
-                      {(d.confidence * 100).toFixed(0)}%
+                {/* Thumbnail */}
+                <div className="relative aspect-video bg-gray-100">
+                  {d.frame_base64 ? (
+                    <img
+                      src={`data:image/jpeg;base64,${d.frame_base64}`}
+                      alt="Detection"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-gray-400">No frame</div>
+                  )}
+
+                  {/* Overlay badges */}
+                  <div className="absolute left-2 top-2">
+                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${
+                      d.is_wet
+                        ? "bg-red-500/90 text-white"
+                        : "bg-green-500/90 text-white"
+                    }`}>
+                      {d.is_wet ? "WET" : "DRY"}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-[#78716C]">
-                    {cameraMap.get(d.camera_id) ?? "Unknown"} &middot; {storeMap.get(d.store_id) ?? ""}
+                  {d.is_flagged && (
+                    <div className="absolute right-2 top-2">
+                      <Star size={16} className="fill-amber-400 text-amber-400 drop-shadow" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Card content */}
+                <div className="p-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-bold ${confColor(d.confidence)}`}>
+                      {(d.confidence * 100).toFixed(0)}%
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {d.wet_area_percent.toFixed(1)}% wet
+                    </span>
+                  </div>
+                  <p className="mt-1.5 truncate text-xs text-gray-500">
+                    {cameraMap.get(d.camera_id) ?? "Unknown"}
                   </p>
                   <div className="mt-1 flex items-center justify-between">
                     <StatusBadge status={d.model_source} size="sm" />
-                    <span className="text-[10px] text-[#78716C]">
+                    <span className="text-[10px] text-gray-400">
                       {new Date(d.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <div className="mt-2 flex gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); flagMutation.mutate(d.id); }}
-                      className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] ${d.is_flagged ? "bg-[#FEE2E2] text-[#DC2626]" : "bg-gray-50 text-[#78716C] hover:bg-gray-100"}`}>
+                  <div className="mt-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); flagMutation.mutate(d.id); }}
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${
+                        d.is_flagged
+                          ? "bg-red-50 text-red-600"
+                          : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                      }`}
+                    >
                       <Flag size={10} /> {d.is_flagged ? "Flagged" : "Flag"}
                     </button>
                   </div>
@@ -342,60 +430,65 @@ export default function DetectionHistoryPage() {
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[#E7E5E0] bg-white">
+        /* Table View */
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#E7E5E0] bg-[#F8F7F4]">
-                <th className="px-3 py-2 text-left">
+              <tr className="border-b border-gray-100 bg-gray-50/80">
+                <th className="px-3 py-3 text-left">
                   <button onClick={() => toggleSelectAll(filteredIds)}>
                     {filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id)) ? (
                       <CheckSquare size={16} className="text-[#0D9488]" />
                     ) : (
-                      <Square size={16} className="text-[#78716C]" />
+                      <Square size={16} className="text-gray-400" />
                     )}
                   </button>
                 </th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Frame</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Result</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Confidence</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Wet Area</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Camera</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Store</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Time</th>
-                <th className="px-3 py-2 text-left font-medium text-[#78716C]">Model</th>
-                <th className="px-3 py-2 text-right font-medium text-[#78716C]">Actions</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Frame</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Result</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Confidence</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Wet Area</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Camera</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Store</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Time</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Model</th>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {filtered.map((d) => (
-                <tr key={d.id}
-                  className={`border-b border-[#E7E5E0] hover:bg-[#F8F7F4] cursor-pointer ${selectedIds.has(d.id) ? "bg-[#F0FDFA]" : ""}`}
-                  onClick={() => setSelectedDetection(d)}>
-                  <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                <tr
+                  key={d.id}
+                  className={`cursor-pointer transition-colors hover:bg-gray-50 ${selectedIds.has(d.id) ? "bg-teal-50/50" : ""}`}
+                  onClick={() => setSelectedDetection(d)}
+                >
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => toggleSelected(d.id)}>
                       {selectedIds.has(d.id) ? (
                         <CheckSquare size={16} className="text-[#0D9488]" />
                       ) : (
-                        <Square size={16} className="text-[#78716C]" />
+                        <Square size={16} className="text-gray-400" />
                       )}
                     </button>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-3">
                     {d.frame_base64 ? (
-                      <img src={`data:image/jpeg;base64,${d.frame_base64}`} className="h-[50px] w-[80px] rounded object-cover" alt="" />
-                    ) : <div className="h-[50px] w-[80px] rounded bg-gray-100" />}
+                      <img src={`data:image/jpeg;base64,${d.frame_base64}`} className="h-[50px] w-[80px] rounded-lg object-cover" alt="" />
+                    ) : <div className="h-[50px] w-[80px] rounded-lg bg-gray-100" />}
                   </td>
-                  <td className="px-3 py-2"><StatusBadge status={d.is_wet ? "critical" : "online"} /></td>
-                  <td className={`px-3 py-2 font-medium ${confColor(d.confidence)}`}>{(d.confidence * 100).toFixed(1)}%</td>
-                  <td className="px-3 py-2 text-[#78716C]">{d.wet_area_percent.toFixed(1)}%</td>
-                  <td className="px-3 py-2 text-[#78716C]">{cameraMap.get(d.camera_id) ?? "---"}</td>
-                  <td className="px-3 py-2 text-[#78716C]">{storeMap.get(d.store_id) ?? "---"}</td>
-                  <td className="px-3 py-2 text-[#78716C]">{new Date(d.timestamp).toLocaleString()}</td>
-                  <td className="px-3 py-2"><StatusBadge status={d.model_source} size="sm" /></td>
-                  <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                    <button onClick={() => flagMutation.mutate(d.id)}
-                      className={`mr-1 rounded p-1 ${d.is_flagged ? "text-[#DC2626]" : "text-[#78716C] hover:text-[#DC2626]"}`}>
-                      <Flag size={12} />
+                  <td className="px-3 py-3"><StatusBadge status={d.is_wet ? "critical" : "online"} /></td>
+                  <td className={`px-3 py-3 font-semibold ${confColor(d.confidence)}`}>{(d.confidence * 100).toFixed(1)}%</td>
+                  <td className="px-3 py-3 text-gray-500">{d.wet_area_percent.toFixed(1)}%</td>
+                  <td className="px-3 py-3 text-gray-700">{cameraMap.get(d.camera_id) ?? "---"}</td>
+                  <td className="px-3 py-3 text-gray-500">{storeMap.get(d.store_id) ?? "---"}</td>
+                  <td className="px-3 py-3 text-gray-500">{new Date(d.timestamp).toLocaleString()}</td>
+                  <td className="px-3 py-3"><StatusBadge status={d.model_source} size="sm" /></td>
+                  <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => flagMutation.mutate(d.id)}
+                      className={`rounded-lg p-1.5 transition-colors ${d.is_flagged ? "text-red-500 hover:bg-red-50" : "text-gray-400 hover:bg-gray-100 hover:text-red-500"}`}
+                    >
+                      <Flag size={14} />
                     </button>
                   </td>
                 </tr>
@@ -405,22 +498,84 @@ export default function DetectionHistoryPage() {
         </div>
       )}
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 animate-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-3 shadow-lg">
+            <span className="text-sm font-semibold text-gray-900">
+              {selectedIds.size} selected
+            </span>
+            <div className="h-5 w-px bg-gray-200" />
+            <button
+              onClick={() => bulkFlagMutation.mutate(Array.from(selectedIds))}
+              disabled={bulkFlagMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              <Flag size={12} /> Flag for Review
+            </button>
+            <button onClick={clearSelection} className="text-xs font-medium text-gray-500 hover:text-gray-700">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Pagination */}
       {total > limit && (
-        <div className="mt-4 flex items-center justify-between text-sm text-[#78716C]">
-          <span>Showing {page * limit + 1}--{Math.min((page + 1) * limit, total)} of {total}</span>
-          <div className="flex gap-2">
-            <button disabled={page === 0} onClick={() => setPage(page - 1)}
-              className="rounded-md border border-[#E7E5E0] px-3 py-1 hover:bg-[#F1F0ED] disabled:opacity-50">Previous</button>
-            <button disabled={(page + 1) * limit >= total} onClick={() => setPage(page + 1)}
-              className="rounded-md border border-[#E7E5E0] px-3 py-1 hover:bg-[#F1F0ED] disabled:opacity-50">Next</button>
+        <div className="mt-6 flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <span className="text-sm text-gray-500">
+            Showing {page * limit + 1}&ndash;{Math.min((page + 1) * limit, total)} of {total.toLocaleString()}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ChevronLeft size={14} /> Previous
+            </button>
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i;
+              } else if (page < 3) {
+                pageNum = i;
+              } else if (page > totalPages - 4) {
+                pageNum = totalPages - 5 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${
+                    page === pageNum
+                      ? "bg-[#0D9488] text-white"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {pageNum + 1}
+                </button>
+              );
+            })}
+            <button
+              disabled={(page + 1) * limit >= total}
+              onClick={() => setPage(page + 1)}
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next <ChevronRight size={14} />
+            </button>
           </div>
         </div>
       )}
 
       {/* Detail Modal */}
       {selectedDetection && (
-        <DetectionModal detection={selectedDetection} onClose={() => setSelectedDetection(null)}
+        <DetectionModal
+          detection={selectedDetection}
+          onClose={() => setSelectedDetection(null)}
           cameraName={cameraMap.get(selectedDetection.camera_id) ?? "Unknown"}
           storeName={storeMap.get(selectedDetection.store_id) ?? "Unknown"}
           onFlag={() => { flagMutation.mutate(selectedDetection.id); setSelectedDetection(null); }}
@@ -437,49 +592,82 @@ function DetectionModal({
   onFlag: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-lg">
-        <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-          <h2 className="text-lg font-semibold text-[#1C1917]">Detection Detail</h2>
-          <button onClick={onClose} className="text-[#78716C] hover:text-[#1C1917]"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div
+        className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+          <h2 className="text-lg font-bold text-gray-900">Detection Detail</h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+            <X size={20} />
+          </button>
         </div>
         <div className="grid gap-6 p-6 lg:grid-cols-5">
           {/* Frame */}
           <div className="lg:col-span-3">
             {d.frame_base64 ? (
-              <img src={`data:image/jpeg;base64,${d.frame_base64}`} alt="Detection frame" className="w-full rounded" />
+              <img src={`data:image/jpeg;base64,${d.frame_base64}`} alt="Detection frame" className="w-full rounded-xl" />
             ) : (
-              <div className="flex h-[300px] items-center justify-center rounded bg-gray-100 text-sm text-[#78716C]">No frame</div>
+              <div className="flex h-[300px] items-center justify-center rounded-xl bg-gray-100 text-sm text-gray-400">No frame</div>
             )}
           </div>
           {/* Metadata */}
           <div className="lg:col-span-2">
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between"><dt className="text-[#78716C]">Camera</dt><dd className="text-[#1C1917]">{cameraName}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Store</dt><dd className="text-[#1C1917]">{storeName}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Timestamp</dt><dd className="text-[#1C1917]">{new Date(d.timestamp).toLocaleString()}</dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Inference Time</dt><dd className="text-[#1C1917]">{d.inference_time_ms.toFixed(0)}ms</dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Model</dt><dd><StatusBadge status={d.model_source} /></dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Confidence</dt><dd className="font-semibold text-[#1C1917]">{(d.confidence * 100).toFixed(1)}%</dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Wet Area</dt><dd className="text-[#1C1917]">{d.wet_area_percent.toFixed(1)}%</dd></div>
-              <div className="flex justify-between"><dt className="text-[#78716C]">Result</dt><dd><StatusBadge status={d.is_wet ? "critical" : "online"} /></dd></div>
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2">
+                <dt className="text-gray-500">Camera</dt>
+                <dd className="font-medium text-gray-900">{cameraName}</dd>
+              </div>
+              <div className="flex justify-between rounded-lg px-3 py-2">
+                <dt className="text-gray-500">Store</dt>
+                <dd className="font-medium text-gray-900">{storeName}</dd>
+              </div>
+              <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2">
+                <dt className="text-gray-500">Timestamp</dt>
+                <dd className="font-medium text-gray-900">{new Date(d.timestamp).toLocaleString()}</dd>
+              </div>
+              <div className="flex justify-between rounded-lg px-3 py-2">
+                <dt className="text-gray-500">Inference Time</dt>
+                <dd className="font-medium text-gray-900">{d.inference_time_ms.toFixed(0)}ms</dd>
+              </div>
+              <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2">
+                <dt className="text-gray-500">Model</dt>
+                <dd><StatusBadge status={d.model_source} /></dd>
+              </div>
+              <div className="flex justify-between rounded-lg px-3 py-2">
+                <dt className="text-gray-500">Confidence</dt>
+                <dd className="text-lg font-bold text-gray-900">{(d.confidence * 100).toFixed(1)}%</dd>
+              </div>
+              <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2">
+                <dt className="text-gray-500">Wet Area</dt>
+                <dd className="font-medium text-gray-900">{d.wet_area_percent.toFixed(1)}%</dd>
+              </div>
+              <div className="flex justify-between rounded-lg px-3 py-2">
+                <dt className="text-gray-500">Result</dt>
+                <dd><StatusBadge status={d.is_wet ? "critical" : "online"} /></dd>
+              </div>
             </dl>
 
             {d.predictions.length > 0 && (
-              <div className="mt-4">
-                <h4 className="mb-2 text-xs font-semibold text-[#78716C]">Predictions</h4>
-                {d.predictions.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between rounded border border-[#E7E5E0] px-2 py-1 mb-1">
-                    <span className="text-xs text-[#1C1917]">{p.class_name}</span>
-                    <span className="text-xs font-medium text-[#1C1917]">{(p.confidence * 100).toFixed(1)}%</span>
-                  </div>
-                ))}
+              <div className="mt-5">
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Predictions</h4>
+                <div className="space-y-1.5">
+                  {d.predictions.map((p, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                      <span className="text-xs font-medium text-gray-700">{p.class_name}</span>
+                      <span className="text-xs font-bold text-[#0D9488]">{(p.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div className="mt-4 flex flex-col gap-2">
-              <button onClick={onFlag}
-                className="flex items-center justify-center gap-2 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm hover:bg-[#F1F0ED]">
+            <div className="mt-5">
+              <button
+                onClick={onFlag}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
                 <Flag size={14} /> {d.is_flagged ? "Unflag" : "Flag as Incorrect"}
               </button>
             </div>

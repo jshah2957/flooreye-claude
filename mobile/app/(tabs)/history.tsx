@@ -223,10 +223,14 @@ export default function HistoryScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
         accessibilityLabel="Loading detection history"
       >
         <ActivityIndicator size="large" color={BRAND.primary} />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading history...
+        </Text>
       </View>
     );
   }
@@ -235,11 +239,11 @@ export default function HistoryScreen() {
     <View style={{ flex: 1, backgroundColor: BRAND.background }}>
       <Text
         style={{
-          fontSize: FONT_SIZE.xxl,
-          fontWeight: "600",
+          fontSize: 20,
+          fontWeight: "700",
           color: BRAND.textPrimary,
-          padding: SPACING.lg,
-          paddingBottom: SPACING.sm,
+          padding: 16,
+          paddingBottom: 10,
         }}
         accessibilityRole="header"
         accessibilityLabel="Detection History"
@@ -247,15 +251,14 @@ export default function HistoryScreen() {
         Detection History
       </Text>
 
-      {/* Filter Tabs */}
+      {/* Filter Pills */}
       <View
         style={{
           flexDirection: "row",
-          paddingHorizontal: SPACING.lg,
-          paddingBottom: SPACING.sm,
-          gap: SPACING.sm,
+          paddingHorizontal: 16,
+          paddingBottom: 10,
+          gap: 8,
         }}
-        accessibilityRole="tablist" as any
         accessibilityLabel="Filter detections"
       >
         {FILTERS.map((f) => (
@@ -266,22 +269,22 @@ export default function HistoryScreen() {
             accessibilityLabel={`Filter ${f.label}`}
             accessibilityState={{ selected: filter === f.key }}
             style={{
+              height: 40,
+              minWidth: 60,
+              justifyContent: "center",
+              alignItems: "center",
               backgroundColor:
-                filter === f.key ? BRAND.primary : BRAND.surface,
-              borderRadius: RADIUS.full,
-              paddingHorizontal: SPACING.lg,
-              paddingVertical: SPACING.sm,
-              borderWidth: 1,
-              borderColor:
-                filter === f.key ? BRAND.primary : BRAND.border,
+                filter === f.key ? BRAND.primary : "#F3F4F6",
+              borderRadius: 20,
+              paddingHorizontal: 20,
             }}
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.md,
+                fontSize: 14,
                 fontWeight: "600",
                 color:
-                  filter === f.key ? NEUTRAL.white : BRAND.textSecondary,
+                  filter === f.key ? NEUTRAL.white : "#78716C",
               }}
             >
               {f.label}
@@ -292,7 +295,7 @@ export default function HistoryScreen() {
 
       {/* Error */}
       {error && (
-        <View style={{ paddingHorizontal: SPACING.lg }}>
+        <View style={{ paddingHorizontal: 16 }}>
           <ErrorBanner message={error} onRetry={handleRetry} />
         </View>
       )}
@@ -301,9 +304,9 @@ export default function HistoryScreen() {
         data={detections}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{
-          padding: SPACING.lg,
-          paddingTop: 0,
-          gap: SPACING.sm,
+          padding: 16,
+          paddingTop: 4,
+          gap: 8,
           flexGrow: 1,
         }}
         refreshControl={
@@ -318,16 +321,24 @@ export default function HistoryScreen() {
         ListEmptyComponent={
           <EmptyState
             message="No detections found"
-            icon="🔍"
           />
         }
         ListFooterComponent={
           loadingMore ? (
             <View
-              style={{ padding: SPACING.lg, alignItems: "center" }}
+              style={{
+                height: 48,
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+              }}
               accessibilityLabel="Loading more detections"
             >
               <ActivityIndicator size="small" color={BRAND.primary} />
+              <Text style={{ fontSize: 13, color: BRAND.textSecondary }}>
+                Loading more...
+              </Text>
             </View>
           ) : null
         }
@@ -365,18 +376,28 @@ function DetectionCard({
       style={{
         flexDirection: "row",
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.lg,
-        borderWidth: 1,
-        borderColor: BRAND.border,
+        borderRadius: 12,
         overflow: "hidden",
+        minHeight: 80,
+        borderWidth: detection.is_flagged ? 1 : 0,
+        borderColor: detection.is_flagged ? "#F59E0B" : "transparent",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
       }}
     >
       {/* Thumbnail */}
       <View
         style={{
-          width: 80,
-          height: 60,
-          backgroundColor: NEUTRAL.placeholder,
+          width: 88,
+          height: 66,
+          backgroundColor: "#E5E7EB",
+          borderRadius: 8,
+          margin: 8,
+          marginRight: 0,
+          overflow: "hidden",
           justifyContent: "center",
           alignItems: "center",
         }}
@@ -384,13 +405,13 @@ function DetectionCard({
         {thumbnail ? (
           <Image
             source={{ uri: `data:image/jpeg;base64,${thumbnail}` }}
-            style={{ width: 80, height: 60 }}
+            style={{ width: 88, height: 66 }}
             resizeMode="cover"
             accessibilityLabel="Detection frame thumbnail"
           />
         ) : (
           <Text
-            style={{ fontSize: FONT_SIZE.xs, color: BRAND.textSecondary }}
+            style={{ fontSize: 11, color: BRAND.textSecondary }}
           >
             No frame
           </Text>
@@ -398,7 +419,7 @@ function DetectionCard({
       </View>
 
       {/* Content */}
-      <View style={{ flex: 1, padding: SPACING.md }}>
+      <View style={{ flex: 1, padding: 12 }}>
         <View
           style={{
             flexDirection: "row",
@@ -409,7 +430,7 @@ function DetectionCard({
           <View
             style={{
               flexDirection: "row",
-              gap: SPACING.xs + 2,
+              gap: 8,
               alignItems: "center",
             }}
           >
@@ -417,15 +438,15 @@ function DetectionCard({
             <View
               style={{
                 backgroundColor: badge.bg,
-                borderRadius: RADIUS.full,
-                paddingHorizontal: SPACING.sm,
-                paddingVertical: 2,
+                borderRadius: 6,
+                paddingHorizontal: 10,
+                paddingVertical: 3,
               }}
             >
               <Text
                 style={{
-                  fontSize: FONT_SIZE.xs,
-                  fontWeight: "700",
+                  fontSize: 11,
+                  fontWeight: "600",
                   color: badge.text,
                 }}
               >
@@ -436,22 +457,12 @@ function DetectionCard({
             {/* Confidence */}
             <Text
               style={{
-                fontSize: FONT_SIZE.md,
-                fontWeight: "600",
+                fontSize: 16,
+                fontWeight: "700",
                 color: BRAND.textPrimary,
               }}
             >
               {(detection.confidence * 100).toFixed(1)}%
-            </Text>
-
-            {/* Wet area */}
-            <Text
-              style={{
-                fontSize: FONT_SIZE.sm,
-                color: BRAND.textSecondary,
-              }}
-            >
-              {(detection.wet_area_percent * 100).toFixed(1)}% area
             </Text>
 
             {/* Flagged badge */}
@@ -459,14 +470,14 @@ function DetectionCard({
               <View
                 style={{
                   backgroundColor: DETECTION.flagged.bg,
-                  borderRadius: RADIUS.full,
-                  paddingHorizontal: SPACING.xs + 2,
-                  paddingVertical: 2,
+                  borderRadius: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: FONT_SIZE.xs - 1,
+                    fontSize: 10,
                     fontWeight: "700",
                     color: DETECTION.flagged.text,
                   }}
@@ -479,7 +490,7 @@ function DetectionCard({
 
           <Text
             style={{
-              fontSize: FONT_SIZE.xs,
+              fontSize: 12,
               color: BRAND.textSecondary,
             }}
           >
@@ -487,16 +498,32 @@ function DetectionCard({
           </Text>
         </View>
 
-        <Text
+        <View
           style={{
-            fontSize: FONT_SIZE.sm,
-            color: BRAND.textSecondary,
-            marginTop: SPACING.xs,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 6,
           }}
-          numberOfLines={1}
         >
-          Camera: {detection.camera_id.slice(0, 8)}
-        </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: BRAND.textSecondary,
+            }}
+            numberOfLines={1}
+          >
+            Camera: {detection.camera_id.slice(0, 8)}
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              color: BRAND.textSecondary,
+            }}
+          >
+            {(detection.wet_area_percent * 100).toFixed(1)}% area
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );

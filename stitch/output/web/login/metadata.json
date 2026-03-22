@@ -1,0 +1,10 @@
+{
+  "screenName": "login",
+  "screenId": "3c73338a11344cae99bedd6ef87d1776",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-22T08:59:15.282Z",
+  "prompt": "Enterprise login page for FloorEye. Centered card on cream (#F8F7F4) background, single column vertically centered. Top: FloorEye logo (teal droplet icon) + product name + tagline \"See Every Drop. Stop Every Slip.\" Form titled \"Sign in to FloorEye\" with email input (placeholder \"you@company.com\"), password input with show/hide toggle, \"Remember me\" checkbox, full-width teal \"Sign In\" button with loading spinner state. Error banner (red bg #FEE2E2, red text #DC2626) for invalid credentials. Footer: \"Forgot your password?\" link. Clean, modern auth page."
+}

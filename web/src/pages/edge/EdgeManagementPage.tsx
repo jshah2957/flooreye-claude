@@ -45,6 +45,28 @@ interface EdgeAgent {
   created_at: string;
 }
 
+/* -- Skeleton -- */
+
+function SkeletonAgentCard() {
+  return (
+    <div className="animate-pulse rounded-xl border border-gray-200 bg-white p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-gray-200" />
+          <div className="h-4 w-32 rounded bg-gray-200" />
+        </div>
+        <div className="h-5 w-16 rounded-full bg-gray-200" />
+      </div>
+      <div className="mb-3 h-3 w-40 rounded bg-gray-100" />
+      <div className="space-y-2">
+        <div className="h-2 w-full rounded-full bg-gray-100" />
+        <div className="h-2 w-full rounded-full bg-gray-100" />
+        <div className="h-2 w-3/4 rounded-full bg-gray-100" />
+      </div>
+    </div>
+  );
+}
+
 export default function EdgeManagementPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
@@ -145,7 +167,7 @@ export default function EdgeManagementPage() {
       setDeploymentStatus((prev) => ({ ...prev, [variables.agentId]: "pending" }));
       setModelUpdateTarget(null);
       setSelectedModelId("");
-      success("Model deployment initiated — tracking status");
+      success("Model deployment initiated -- tracking status");
     },
     onError: (err: any) => {
       showError(err?.response?.data?.detail || "Failed to push model");
@@ -203,7 +225,7 @@ export default function EdgeManagementPage() {
   const productionModels = deployableModels.filter((m) => m.status === "production");
   const stagingModels = deployableModels.filter((m) => m.status === "staging");
 
-  // Poll agent status when deployments are pending to track progress
+  // Poll agent status when deployments are pending
   const hasActiveDeployments = Object.values(deploymentStatus).some(
     (s) => s === "pending" || s === "downloading"
   );
@@ -213,13 +235,11 @@ export default function EdgeManagementPage() {
     queryFn: async () => {
       const res = await api.get("/edge/agents", { params: { limit: 100 } });
       const freshAgents = res.data.data as EdgeAgent[];
-      // Check deployment status by comparing model versions
       setDeploymentStatus((prev) => {
         const updated = { ...prev };
         for (const agentId of Object.keys(updated)) {
           const agent = freshAgents.find((a) => a.id === agentId);
           if (!agent) continue;
-          // If agent has a model version now and status was pending/downloading, mark complete
           if (agent.current_model_version && (updated[agentId] === "pending" || updated[agentId] === "downloading")) {
             updated[agentId] = "complete";
           }
@@ -249,7 +269,7 @@ export default function EdgeManagementPage() {
     return () => clearTimeout(timer);
   }, [deploymentStatus]);
 
-  // Fetch all cameras to build per-agent camera lists and breakdowns
+  // Fetch all cameras for per-agent camera lists
   const { data: allCamerasData } = useQuery({
     queryKey: ["all-cameras-for-agents"],
     queryFn: async () => {
@@ -259,7 +279,6 @@ export default function EdgeManagementPage() {
   });
   const allCameras = allCamerasData ?? [];
 
-  // Per-agent camera lists
   const agentCamerasMap = useMemo(() => {
     const map = new Map<string, typeof allCameras>();
     for (const cam of allCameras) {
@@ -288,28 +307,43 @@ export default function EdgeManagementPage() {
 
   function metricBar(value: number | null, label: string) {
     const pct = value ?? 0;
-    const color = pct > 80 ? "bg-[#DC2626]" : pct > 60 ? "bg-[#D97706]" : "bg-[#16A34A]";
+    const color = pct > 80 ? "bg-red-500" : pct > 60 ? "bg-amber-500" : "bg-teal-500";
     return (
-      <div className="flex items-center gap-2">
-        <span className="w-8 text-[10px] text-[#78716C]">{label}</span>
-        <div className="h-1.5 flex-1 rounded-full bg-gray-200">
-          <div className={`h-1.5 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      <div className="flex items-center gap-2.5">
+        <span className="w-10 text-xs text-gray-500">{label}</span>
+        <div className="h-2 flex-1 rounded-full bg-gray-200">
+          <div className={`h-2 rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
         </div>
-        <span className="w-8 text-right text-[10px] text-[#78716C]">{pct.toFixed(0)}%</span>
+        <span className="w-10 text-right text-xs font-medium text-gray-700">{pct.toFixed(0)}%</span>
       </div>
     );
   }
 
+  function relativeTime(dateStr: string | null) {
+    if (!dateStr) return "Never";
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return new Date(dateStr).toLocaleDateString();
+  }
+
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="min-h-[calc(100vh-8rem)]">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#1C1917]">Edge Agents</h1>
-          <p className="text-sm text-[#78716C]">{agents.length} agents registered</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Edge Agents</h1>
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">{agents.length}</span>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">{agents.length} agent{agents.length !== 1 ? "s" : ""} registered</p>
         </div>
         <button
           onClick={() => { setProvisionOpen(true); setProvResult(null); setProvName(""); setProvStoreId(""); }}
-          className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+          className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700"
         >
           <Plus size={16} /> Provision Agent
         </button>
@@ -319,118 +353,141 @@ export default function EdgeManagementPage() {
         {/* Agent List */}
         <div className="lg:col-span-2">
           {isLoading ? (
-            <div className="flex h-40 items-center justify-center"><Loader2 size={24} className="animate-spin text-[#0D9488]" /></div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, i) => <SkeletonAgentCard key={i} />)}
+            </div>
           ) : agents.length === 0 ? (
-            <EmptyState icon={Server} title="No edge agents" description="Provision your first edge agent." actionLabel="Provision" onAction={() => setProvisionOpen(true)} />
+            <EmptyState icon={Server} title="No edge agents" description="Provision your first edge agent to start monitoring." actionLabel="Provision" onAction={() => setProvisionOpen(true)} />
           ) : (
-            <div className="space-y-3">
-              {agents.map((agent) => (
-                <div
-                  key={agent.id}
-                  onClick={() => setSelectedAgent(agent)}
-                  className={`cursor-pointer rounded-lg border bg-white p-4 transition-colors ${
-                    selectedAgent?.id === agent.id ? "border-[#0D9488]" : "border-[#E7E5E0] hover:border-[#0D9488]/50"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Server size={16} className="text-[#78716C]" />
-                      <span className="font-medium text-[#1C1917]">{agent.name}</span>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {agents.map((agent) => {
+                const isOnline = agent.status === "online";
+                return (
+                  <div
+                    key={agent.id}
+                    onClick={() => setSelectedAgent(agent)}
+                    className={`cursor-pointer rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md ${
+                      selectedAgent?.id === agent.id ? "border-teal-500 ring-2 ring-teal-500/20" : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    {/* Header */}
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isOnline ? "bg-teal-50" : "bg-gray-100"}`}>
+                          <Server size={16} className={isOnline ? "text-teal-600" : "text-gray-400"} />
+                        </div>
+                        <div>
+                          <span className="block text-sm font-semibold text-gray-900">{agent.name}</span>
+                          <span className="block text-[10px] text-gray-400">{storeMap.get(agent.store_id) ?? "Unknown Store"}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          {isOnline && (
+                            <span className="absolute -left-1 -top-1 flex h-2.5 w-2.5">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                            </span>
+                          )}
+                          <StatusBadge status={agent.status} />
+                        </div>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(agent); }}
+                          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Model + Cameras */}
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
                       {agent.current_model_version ? (
-                        <span className="rounded-full bg-[#F0FDFA] px-2 py-0.5 text-[10px] font-medium text-[#0D9488]">
+                        <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-[10px] font-medium text-teal-700">
                           {agent.current_model_version}
                         </span>
                       ) : (
-                        <span className="rounded-full bg-[#FEF9C3] px-2 py-0.5 text-[10px] font-medium text-[#CA8A04]">
+                        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-medium text-amber-700">
                           No model
                         </span>
                       )}
+                      <span className="text-[10px] text-gray-400">{agent.camera_count} cameras</span>
+                      {agent.agent_version && <span className="text-[10px] text-gray-400">v{agent.agent_version}</span>}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={agent.status} />
-                      <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(agent); }}
-                        className="rounded p-1 text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]">
-                        <Trash2 size={12} />
-                      </button>
+
+                    {/* Camera breakdown */}
+                    {(() => {
+                      const bd = cameraBreakdown(agent.id);
+                      if (bd.total === 0) return null;
+                      return (
+                        <div className="mb-3 flex items-center gap-3 text-[10px]">
+                          {bd.configured > 0 && (
+                            <span className="flex items-center gap-1 text-green-600">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                              {bd.configured} configured
+                            </span>
+                          )}
+                          {bd.waiting > 0 && (
+                            <span className="flex items-center gap-1 text-amber-600">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              {bd.waiting} waiting
+                            </span>
+                          )}
+                          {bd.paused > 0 && (
+                            <span className="flex items-center gap-1 text-gray-500">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />
+                              {bd.paused} paused
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Deployment status */}
+                    <div className="mb-2 flex items-center justify-between">
+                      {deploymentStatus[agent.id] ? (
+                        <span className={`flex items-center gap-1.5 text-[10px] font-medium ${
+                          deploymentStatus[agent.id] === "complete" ? "text-green-600" :
+                          deploymentStatus[agent.id] === "pending" ? "text-amber-600" :
+                          "text-teal-600"
+                        }`}>
+                          {deploymentStatus[agent.id] === "pending" && <><Loader2 size={10} className="animate-spin" /> Deployment pending...</>}
+                          {deploymentStatus[agent.id] === "downloading" && <><Loader2 size={10} className="animate-spin" /> Downloading model...</>}
+                          {deploymentStatus[agent.id] === "complete" && <><Check size={10} /> Model deployed</>}
+                        </span>
+                      ) : null}
+                      {isOnline && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setModelUpdateTarget(agent); setSelectedModelId(""); }}
+                          className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-teal-600 transition hover:bg-teal-50"
+                        >
+                          <Download size={10} /> Update Model
+                        </button>
+                      )}
                     </div>
-                  </div>
-                  <p className="text-xs text-[#78716C]">
-                    {storeMap.get(agent.store_id) ?? "Unknown Store"} &middot; {agent.camera_count} cameras
-                    {agent.agent_version && ` · v${agent.agent_version}`}
-                  </p>
-                  {(() => {
-                    const bd = cameraBreakdown(agent.id);
-                    if (bd.total === 0) return null;
-                    return (
-                      <div className="mt-1 flex items-center gap-3 text-[10px]">
-                        {bd.configured > 0 && (
-                          <span className="flex items-center gap-1 text-[#16A34A]">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
-                            {bd.configured} configured
-                          </span>
-                        )}
-                        {bd.waiting > 0 && (
-                          <span className="flex items-center gap-1 text-[#CA8A04]">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#CA8A04]" />
-                            {bd.waiting} waiting
-                          </span>
-                        )}
-                        {bd.paused > 0 && (
-                          <span className="flex items-center gap-1 text-[#78716C]">
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#78716C]" />
-                            {bd.paused} paused
-                          </span>
-                        )}
+
+                    {/* Metric bars */}
+                    {isOnline && (
+                      <div className="space-y-1.5">
+                        {metricBar(agent.cpu_percent, "CPU")}
+                        {metricBar(agent.ram_percent, "RAM")}
                       </div>
-                    );
-                  })()}
-                  <div className="mt-1 flex items-center justify-between">
-                    {deploymentStatus[agent.id] ? (
-                      <span className={`flex items-center gap-1 text-[10px] font-medium ${
-                        deploymentStatus[agent.id] === "complete" ? "text-[#16A34A]" :
-                        deploymentStatus[agent.id] === "pending" ? "text-[#D97706]" :
-                        "text-[#0D9488]"
-                      }`}>
-                        {deploymentStatus[agent.id] === "pending" && <><Loader2 size={10} className="animate-spin" /> Deployment pending...</>}
-                        {deploymentStatus[agent.id] === "downloading" && <><Loader2 size={10} className="animate-spin" /> Downloading model...</>}
-                        {deploymentStatus[agent.id] === "complete" && <><Check size={10} /> Model deployed</>}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-[#78716C]">
-                        Model: {agent.current_model_version ?? "None"}
-                      </span>
                     )}
-                    {agent.status === "online" && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setModelUpdateTarget(agent); setSelectedModelId(""); }}
-                        className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#0D9488] hover:bg-[#F0FDFA]"
-                      >
-                        <Download size={10} /> Update Model
-                      </button>
-                    )}
-                  </div>
-                  {agent.status === "online" && (
-                    <div className="mt-2 space-y-1">
-                      {metricBar(agent.cpu_percent, "CPU")}
-                      {metricBar(agent.ram_percent, "RAM")}
-                    </div>
-                  )}
-                  {agent.last_heartbeat && (
-                    <p className="mt-1 text-[10px] text-[#78716C]">
-                      Last heartbeat: {new Date(agent.last_heartbeat).toLocaleString()}
+
+                    {/* Heartbeat */}
+                    <p className="mt-2 text-[10px] text-gray-400">
+                      Last heartbeat: {relativeTime(agent.last_heartbeat)}
                     </p>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
 
         {/* Detail Panel */}
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           {selectedAgent ? (
             <>
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-4 flex items-center gap-2">
                 {editingName ? (
                   <>
                     <input
@@ -443,7 +500,7 @@ export default function EdgeManagementPage() {
                         if (e.key === "Escape") setEditingName(false);
                       }}
                       autoFocus
-                      className="flex-1 rounded-md border border-[#0D9488] px-2 py-1 text-sm font-semibold text-[#1C1917] outline-none"
+                      className="flex-1 rounded-lg border border-teal-500 px-3 py-1.5 text-sm font-semibold text-gray-900 outline-none ring-2 ring-teal-500/20"
                     />
                     <button
                       onClick={() => {
@@ -452,23 +509,23 @@ export default function EdgeManagementPage() {
                         }
                       }}
                       disabled={!editNameValue.trim() || renameMutation.isPending}
-                      className="rounded p-1 text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+                      className="rounded-lg p-1.5 text-teal-600 transition hover:bg-teal-50 disabled:opacity-50"
                     >
                       {renameMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                     </button>
                     <button
                       onClick={() => setEditingName(false)}
-                      className="rounded p-1 text-[#78716C] hover:bg-[#F5F5F4]"
+                      className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100"
                     >
                       <X size={14} />
                     </button>
                   </>
                 ) : (
                   <>
-                    <h3 className="flex-1 text-sm font-semibold text-[#1C1917]">{selectedAgent.name}</h3>
+                    <h3 className="flex-1 text-base font-semibold text-gray-900">{selectedAgent.name}</h3>
                     <button
                       onClick={() => { setEditNameValue(selectedAgent.name); setEditingName(true); }}
-                      className="rounded p-1 text-[#78716C] hover:bg-[#F5F5F4] hover:text-[#0D9488]"
+                      className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-teal-600"
                       title="Edit agent name"
                     >
                       <Pencil size={14} />
@@ -476,20 +533,21 @@ export default function EdgeManagementPage() {
                   </>
                 )}
               </div>
-              <dl className="space-y-2 text-xs">
-                <div className="flex justify-between"><dt className="text-[#78716C]">Status</dt><dd><StatusBadge status={selectedAgent.status} /></dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Store</dt><dd className="text-[#1C1917]">{storeMap.get(selectedAgent.store_id) ?? "—"}</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Version</dt><dd className="text-[#1C1917]">{selectedAgent.agent_version ?? "—"}</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Model</dt><dd className="text-[#1C1917]">{selectedAgent.current_model_version ?? "None"}</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Cameras</dt><dd className="text-[#1C1917]">{selectedAgent.camera_count}</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">FPS</dt><dd className="text-[#1C1917]">{selectedAgent.inference_fps?.toFixed(1) ?? "—"}</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Buffer</dt><dd className="text-[#1C1917]">{selectedAgent.buffer_frames} frames ({selectedAgent.buffer_size_mb.toFixed(1)} MB)</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Tunnel</dt><dd>{selectedAgent.tunnel_status ? <StatusBadge status={selectedAgent.tunnel_status} /> : <span className="text-[#78716C]">—</span>}</dd></div>
+
+              <dl className="space-y-2.5 text-sm">
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Status</dt><dd><StatusBadge status={selectedAgent.status} /></dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Store</dt><dd className="text-gray-900">{storeMap.get(selectedAgent.store_id) ?? "\u2014"}</dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Version</dt><dd className="text-gray-900">{selectedAgent.agent_version ?? "\u2014"}</dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Model</dt><dd className="text-gray-900">{selectedAgent.current_model_version ?? "None"}</dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Cameras</dt><dd className="text-gray-900">{selectedAgent.camera_count}</dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">FPS</dt><dd className="text-gray-900">{selectedAgent.inference_fps?.toFixed(1) ?? "\u2014"}</dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Buffer</dt><dd className="text-gray-900">{selectedAgent.buffer_frames} frames ({selectedAgent.buffer_size_mb.toFixed(1)} MB)</dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Tunnel</dt><dd>{selectedAgent.tunnel_status ? <StatusBadge status={selectedAgent.tunnel_status} /> : <span className="text-gray-400">\u2014</span>}</dd></div>
               </dl>
 
               {selectedAgent.status !== "offline" && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-xs font-semibold text-[#78716C]">Health</h4>
+                <div className="mt-5 space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Health Metrics</h4>
                   {metricBar(selectedAgent.cpu_percent, "CPU")}
                   {metricBar(selectedAgent.ram_percent, "RAM")}
                   {metricBar(selectedAgent.disk_percent, "Disk")}
@@ -498,32 +556,32 @@ export default function EdgeManagementPage() {
               )}
 
               {agentCameras.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="mb-1 text-xs font-semibold text-[#78716C]">
+                <div className="mt-5">
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     Cameras ({agentCameras.length})
                   </h4>
                   {(() => {
                     const bd = cameraBreakdown(selectedAgent.id);
                     return (
                       <div className="mb-2 flex items-center gap-3 text-[10px]">
-                        {bd.configured > 0 && <span className="text-[#16A34A]">{bd.configured} configured</span>}
-                        {bd.waiting > 0 && <span className="text-[#CA8A04]">{bd.waiting} waiting</span>}
-                        {bd.paused > 0 && <span className="text-[#78716C]">{bd.paused} paused</span>}
+                        {bd.configured > 0 && <span className="text-green-600">{bd.configured} configured</span>}
+                        {bd.waiting > 0 && <span className="text-amber-600">{bd.waiting} waiting</span>}
+                        {bd.paused > 0 && <span className="text-gray-500">{bd.paused} paused</span>}
                       </div>
                     );
                   })()}
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {agentCameras.map((cam: any) => (
-                      <div key={cam.id} className="flex items-center justify-between rounded border border-[#F5F5F4] px-2 py-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${cam.detection_enabled ? "bg-[#16A34A]" : "bg-[#D6D3D1]"}`} />
-                          <span className="text-[11px] text-[#1C1917]">{cam.name}</span>
+                      <div key={cam.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block h-2 w-2 rounded-full ${cam.detection_enabled ? "bg-green-500" : "bg-gray-300"}`} />
+                          <span className="text-xs text-gray-900">{cam.name}</span>
                         </div>
-                        <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
-                          cam.config_status === "received" ? "bg-[#DCFCE7] text-[#16A34A]" :
-                          cam.config_status === "failed" ? "bg-[#FEE2E2] text-[#DC2626]" :
-                          !cam.edge_agent_id ? "bg-[#F1F0ED] text-[#78716C]" :
-                          "bg-[#FEF9C3] text-[#CA8A04]"
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium ${
+                          cam.config_status === "received" ? "bg-green-50 text-green-700" :
+                          cam.config_status === "failed" ? "bg-red-50 text-red-600" :
+                          !cam.edge_agent_id ? "bg-gray-100 text-gray-500" :
+                          "bg-amber-50 text-amber-700"
                         }`}>
                           {cam.config_status || "waiting"}
                         </span>
@@ -533,23 +591,23 @@ export default function EdgeManagementPage() {
                 </div>
               )}
 
-              {/* Add IoT Device via Cloud */}
+              {/* Add IoT Device */}
               {selectedAgent.status === "online" && (
-                <div className="mt-4">
+                <div className="mt-5">
                   <button
                     onClick={() => setAddDeviceOpen(true)}
-                    className="w-full rounded-md border border-dashed border-[#0D9488] px-3 py-2 text-xs text-[#0D9488] hover:bg-[#F0FDFA]"
+                    className="w-full rounded-xl border-2 border-dashed border-teal-300 px-3 py-2.5 text-xs font-medium text-teal-600 transition hover:bg-teal-50"
                   >
                     + Add IoT Device
                   </button>
                 </div>
               )}
 
-              <div className="mt-4">
-                <h4 className="mb-2 text-xs font-semibold text-[#78716C]">Send Command</h4>
+              <div className="mt-5">
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Send Command</h4>
                 <div className="flex gap-2">
                   <select value={cmdType} onChange={(e) => setCmdType(e.target.value)}
-                    className="flex-1 rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs outline-none focus:border-[#0D9488]">
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none transition focus:border-teal-500">
                     <option value="ping">Ping</option>
                     <option value="restart_agent">Restart</option>
                     <option value="reload_model">Reload Model</option>
@@ -557,62 +615,64 @@ export default function EdgeManagementPage() {
                   <button
                     onClick={() => commandMutation.mutate({ agentId: selectedAgent.id, type: cmdType })}
                     disabled={commandMutation.isPending}
-                    className="flex items-center gap-1 rounded-md bg-[#0D9488] px-3 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
                   >
-                    {commandMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Send size={10} />}
+                    {commandMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                     Send
                   </button>
                 </div>
               </div>
             </>
           ) : (
-            <p className="py-8 text-center text-xs text-[#78716C]">Select an agent to view details</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Server size={32} className="mb-3 text-gray-300" />
+              <p className="text-sm text-gray-500">Select an agent to view details</p>
+            </div>
           )}
         </div>
       </div>
 
       {/* Add IoT Device Modal */}
       {addDeviceOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[420px] rounded-lg bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-              <h2 className="text-sm font-semibold text-[#1C1917]">Add IoT Device via Edge</h2>
-              <button onClick={() => { setAddDeviceOpen(false); setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-base font-semibold text-gray-900">Add IoT Device via Edge</h2>
+              <button onClick={() => { setAddDeviceOpen(false); setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"><X size={16} /></button>
             </div>
-            <div className="space-y-3 p-4">
-              {/* Auto-selected store from agent */}
+            <div className="space-y-4 p-6">
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">Store</label>
-                <div className="rounded-md border border-[#E7E5E0] bg-[#F8F7F4] px-3 py-2 text-sm text-[#1C1917]">
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">Store</label>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900">
                   {storeMap.get(selectedAgent?.store_id ?? "") ?? "Unknown Store"}
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">Device Name *</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">Device Name *</label>
                 <input value={devName} onChange={(e) => setDevName(e.target.value)}
                   placeholder="e.g. Caution Sign Plug"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">IP Address *</label>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">IP Address *</label>
                 <input value={devIp} onChange={(e) => { setDevIp(e.target.value); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }}
                   placeholder="192.168.1.50"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs text-[#78716C]">Device Type</label>
+                  <label className="mb-1.5 block text-xs font-medium text-gray-500">Device Type</label>
                   <select value={devType} onChange={(e) => setDevType(e.target.value)}
-                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                    className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500">
                     <option value="tplink">TP-Link Kasa</option>
                     <option value="mqtt">MQTT</option>
                     <option value="http_webhook">HTTP Webhook</option>
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-[#78716C]">Protocol</label>
+                  <label className="mb-1.5 block text-xs font-medium text-gray-500">Protocol</label>
                   <select value={devProtocol} onChange={(e) => setDevProtocol(e.target.value)}
-                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                    className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500">
                     <option value="tcp">TCP</option>
                     <option value="mqtt">MQTT</option>
                     <option value="http">HTTP</option>
@@ -622,33 +682,33 @@ export default function EdgeManagementPage() {
               <button
                 onClick={() => testDeviceMutation.mutate()}
                 disabled={!devIp.trim() || testDeviceMutation.isPending}
-                className="flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl border border-teal-500 px-4 py-2 text-xs font-medium text-teal-600 transition hover:bg-teal-50 disabled:opacity-50"
               >
-                {testDeviceMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Wifi size={10} />}
+                {testDeviceMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Wifi size={12} />}
                 Validate via Edge
               </button>
               {devTestResult === true && (
-                <div className="flex items-center gap-2 rounded-md bg-[#DCFCE7] px-3 py-2">
-                  <Activity size={12} className="text-[#16A34A]" />
-                  <span className="text-xs font-medium text-[#16A34A]">
-                    Reachable{devTestLatency != null && ` — ${devTestLatency} ms latency`}
+                <div className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3">
+                  <Activity size={14} className="text-green-600" />
+                  <span className="text-xs font-medium text-green-700">
+                    Reachable{devTestLatency != null && ` -- ${devTestLatency} ms latency`}
                   </span>
                 </div>
               )}
               {devTestResult === false && (
-                <div className="flex items-center gap-2 rounded-md bg-[#FEE2E2] px-3 py-2">
-                  <X size={12} className="text-[#DC2626]" />
-                  <span className="text-xs font-medium text-[#DC2626]">Unreachable</span>
+                <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3">
+                  <X size={14} className="text-red-500" />
+                  <span className="text-xs font-medium text-red-600">Unreachable</span>
                 </div>
               )}
-              {devTestError && <p className="text-xs text-[#DC2626]">{devTestError}</p>}
+              {devTestError && <p className="text-xs text-red-500">{devTestError}</p>}
             </div>
-            <div className="flex justify-end gap-2 border-t border-[#E7E5E0] p-4">
-              <button onClick={() => { setAddDeviceOpen(false); setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
+            <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
+              <button onClick={() => { setAddDeviceOpen(false); setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }} className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50">Cancel</button>
               <button
                 onClick={() => addDeviceMutation.mutate()}
                 disabled={!devName.trim() || !devIp.trim() || devTestResult !== true || addDeviceMutation.isPending}
-                className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+                className="rounded-xl bg-teal-600 px-5 py-2 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
               >
                 {addDeviceMutation.isPending ? "Adding..." : "Add Device"}
               </button>
@@ -659,39 +719,37 @@ export default function EdgeManagementPage() {
 
       {/* Update Model Modal */}
       {modelUpdateTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[440px] rounded-lg bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-              <h2 className="text-sm font-semibold text-[#1C1917]">Update Model — {modelUpdateTarget.name}</h2>
-              <button onClick={() => { setModelUpdateTarget(null); setSelectedModelId(""); }} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h2 className="text-base font-semibold text-gray-900">Update Model -- {modelUpdateTarget.name}</h2>
+              <button onClick={() => { setModelUpdateTarget(null); setSelectedModelId(""); }} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"><X size={16} /></button>
             </div>
-            <div className="p-4">
-              {/* Current model display */}
-              <div className="mb-4 rounded-md bg-[#F8F7F4] p-3">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-[#78716C]">Current Model</p>
-                <p className="mt-1 text-sm font-semibold text-[#1C1917]">
+            <div className="p-6">
+              <div className="mb-5 rounded-xl bg-gray-50 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Current Model</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
                   {modelUpdateTarget.current_model_version ?? "No model deployed"}
                 </p>
               </div>
 
               {deployableModels.length === 0 ? (
-                <p className="py-4 text-center text-xs text-[#78716C]">No production or staging models available. Train or import a model first.</p>
+                <p className="py-6 text-center text-xs text-gray-500">No production or staging models available. Train or import a model first.</p>
               ) : (
                 <>
-                  {/* Model selector dropdown */}
-                  <div className="mb-3">
-                    <label className="mb-1 block text-xs font-medium text-[#78716C]">Select Model to Deploy</label>
+                  <div className="mb-4">
+                    <label className="mb-1.5 block text-xs font-medium text-gray-500">Select Model to Deploy</label>
                     <select
                       value={selectedModelId}
                       onChange={(e) => setSelectedModelId(e.target.value)}
-                      className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
                     >
                       <option value="">Choose a model...</option>
                       {productionModels.length > 0 && (
                         <optgroup label="Production">
                           {productionModels.map((m) => (
                             <option key={m.id} value={m.id}>
-                              {m.version_str} — {m.architecture ?? "onnx"} ({m.model_size_mb ? `${m.model_size_mb} MB` : "size unknown"})
+                              {m.version_str} -- {m.architecture ?? "onnx"} ({m.model_size_mb ? `${m.model_size_mb} MB` : "size unknown"})
                             </option>
                           ))}
                         </optgroup>
@@ -700,7 +758,7 @@ export default function EdgeManagementPage() {
                         <optgroup label="Staging">
                           {stagingModels.map((m) => (
                             <option key={m.id} value={m.id}>
-                              {m.version_str} — {m.architecture ?? "onnx"} ({m.model_size_mb ? `${m.model_size_mb} MB` : "size unknown"})
+                              {m.version_str} -- {m.architecture ?? "onnx"} ({m.model_size_mb ? `${m.model_size_mb} MB` : "size unknown"})
                             </option>
                           ))}
                         </optgroup>
@@ -708,22 +766,21 @@ export default function EdgeManagementPage() {
                     </select>
                   </div>
 
-                  {/* Selected model detail */}
                   {selectedModelId && (() => {
                     const selected = deployableModels.find((m) => m.id === selectedModelId);
                     if (!selected) return null;
                     return (
-                      <div className="mb-3 rounded-md border border-[#E7E5E0] p-3">
+                      <div className="mb-4 rounded-xl border border-gray-200 p-4">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-medium text-[#1C1917]">{selected.version_str}</p>
-                            <p className="text-[10px] text-[#78716C]">
+                            <p className="text-sm font-medium text-gray-900">{selected.version_str}</p>
+                            <p className="text-[10px] text-gray-500">
                               {selected.architecture ?? "onnx"} &middot; {selected.model_size_mb ? `${selected.model_size_mb} MB` : "size unknown"}
-                              {selected.map_50 != null && ` · mAP@50: ${(selected.map_50 * 100).toFixed(1)}%`}
+                              {selected.map_50 != null && ` \u00B7 mAP@50: ${(selected.map_50 * 100).toFixed(1)}%`}
                             </p>
                           </div>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                            selected.status === "production" ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#FEF9C3] text-[#CA8A04]"
+                          <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium ${
+                            selected.status === "production" ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"
                           }`}>
                             {selected.status}
                           </span>
@@ -734,10 +791,10 @@ export default function EdgeManagementPage() {
                 </>
               )}
             </div>
-            <div className="flex justify-end gap-2 border-t border-[#E7E5E0] p-4">
+            <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
               <button
                 onClick={() => { setModelUpdateTarget(null); setSelectedModelId(""); }}
-                className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs"
+                className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -748,9 +805,9 @@ export default function EdgeManagementPage() {
                   }
                 }}
                 disabled={!selectedModelId || pushModelMutation.isPending}
-                className="flex items-center gap-1 rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
               >
-                {pushModelMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+                {pushModelMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                 Deploy to Agent
               </button>
             </div>
@@ -760,32 +817,32 @@ export default function EdgeManagementPage() {
 
       {/* Provision Drawer */}
       {provisionOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-          <div className="h-full w-[384px] overflow-y-auto bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-              <h2 className="text-lg font-semibold text-[#1C1917]">Provision Edge Agent</h2>
-              <button onClick={() => setProvisionOpen(false)} className="text-[#78716C] hover:text-[#1C1917]"><X size={18} /></button>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
+          <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">Provision Edge Agent</h2>
+              <button onClick={() => setProvisionOpen(false)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"><X size={18} /></button>
             </div>
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-6">
               {!provResult ? (
                 <>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-[#1C1917]">Store *</label>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-900">Store *</label>
                     <select value={provStoreId} onChange={(e) => setProvStoreId(e.target.value)}
-                      className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20">
                       <option value="">Select store</option>
                       {(stores ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-[#1C1917]">Agent Name *</label>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-900">Agent Name *</label>
                     <input value={provName} onChange={(e) => setProvName(e.target.value)}
-                      className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]" />
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
                   </div>
                   <button
                     onClick={() => provisionMutation.mutate()}
                     disabled={!provStoreId || !provName || provisionMutation.isPending}
-                    className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
                   >
                     {provisionMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                     Provision
@@ -793,21 +850,21 @@ export default function EdgeManagementPage() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-md bg-[#DCFCE7] p-3 text-sm text-[#16A34A]">
+                  <div className="rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
                     Agent provisioned successfully!
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-[#1C1917]">Edge Token</label>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-900">Edge Token</label>
                     <textarea readOnly value={provResult.token} rows={3}
-                      className="w-full rounded-md border border-[#E7E5E0] bg-[#F8F7F4] px-3 py-2 font-mono text-xs" />
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 font-mono text-xs" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-[#1C1917]">docker-compose.yml</label>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-900">docker-compose.yml</label>
                     <textarea readOnly value={provResult.docker_compose} rows={12}
-                      className="w-full rounded-md border border-[#E7E5E0] bg-[#F8F7F4] px-3 py-2 font-mono text-[10px]" />
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 font-mono text-[10px]" />
                   </div>
                   <button onClick={() => setProvisionOpen(false)}
-                    className="w-full rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]">
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                     Close
                   </button>
                 </>

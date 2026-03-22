@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Radio, Trash2, Loader2, Zap, X, Power, Link2, Clock, History, PlayCircle } from "lucide-react";
+import { Plus, Radio, Trash2, Loader2, Zap, X, Power, Link2, Clock, History, PlayCircle, Lightbulb, Globe } from "lucide-react";
 
 import api from "@/lib/api";
 import { INTERVALS } from "@/constants";
@@ -26,7 +26,18 @@ interface Device {
   auto_off_seconds?: number;
 }
 
-/* ── Auto-off countdown hook ── */
+const DEVICE_TYPE_ICON: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  tplink: { icon: Lightbulb, color: "text-amber-600", bg: "bg-amber-50" },
+  mqtt: { icon: Radio, color: "text-purple-600", bg: "bg-purple-50" },
+  webhook: { icon: Globe, color: "text-blue-600", bg: "bg-blue-50" },
+  light: { icon: Lightbulb, color: "text-yellow-600", bg: "bg-yellow-50" },
+  alarm: { icon: Radio, color: "text-red-600", bg: "bg-red-50" },
+  speaker: { icon: Radio, color: "text-indigo-600", bg: "bg-indigo-50" },
+  sign: { icon: Globe, color: "text-green-600", bg: "bg-green-50" },
+  other: { icon: Radio, color: "text-gray-600", bg: "bg-gray-50" },
+};
+
+/* -- Auto-off countdown hook -- */
 function useCountdown(device: Device): string | null {
   const [remaining, setRemaining] = useState<number | null>(null);
 
@@ -54,20 +65,19 @@ function useCountdown(device: Device): string | null {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-/* ── Countdown display component ── */
+/* -- Countdown display component -- */
 function AutoOffCountdown({ device }: { device: Device }) {
   const countdown = useCountdown(device);
   if (!countdown) return null;
   return (
-    <span className="ml-2 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
       <Clock size={10} /> Auto-off in {countdown}
     </span>
   );
 }
 
-/* ── Trigger History Modal ── */
+/* -- Trigger History Modal -- */
 function TriggerHistoryModal({ device, onClose }: { device: Device; onClose: () => void }) {
-  // Fetch device detail for latest info
   const { data, isLoading } = useQuery({
     queryKey: ["device-detail", device.id],
     queryFn: async () => {
@@ -79,11 +89,11 @@ function TriggerHistoryModal({ device, onClose }: { device: Device; onClose: () 
   const detail = data ?? device;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-[440px] rounded-lg bg-white p-6 shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#1C1917]">Trigger History -- {detail.name}</h3>
-          <button onClick={onClose} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+          <h3 className="text-base font-semibold text-gray-900">Trigger History -- {detail.name}</h3>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><X size={16} /></button>
         </div>
 
         {isLoading ? (
@@ -92,46 +102,46 @@ function TriggerHistoryModal({ device, onClose }: { device: Device; onClose: () 
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="rounded-md border border-[#E7E5E0] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs font-medium text-[#78716C]">Current Status</span>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500">Current Status</span>
                 <StatusBadge status={detail.status} size="sm" />
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[#78716C]">Type:</span>{" "}
-                  <span className="font-medium text-[#1C1917]">{detail.device_type}</span>
+                  <span className="text-gray-500">Type:</span>{" "}
+                  <span className="font-medium text-gray-900">{detail.device_type}</span>
                 </div>
                 <div>
-                  <span className="text-[#78716C]">Control:</span>{" "}
-                  <span className="font-medium text-[#1C1917]">{detail.control_method}</span>
+                  <span className="text-gray-500">Control:</span>{" "}
+                  <span className="font-medium text-gray-900">{detail.control_method}</span>
                 </div>
                 {detail.auto_off_seconds && (
                   <div>
-                    <span className="text-[#78716C]">Auto-off:</span>{" "}
-                    <span className="font-medium text-[#1C1917]">{detail.auto_off_seconds}s</span>
+                    <span className="text-gray-500">Auto-off:</span>{" "}
+                    <span className="font-medium text-gray-900">{detail.auto_off_seconds}s</span>
                   </div>
                 )}
                 {detail.ip && (
                   <div>
-                    <span className="text-[#78716C]">IP:</span>{" "}
-                    <span className="font-medium text-[#1C1917]">{detail.ip}</span>
+                    <span className="text-gray-500">IP:</span>{" "}
+                    <span className="font-medium text-gray-900">{detail.ip}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="rounded-md border border-[#E7E5E0] p-3">
-              <span className="mb-2 block text-xs font-medium text-[#78716C]">Last Trigger Event</span>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <span className="mb-2 block text-xs font-medium text-gray-500">Last Trigger Event</span>
               {detail.last_triggered ? (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Zap size={12} className="text-amber-500" />
-                    <span className="text-sm font-medium text-[#1C1917]">
+                    <span className="text-sm font-medium text-gray-900">
                       {new Date(detail.last_triggered).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-[10px] text-[#78716C]">
+                  <p className="text-[10px] text-gray-500">
                     Relative: {formatRelativeTime(detail.last_triggered)}
                   </p>
                   {detail.status === "triggered" && detail.auto_off_seconds && (
@@ -142,11 +152,11 @@ function TriggerHistoryModal({ device, onClose }: { device: Device; onClose: () 
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-[#A8A29E]">This device has never been triggered.</p>
+                <p className="text-xs text-gray-400">This device has never been triggered.</p>
               )}
             </div>
 
-            <p className="text-[10px] text-[#A8A29E]">
+            <p className="text-[10px] text-gray-400">
               Full trigger history with latency and incident links requires a dedicated history endpoint.
               Showing latest trigger state from the device record.
             </p>
@@ -155,7 +165,7 @@ function TriggerHistoryModal({ device, onClose }: { device: Device; onClose: () 
 
         <div className="mt-4 flex justify-end">
           <button onClick={onClose}
-            className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F5F5F4]">
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
             Close
           </button>
         </div>
@@ -191,6 +201,21 @@ export default function DevicesPage() {
   const [controlMethod, setControlMethod] = useState("http");
   const [controlUrl, setControlUrl] = useState("");
 
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    setName("");
+    setControlUrl("");
+  }, []);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDrawer();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [drawerOpen, closeDrawer]);
+
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
     queryFn: async () => {
@@ -207,7 +232,6 @@ export default function DevicesPage() {
     },
   });
 
-  /* Polling every 30s for real-time device status */
   const { data: devicesData, isLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
@@ -224,7 +248,7 @@ export default function DevicesPage() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
-      setDrawerOpen(false); setName(""); setControlUrl("");
+      closeDrawer();
       success("Device added");
     },
     onError: (err: any) => showError(err?.response?.data?.detail || "Failed"),
@@ -256,7 +280,6 @@ export default function DevicesPage() {
     onError: (err: any) => showError(err?.response?.data?.detail || "Failed"),
   });
 
-  /* Test Device trigger mutation */
   const triggerMutation = useMutation({
     mutationFn: (id: string) => api.post(`/devices/${id}/trigger`),
     onSuccess: (_data, id) => {
@@ -272,91 +295,132 @@ export default function DevicesPage() {
 
   function typeLabel(t: string) {
     const map: Record<string, string> = {
-      tplink: "TP-Link", mqtt: "MQTT", webhook: "Webhook",
+      tplink: "TP-Link Kasa", mqtt: "MQTT", webhook: "Webhook",
       sign: "Sign", alarm: "Alarm", light: "Light", speaker: "Speaker", other: "Other",
     };
     return map[t] || t;
   }
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#1C1917]">Device Control</h1>
-          <p className="text-sm text-[#78716C]">{devices.length} devices (edge + cloud)</p>
+          <h1 className="text-2xl font-bold text-gray-900">IoT Devices</h1>
+          <p className="mt-1 text-sm text-gray-500">{devices.length} device{devices.length !== 1 ? "s" : ""} registered</p>
         </div>
         <button onClick={() => setDrawerOpen(true)}
-          className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]">
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0F766E]">
           <Plus size={16} /> Add Device
         </button>
       </div>
 
       {isLoading ? (
-        <div className="flex h-40 items-center justify-center"><Loader2 size={24} className="animate-spin text-[#0D9488]" /></div>
-      ) : devices.length === 0 ? (
-        <EmptyState icon={Radio} title="No devices" description="Add IoT devices from here or the Edge Management page." actionLabel="Add Device" onAction={() => setDrawerOpen(true)} />
-      ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {devices.map((d) => (
-            <div key={d.id} className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Radio size={16} className="text-[#78716C]" />
-                  <span className="font-medium text-[#1C1917]">{d.name}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <StatusBadge status={d.status} size="sm" />
-                  <AutoOffCountdown device={d} />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 rounded bg-gray-200" />
+                  <div className="h-3 w-48 rounded bg-gray-200" />
                 </div>
               </div>
-              <p className="text-xs text-[#78716C]">
-                {typeLabel(d.device_type)} &middot; {storeMap.get(d.store_id) ?? "\u2014"}
-                {d.ip && ` \u00b7 ${d.ip}`}
-                {d.edge_agent_id && " \u00b7 Edge"}
-              </p>
-              {d.last_triggered && (
-                <p className="mt-1 text-[10px] text-[#78716C]">
-                  Last triggered: {new Date(d.last_triggered).toLocaleString()}
-                  <span className="ml-1 text-[#A8A29E]">({formatRelativeTime(d.last_triggered)})</span>
-                </p>
-              )}
-              <p className="mt-1 text-[10px] text-[#78716C]">
-                {d.trigger_on_any ? "Triggers on any camera" : `Assigned to ${d.assigned_cameras?.length ?? 0} camera(s)`}
-                {d.auto_off_seconds ? ` \u00b7 Auto-off: ${d.auto_off_seconds}s` : ""}
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button onClick={() => toggleMutation.mutate({ id: d.id, action: d.status === "triggered" ? "off" : "on" })}
-                  disabled={toggleMutation.isPending}
-                  className={`flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs text-white disabled:opacity-50 ${
-                    d.status === "triggered" ? "bg-[#DC2626] hover:bg-red-700" : "bg-[#16A34A] hover:bg-green-700"
-                  }`}>
-                  <Power size={10} /> {d.status === "triggered" ? "Turn OFF" : "Turn ON"}
-                </button>
-                <button onClick={() => triggerMutation.mutate(d.id)}
-                  disabled={triggerMutation.isPending}
-                  title="Test device trigger"
-                  className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F0FDFA] disabled:opacity-50">
-                  {triggerMutation.isPending && triggerMutation.variables === d.id
-                    ? <Loader2 size={10} className="animate-spin" />
-                    : <PlayCircle size={10} />}
-                  Test
-                </button>
-                <button onClick={() => setHistoryTarget(d)}
-                  title="Trigger history"
-                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F0FDFA]">
-                  <History size={10} />
-                </button>
-                <button onClick={() => { setAssignTarget(d); setAssignCameras(d.assigned_cameras ?? []); setAssignTriggerAny(d.trigger_on_any ?? true); }}
-                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F0FDFA]">
-                  <Link2 size={10} />
-                </button>
-                <button onClick={() => setDeleteTarget(d.id)}
-                  className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#FEE2E2] hover:text-[#DC2626]">
-                  <Trash2 size={10} />
-                </button>
+              <div className="mt-4 flex gap-2">
+                <div className="h-8 flex-1 rounded-lg bg-gray-200" />
+                <div className="h-8 w-16 rounded-lg bg-gray-200" />
               </div>
             </div>
           ))}
+        </div>
+      ) : devices.length === 0 ? (
+        <EmptyState icon={Radio} title="No devices" description="Add IoT devices from here or the Edge Management page." actionLabel="Add Device" onAction={() => setDrawerOpen(true)} />
+      ) : (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {devices.map((d) => {
+            const dtCfg = (DEVICE_TYPE_ICON[d.device_type] ?? DEVICE_TYPE_ICON.other) as { icon: React.ElementType; color: string; bg: string };
+            const DevIcon = dtCfg.icon;
+            return (
+              <div key={d.id} className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+                <div className="mb-3 flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${dtCfg.bg}`}>
+                      <DevIcon size={18} className={dtCfg.color} />
+                    </div>
+                    <div>
+                      <span className="font-semibold text-gray-900">{d.name}</span>
+                      <p className="text-xs text-gray-500">{typeLabel(d.device_type)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      d.status === "triggered" ? "bg-amber-50 text-amber-700" :
+                      d.status === "online" || d.status === "idle" ? "bg-green-50 text-green-700" :
+                      d.status === "offline" ? "bg-red-50 text-red-700" :
+                      "bg-gray-100 text-gray-600"
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${
+                        d.status === "triggered" ? "bg-amber-500 animate-pulse" :
+                        d.status === "online" || d.status === "idle" ? "bg-green-500" :
+                        d.status === "offline" ? "bg-red-500" :
+                        "bg-gray-400"
+                      }`} />
+                      {d.status}
+                    </span>
+                    <AutoOffCountdown device={d} />
+                  </div>
+                </div>
+
+                <div className="mb-3 space-y-1 text-xs text-gray-500">
+                  <p>{storeMap.get(d.store_id) ?? "\u2014"}{d.ip && ` \u00b7 ${d.ip}`}{d.edge_agent_id && " \u00b7 Edge"}</p>
+                  {d.last_triggered && (
+                    <p>
+                      Last triggered: {new Date(d.last_triggered).toLocaleString()}
+                      <span className="ml-1 text-gray-400">({formatRelativeTime(d.last_triggered)})</span>
+                    </p>
+                  )}
+                  <p>
+                    {d.trigger_on_any ? "Triggers on any camera" : `Assigned to ${d.assigned_cameras?.length ?? 0} camera(s)`}
+                    {d.auto_off_seconds ? ` \u00b7 Auto-off: ${d.auto_off_seconds}s` : ""}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => toggleMutation.mutate({ id: d.id, action: d.status === "triggered" ? "off" : "on" })}
+                    disabled={toggleMutation.isPending}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white transition-colors disabled:opacity-50 ${
+                      d.status === "triggered" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
+                    }`}>
+                    <Power size={12} /> {d.status === "triggered" ? "Turn OFF" : "Turn ON"}
+                  </button>
+                  <button onClick={() => triggerMutation.mutate(d.id)}
+                    disabled={triggerMutation.isPending}
+                    title="Test trigger"
+                    className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-2 text-xs text-gray-600 transition-colors hover:bg-teal-50 hover:text-[#0D9488] disabled:opacity-50">
+                    {triggerMutation.isPending && triggerMutation.variables === d.id
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <PlayCircle size={12} />}
+                    Test
+                  </button>
+                  <button onClick={() => setHistoryTarget(d)}
+                    title="Trigger history"
+                    className="rounded-lg border border-gray-200 p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600">
+                    <History size={12} />
+                  </button>
+                  <button onClick={() => { setAssignTarget(d); setAssignCameras(d.assigned_cameras ?? []); setAssignTriggerAny(d.trigger_on_any ?? true); }}
+                    title="Assign cameras"
+                    className="rounded-lg border border-gray-200 p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600">
+                    <Link2 size={12} />
+                  </button>
+                  <button onClick={() => setDeleteTarget(d.id)}
+                    title="Deactivate"
+                    className="rounded-lg border border-gray-200 p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -367,34 +431,34 @@ export default function DevicesPage() {
 
       {/* Camera Assignment Modal */}
       {assignTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[420px] rounded-lg bg-white p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Assign Cameras -- {assignTarget.name}</h3>
-              <button onClick={() => setAssignTarget(null)} className="text-[#78716C]"><X size={16} /></button>
+              <h3 className="text-base font-semibold text-gray-900">Assign Cameras -- {assignTarget.name}</h3>
+              <button onClick={() => setAssignTarget(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100"><X size={16} /></button>
             </div>
-            <label className="mb-3 flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={assignTriggerAny} onChange={(e) => setAssignTriggerAny(e.target.checked)} className="accent-[#0D9488]" />
+            <label className="mb-3 flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={assignTriggerAny} onChange={(e) => setAssignTriggerAny(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-[#0D9488] accent-[#0D9488]" />
               Trigger on ANY camera (all cameras activate this device)
             </label>
             {!assignTriggerAny && (
-              <div className="mb-3 max-h-48 overflow-y-auto rounded border border-[#E7E5E0] p-2">
+              <div className="mb-4 max-h-48 overflow-y-auto rounded-lg border border-gray-200 p-3">
                 {cameras.filter((c) => c.store_id === assignTarget.store_id).map((c) => (
-                  <label key={c.id} className="flex items-center gap-2 py-1 text-xs">
+                  <label key={c.id} className="flex items-center gap-2 py-1.5 text-sm text-gray-600">
                     <input type="checkbox" checked={assignCameras.includes(c.id)}
                       onChange={(e) => setAssignCameras(e.target.checked
                         ? [...assignCameras, c.id]
                         : assignCameras.filter((x) => x !== c.id)
-                      )} className="accent-[#0D9488]" />
+                      )} className="h-4 w-4 rounded border-gray-300 text-[#0D9488] accent-[#0D9488]" />
                     {c.name}
                   </label>
                 ))}
               </div>
             )}
             <div className="flex justify-end gap-2">
-              <button onClick={() => setAssignTarget(null)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
+              <button onClick={() => setAssignTarget(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">Cancel</button>
               <button onClick={() => assignMutation.mutate()} disabled={assignMutation.isPending}
-                className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50">
+                className="rounded-lg bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50">
                 {assignMutation.isPending ? "Saving..." : "Save Assignment"}
               </button>
             </div>
@@ -410,30 +474,31 @@ export default function DevicesPage() {
 
       {/* Create Drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-          <div className="h-full w-[384px] overflow-y-auto bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-              <h2 className="text-lg font-semibold text-[#1C1917]">Add Device</h2>
-              <button onClick={() => setDrawerOpen(false)} className="text-[#78716C] hover:text-[#1C1917]"><X size={18} /></button>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
+          <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">Add Device</h2>
+              <button onClick={closeDrawer} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"><X size={18} /></button>
             </div>
-            <div className="space-y-4 p-4">
+            <div className="space-y-5 p-6">
               <div>
-                <label className="mb-1 block text-sm font-medium">Store *</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Store <span className="text-red-500">*</span></label>
                 <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20">
                   <option value="">Select store</option>
                   {(stores ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Name *</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Name <span className="text-red-500">*</span></label>
                 <input value={name} onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                  placeholder="e.g. Aisle 3 Warning Light"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20" />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Type *</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Type <span className="text-red-500">*</span></label>
                 <select value={deviceType} onChange={(e) => setDeviceType(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20">
                   <option value="tplink">TP-Link Kasa Plug</option>
                   <option value="mqtt">MQTT Device</option>
                   <option value="webhook">HTTP Webhook</option>
@@ -445,23 +510,23 @@ export default function DevicesPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">Control Method</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Control Method</label>
                 <select value={controlMethod} onChange={(e) => setControlMethod(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20">
                   <option value="http">HTTP</option>
                   <option value="mqtt">MQTT</option>
                 </select>
               </div>
               {controlMethod === "http" && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium">Control URL</label>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700">Control URL</label>
                   <input value={controlUrl} onChange={(e) => setControlUrl(e.target.value)}
                     placeholder="http://192.168.1.50/trigger"
-                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20" />
                 </div>
               )}
               <button onClick={() => createMutation.mutate()} disabled={!storeId || !name || createMutation.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50">
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50">
                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />} Add Device
               </button>
             </div>

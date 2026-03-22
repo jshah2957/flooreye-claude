@@ -8,6 +8,8 @@ import {
   Camera,
   Loader2,
   RefreshCw,
+  FileText,
+  Download,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -65,70 +67,106 @@ export default function CompliancePage() {
   const stores = storesData ?? [];
   const report = reportData;
 
-  // Find max count for bar chart scaling
   const maxDayCount = report
     ? Math.max(...report.incidents_by_day.map((d) => d.count), 1)
     : 1;
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#1C1917]">
-          Compliance Report
-        </h1>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Compliance Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">Incident response metrics and compliance reporting</p>
+        </div>
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1 text-xs text-[#78716C] hover:bg-[#F1F0ED]"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
         >
-          <RefreshCw size={12} /> Refresh
+          <RefreshCw size={14} /> Refresh
         </button>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-end gap-4">
-        <div>
-          <label className="mb-1 block text-xs text-[#78716C]">Store</label>
-          <select
-            value={storeId}
-            onChange={(e) => setStoreId(e.target.value)}
-            className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-          >
-            <option value="">All Stores</option>
-            {stores.map((s: { id: string; name: string }) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-[#78716C]">From</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-[#78716C]">To</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-          />
+      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">Store</label>
+            <select
+              value={storeId}
+              onChange={(e) => setStoreId(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+            >
+              <option value="">All Stores</option>
+              {stores.map((s: { id: string; name: string }) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-gray-500">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+              <FileText size={14} /> Generate PDF
+            </button>
+            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+              <Download size={14} /> Export CSV
+            </button>
+          </div>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 size={32} className="animate-spin text-[#0D9488]" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="animate-pulse rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-gray-200" />
+                  <div className="space-y-2">
+                    <div className="h-3 w-20 rounded bg-gray-200" />
+                    <div className="h-5 w-16 rounded bg-gray-200" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {[1, 2].map((i) => (
+              <div key={i} className="animate-pulse rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                <div className="h-4 w-32 rounded bg-gray-200" />
+                <div className="mt-4 space-y-3">
+                  {[1, 2, 3].map((j) => (
+                    <div key={j} className="h-5 rounded bg-gray-200" />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : !report ? (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-[#E7E5E0]">
-          <p className="text-sm text-[#78716C]">No report data available</p>
+        <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50">
+          <AlertTriangle size={32} className="mb-2 text-gray-300" />
+          <p className="text-sm font-medium text-gray-500">No report data available</p>
+          <p className="mt-1 text-xs text-gray-400">Adjust filters or wait for data to be collected</p>
         </div>
       ) : (
         <>
@@ -161,62 +199,53 @@ export default function CompliancePage() {
           </div>
 
           {/* Camera Uptime */}
-          <div className="mb-6 rounded-lg border border-[#E7E5E0] bg-white p-4">
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
               <Camera size={16} className="text-[#0D9488]" />
-              <h2 className="text-sm font-semibold text-[#1C1917]">
+              <h2 className="text-sm font-semibold text-gray-900">
                 Camera Uptime
               </h2>
             </div>
             <div className="flex items-center gap-4">
-              <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#F1F0ED]">
+              <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100">
                 <div
-                  className="h-full rounded-full bg-[#0D9488] transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-[#0D9488] to-[#14b8a6] transition-all"
                   style={{ width: `${report.camera_uptime_percent}%` }}
                 />
               </div>
-              <span className="text-sm font-semibold text-[#1C1917]">
+              <span className="text-sm font-bold text-gray-900">
                 {report.camera_uptime_percent}%
               </span>
             </div>
-            <p className="mt-1 text-xs text-[#78716C]">
+            <p className="mt-1.5 text-xs text-gray-500">
               {report.active_cameras} of {report.total_cameras} cameras active
             </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Incidents by Store */}
-            <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-              <h2 className="mb-3 text-sm font-semibold text-[#1C1917]">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 text-sm font-semibold text-gray-900">
                 Incidents by Store
               </h2>
               {report.incidents_by_store.length === 0 ? (
-                <p className="py-4 text-center text-xs text-[#78716C]">
+                <p className="py-4 text-center text-xs text-gray-400">
                   No incidents recorded
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[#E7E5E0] text-left text-xs text-[#78716C]">
+                      <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
                         <th className="pb-2 font-medium">Store</th>
-                        <th className="pb-2 text-right font-medium">
-                          Incidents
-                        </th>
+                        <th className="pb-2 text-right font-medium">Incidents</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-50">
                       {report.incidents_by_store.map((s) => (
-                        <tr
-                          key={s.store_id}
-                          className="border-b border-[#E7E5E0] last:border-0"
-                        >
-                          <td className="py-2 text-[#1C1917]">
-                            {s.store_name}
-                          </td>
-                          <td className="py-2 text-right font-medium text-[#1C1917]">
-                            {s.count}
-                          </td>
+                        <tr key={s.store_id}>
+                          <td className="py-2.5 text-gray-700">{s.store_name}</td>
+                          <td className="py-2.5 text-right font-semibold text-gray-900">{s.count}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -226,30 +255,30 @@ export default function CompliancePage() {
             </div>
 
             {/* Incidents by Day */}
-            <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-              <h2 className="mb-3 text-sm font-semibold text-[#1C1917]">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 text-sm font-semibold text-gray-900">
                 Incidents by Day
               </h2>
               {report.incidents_by_day.length === 0 ? (
-                <p className="py-4 text-center text-xs text-[#78716C]">
+                <p className="py-4 text-center text-xs text-gray-400">
                   No daily data available
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {report.incidents_by_day.map((d) => (
                     <div key={d.date} className="flex items-center gap-3">
-                      <span className="w-24 shrink-0 text-xs text-[#78716C]">
+                      <span className="w-24 shrink-0 text-xs text-gray-500">
                         {d.date}
                       </span>
-                      <div className="h-5 flex-1 overflow-hidden rounded bg-[#F1F0ED]">
+                      <div className="h-6 flex-1 overflow-hidden rounded-lg bg-gray-100">
                         <div
-                          className="h-full rounded bg-[#0D9488] transition-all"
+                          className="h-full rounded-lg bg-gradient-to-r from-[#0D9488] to-[#14b8a6] transition-all"
                           style={{
                             width: `${(d.count / maxDayCount) * 100}%`,
                           }}
                         />
                       </div>
-                      <span className="w-8 text-right text-xs font-medium text-[#1C1917]">
+                      <span className="w-8 text-right text-xs font-semibold text-gray-900">
                         {d.count}
                       </span>
                     </div>
@@ -276,23 +305,23 @@ function StatCard({
   color: "info" | "success" | "danger" | "warning" | "brand";
 }) {
   const colors = {
-    info: { bg: "bg-[#DBEAFE]", text: "text-[#2563EB]" },
-    success: { bg: "bg-[#DCFCE7]", text: "text-[#16A34A]" },
-    danger: { bg: "bg-[#FEE2E2]", text: "text-[#DC2626]" },
-    warning: { bg: "bg-[#FEF3C7]", text: "text-[#D97706]" },
-    brand: { bg: "bg-[#CCFBF1]", text: "text-[#0D9488]" },
+    info: { bg: "bg-blue-50", text: "text-blue-600" },
+    success: { bg: "bg-green-50", text: "text-green-600" },
+    danger: { bg: "bg-red-50", text: "text-red-600" },
+    warning: { bg: "bg-amber-50", text: "text-amber-600" },
+    brand: { bg: "bg-teal-50", text: "text-[#0D9488]" },
   };
   const c = colors[color];
 
   return (
-    <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className={`rounded-lg p-2 ${c.bg}`}>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${c.bg}`}>
           <Icon size={18} className={c.text} />
         </div>
         <div>
-          <p className="text-xs text-[#78716C]">{label}</p>
-          <p className="text-lg font-semibold text-[#1C1917]">{value}</p>
+          <p className="text-xs font-medium text-gray-500">{label}</p>
+          <p className="text-xl font-bold text-gray-900">{value}</p>
         </div>
       </div>
     </div>

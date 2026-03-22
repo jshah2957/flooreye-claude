@@ -77,6 +77,7 @@ export default function AlertDetailScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
       >
         <ActivityIndicator
@@ -84,6 +85,9 @@ export default function AlertDetailScreen() {
           color={BRAND.primary}
           accessibilityLabel="Loading detection detail"
         />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading detection...
+        </Text>
       </View>
     );
   }
@@ -97,17 +101,17 @@ export default function AlertDetailScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
-          padding: SPACING.xxl,
+          padding: 24,
         }}
       >
         <ErrorBanner message={error} onRetry={fetchDetection} />
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginTop: SPACING.md }}
+          style={{ marginTop: 16, minHeight: 48, justifyContent: "center" }}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={{ color: BRAND.primary, fontSize: FONT_SIZE.lg }}>
+          <Text style={{ color: BRAND.primary, fontSize: 15, fontWeight: "600" }}>
             Go Back
           </Text>
         </TouchableOpacity>
@@ -126,16 +130,16 @@ export default function AlertDetailScreen() {
           backgroundColor: BRAND.background,
         }}
       >
-        <Text style={{ color: BRAND.danger, fontSize: FONT_SIZE.lg }}>
+        <Text style={{ color: BRAND.danger, fontSize: 15 }}>
           Detection not found
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginTop: SPACING.lg }}
+          style={{ marginTop: 16, minHeight: 48, justifyContent: "center" }}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={{ color: BRAND.primary, fontSize: FONT_SIZE.lg }}>
+          <Text style={{ color: BRAND.primary, fontSize: 15, fontWeight: "600" }}>
             Go Back
           </Text>
         </TouchableOpacity>
@@ -145,91 +149,97 @@ export default function AlertDetailScreen() {
 
   const wetDryStyle = detection.is_wet ? DETECTION.wet : DETECTION.dry;
   const wetDryLabel = detection.is_wet ? "WET" : "DRY";
-  const flaggedStyle = detection.is_flagged ? DETECTION.flagged : DETECTION.unflagged;
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: BRAND.background }}
-      contentContainerStyle={{ padding: SPACING.lg }}
+      contentContainerStyle={{ padding: 16 }}
     >
       {/* Header */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          marginBottom: SPACING.lg,
+          marginBottom: 20,
         }}
       >
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginRight: SPACING.md }}
+          style={{
+            marginRight: 12,
+            minHeight: 48,
+            paddingHorizontal: 8,
+            justifyContent: "center",
+          }}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={{ fontSize: FONT_SIZE.h1, color: BRAND.primary }}>
+          <Text style={{ fontSize: 24, color: BRAND.primary, fontWeight: "300" }}>
             {"\u2190"}
           </Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontSize: FONT_SIZE.xl,
-              fontWeight: "600",
+              fontSize: 18,
+              fontWeight: "700",
               color: BRAND.textPrimary,
             }}
           >
             Detection Detail
           </Text>
-          <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
+          <Text style={{ fontSize: 12, color: BRAND.textSecondary, marginTop: 2 }}>
             {new Date(detection.timestamp).toLocaleString()}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+      </View>
+
+      {/* Badges row */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        <View
+          style={{
+            backgroundColor: wetDryStyle.bg,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+          }}
+          accessibilityLabel={`Detection result: ${wetDryLabel}`}
+          accessibilityRole="text"
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: "600",
+              color: wetDryStyle.text,
+            }}
+          >
+            {wetDryLabel}
+          </Text>
+        </View>
+        {detection.is_flagged && (
           <View
             style={{
-              backgroundColor: wetDryStyle.bg,
-              borderRadius: RADIUS.full,
-              paddingHorizontal: SPACING.md,
-              paddingVertical: SPACING.xs,
+              backgroundColor: DETECTION.flagged.bg,
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderWidth: 1,
+              borderColor: DETECTION.flagged.border,
             }}
-            accessibilityLabel={`Detection result: ${wetDryLabel}`}
+            accessibilityLabel="Flagged for review"
             accessibilityRole="text"
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.sm,
-                fontWeight: "700",
-                color: wetDryStyle.text,
+                fontSize: 12,
+                fontWeight: "600",
+                color: DETECTION.flagged.text,
               }}
             >
-              {wetDryLabel}
+              FLAGGED
             </Text>
           </View>
-          {detection.is_flagged && (
-            <View
-              style={{
-                backgroundColor: DETECTION.flagged.bg,
-                borderRadius: RADIUS.full,
-                paddingHorizontal: SPACING.md,
-                paddingVertical: SPACING.xs,
-                borderWidth: 1,
-                borderColor: DETECTION.flagged.border,
-              }}
-              accessibilityLabel="Flagged for review"
-              accessibilityRole="text"
-            >
-              <Text
-                style={{
-                  fontSize: FONT_SIZE.sm,
-                  fontWeight: "700",
-                  color: DETECTION.flagged.text,
-                }}
-              >
-                FLAGGED
-              </Text>
-            </View>
-          )}
-        </View>
+        )}
       </View>
 
       {/* Frame Image */}
@@ -237,9 +247,9 @@ export default function AlertDetailScreen() {
         <View
           style={{
             backgroundColor: NEUTRAL.black,
-            borderRadius: RADIUS.md,
+            borderRadius: 12,
             overflow: "hidden",
-            marginBottom: SPACING.lg,
+            marginBottom: 16,
             aspectRatio: MEDIA.FRAME_ASPECT_RATIO,
           }}
           accessibilityLabel="Detection frame image"
@@ -257,19 +267,22 @@ export default function AlertDetailScreen() {
       <View
         style={{
           backgroundColor: BRAND.surface,
-          borderRadius: RADIUS.md,
-          borderWidth: 1,
-          borderColor: BRAND.border,
-          padding: SPACING.lg,
-          marginBottom: SPACING.lg,
+          borderRadius: 16,
+          padding: 20,
+          marginBottom: 16,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06,
+          shadowRadius: 3,
+          elevation: 2,
         }}
       >
         <Text
           style={{
-            fontSize: FONT_SIZE.lg,
-            fontWeight: "600",
+            fontSize: 16,
+            fontWeight: "700",
             color: BRAND.textPrimary,
-            marginBottom: SPACING.md,
+            marginBottom: 12,
           }}
         >
           Detection Metrics
@@ -287,7 +300,7 @@ export default function AlertDetailScreen() {
           value={`${detection.inference_time_ms}ms`}
         />
         <MetricRow label="Model Source" value={detection.model_source} />
-        <MetricRow label="Camera" value={detection.camera_id.slice(0, 8)} />
+        <MetricRow label="Camera" value={detection.camera_id.slice(0, 8)} last={!detection.incident_id} />
         {detection.incident_id && (
           <TouchableOpacity
             onPress={() => router.push(`/incident/${detection.incident_id}`)}
@@ -298,18 +311,20 @@ export default function AlertDetailScreen() {
               style={{
                 flexDirection: "row",
                 justifyContent: "space-between",
-                paddingVertical: SPACING.xs,
+                alignItems: "center",
+                minHeight: 44,
+                paddingVertical: 10,
               }}
             >
               <Text
-                style={{ fontSize: FONT_SIZE.md, color: BRAND.textSecondary }}
+                style={{ fontSize: 13, color: "#78716C" }}
               >
                 Incident
               </Text>
               <Text
                 style={{
-                  fontSize: FONT_SIZE.md,
-                  fontWeight: "500",
+                  fontSize: 14,
+                  fontWeight: "600",
                   color: BRAND.primary,
                   textDecorationLine: "underline",
                 }}
@@ -326,19 +341,22 @@ export default function AlertDetailScreen() {
         <View
           style={{
             backgroundColor: BRAND.surface,
-            borderRadius: RADIUS.md,
-            borderWidth: 1,
-            borderColor: BRAND.border,
-            padding: SPACING.lg,
-            marginBottom: SPACING.lg,
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 3,
+            elevation: 2,
           }}
         >
           <Text
             style={{
-              fontSize: FONT_SIZE.lg,
-              fontWeight: "600",
+              fontSize: 16,
+              fontWeight: "700",
               color: BRAND.textPrimary,
-              marginBottom: SPACING.md,
+              marginBottom: 12,
             }}
           >
             Predictions
@@ -347,23 +365,23 @@ export default function AlertDetailScreen() {
             <View
               key={i}
               style={{
-                paddingVertical: SPACING.sm,
+                paddingVertical: 10,
                 borderBottomWidth:
                   i < detection.predictions.length - 1 ? 1 : 0,
-                borderBottomColor: NEUTRAL.divider,
+                borderBottomColor: "#F3F4F6",
               }}
             >
               <View
                 style={{
                   flexDirection: "row",
                   justifyContent: "space-between",
-                  marginBottom: SPACING.xs,
+                  marginBottom: 6,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: FONT_SIZE.md,
-                    fontWeight: "500",
+                    fontSize: 14,
+                    fontWeight: "600",
                     color: BRAND.textPrimary,
                   }}
                 >
@@ -371,7 +389,8 @@ export default function AlertDetailScreen() {
                 </Text>
                 <Text
                   style={{
-                    fontSize: FONT_SIZE.md,
+                    fontSize: 14,
+                    fontWeight: "500",
                     color: BRAND.textSecondary,
                   }}
                 >
@@ -381,9 +400,9 @@ export default function AlertDetailScreen() {
               {/* Confidence bar */}
               <View
                 style={{
-                  height: SPACING.sm,
-                  backgroundColor: NEUTRAL.surface,
-                  borderRadius: RADIUS.sm,
+                  height: 8,
+                  backgroundColor: "#E5E7EB",
+                  borderRadius: 4,
                   overflow: "hidden",
                 }}
               >
@@ -392,15 +411,15 @@ export default function AlertDetailScreen() {
                     height: "100%",
                     width: `${Math.min(pred.confidence * 100, 100)}%`,
                     backgroundColor: BRAND.primary,
-                    borderRadius: RADIUS.sm,
+                    borderRadius: 4,
                   }}
                 />
               </View>
               <Text
                 style={{
-                  fontSize: FONT_SIZE.xs,
+                  fontSize: 11,
                   color: BRAND.textSecondary,
-                  marginTop: SPACING.xs,
+                  marginTop: 4,
                 }}
               >
                 Area: {pred.area_percent.toFixed(1)}%
@@ -411,16 +430,17 @@ export default function AlertDetailScreen() {
       )}
 
       {/* Flag / Unflag Button */}
-      <View style={{ gap: SPACING.md, marginBottom: SPACING.xxl }}>
+      <View style={{ gap: 8, marginBottom: 32 }}>
         <TouchableOpacity
           onPress={handleFlag}
           disabled={flagLoading}
           style={{
+            height: 52,
             backgroundColor: detection.is_flagged
               ? DETECTION.unflagged.bg
               : DETECTION.flagged.bg,
-            borderRadius: RADIUS.md,
-            paddingVertical: SPACING.lg,
+            borderRadius: 12,
+            justifyContent: "center",
             alignItems: "center",
             borderWidth: 1,
             borderColor: detection.is_flagged
@@ -441,7 +461,7 @@ export default function AlertDetailScreen() {
                 color: detection.is_flagged
                   ? DETECTION.unflagged.text
                   : ACTIONS.flag,
-                fontSize: FONT_SIZE.xl,
+                fontSize: 16,
                 fontWeight: "600",
               }}
             >
@@ -455,22 +475,26 @@ export default function AlertDetailScreen() {
 }
 
 /** Reusable metric row for the metrics card */
-function MetricRow({ label, value }: { label: string; value: string }) {
+function MetricRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <View
       style={{
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingVertical: SPACING.xs,
+        alignItems: "center",
+        minHeight: 44,
+        paddingVertical: 10,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: "#F3F4F6",
       }}
     >
-      <Text style={{ fontSize: FONT_SIZE.md, color: BRAND.textSecondary }}>
+      <Text style={{ fontSize: 13, color: "#78716C" }}>
         {label}
       </Text>
       <Text
         style={{
-          fontSize: FONT_SIZE.md,
-          fontWeight: "500",
+          fontSize: 14,
+          fontWeight: "600",
           color: BRAND.textPrimary,
         }}
       >

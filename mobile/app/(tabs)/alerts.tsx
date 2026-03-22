@@ -165,10 +165,14 @@ export default function AlertsScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
         accessibilityLabel="Loading alerts"
       >
         <ActivityIndicator size="large" color={BRAND.primary} />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading alerts...
+        </Text>
       </View>
     );
   }
@@ -177,11 +181,11 @@ export default function AlertsScreen() {
     <View style={{ flex: 1, backgroundColor: BRAND.background }}>
       <Text
         style={{
-          fontSize: FONT_SIZE.xxl,
-          fontWeight: "600",
+          fontSize: 20,
+          fontWeight: "700",
           color: BRAND.textPrimary,
-          padding: SPACING.lg,
-          paddingBottom: SPACING.sm,
+          padding: 16,
+          paddingBottom: 12,
         }}
         accessibilityRole="header"
       >
@@ -192,13 +196,11 @@ export default function AlertsScreen() {
       <View
         style={{
           flexDirection: "row",
-          marginHorizontal: SPACING.lg,
-          marginBottom: SPACING.sm,
-          backgroundColor: NEUTRAL.surface,
-          borderRadius: RADIUS.md,
-          borderWidth: 1,
-          borderColor: BRAND.border,
-          overflow: "hidden",
+          marginHorizontal: 16,
+          marginBottom: 12,
+          backgroundColor: "#F3F4F6",
+          borderRadius: 12,
+          padding: 3,
         }}
         accessibilityRole="tablist"
         accessibilityLabel="Alert filter tabs"
@@ -211,10 +213,11 @@ export default function AlertsScreen() {
               onPress={() => setActiveTab(tab.key)}
               style={{
                 flex: 1,
-                paddingVertical: SPACING.sm,
+                minHeight: 40,
+                justifyContent: "center",
                 alignItems: "center",
                 backgroundColor: isActive ? BRAND.primary : "transparent",
-                borderRadius: isActive ? RADIUS.md : 0,
+                borderRadius: 10,
               }}
               accessibilityLabel={`${tab.label} tab${isActive ? ", selected" : ""}`}
               accessibilityRole="tab"
@@ -222,8 +225,8 @@ export default function AlertsScreen() {
             >
               <Text
                 style={{
-                  fontSize: FONT_SIZE.lg,
-                  fontWeight: isActive ? "600" : "400",
+                  fontSize: 14,
+                  fontWeight: isActive ? "600" : "500",
                   color: isActive ? NEUTRAL.white : BRAND.textSecondary,
                 }}
               >
@@ -239,12 +242,11 @@ export default function AlertsScreen() {
         <TouchableOpacity
           onPress={dismissNewBanner}
           style={{
-            backgroundColor: INFO.bg,
-            marginHorizontal: SPACING.lg,
-            marginBottom: SPACING.sm,
-            paddingVertical: SPACING.sm,
-            paddingHorizontal: SPACING.md,
-            borderRadius: RADIUS.md,
+            backgroundColor: "#DBEAFE",
+            marginHorizontal: 16,
+            marginBottom: 8,
+            padding: 14,
+            borderRadius: 12,
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
@@ -254,14 +256,14 @@ export default function AlertsScreen() {
         >
           <Text
             style={{
-              fontSize: FONT_SIZE.lg,
+              fontSize: 14,
               fontWeight: "600",
               color: INFO.text,
             }}
           >
             {newAlertCount} new alert{newAlertCount !== 1 ? "s" : ""} arrived
           </Text>
-          <Text style={{ fontSize: FONT_SIZE.sm, color: INFO.text }}>
+          <Text style={{ fontSize: 13, color: INFO.text, fontWeight: "500" }}>
             Dismiss
           </Text>
         </TouchableOpacity>
@@ -269,7 +271,7 @@ export default function AlertsScreen() {
 
       {/* Error banner */}
       {error && (
-        <View style={{ marginHorizontal: SPACING.lg }}>
+        <View style={{ marginHorizontal: 16 }}>
           <ErrorBanner
             message={error}
             onRetry={() => {
@@ -284,16 +286,15 @@ export default function AlertsScreen() {
       {activeTab === "system" ? (
         <EmptyState
           message="System alerts coming soon"
-          icon="gear"
         />
       ) : (
         <FlatList
           data={filteredAlerts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{
-            padding: SPACING.lg,
-            paddingTop: 0,
-            gap: SPACING.sm,
+            padding: 16,
+            paddingTop: 4,
+            gap: 8,
             flexGrow: 1,
           }}
           refreshControl={

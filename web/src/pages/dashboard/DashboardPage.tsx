@@ -22,6 +22,8 @@ import {
   Cpu,
   X,
   RefreshCw,
+  CheckCircle,
+  VideoOff,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -73,7 +75,7 @@ export default function DashboardPage() {
   // ── Data queries with 30s auto-refresh (DASH-1) ──
   const refetchInterval = INTERVALS.DASHBOARD_REFRESH_MS;
 
-  const { data: storesData, isLoading: storesLoading } = useQuery({
+  const { data: storesData, isLoading: storesLoading, isError, refetch } = useQuery({
     queryKey: ["dashboard-stores"],
     queryFn: async () => {
       const res = await api.get<PaginatedResponse<Store>>("/stores", {
@@ -243,25 +245,70 @@ export default function DashboardPage() {
     };
   }, [streaming, selectedCameraId]);
 
-  // ── Loading skeletons (DASH-2) ──
+  // ── Loading / Error states ──
   const isLoading =
     storesLoading || camerasLoading || incidentsLoading || detectionsLoading;
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-7 w-32 animate-pulse rounded-lg bg-gray-200" />
+          <div className="flex items-center gap-3">
+            <div className="h-7 w-20 animate-pulse rounded-lg bg-gray-200" />
+            <div className="h-4 w-16 animate-pulse rounded-lg bg-gray-200" />
+          </div>
+        </div>
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-200" />
+          ))}
+        </div>
+        {/* Main content skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3 h-96 animate-pulse rounded-xl bg-gray-200" />
+          <div className="lg:col-span-2 space-y-4">
+            <div className="h-64 animate-pulse rounded-xl bg-gray-200" />
+            <div className="h-48 animate-pulse rounded-xl bg-gray-200" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <AlertTriangle className="h-12 w-12 text-red-400 mb-4" />
+        <h3 className="text-lg font-medium text-gray-900">Failed to load dashboard</h3>
+        <p className="text-sm text-gray-500 mt-1">Please check your connection and try again.</p>
+        <button
+          onClick={() => refetch()}
+          className="mt-4 px-4 py-2 bg-[#0D9488] text-white rounded-lg hover:bg-[#0F766E] transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-[#1C1917]">Dashboard</h1>
         <div className="flex items-center gap-3">
           <button
             onClick={() => queryClient.invalidateQueries()}
-            className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1 text-xs text-[#78716C] hover:bg-[#F1F0ED]"
+            className="flex items-center gap-1.5 rounded-lg border border-[#E7E5E0] px-3 py-1.5 text-xs font-medium text-[#78716C] hover:bg-[#F1F0ED] transition-colors"
           >
             <RefreshCw size={12} /> Refresh
           </button>
           <div className="flex items-center gap-2 text-xs text-[#78716C]">
             <span
-              className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[#16A34A]" : "bg-[#DC2626]"}`}
+              className={`inline-block h-2 w-2 rounded-full ${connected ? "bg-[#16A34A] animate-pulse" : "bg-[#DC2626]"}`}
             />
             {connected ? "Live" : "Connecting..."}
           </div>
@@ -270,7 +317,7 @@ export default function DashboardPage() {
 
       {/* Status Banner for store owners */}
       {!isAdmin && (
-        <div className={`mb-6 rounded-xl p-6 text-center ${
+        <div className={`rounded-xl p-6 text-center ${
           hasActiveIncidents
             ? "bg-[#FEE2E2] border-2 border-[#DC2626]"
             : "bg-[#DCFCE7] border-2 border-[#16A34A]"
@@ -286,16 +333,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats Row (DASH-1 to DASH-4) */}
-      <div className={`mb-6 grid grid-cols-2 gap-4 ${isAdmin ? "lg:grid-cols-3 xl:grid-cols-6" : "lg:grid-cols-3"}`}>
-        {isLoading ? (
-          Array.from({ length: isAdmin ? 6 : 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[76px] animate-pulse rounded-lg border border-[#E7E5E0] bg-gray-100"
-            />
-          ))
-        ) : isAdmin ? (
+      {/* Stats Row */}
+      <div className={`grid gap-4 ${isAdmin ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-6" : "grid-cols-2 md:grid-cols-3"}`}>
+        {isAdmin ? (
           <>
             <StatCard
               icon={Building2}
@@ -359,359 +399,393 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content — 60/40 split */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Left Column: Live Monitoring (DASH-5 to DASH-11) */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-5">
+        {/* Left Column: Live Monitoring */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-            <h2 className="mb-3 text-base font-semibold text-[#1C1917]">
-              Live Monitoring
-            </h2>
-
-            {/* Store + Camera Selectors (DASH-5, DASH-6) */}
-            <div className="mb-3 grid grid-cols-2 gap-3">
-              <select
-                value={selectedStoreId}
-                onChange={(e) => {
-                  setSelectedStoreId(e.target.value);
-                  setSelectedCameraId("");
-                  setStreaming(false);
-                  setFrameData(null);
-                }}
-                className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-              >
-                <option value="">All Stores</option>
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedCameraId}
-                onChange={(e) => {
-                  setSelectedCameraId(e.target.value);
-                  setStreaming(false);
-                  setFrameData(null);
-                }}
-                className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-              >
-                <option value="">Select Camera</option>
-                {filteredCameras.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.status === "active" || c.status === "online"
-                      ? "\u{1F7E2}"
-                      : "\u{1F534}"}{" "}
-                    {c.name} [{c.inference_mode?.toUpperCase()}]
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Inference mode pill + model label (DASH-7, DASH-8) */}
-            {selectedCamera && (
-              <div className="mb-3 flex items-center gap-2">
+          <div className="rounded-xl border border-[#E7E5E0] bg-white shadow-sm overflow-hidden">
+            {/* Card header */}
+            <div className="flex items-center justify-between border-b border-[#E7E5E0] px-5 py-3">
+              <h2 className="text-sm font-semibold text-[#1C1917]">Live Monitoring</h2>
+              {selectedCamera && (
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${MODE_COLORS[selectedCamera.inference_mode ?? "cloud"]}`}
+                  className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${MODE_COLORS[selectedCamera.inference_mode ?? "cloud"]}`}
                 >
                   {(selectedCamera.inference_mode ?? "cloud").toUpperCase()}
                 </span>
-                <span className="text-xs text-[#78716C]">
-                  {selectedCamera.inference_mode === "edge"
-                    ? "Student Model"
-                    : "Roboflow"}
-                </span>
-              </div>
-            )}
-
-            {/* Live Frame Viewer (DASH-9) */}
-            <div className="relative mb-3 flex aspect-video w-full items-center justify-center overflow-hidden rounded-lg bg-[#1C1917]">
-              {!selectedCameraId ? (
-                <p className="text-sm text-[#78716C]">
-                  Select a camera to view live feed
-                </p>
-              ) : !streaming ? (
-                <div className="text-center">
-                  <CameraIcon size={32} className="mx-auto mb-2 text-[#78716C]" />
-                  <p className="text-sm text-[#78716C]">
-                    Press Start to begin streaming
-                  </p>
-                </div>
-              ) : frameData ? (
-                <>
-                  <img
-                    src={`data:image/jpeg;base64,${frameData}`}
-                    alt="Live frame"
-                    className="h-full w-full object-contain"
-                  />
-                  {/* Updated indicator */}
-                  <div className="absolute bottom-2 right-2 rounded bg-black/60 px-2 py-0.5 text-[10px] text-white">
-                    Updated {frameAge}s ago
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                  <Loader2
-                    size={24}
-                    className="mx-auto animate-spin text-[#0D9488]"
-                  />
-                  <p className="mt-2 text-xs text-[#78716C]">
-                    Connecting to stream...
-                  </p>
-                </div>
               )}
             </div>
 
-            {/* Stream Controls (DASH-10) */}
-            <div className="mb-2 flex items-center gap-2">
-              <button
-                disabled={!selectedCameraId}
-                onClick={() => setStreaming(!streaming)}
-                className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium text-white ${
-                  streaming
-                    ? "bg-[#DC2626] hover:bg-[#B91C1C]"
-                    : "bg-[#0D9488] hover:bg-[#0F766E]"
-                } disabled:opacity-50`}
-              >
-                {streaming ? (
+            <div className="p-4 space-y-3">
+              {/* Store + Camera Selectors */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <select
+                  value={selectedStoreId}
+                  onChange={(e) => {
+                    setSelectedStoreId(e.target.value);
+                    setSelectedCameraId("");
+                    setStreaming(false);
+                    setFrameData(null);
+                  }}
+                  className="w-full rounded-lg border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-colors"
+                >
+                  <option value="">All Stores</option>
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedCameraId}
+                  onChange={(e) => {
+                    setSelectedCameraId(e.target.value);
+                    setStreaming(false);
+                    setFrameData(null);
+                  }}
+                  className="w-full rounded-lg border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-colors"
+                >
+                  <option value="">Select Camera</option>
+                  {filteredCameras.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.status === "active" || c.status === "online"
+                        ? "\u{1F7E2}"
+                        : "\u{1F534}"}{" "}
+                      {c.name} [{c.inference_mode?.toUpperCase()}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Inference mode pill + model label */}
+              {selectedCamera && (
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${MODE_COLORS[selectedCamera.inference_mode ?? "cloud"]}`}
+                  >
+                    {(selectedCamera.inference_mode ?? "cloud").toUpperCase()}
+                  </span>
+                  <span className="text-xs text-[#78716C]">
+                    {selectedCamera.inference_mode === "edge"
+                      ? "Student Model"
+                      : "Roboflow"}
+                  </span>
+                </div>
+              )}
+
+              {/* Live Frame Viewer */}
+              <div className="relative aspect-video w-full flex items-center justify-center overflow-hidden rounded-lg bg-gray-900">
+                {!selectedCameraId ? (
+                  <div className="text-center">
+                    <VideoOff size={32} className="mx-auto mb-2 text-gray-500" />
+                    <p className="text-sm text-gray-400">
+                      Select a camera to view live feed
+                    </p>
+                  </div>
+                ) : !streaming ? (
+                  <div className="text-center">
+                    <CameraIcon size={32} className="mx-auto mb-2 text-gray-500" />
+                    <p className="text-sm text-gray-400">
+                      Press Start to begin streaming
+                    </p>
+                  </div>
+                ) : frameData ? (
                   <>
-                    <Square size={12} /> Stop
+                    <img
+                      src={`data:image/jpeg;base64,${frameData}`}
+                      alt="Live frame"
+                      className="h-full w-full object-contain"
+                    />
+                    {/* Updated indicator */}
+                    <div className="absolute bottom-2 right-2 rounded-md bg-black/60 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
+                      Updated {frameAge}s ago
+                    </div>
+                    {/* Live badge */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-md bg-black/60 px-2 py-0.5 backdrop-blur-sm">
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+                      <span className="text-[10px] font-medium text-white">LIVE</span>
+                    </div>
                   </>
                 ) : (
-                  <>
-                    <Play size={12} /> Start Stream
-                  </>
+                  <div className="text-center">
+                    <Loader2
+                      size={24}
+                      className="mx-auto animate-spin text-[#0D9488]"
+                    />
+                    <p className="mt-2 text-xs text-gray-400">
+                      Connecting to stream...
+                    </p>
+                  </div>
                 )}
-              </button>
-              <button
-                disabled={!streaming}
-                onClick={async () => {
-                  if (!selectedCameraId) return;
-                  try {
-                    await api.post(`/dataset/frames`, {
-                      camera_id: selectedCameraId,
-                      frame_base64: frameData,
-                      label_source: "manual",
-                    });
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-                className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50"
-              >
-                <Save size={12} /> Snapshot
-              </button>
-            </div>
-
-            {/* Stream quality badges (DASH-11) */}
-            {selectedCamera && streaming && (
-              <div className="flex items-center gap-2 text-[10px] text-[#78716C]">
-                <span className="rounded bg-[#F1F0ED] px-1.5 py-0.5">
-1920x1080
-                </span>
-                <span className="rounded bg-[#F1F0ED] px-1.5 py-0.5">
-                  2 FPS
-                </span>
-                <span className="rounded bg-[#F1F0ED] px-1.5 py-0.5">
-                  ~{healthData?.pingMs ?? "?"}ms
-                </span>
               </div>
-            )}
+
+              {/* Stream Controls */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  disabled={!selectedCameraId}
+                  onClick={() => setStreaming(!streaming)}
+                  className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium text-white transition-colors ${
+                    streaming
+                      ? "bg-[#DC2626] hover:bg-[#B91C1C]"
+                      : "bg-[#0D9488] hover:bg-[#0F766E]"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {streaming ? (
+                    <>
+                      <Square size={12} /> Stop
+                    </>
+                  ) : (
+                    <>
+                      <Play size={12} /> Start Stream
+                    </>
+                  )}
+                </button>
+                <button
+                  disabled={!streaming}
+                  onClick={async () => {
+                    if (!selectedCameraId) return;
+                    try {
+                      await api.post(`/dataset/frames`, {
+                        camera_id: selectedCameraId,
+                        frame_base64: frameData,
+                        label_source: "manual",
+                      });
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-[#E7E5E0] px-4 py-2 text-xs font-medium text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Save size={12} /> Snapshot
+                </button>
+
+                {/* Stream quality badges */}
+                {selectedCamera && streaming && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-[#78716C]">
+                      1920x1080
+                    </span>
+                    <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-[#78716C]">
+                      2 FPS
+                    </span>
+                    <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-[#78716C]">
+                      ~{healthData?.pingMs ?? "?"}ms
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Right Column (40%) */}
+        {/* Right Column */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Recent Detections (DASH-12 to DASH-16) */}
-          <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1C1917]">
-                Recent Detections
-              </h3>
+          {/* Recent Detections */}
+          <div className="rounded-xl border border-[#E7E5E0] bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#E7E5E0] px-5 py-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[#1C1917]">Recent Detections</h3>
+                <span className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-[#78716C]">
+                  {detectionsFeed.length}
+                </span>
+              </div>
               <Link
                 to="/detection/history"
-                className="text-xs text-[#0D9488] hover:underline"
+                className="text-xs font-medium text-[#0D9488] hover:underline"
               >
                 View All
               </Link>
             </div>
-            {detectionsFeed.length === 0 ? (
-              <p className="py-4 text-center text-xs text-[#78716C]">
-                No recent detections
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {detectionsFeed.slice(0, 10).map((d) => (
-                  <div
-                    key={d.id}
-                    onClick={() => setDetailDetection(d)}
-                    className="flex cursor-pointer items-center gap-3 rounded-md border border-[#E7E5E0] p-2 hover:border-[#0D9488]"
-                  >
-                    {d.frame_base64 ? (
-                      <img
-                        src={`data:image/jpeg;base64,${d.frame_base64}`}
-                        alt="Detection"
-                        className="h-[80px] w-[120px] rounded object-cover bg-gray-100"
-                      />
-                    ) : (
-                      <div className="flex h-[80px] w-[120px] items-center justify-center rounded bg-gray-100 text-[8px] text-[#78716C]">
-                        No frame
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${d.is_wet ? "bg-[#FEE2E2] text-[#DC2626]" : "bg-[#DCFCE7] text-[#16A34A]"}`}
-                        >
-                          {d.is_wet ? "WET" : "DRY"}
-                        </span>
-                        <span className="text-xs font-medium text-[#1C1917]">
-                          {(d.confidence * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-[10px] text-[#78716C]">
-                        {cameraNames[d.camera_id] ?? d.camera_id?.substring(0, 8)}
-                      </p>
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <span
-                          className={`rounded px-1 py-0.5 text-[8px] font-semibold ${MODE_COLORS[d.model_source ?? "roboflow"] ?? "bg-gray-100 text-gray-600"}`}
-                        >
-                          {(d.model_source ?? "roboflow").toUpperCase()}
-                        </span>
+            <div className="p-3">
+              {detectionsFeed.length === 0 ? (
+                <p className="py-8 text-center text-xs text-[#78716C]">
+                  No recent detections
+                </p>
+              ) : (
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {detectionsFeed.slice(0, 10).map((d) => (
+                    <div
+                      key={d.id}
+                      onClick={() => setDetailDetection(d)}
+                      className="min-w-[140px] flex-shrink-0 rounded-lg overflow-hidden border border-[#E7E5E0] cursor-pointer hover:ring-2 ring-[#0D9488] transition-all"
+                    >
+                      {d.frame_base64 ? (
+                        <img
+                          src={`data:image/jpeg;base64,${d.frame_base64}`}
+                          alt="Detection"
+                          className="h-20 w-full object-cover bg-gray-100"
+                        />
+                      ) : (
+                        <div className="flex h-20 w-full items-center justify-center bg-gray-100 text-[10px] text-[#78716C]">
+                          No frame
+                        </div>
+                      )}
+                      <div className="p-2 space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${d.is_wet ? "bg-[#FEE2E2] text-[#DC2626]" : "bg-[#DCFCE7] text-[#16A34A]"}`}
+                          >
+                            {d.is_wet ? "WET" : "DRY"}
+                          </span>
+                          <span className="text-[10px] font-medium text-[#1C1917]">
+                            {(d.confidence * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                        <p className="truncate text-[10px] text-[#78716C]">
+                          {cameraNames[d.camera_id] ?? d.camera_id?.substring(0, 8)}
+                        </p>
                         <span className="text-[10px] text-[#A8A29E]">
                           {d.timestamp ? timeAgo(d.timestamp) : ""}
                         </span>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Active Incidents (DASH-17, DASH-18) */}
-          <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1C1917]">
-                Active Incidents
-              </h3>
+          {/* Active Incidents */}
+          <div className="rounded-xl border border-[#E7E5E0] bg-white shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between border-b border-[#E7E5E0] px-5 py-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[#1C1917]">Active Incidents</h3>
+                {activeIncidents.length > 0 && (
+                  <span className="inline-flex items-center justify-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">
+                    {activeIncidents.length}
+                  </span>
+                )}
+              </div>
               <Link
                 to="/incidents"
-                className="text-xs text-[#0D9488] hover:underline"
+                className="text-xs font-medium text-[#0D9488] hover:underline"
               >
                 View All
               </Link>
             </div>
-            {activeIncidents.length === 0 ? (
-              <p className="py-4 text-center text-xs text-[#78716C]">
-                No active incidents
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {activeIncidents.map((inc) => (
-                  <Link
-                    key={inc.id}
-                    to={`/incidents/${inc.id}`}
-                    className="flex items-center gap-3 rounded-md border border-[#E7E5E0] p-2 hover:border-[#0D9488]"
-                  >
-                    <div
-                      className={`h-10 w-1 rounded-full ${
-                        inc.severity === "critical" || inc.severity === "high"
-                          ? "bg-[#DC2626]"
-                          : "bg-[#D97706]"
-                      }`}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={inc.severity} size="sm" />
-                        <StatusBadge status={inc.status} size="sm" />
+            <div>
+              {activeIncidents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <CheckCircle size={24} className="text-green-500 mb-2" />
+                  <p className="text-xs text-[#78716C]">No active incidents</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#E7E5E0]">
+                  {activeIncidents.map((inc) => (
+                    <Link
+                      key={inc.id}
+                      to={`/incidents/${inc.id}`}
+                      className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <div
+                        className={`w-[3px] self-stretch rounded-full flex-shrink-0 ${
+                          inc.severity === "critical" || inc.severity === "high"
+                            ? "bg-[#DC2626]"
+                            : inc.severity === "medium"
+                            ? "bg-[#D97706]"
+                            : "bg-[#78716C]"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <StatusBadge status={inc.severity} size="sm" />
+                          <StatusBadge status={inc.status} size="sm" />
+                        </div>
+                        <p className="truncate text-[11px] text-[#78716C]">
+                          {cameraNames[inc.camera_id] ?? inc.camera_id?.substring(0, 8)} &middot;{" "}
+                          {inc.detection_count} detections &middot;{" "}
+                          {inc.start_time ? timeAgo(inc.start_time) : ""}
+                        </p>
                       </div>
-                      <p className="mt-0.5 text-[10px] text-[#78716C]">
-                        {cameraNames[inc.camera_id] ?? inc.camera_id?.substring(0, 8)} &middot;{" "}
-                        {inc.detection_count} detections &middot;{" "}
-                        {inc.start_time ? timeAgo(inc.start_time) : ""}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* System Health Panel (DASH-19 to DASH-25) — admin only */}
-          {isAdmin && <div className="rounded-lg border border-[#E7E5E0] bg-white">
-            <button
-              onClick={() => setHealthOpen(!healthOpen)}
-              className="flex w-full items-center justify-between p-4"
-            >
-              <h3 className="text-sm font-semibold text-[#1C1917]">
-                System Health
-              </h3>
-              {healthOpen ? (
-                <ChevronUp size={14} className="text-[#78716C]" />
-              ) : (
-                <ChevronDown size={14} className="text-[#78716C]" />
-              )}
-            </button>
-            {healthOpen && (
-              <div className="space-y-2 border-t border-[#E7E5E0] px-4 pb-4 pt-3">
-                {/* Backend */}
-                <HealthRow
-                  icon={Server}
-                  label="Cloud Backend"
-                  status={healthData ? "Connected" : "Unknown"}
-                  ok={!!healthData}
-                  detail={
-                    healthData ? `${healthData.pingMs}ms` : ""
-                  }
-                />
-                {/* Roboflow */}
-                <HealthRow
-                  icon={Cpu}
-                  label="Roboflow API"
-                  status={
-                    roboflowStatus?.status === "connected"
-                      ? "Active"
-                      : "Not configured"
-                  }
-                  ok={roboflowStatus?.status === "connected"}
-                />
-                {/* Edge Agents */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Wifi size={12} className="text-[#78716C]" />
-                    <span className="text-[#1C1917]">Edge Agents</span>
+          {/* System Health Panel — admin only */}
+          {isAdmin && (
+            <div className="rounded-xl border border-[#E7E5E0] bg-white shadow-sm overflow-hidden">
+              <button
+                onClick={() => setHealthOpen(!healthOpen)}
+                className="flex w-full items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
+              >
+                <h3 className="text-sm font-semibold text-[#1C1917]">
+                  System Health
+                </h3>
+                {healthOpen ? (
+                  <ChevronUp size={14} className="text-[#78716C]" />
+                ) : (
+                  <ChevronDown size={14} className="text-[#78716C]" />
+                )}
+              </button>
+              {healthOpen && (
+                <div className="space-y-3 border-t border-[#E7E5E0] px-5 pb-4 pt-3">
+                  {/* Backend */}
+                  <HealthRow
+                    icon={Server}
+                    label="Cloud Backend"
+                    status={healthData ? "Connected" : "Unknown"}
+                    ok={!!healthData}
+                    detail={
+                      healthData ? `${healthData.pingMs}ms` : ""
+                    }
+                  />
+                  {/* Roboflow */}
+                  <HealthRow
+                    icon={Cpu}
+                    label="Roboflow API"
+                    status={
+                      roboflowStatus?.status === "connected"
+                        ? "Active"
+                        : "Not configured"
+                    }
+                    ok={roboflowStatus?.status === "connected"}
+                  />
+                  {/* Edge Agents */}
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Wifi size={12} className="text-[#78716C]" />
+                      <span className="text-[#1C1917]">Edge Agents</span>
+                    </div>
+                    <Link
+                      to="/edge"
+                      className="text-[#0D9488] hover:underline"
+                    >
+                      {onlineAgents} / {edgeAgents.length}
+                    </Link>
                   </div>
-                  <Link
-                    to="/edge"
-                    className="text-[#0D9488] hover:underline"
-                  >
-                    {onlineAgents} / {edgeAgents.length}
-                  </Link>
+                  {/* Storage */}
+                  <HealthRow
+                    icon={HardDrive}
+                    label="Storage"
+                    status="Local"
+                    ok={true}
+                  />
                 </div>
-                {/* Storage */}
-                <HealthRow
-                  icon={HardDrive}
-                  label="Storage"
-                  status="Local"
-                  ok={true}
-                />
-              </div>
-            )}
-          </div>}
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Detection Detail Modal (DASH-15) */}
+      {/* Detection Detail Modal */}
       {detailDetection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setDetailDetection(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-[#1C1917]">
                 Detection Detail
               </h3>
               <button
                 onClick={() => setDetailDetection(null)}
-                className="text-[#78716C] hover:text-[#1C1917]"
+                className="rounded-lg p-1 text-[#78716C] hover:text-[#1C1917] hover:bg-gray-100 transition-colors"
               >
                 <X size={18} />
               </button>
@@ -723,40 +797,40 @@ export default function DashboardPage() {
                 className="mb-4 w-full rounded-lg"
               />
             )}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-[#78716C]">Status</p>
-                <p className="font-medium">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[#78716C]">Status</p>
+                <p className="mt-0.5 font-semibold">
                   {detailDetection.is_wet ? "WET" : "DRY"}
                 </p>
               </div>
-              <div>
-                <p className="text-[#78716C]">Confidence</p>
-                <p className="font-medium">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[#78716C]">Confidence</p>
+                <p className="mt-0.5 font-semibold">
                   {(detailDetection.confidence * 100).toFixed(1)}%
                 </p>
               </div>
-              <div>
-                <p className="text-[#78716C]">Model</p>
-                <p className="font-medium">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[#78716C]">Model</p>
+                <p className="mt-0.5 font-semibold">
                   {(detailDetection.model_source ?? "roboflow").toUpperCase()}
                 </p>
               </div>
-              <div>
-                <p className="text-[#78716C]">Inference</p>
-                <p className="font-medium">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[#78716C]">Inference</p>
+                <p className="mt-0.5 font-semibold">
                   {detailDetection.inference_time_ms?.toFixed(0) ?? "?"}ms
                 </p>
               </div>
-              <div>
-                <p className="text-[#78716C]">Wet Area</p>
-                <p className="font-medium">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[#78716C]">Wet Area</p>
+                <p className="mt-0.5 font-semibold">
                   {(detailDetection.wet_area_percent ?? 0).toFixed(1)}%
                 </p>
               </div>
-              <div>
-                <p className="text-[#78716C]">Time</p>
-                <p className="font-medium">
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[#78716C]">Time</p>
+                <p className="mt-0.5 font-semibold">
                   {detailDetection.timestamp
                     ? new Date(detailDetection.timestamp).toLocaleString()
                     : "?"}
@@ -782,23 +856,23 @@ function StatCard({
   color: "info" | "success" | "danger" | "warning" | "brand";
 }) {
   const colors = {
-    info: { bg: "bg-[#DBEAFE]", text: "text-[#2563EB]" },
-    success: { bg: "bg-[#DCFCE7]", text: "text-[#16A34A]" },
-    danger: { bg: "bg-[#FEE2E2]", text: "text-[#DC2626]" },
-    warning: { bg: "bg-[#FEF3C7]", text: "text-[#D97706]" },
-    brand: { bg: "bg-[#CCFBF1]", text: "text-[#0D9488]" },
+    info: { bg: "bg-[#DBEAFE]", text: "text-[#2563EB]", ring: "ring-blue-100" },
+    success: { bg: "bg-[#DCFCE7]", text: "text-[#16A34A]", ring: "ring-green-100" },
+    danger: { bg: "bg-[#FEE2E2]", text: "text-[#DC2626]", ring: "ring-red-100" },
+    warning: { bg: "bg-[#FEF3C7]", text: "text-[#D97706]", ring: "ring-amber-100" },
+    brand: { bg: "bg-[#CCFBF1]", text: "text-[#0D9488]", ring: "ring-teal-100" },
   };
   const c = colors[color];
 
   return (
-    <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-      <div className="flex items-center gap-3">
+    <div className="rounded-xl border border-[#E7E5E0] bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start gap-3">
         <div className={`rounded-lg p-2 ${c.bg}`}>
-          <Icon size={18} className={c.text} />
+          <Icon size={16} className={c.text} />
         </div>
-        <div>
-          <p className="text-xs text-[#78716C]">{label}</p>
-          <p className="text-lg font-semibold text-[#1C1917]">{value}</p>
+        <div className="min-w-0">
+          <p className="text-xs text-[#78716C] uppercase tracking-wide">{label}</p>
+          <p className="text-2xl font-bold text-[#1C1917] leading-tight">{value}</p>
         </div>
       </div>
     </div>
@@ -824,9 +898,12 @@ function HealthRow({
         <Icon size={12} className="text-[#78716C]" />
         <span className="text-[#1C1917]">{label}</span>
       </div>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
+        <span
+          className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+        />
         <span className={ok ? "text-[#16A34A]" : "text-[#DC2626]"}>
-          {ok ? "\u2705" : "\u274C"} {status}
+          {status}
         </span>
         {detail && <span className="text-[#A8A29E]">{detail}</span>}
       </div>

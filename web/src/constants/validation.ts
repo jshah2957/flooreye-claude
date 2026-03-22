@@ -7,4 +7,4 @@ export const VALIDATION_DEFAULTS = {
   LAYER3_K: 3,
   LAYER3_M: 5,
   LAYER4_DELTA: 0.15,
-} as const;
+} satisfies Record<string, number>;

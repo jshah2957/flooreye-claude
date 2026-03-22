@@ -20,6 +20,13 @@ interface Clip {
   created_at: string;
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
 export default function ClipsPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
@@ -46,59 +53,99 @@ export default function ClipsPage() {
   const clips: Clip[] = data?.data ?? [];
 
   return (
-    <div>
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[#1C1917]">Recorded Clips</h1>
-        <p className="text-sm text-[#78716C]">{clips.length} clips available. Record clips from the Camera Detail live feed tab.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Recorded Clips</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          {clips.length} clip{clips.length !== 1 ? "s" : ""} available
+        </p>
       </div>
 
       {isLoading ? (
-        <div className="flex h-40 items-center justify-center"><Loader2 size={24} className="animate-spin text-[#0D9488]" /></div>
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="divide-y divide-gray-100">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex animate-pulse items-center gap-4 p-4">
+                <div className="h-12 w-16 rounded-lg bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-32 rounded bg-gray-200" />
+                  <div className="h-3 w-48 rounded bg-gray-200" />
+                </div>
+                <div className="h-8 w-24 rounded-lg bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : clips.length === 0 ? (
         <EmptyState icon={Film} title="No clips recorded" description="Go to a camera's Live Feed tab and click Record to create clips." />
       ) : (
-        <div className="space-y-3">
-          {clips.map((clip) => (
-            <div key={clip.id} className="flex items-center justify-between rounded-lg border border-[#E7E5E0] bg-white p-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-16 items-center justify-center rounded bg-[#F1F0ED]">
-                  <Film size={20} className="text-[#78716C]" />
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="divide-y divide-gray-100">
+            {clips.map((clip) => (
+              <div key={clip.id} className="flex items-center gap-4 p-4 transition-colors hover:bg-gray-50">
+                {/* Thumbnail */}
+                <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                  <Film size={20} className="text-gray-400" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-[#1C1917]">
-                    {clip.duration}s clip
-                    <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                      clip.status === "completed" ? "bg-[#DCFCE7] text-[#16A34A]" :
-                      clip.status === "recording" ? "bg-[#FEF9C3] text-[#CA8A04]" :
-                      "bg-[#F1F0ED] text-[#78716C]"
+
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {formatDuration(clip.duration)} clip
+                    </p>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      clip.status === "completed" ? "bg-green-50 text-green-700" :
+                      clip.status === "recording" ? "bg-amber-50 text-amber-700" :
+                      "bg-gray-100 text-gray-600"
                     }`}>
+                      {clip.status === "recording" && (
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                      )}
                       {clip.status}
                     </span>
-                  </p>
-                  <p className="text-xs text-[#78716C]">
+                    {clip.file_size_mb && (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                        {clip.file_size_mb.toFixed(1)} MB
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs text-gray-500">
                     {new Date(clip.created_at).toLocaleString()}
-                    {clip.file_size_mb && ` · ${clip.file_size_mb.toFixed(1)} MB`}
-                    {` · ${clip.trigger}`}
+                    {clip.trigger && ` \u00b7 ${clip.trigger}`}
                   </p>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                {clip.file_path && (
-                  <button className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1 text-xs text-[#78716C] hover:bg-[#F1F0ED]">
-                    <Download size={12} /> Download
+
+                {/* Actions */}
+                <div className="flex shrink-0 gap-1.5">
+                  {clip.file_path && (
+                    <button
+                      title="Download"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                    >
+                      <Download size={12} />
+                      <span className="hidden sm:inline">Download</span>
+                    </button>
+                  )}
+                  <button
+                    title="Extract Frames"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                  >
+                    <Scissors size={12} />
+                    <span className="hidden sm:inline">Extract</span>
                   </button>
-                )}
-                <button className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1 text-xs text-[#78716C] hover:bg-[#F1F0ED]">
-                  <Scissors size={12} /> Extract Frames
-                </button>
-                <button
-                  onClick={() => setDeleteTarget(clip.id)}
-                  className="rounded-md border border-[#FCA5A5] px-2 py-1 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
-                  <Trash2 size={12} />
-                </button>
+                  <button
+                    onClick={() => setDeleteTarget(clip.id)}
+                    title="Delete"
+                    className="rounded-lg border border-red-200 p-1.5 text-red-500 transition-colors hover:bg-red-50"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 

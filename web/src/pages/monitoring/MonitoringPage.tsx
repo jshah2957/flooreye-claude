@@ -8,6 +8,8 @@ import {
   Wifi,
   WifiOff,
   Maximize2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -66,53 +68,57 @@ function CameraCell({ camera }: { camera: CameraType }) {
   const isOnline = camera.status === "active" || camera.status === "online";
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[#E7E5E0] bg-white transition-shadow hover:shadow-md">
+    <div className="group overflow-hidden rounded-xl border border-[#E7E5E0] bg-white shadow-sm hover:shadow-md hover:ring-2 hover:ring-[#0D9488]/30 transition-all cursor-pointer">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#E7E5E0] px-3 py-2">
+      <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2 min-w-0">
           <Camera size={14} className="shrink-0 text-[#78716C]" />
           <span className="truncate text-sm font-medium text-[#1C1917]">
             {camera.name}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[camera.status] ?? STATUS_COLORS.offline}`}
-          >
+            className={`inline-block h-2 w-2 rounded-full ${isOnline ? "bg-green-500 animate-pulse" : "bg-gray-300"}`}
+          />
+          <span className="text-[10px] text-[#78716C]">
             {camera.status.toUpperCase()}
           </span>
         </div>
       </div>
 
       {/* Frame */}
-      <div className="relative aspect-video w-full bg-[#1C1917]">
+      <div className="relative aspect-video w-full bg-gray-900 overflow-hidden">
         {!isOnline ? (
-          <div className="flex h-full flex-col items-center justify-center gap-1">
-            <WifiOff size={20} className="text-[#78716C]" />
-            <p className="text-[10px] text-[#78716C]">Camera offline</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/80">
+            <WifiOff size={20} className="text-gray-400" />
+            <p className="mt-1 text-[10px] font-medium text-gray-400">Offline</p>
           </div>
         ) : loading && !frameData ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 size={20} className="animate-spin text-[#0D9488]" />
           </div>
         ) : frameData ? (
-          <img
-            src={`data:image/jpeg;base64,${frameData}`}
-            alt={`Live feed from ${camera.name}`}
-            className="h-full w-full object-contain"
-          />
+          <>
+            <img
+              src={`data:image/jpeg;base64,${frameData}`}
+              alt={`Live feed from ${camera.name}`}
+              className="h-full w-full object-cover"
+            />
+            {/* Hover overlay */}
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="text-[10px] font-medium text-white truncate">{camera.name}</p>
+            </div>
+            {/* Live indicator */}
+            <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 backdrop-blur-sm">
+              <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#DC2626]" />
+              <span className="text-[9px] font-medium text-white">LIVE</span>
+            </div>
+          </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-1">
-            <Camera size={20} className="text-[#78716C]" />
-            <p className="text-[10px] text-[#78716C]">No frame available</p>
-          </div>
-        )}
-
-        {/* Live indicator */}
-        {isOnline && frameData && (
-          <div className="absolute left-2 top-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#DC2626]" />
-            <span className="text-[9px] font-medium text-white">LIVE</span>
+            <Camera size={20} className="text-gray-500" />
+            <p className="text-[10px] text-gray-400">No frame available</p>
           </div>
         )}
       </div>
@@ -126,7 +132,7 @@ function CameraCell({ camera }: { camera: CameraType }) {
         </span>
         <Link
           to={`/cameras/${camera.id}`}
-          className="flex items-center gap-1 text-[10px] text-[#0D9488] hover:underline"
+          className="flex items-center gap-1 text-[10px] font-medium text-[#0D9488] hover:underline"
         >
           <Maximize2 size={10} /> Detail
         </Link>
@@ -137,6 +143,7 @@ function CameraCell({ camera }: { camera: CameraType }) {
 
 export default function MonitoringPage() {
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
+  const [offlineOpen, setOfflineOpen] = useState(false);
 
   // Fetch stores
   const { data: storesData, isLoading: storesLoading } = useQuery({
@@ -173,16 +180,33 @@ export default function MonitoringPage() {
     [cameras, selectedStoreId]
   );
 
-  const onlineCount = filteredCameras.filter(
-    (c) => c.status === "active" || c.status === "online"
-  ).length;
+  const onlineCameras = useMemo(
+    () => filteredCameras.filter((c) => c.status === "active" || c.status === "online"),
+    [filteredCameras]
+  );
+
+  const offlineCameras = useMemo(
+    () => filteredCameras.filter((c) => c.status !== "active" && c.status !== "online"),
+    [filteredCameras]
+  );
+
+  const onlineCount = onlineCameras.length;
 
   const isLoading = storesLoading || camerasLoading;
 
+  // Store name lookup
+  const storeNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of stores) {
+      map[s.id] = s.name;
+    }
+    return map;
+  }, [stores]);
+
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#1C1917]">
             Live Monitoring
@@ -192,9 +216,9 @@ export default function MonitoringPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-[#78716C]">
-            <Wifi size={12} />
-            <span>
+          <div className="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-1.5 text-xs text-[#78716C]">
+            <Wifi size={12} className={onlineCount > 0 ? "text-green-500" : "text-gray-400"} />
+            <span className="font-medium">
               {onlineCount} / {filteredCameras.length} online
             </span>
           </div>
@@ -202,11 +226,11 @@ export default function MonitoringPage() {
       </div>
 
       {/* Store selector */}
-      <div className="mb-6 flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <select
           value={selectedStoreId}
           onChange={(e) => setSelectedStoreId(e.target.value)}
-          className="rounded-md border border-[#E7E5E0] bg-white px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+          className="rounded-lg border border-[#E7E5E0] bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-colors"
         >
           <option value="">All Stores</option>
           {stores.map((s) => (
@@ -222,19 +246,21 @@ export default function MonitoringPage() {
 
       {/* Camera grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[260px] animate-pulse rounded-lg border border-[#E7E5E0] bg-gray-100"
-            />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="animate-pulse overflow-hidden rounded-xl border border-[#E7E5E0]">
+              <div className="h-8 bg-gray-200" />
+              <div className="aspect-video bg-gray-200" />
+              <div className="h-8 bg-gray-100" />
+            </div>
           ))}
         </div>
       ) : filteredCameras.length === 0 ? (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed border-[#E7E5E0]">
+        <div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-[#E7E5E0]">
           <div className="text-center">
-            <Camera size={32} className="mx-auto mb-2 text-[#78716C]" />
-            <p className="text-sm text-[#78716C]">
+            <Camera size={36} className="mx-auto mb-3 text-[#78716C]" />
+            <p className="text-sm font-medium text-[#1C1917]">No cameras found</p>
+            <p className="mt-1 text-xs text-[#78716C]">
               {cameras.length === 0
                 ? "No cameras configured yet"
                 : "No cameras found for the selected store"}
@@ -242,7 +268,7 @@ export default function MonitoringPage() {
             {cameras.length === 0 && (
               <Link
                 to="/cameras/wizard"
-                className="mt-2 inline-block text-sm text-[#0D9488] hover:underline"
+                className="mt-3 inline-block rounded-lg bg-[#0D9488] px-4 py-2 text-xs font-medium text-white hover:bg-[#0F766E] transition-colors"
               >
                 Add a camera
               </Link>
@@ -250,11 +276,35 @@ export default function MonitoringPage() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCameras.map((camera) => (
-            <CameraCell key={camera.id} camera={camera} />
-          ))}
-        </div>
+        <>
+          {/* Online cameras grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {onlineCameras.map((camera) => (
+              <CameraCell key={camera.id} camera={camera} />
+            ))}
+          </div>
+
+          {/* Offline cameras section */}
+          {offlineCameras.length > 0 && (
+            <div className="pt-2">
+              <button
+                onClick={() => setOfflineOpen(!offlineOpen)}
+                className="flex items-center gap-2 text-xs font-medium text-[#78716C] hover:text-[#1C1917] transition-colors"
+              >
+                <WifiOff size={12} />
+                <span>{offlineCameras.length} camera{offlineCameras.length !== 1 ? "s" : ""} offline</span>
+                {offlineOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+              {offlineOpen && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {offlineCameras.map((camera) => (
+                    <CameraCell key={camera.id} camera={camera} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -239,6 +239,7 @@ export default function IncidentDetailScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
       >
         <ActivityIndicator
@@ -246,6 +247,9 @@ export default function IncidentDetailScreen() {
           color={BRAND.primary}
           accessibilityLabel="Loading incident detail"
         />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading incident...
+        </Text>
       </View>
     );
   }
@@ -259,17 +263,17 @@ export default function IncidentDetailScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
-          padding: SPACING.xxl,
+          padding: 24,
         }}
       >
         <ErrorBanner message={error} onRetry={fetchIncident} />
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginTop: SPACING.md }}
+          style={{ marginTop: 16, minHeight: 48, justifyContent: "center" }}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={{ color: BRAND.primary, fontSize: FONT_SIZE.lg }}>
+          <Text style={{ color: BRAND.primary, fontSize: 15, fontWeight: "600" }}>
             Go Back
           </Text>
         </TouchableOpacity>
@@ -288,16 +292,16 @@ export default function IncidentDetailScreen() {
           backgroundColor: BRAND.background,
         }}
       >
-        <Text style={{ color: BRAND.textSecondary, fontSize: FONT_SIZE.lg }}>
+        <Text style={{ color: BRAND.textSecondary, fontSize: 15 }}>
           Incident not found
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginTop: SPACING.lg }}
+          style={{ marginTop: 16, minHeight: 48, justifyContent: "center" }}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <Text style={{ color: BRAND.primary, fontSize: FONT_SIZE.lg }}>
+          <Text style={{ color: BRAND.primary, fontSize: 15, fontWeight: "600" }}>
             Go Back
           </Text>
         </TouchableOpacity>
@@ -318,38 +322,43 @@ export default function IncidentDetailScreen() {
     <View style={{ flex: 1, backgroundColor: BRAND.background }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: SPACING.lg }}
+        contentContainerStyle={{ padding: 16 }}
       >
         {/* Header */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: SPACING.lg,
+            marginBottom: 20,
           }}
         >
           <TouchableOpacity
             onPress={() => router.back()}
-            style={{ marginRight: SPACING.md }}
+            style={{
+              marginRight: 12,
+              minHeight: 48,
+              paddingHorizontal: 8,
+              justifyContent: "center",
+            }}
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Text style={{ fontSize: FONT_SIZE.h1, color: BRAND.primary }}>
+            <Text style={{ fontSize: 24, color: BRAND.primary, fontWeight: "300" }}>
               {"\u2190"}
             </Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text
               style={{
-                fontSize: FONT_SIZE.xl,
-                fontWeight: "600",
+                fontSize: 18,
+                fontWeight: "700",
                 color: BRAND.textPrimary,
               }}
             >
               Incident Detail
             </Text>
             <Text
-              style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}
+              style={{ fontSize: 12, color: BRAND.textSecondary, marginTop: 2 }}
             >
               {formatDate(incident.start_time)}
             </Text>
@@ -361,26 +370,27 @@ export default function IncidentDetailScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: SPACING.sm,
-            marginBottom: SPACING.lg,
+            gap: 8,
+            marginBottom: 16,
           }}
         >
           <View
             style={{
               backgroundColor: severityBg,
-              borderRadius: RADIUS.full,
-              paddingHorizontal: SPACING.md,
-              paddingVertical: SPACING.xs,
+              borderRadius: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
             }}
             accessibilityLabel={`Severity: ${incident.severity}`}
             accessibilityRole="text"
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.md,
+                fontSize: 12,
                 fontWeight: "700",
                 color: severityColor,
                 textTransform: "uppercase",
+                letterSpacing: 0.3,
               }}
             >
               {incident.severity}
@@ -389,19 +399,20 @@ export default function IncidentDetailScreen() {
           <View
             style={{
               backgroundColor: statusStyle.bg,
-              borderRadius: RADIUS.full,
-              paddingHorizontal: SPACING.md,
-              paddingVertical: SPACING.xs,
+              borderRadius: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
             }}
             accessibilityLabel={`Status: ${incident.status}`}
             accessibilityRole="text"
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.md,
-                fontWeight: "600",
+                fontSize: 12,
+                fontWeight: "700",
                 color: statusStyle.text,
                 textTransform: "uppercase",
+                letterSpacing: 0.3,
               }}
             >
               {incident.status}
@@ -411,9 +422,9 @@ export default function IncidentDetailScreen() {
             <View
               style={{
                 backgroundColor: DETECTION.flagged.bg,
-                borderRadius: RADIUS.full,
-                paddingHorizontal: SPACING.md,
-                paddingVertical: SPACING.xs,
+                borderRadius: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
                 borderWidth: 1,
                 borderColor: DETECTION.flagged.border,
               }}
@@ -422,7 +433,7 @@ export default function IncidentDetailScreen() {
             >
               <Text
                 style={{
-                  fontSize: FONT_SIZE.md,
+                  fontSize: 12,
                   fontWeight: "700",
                   color: DETECTION.flagged.text,
                   textTransform: "uppercase",
@@ -439,9 +450,9 @@ export default function IncidentDetailScreen() {
           <View
             style={{
               backgroundColor: NEUTRAL.black,
-              borderRadius: RADIUS.md,
+              borderRadius: 12,
               overflow: "hidden",
-              marginBottom: SPACING.lg,
+              marginBottom: 16,
               aspectRatio: MEDIA.FRAME_ASPECT_RATIO,
             }}
             accessibilityLabel="Latest detection frame"
@@ -459,19 +470,22 @@ export default function IncidentDetailScreen() {
         <View
           style={{
             backgroundColor: BRAND.surface,
-            borderRadius: RADIUS.md,
-            borderWidth: 1,
-            borderColor: BRAND.border,
-            padding: SPACING.lg,
-            marginBottom: SPACING.lg,
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 3,
+            elevation: 2,
           }}
         >
           <Text
             style={{
-              fontSize: FONT_SIZE.lg,
-              fontWeight: "600",
+              fontSize: 16,
+              fontWeight: "700",
               color: BRAND.textPrimary,
-              marginBottom: SPACING.md,
+              marginBottom: 12,
             }}
           >
             Incident Metrics
@@ -499,9 +513,10 @@ export default function IncidentDetailScreen() {
           <MetricRow
             label="Camera"
             value={incident.camera_name ?? incident.camera_id.slice(0, 8)}
+            last={!incident.notes}
           />
           {incident.notes && (
-            <MetricRow label="Notes" value={incident.notes} />
+            <MetricRow label="Notes" value={incident.notes} last />
           )}
         </View>
 
@@ -510,19 +525,22 @@ export default function IncidentDetailScreen() {
           <View
             style={{
               backgroundColor: BRAND.surface,
-              borderRadius: RADIUS.md,
-              borderWidth: 1,
-              borderColor: BRAND.border,
-              padding: SPACING.lg,
-              marginBottom: SPACING.lg,
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 16,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.06,
+              shadowRadius: 3,
+              elevation: 2,
             }}
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.lg,
-                fontWeight: "600",
+                fontSize: 16,
+                fontWeight: "700",
                 color: BRAND.textPrimary,
-                marginBottom: SPACING.md,
+                marginBottom: 12,
               }}
             >
               Devices Triggered
@@ -533,23 +551,24 @@ export default function IncidentDetailScreen() {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  paddingVertical: SPACING.sm,
+                  minHeight: 44,
+                  paddingVertical: 8,
                   borderBottomWidth:
                     i < (incident.devices_triggered?.length ?? 0) - 1 ? 1 : 0,
-                  borderBottomColor: NEUTRAL.divider,
+                  borderBottomColor: "#F3F4F6",
                 }}
               >
                 <View
                   style={{
-                    width: SPACING.sm,
-                    height: SPACING.sm,
-                    borderRadius: SPACING.xs,
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
                     backgroundColor: BRAND.primary,
-                    marginRight: SPACING.md,
+                    marginRight: 12,
                   }}
                 />
                 <Text
-                  style={{ fontSize: FONT_SIZE.md, color: BRAND.textPrimary }}
+                  style={{ fontSize: 14, color: BRAND.textPrimary }}
                 >
                   {device}
                 </Text>
@@ -562,19 +581,22 @@ export default function IncidentDetailScreen() {
         <View
           style={{
             backgroundColor: BRAND.surface,
-            borderRadius: RADIUS.md,
-            borderWidth: 1,
-            borderColor: BRAND.border,
-            padding: SPACING.lg,
-            marginBottom: SPACING.lg,
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 3,
+            elevation: 2,
           }}
         >
           <Text
             style={{
-              fontSize: FONT_SIZE.lg,
-              fontWeight: "600",
+              fontSize: 16,
+              fontWeight: "700",
               color: BRAND.textPrimary,
-              marginBottom: SPACING.md,
+              marginBottom: 12,
             }}
           >
             Status Timeline
@@ -583,6 +605,9 @@ export default function IncidentDetailScreen() {
             label="Started"
             time={formatDate(incident.start_time)}
             isActive
+            isLast={
+              incident.status === "new"
+            }
           />
           {(incident.status === "acknowledged" ||
             incident.status === "resolved" ||
@@ -591,6 +616,7 @@ export default function IncidentDetailScreen() {
               label="Acknowledged"
               time="Acknowledged by user"
               isActive
+              isLast={incident.status === "acknowledged"}
             />
           )}
           {(incident.status === "resolved" ||
@@ -607,13 +633,14 @@ export default function IncidentDetailScreen() {
                   : "Resolved by user"
               }
               isActive
+              isLast
             />
           )}
           <Text
             style={{
-              fontSize: FONT_SIZE.sm,
+              fontSize: 12,
               color: BRAND.textSecondary,
-              marginTop: SPACING.sm,
+              marginTop: 10,
             }}
           >
             Duration: {formatDuration(incident.start_time, incident.end_time)}
@@ -625,19 +652,22 @@ export default function IncidentDetailScreen() {
           <View
             style={{
               backgroundColor: BRAND.surface,
-              borderRadius: RADIUS.md,
-              borderWidth: 1,
-              borderColor: BRAND.border,
-              padding: SPACING.lg,
-              marginBottom: SPACING.lg,
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 16,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.06,
+              shadowRadius: 3,
+              elevation: 2,
             }}
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.lg,
-                fontWeight: "600",
+                fontSize: 16,
+                fontWeight: "700",
                 color: BRAND.textPrimary,
-                marginBottom: SPACING.md,
+                marginBottom: 12,
               }}
             >
               Detection Timeline ({detectionTimeline.length})
@@ -651,29 +681,31 @@ export default function IncidentDetailScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    paddingVertical: SPACING.sm,
-                    borderBottomWidth:
-                      i < detectionTimeline.length - 1 ? 1 : 0,
-                    borderBottomColor: NEUTRAL.divider,
+                    borderRadius: 12,
+                    padding: 14,
+                    minHeight: 60,
+                    marginBottom: i < detectionTimeline.length - 1 ? 6 : 0,
+                    backgroundColor: i === 0 ? "#F8F7F4" : "transparent",
                   }}
                   accessibilityLabel={`Detection at ${formatDate(det.timestamp)}, confidence ${(det.confidence * 100).toFixed(1)}%`}
                   accessibilityRole="button"
                 >
                   <View
                     style={{
-                      width: SPACING.md,
-                      height: SPACING.md,
-                      borderRadius: SPACING.sm,
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
                       backgroundColor:
                         i === 0 ? BRAND.primary : NEUTRAL.inactive,
-                      marginRight: SPACING.md,
+                      marginRight: 12,
                     }}
                   />
                   <View style={{ flex: 1 }}>
                     <Text
                       style={{
-                        fontSize: FONT_SIZE.md,
+                        fontSize: 13,
                         color: BRAND.textPrimary,
+                        fontWeight: "500",
                       }}
                     >
                       {formatDate(det.timestamp)}
@@ -681,29 +713,30 @@ export default function IncidentDetailScreen() {
                     <View
                       style={{
                         flexDirection: "row",
-                        gap: SPACING.sm,
-                        marginTop: SPACING.xs,
+                        gap: 8,
+                        marginTop: 4,
+                        alignItems: "center",
                       }}
                     >
                       <Text
                         style={{
-                          fontSize: FONT_SIZE.sm,
+                          fontSize: 12,
                           color: BRAND.textSecondary,
                         }}
                       >
-                        {(det.confidence * 100).toFixed(1)}% confidence
+                        {(det.confidence * 100).toFixed(1)}%
                       </Text>
                       <View
                         style={{
                           backgroundColor: detWetDry.bg,
-                          borderRadius: RADIUS.sm,
-                          paddingHorizontal: SPACING.xs,
-                          paddingVertical: 1,
+                          borderRadius: 6,
+                          paddingHorizontal: 8,
+                          paddingVertical: 2,
                         }}
                       >
                         <Text
                           style={{
-                            fontSize: FONT_SIZE.xs,
+                            fontSize: 10,
                             fontWeight: "700",
                             color: detWetDry.text,
                           }}
@@ -715,14 +748,14 @@ export default function IncidentDetailScreen() {
                         <View
                           style={{
                             backgroundColor: DETECTION.flagged.bg,
-                            borderRadius: RADIUS.sm,
-                            paddingHorizontal: SPACING.xs,
-                            paddingVertical: 1,
+                            borderRadius: 6,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
                           }}
                         >
                           <Text
                             style={{
-                              fontSize: FONT_SIZE.xs,
+                              fontSize: 10,
                               fontWeight: "700",
                               color: DETECTION.flagged.text,
                             }}
@@ -735,7 +768,7 @@ export default function IncidentDetailScreen() {
                   </View>
                   <Text
                     style={{
-                      fontSize: FONT_SIZE.lg,
+                      fontSize: 16,
                       color: BRAND.textSecondary,
                     }}
                   >
@@ -748,15 +781,16 @@ export default function IncidentDetailScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={{ gap: SPACING.md, marginBottom: SPACING.xxl }}>
+        <View style={{ gap: 8, marginBottom: 32 }}>
           {incident.status === "new" && (
             <TouchableOpacity
               onPress={handleAcknowledge}
               disabled={actionLoading !== null}
               style={{
-                backgroundColor: ACTIONS.acknowledge,
-                borderRadius: RADIUS.md,
-                paddingVertical: SPACING.lg,
+                height: 52,
+                backgroundColor: "#0D9488",
+                borderRadius: 12,
+                justifyContent: "center",
                 alignItems: "center",
                 opacity: actionLoading ? 0.6 : 1,
               }}
@@ -769,7 +803,7 @@ export default function IncidentDetailScreen() {
                 <Text
                   style={{
                     color: NEUTRAL.white,
-                    fontSize: FONT_SIZE.xl,
+                    fontSize: 16,
                     fontWeight: "600",
                   }}
                 >
@@ -784,9 +818,10 @@ export default function IncidentDetailScreen() {
                 onPress={() => initiateResolve("resolved")}
                 disabled={actionLoading !== null}
                 style={{
-                  backgroundColor: ACTIONS.resolve,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACING.lg,
+                  height: 52,
+                  backgroundColor: "#16A34A",
+                  borderRadius: 12,
+                  justifyContent: "center",
                   alignItems: "center",
                   opacity: actionLoading ? 0.6 : 1,
                 }}
@@ -796,7 +831,7 @@ export default function IncidentDetailScreen() {
                 <Text
                   style={{
                     color: NEUTRAL.white,
-                    fontSize: FONT_SIZE.xl,
+                    fontSize: 16,
                     fontWeight: "600",
                   }}
                 >
@@ -807,9 +842,10 @@ export default function IncidentDetailScreen() {
                 onPress={() => initiateResolve("false_positive")}
                 disabled={actionLoading !== null}
                 style={{
-                  backgroundColor: ACTIONS.falsePositive,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACING.lg,
+                  height: 52,
+                  backgroundColor: "#F59E0B",
+                  borderRadius: 12,
+                  justifyContent: "center",
                   alignItems: "center",
                   opacity: actionLoading ? 0.6 : 1,
                 }}
@@ -819,7 +855,7 @@ export default function IncidentDetailScreen() {
                 <Text
                   style={{
                     color: NEUTRAL.white,
-                    fontSize: FONT_SIZE.xl,
+                    fontSize: 16,
                     fontWeight: "600",
                   }}
                 >
@@ -835,11 +871,12 @@ export default function IncidentDetailScreen() {
               onPress={handleFlagLatestDetection}
               disabled={flagLoading}
               style={{
+                height: 52,
                 backgroundColor: latestDetectionFlagged
                   ? DETECTION.unflagged.bg
                   : DETECTION.flagged.bg,
-                borderRadius: RADIUS.md,
-                paddingVertical: SPACING.lg,
+                borderRadius: 12,
+                justifyContent: "center",
                 alignItems: "center",
                 borderWidth: 1,
                 borderColor: latestDetectionFlagged
@@ -862,7 +899,7 @@ export default function IncidentDetailScreen() {
                     color: latestDetectionFlagged
                       ? DETECTION.unflagged.text
                       : ACTIONS.flag,
-                    fontSize: FONT_SIZE.xl,
+                    fontSize: 16,
                     fontWeight: "600",
                   }}
                 >
@@ -893,18 +930,18 @@ export default function IncidentDetailScreen() {
           <View
             style={{
               backgroundColor: BRAND.surface,
-              borderTopLeftRadius: RADIUS.xl,
-              borderTopRightRadius: RADIUS.xl,
-              padding: SPACING.xxl,
-              paddingBottom: SPACING.xxl + SPACING.lg,
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              padding: 20,
+              paddingBottom: 40,
             }}
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.xxl,
-                fontWeight: "600",
+                fontSize: 18,
+                fontWeight: "700",
                 color: BRAND.textPrimary,
-                marginBottom: SPACING.lg,
+                marginBottom: 16,
               }}
             >
               {pendingAction === "false_positive"
@@ -914,13 +951,13 @@ export default function IncidentDetailScreen() {
             <TextInput
               style={{
                 backgroundColor: BRAND.background,
-                borderRadius: RADIUS.md,
+                borderRadius: 12,
                 borderWidth: 1,
                 borderColor: BRAND.border,
-                padding: SPACING.md,
-                fontSize: FONT_SIZE.lg,
+                padding: 14,
+                fontSize: 15,
                 color: BRAND.textPrimary,
-                minHeight: 100,
+                height: 100,
                 textAlignVertical: "top",
               }}
               placeholder="Add notes (optional)..."
@@ -935,8 +972,8 @@ export default function IncidentDetailScreen() {
             <View
               style={{
                 flexDirection: "row",
-                gap: SPACING.md,
-                marginTop: SPACING.lg,
+                gap: 8,
+                marginTop: 16,
               }}
             >
               <TouchableOpacity
@@ -944,11 +981,12 @@ export default function IncidentDetailScreen() {
                 disabled={actionLoading !== null}
                 style={{
                   flex: 1,
+                  height: 52,
                   backgroundColor: BRAND.background,
-                  borderRadius: RADIUS.md,
+                  borderRadius: 12,
                   borderWidth: 1,
                   borderColor: BRAND.border,
-                  paddingVertical: SPACING.md,
+                  justifyContent: "center",
                   alignItems: "center",
                   opacity: actionLoading ? 0.6 : 1,
                 }}
@@ -958,7 +996,7 @@ export default function IncidentDetailScreen() {
                 <Text
                   style={{
                     color: BRAND.textSecondary,
-                    fontSize: FONT_SIZE.lg,
+                    fontSize: 15,
                     fontWeight: "600",
                   }}
                 >
@@ -970,12 +1008,13 @@ export default function IncidentDetailScreen() {
                 disabled={actionLoading !== null}
                 style={{
                   flex: 1,
+                  height: 52,
                   backgroundColor:
                     pendingAction === "false_positive"
-                      ? ACTIONS.falsePositive
-                      : ACTIONS.resolve,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACING.md,
+                      ? "#F59E0B"
+                      : "#16A34A",
+                  borderRadius: 12,
+                  justifyContent: "center",
                   alignItems: "center",
                   opacity: actionLoading ? 0.6 : 1,
                 }}
@@ -988,7 +1027,7 @@ export default function IncidentDetailScreen() {
                   <Text
                     style={{
                       color: NEUTRAL.white,
-                      fontSize: FONT_SIZE.lg,
+                      fontSize: 15,
                       fontWeight: "600",
                     }}
                   >
@@ -1005,28 +1044,30 @@ export default function IncidentDetailScreen() {
 }
 
 /** Reusable metric row */
-function MetricRow({ label, value }: { label: string; value: string }) {
+function MetricRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <View
       style={{
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingVertical: SPACING.xs,
-        borderBottomWidth: 1,
-        borderBottomColor: NEUTRAL.divider,
+        alignItems: "center",
+        minHeight: 44,
+        paddingVertical: 10,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: "#F3F4F6",
       }}
     >
-      <Text style={{ fontSize: FONT_SIZE.md, color: BRAND.textSecondary }}>
+      <Text style={{ fontSize: 13, color: "#78716C" }}>
         {label}
       </Text>
       <Text
         style={{
-          fontSize: FONT_SIZE.md,
-          fontWeight: "500",
+          fontSize: 14,
+          fontWeight: "600",
           color: BRAND.textPrimary,
           flexShrink: 1,
           textAlign: "right",
-          marginLeft: SPACING.lg,
+          marginLeft: 16,
         }}
       >
         {value}
@@ -1035,37 +1076,50 @@ function MetricRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** Status timeline dot entry */
+/** Status timeline dot entry with connecting line */
 function TimelineDot({
   label,
   time,
   isActive,
+  isLast,
 }: {
   label: string;
   time: string;
   isActive?: boolean;
+  isLast?: boolean;
 }) {
   return (
     <View
       style={{
         flexDirection: "row",
-        alignItems: "center",
-        marginBottom: SPACING.sm,
+        alignItems: "flex-start",
+        marginBottom: isLast ? 0 : 4,
       }}
     >
-      <View
-        style={{
-          width: SPACING.md,
-          height: SPACING.md,
-          borderRadius: SPACING.sm,
-          backgroundColor: isActive ? BRAND.primary : NEUTRAL.inactive,
-          marginRight: SPACING.md,
-        }}
-      />
-      <View style={{ flex: 1 }}>
+      <View style={{ alignItems: "center", marginRight: 12 }}>
+        <View
+          style={{
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            backgroundColor: isActive ? BRAND.primary : NEUTRAL.inactive,
+          }}
+        />
+        {!isLast && (
+          <View
+            style={{
+              width: 2,
+              height: 28,
+              backgroundColor: "#E5E7EB",
+              marginTop: 2,
+            }}
+          />
+        )}
+      </View>
+      <View style={{ flex: 1, paddingBottom: isLast ? 0 : 8 }}>
         <Text
           style={{
-            fontSize: FONT_SIZE.md,
+            fontSize: 14,
             fontWeight: "600",
             color: BRAND.textPrimary,
           }}
@@ -1073,7 +1127,7 @@ function TimelineDot({
           {label}
         </Text>
         <Text
-          style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}
+          style={{ fontSize: 12, color: BRAND.textSecondary, marginTop: 2 }}
         >
           {time}
         </Text>

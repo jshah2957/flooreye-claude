@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye | Enterprise AI Spill Detection</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-on-surface": "#f2f1ee",
+              "on-surface": "#1a1c1a",
+              "surface-tint": "#006a61",
+              "on-tertiary-container": "#fffbff",
+              "on-primary-fixed": "#00201d",
+              "primary": "#00685f",
+              "surface-bright": "#faf9f6",
+              "secondary": "#565e74",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#89f5e7",
+              "on-primary-fixed-variant": "#005049",
+              "on-primary": "#ffffff",
+              "on-tertiary-fixed": "#25005a",
+              "on-secondary-container": "#5c647a",
+              "tertiary": "#712ae2",
+              "surface-dim": "#dbdad7",
+              "on-tertiary-fixed-variant": "#5a00c6",
+              "error": "#ba1a1a",
+              "on-secondary-fixed": "#131b2e",
+              "background": "#faf9f6",
+              "surface-container-high": "#e9e8e5",
+              "on-background": "#1a1c1a",
+              "tertiary-fixed-dim": "#d2bbff",
+              "surface-container": "#efeeeb",
+              "on-error-container": "#93000a",
+              "primary-container": "#008378",
+              "on-tertiary": "#ffffff",
+              "secondary-container": "#dae2fd",
+              "surface-container-highest": "#e3e2df",
+              "on-secondary-fixed-variant": "#3f465c",
+              "on-secondary": "#ffffff",
+              "surface": "#faf9f6",
+              "primary-fixed-dim": "#6bd8cb",
+              "tertiary-container": "#8a4cfc",
+              "tertiary-fixed": "#eaddff",
+              "outline": "#6d7a77",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "inverse-surface": "#2f312f",
+              "inverse-primary": "#6bd8cb",
+              "secondary-fixed-dim": "#bec6e0",
+              "surface-container-low": "#f4f3f0",
+              "on-surface-variant": "#3d4947",
+              "secondary-fixed": "#dae2fd",
+              "on-primary-container": "#f4fffc",
+              "surface-variant": "#e3e2df",
+              "outline-variant": "#bcc9c6"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-surface antialiased">
+<!-- SideNavBar (Shared Component JSON Mapping) -->
+<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-[#565e74] dark:bg-slate-950 flex flex-col shadow-xl font-['Inter'] antialiased text-sm font-medium">
+<div class="p-6 flex items-center space-x-3">
+<div class="w-10 h-10 bg-[#008378] rounded-xl flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</div>
+<div>
+<h1 class="text-xl font-bold text-white tracking-tight leading-none">FloorEye</h1>
+<p class="text-[10px] text-slate-300 uppercase tracking-widest mt-1">AI Spill Detection</p>
+</div>
+</div>
+<nav class="flex-1 mt-4 px-2 space-y-1">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center px-4 py-3 bg-[#008378] text-white rounded-lg mx-2 my-1 transition-all duration-150 scale-95" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="live_tv">live_tv</span>
+<span>Live Monitoring</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="history">history</span>
+<span>Detection History</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="emergency">emergency</span>
+<span>Incidents</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="store">store</span>
+<span>Stores</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="videocam">videocam</span>
+<span>Cameras</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="api">api</span>
+<span>API Manager</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg mx-2 my-1 transition-colors mt-auto" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-white/5 bg-white/5 mx-4 mb-6 rounded-xl">
+<div class="flex items-center space-x-3">
+<div class="relative">
+<img alt="User Profile" class="w-10 h-10 rounded-full border-2 border-primary" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8nI-ZrPDLvXoiE7Y0X8v87pWAkvpSohoSy5T9eRef-cbqy0Fe4-GVjVtzwEFZYrJC7w0A_FgXLqDQNQ0TgbCtLCf70oKQEcEZNaMmHvCi-pB6V6SjpBUDhVxQtX6k8QhMBPBTqDxBbRAo_BnNQ0o12ouD6680h00CE9gQ3mFUE0fThFDzOYfvY09G4czeNtYMRPyCRtZhRAFQEFXojy6jbfnTwj5uj4IFNzDJmO0xyNGD1G5fEWHceUaG9AFxyi1gK4NwogkLEd8L"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#565e74]"></div>
+</div>
+<div class="overflow-hidden">
+<p class="text-white text-sm font-semibold truncate">Alex Chen</p>
+<p class="text-slate-400 text-xs truncate">System Admin</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Shared Component JSON Mapping) -->
+<header class="sticky top-0 h-16 z-30 flex justify-between items-center px-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm border-b-0">
+<div class="flex items-center space-x-6">
+<div class="relative w-64 group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search stores, cams, incidents..." type="text"/>
+</div>
+<nav class="hidden md:flex items-center space-x-6 text-sm font-['Inter'] tracking-wide">
+<a class="text-primary font-semibold border-b-2 border-primary pb-1" href="#">Monitoring</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-primary transition-opacity duration-200" href="#">Live</a>
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-all relative">
+<span class="material-symbols-outlined text-slate-600" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+<span class="material-symbols-outlined text-slate-600" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Status Banner -->
+<section class="px-8 mt-6">
+<div class="bg-error/10 border-l-4 border-error p-5 rounded-xl flex items-center justify-between shadow-sm">
+<div class="flex items-center space-x-4">
+<div class="w-12 h-12 bg-error rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-error/20">
+<span class="material-symbols-outlined text-white" data-icon="warning">warning</span>
+</div>
+<div>
+<h2 class="text-error font-bold text-xl tracking-tight uppercase">Active Spill Alert - Sector A4</h2>
+<p class="text-on-surface-variant text-sm">Detection confirmed at 14:22:10. Cleaning dispatch requested.</p>
+</div>
+</div>
+<button class="bg-error text-white px-6 py-2.5 rounded-lg font-semibold hover:brightness-110 transition-all shadow-md">
+                    Respond Now
+                </button>
+</div>
+</section>
+<!-- Stat Cards (Row of 6) -->
+<section class="px-8 mt-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant text-[11px] font-medium uppercase tracking-wider">Total Stores</p>
+<h3 class="text-2xl font-bold mt-1 text-on-surface">24</h3>
+<div class="mt-2 text-primary text-xs flex items-center font-semibold">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="trending_up">trending_up</span>
+<span>+2 this mo</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant text-[11px] font-medium uppercase tracking-wider">Total Cameras</p>
+<h3 class="text-2xl font-bold mt-1 text-on-surface">182<span class="text-slate-400 font-normal text-lg">/190</span></h3>
+<div class="mt-2 text-error text-xs flex items-center font-semibold">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="error">error</span>
+<span>8 Offline</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow ring-2 ring-error/20">
+<p class="text-on-surface-variant text-[11px] font-medium uppercase tracking-wider">Active Incidents</p>
+<h3 class="text-2xl font-bold mt-1 text-error">3</h3>
+<div class="mt-2 text-error text-xs flex items-center font-semibold">
+<span class="w-2 h-2 bg-error rounded-full mr-2"></span>
+<span>High Priority</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant text-[11px] font-medium uppercase tracking-wider">Today's Events</p>
+<h3 class="text-2xl font-bold mt-1 text-on-surface">42</h3>
+<div class="mt-2 text-slate-500 text-xs flex items-center">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="history">history</span>
+<span>Avg 5.2/hr</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant text-[11px] font-medium uppercase tracking-wider">Inference Mode</p>
+<div class="flex flex-wrap gap-1 mt-2">
+<span class="px-2 py-0.5 bg-slate-100 text-[9px] font-bold rounded text-slate-500 uppercase">Cloud</span>
+<span class="px-2 py-0.5 bg-primary/10 text-[9px] font-bold rounded text-primary uppercase ring-1 ring-primary/30">Edge</span>
+<span class="px-2 py-0.5 bg-slate-100 text-[9px] font-bold rounded text-slate-500 uppercase">Hybrid</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+<p class="text-on-surface-variant text-[11px] font-medium uppercase tracking-wider">Online Edge Agents</p>
+<h3 class="text-2xl font-bold mt-1 text-primary">12/12</h3>
+<div class="mt-2 text-primary text-xs flex items-center font-semibold">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="check_circle">check_circle</span>
+<span>All synced</span>
+</div>
+</div>
+</section>
+<!-- 2-Column Layout (60/40) -->
+<section class="px-8 mt-8 grid grid-cols-12 gap-8 pb-12">
+<!-- Left Column: Live Monitoring (60%) -->
+<div class="col-span-12 lg:col-span-7 space-y-8">
+<div class="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm">
+<!-- Video Header -->
+<div class="p-6 flex items-center justify-between border-b border-surface-container">
+<div class="flex items-center space-x-4">
+<h2 class="text-lg font-bold text-on-surface tracking-tight">Live Monitoring</h2>
+<div class="flex space-x-2">
+<select class="bg-surface-container-low border-none rounded-lg text-xs py-1.5 font-medium focus:ring-1 focus:ring-primary">
+<option>Store #402 - Downtown</option>
+<option>Store #115 - Uptown</option>
+</select>
+<select class="bg-surface-container-low border-none rounded-lg text-xs py-1.5 font-medium focus:ring-1 focus:ring-primary">
+<option>Camera 04 - Sector A4</option>
+<option>Camera 08 - Entrance</option>
+</select>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<div class="flex items-center bg-primary/5 px-3 py-1.5 rounded-full ring-1 ring-primary/20">
+<span class="text-[10px] font-bold text-primary mr-2 uppercase tracking-tighter">Detection Overlay</span>
+<div class="w-8 h-4 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Video Frame -->
+<div class="aspect-video bg-black relative group">
+<img class="w-full h-full object-cover opacity-90" data-alt="Security camera footage of a supermarket aisle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCg2r4edtfl5kebWxC37cESkzoWKRRLNxvMtCxvH1GL6GB6oLzGsuNleGxenGZzRJqQEAq0QxbxYCe1WDoUrhGzch5oawM_ny8JHGqQzMra93Psvf4EvjAOdoNYvP29JYz6erVvL_KDvjIsrclTY2N75coYn48MNJpCiszCCD7YCO7fkh3GGW95o0sT-94Hdv6YiyanepiNS2S5mIn-GoHVvWsNau47Tj3rHkQFERADtFXqLY0P4UoYYPiF3wEEQbos_YQEj92qoH75"/>
+<!-- AI Overlay Elements -->
+<div class="absolute top-0 left-0 w-full h-full pointer-events-none">
+<div class="absolute top-[40%] left-[30%] w-[120px] h-[80px] border-2 border-error bg-error/10 flex flex-col justify-start p-1">
+<span class="bg-error text-[8px] text-white px-1 font-bold w-fit">SPILL CONFIRMED 94%</span>
+</div>
+<div class="absolute bottom-[20%] right-[40%] w-[150px] h-[100px] border-2 border-primary/40 bg-primary/5 flex flex-col justify-start p-1">
+<span class="bg-primary/60 text-[8px] text-white px-1 font-bold w-fit">CLEAR PATH</span>
+</div>
+</div>
+<!-- Status Badges -->
+<div class="absolute top-4 left-4 flex space-x-2">
+<span class="bg-black/60 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-widest flex items-center">
+<span class="w-1.5 h-1.5 bg-error rounded-full mr-2 animate-pulse"></span>
+                                Live
+                            </span>
+<span class="bg-black/60 backdrop-blur-md text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-widest">
+                                HD
+                            </span>
+</div>
+<div class="absolute top-4 right-4">
+<span class="bg-black/60 backdrop-blur-md text-emerald-400 text-[10px] px-2 py-1 rounded font-mono font-bold">
+                                94 FPS
+                            </span>
+</div>
+<!-- Video Controls Overlay -->
+<div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="flex items-center space-x-4">
+<button class="text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="pause">pause</span>
+</button>
+<button class="text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="volume_up">volume_up</span>
+</button>
+<div class="text-[10px] text-white/70 font-mono">2023-10-27 14:23:45 UTC</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="text-white hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="fullscreen">fullscreen</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Recent Detections Gallery -->
+<div class="p-6">
+<div class="flex items-center justify-between mb-4">
+<h3 class="text-sm font-bold text-on-surface tracking-tight">Recent Detections</h3>
+<button class="text-xs text-primary font-semibold hover:underline">View All History</button>
+</div>
+<div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
+<!-- Detection Thumbnails -->
+<div class="flex-shrink-0 w-32 group cursor-pointer">
+<div class="relative aspect-square rounded-lg overflow-hidden bg-slate-200">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Spilled milk on supermarket floor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKRNZn5mUrhj4xhoxQPQJV0EdTgejKh87vQcNgl6otONHSZz5CfeAGFrtZp8C3C47bpEJUejjmuJwFiON9vNfapKbyl_DYVk-VUOt-z_2zuo35jynnyx1bEOi_doiNp413eM3hf3xGGIeR-WRdSUmqB1kcxNgR34HBEMNpuwUIH2yEMBCc8H_fbSq0hrPXvR6CgDItrKob7BXv1RgScxC45LuyvRMA3zU31z2VsI1RKpxQsxcvNVKgqUhzxcEUXPVoernXfz19Mav9"/>
+<div class="absolute top-1 right-1 bg-error text-white text-[8px] px-1 font-bold rounded">Wet</div>
+</div>
+<div class="mt-2">
+<p class="text-[10px] font-bold text-on-surface">92% Confidence</p>
+<p class="text-[9px] text-slate-500">14:18:02</p>
+</div>
+</div>
+<div class="flex-shrink-0 w-32 group cursor-pointer">
+<div class="relative aspect-square rounded-lg overflow-hidden bg-slate-200">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Clean supermarket floor" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAn1aVTBf8yCVoiN0AhXrDLs7Qjy17VSu4BypjCqVUddS-qYZrfCWTm_7xQAJLgMTtKbJyESSusQLrUHf1QF_edRRKXGkopyYB9oMjnf6--F7qcOe6OVgJ-x6jijS1c3Aml0Pgdv33X4k4vziL5sJK-wog7S4HvfQRCSk8nNFOfI-04xRXurYIkTrj2L8mvqseljgOZpYiEl5T5fZl4grbETb9fPvuVp7l4XaWNcsC-PIyPDBb3jg68gixrr8_Kf-EYptik-xbnxjZy"/>
+<div class="absolute top-1 right-1 bg-primary text-white text-[8px] px-1 font-bold rounded">Dry</div>
+</div>
+<div class="mt-2">
+<p class="text-[10px] font-bold text-on-surface">98% Confidence</p>
+<p class="text-[9px] text-slate-500">14:15:30</p>
+</div>
+</div>
+<div class="flex-shrink-0 w-32 group cursor-pointer">
+<div class="relative aspect-square rounded-lg overflow-hidden bg-slate-200">
+<img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" data-alt="Liquid spill in store" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6koAqHemuQgE66fMP7JYlmfqAyyo0Js-zjjjaBYM7CoLqyTETF9Inp_XxSwneMCy-MBjpF2SA87jzIoFLtibutqEivalCet4cxmwyFNGA_0BdaIieLZrUsnNoDNVsUS4crjTy3rOg_eDA7iP_831pA6OQo0eIPryJxB7EGm8tvwaB4iNkG96uB68qTBcbk26wmTwBLPt_0h61p9fKbpv7P_V2eqLkul7S_X7P6RzjSzVrx6SdicVy9tTqIDKznWxS9d_QMfzeXk7O"/>
+<div class="absolute top-1 right-1 bg-error text-white text-[8px] px-1 font-bold rounded">Wet</div>
+</div>
+<div class="mt-2">
+<p class="text-[10px] font-bold text-on-surface">89% Confidence</p>
+<p class="text-[9px] text-slate-500">14:12:11</p>
+</div>
+</div>
+<!-- Repeat for 10 items (showing 4 for brevity) -->
+<div class="flex-shrink-0 w-32 group cursor-pointer">
+<div class="relative aspect-square rounded-lg overflow-hidden bg-slate-200 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</div>
+<div class="mt-2">
+<p class="text-[10px] font-bold text-slate-400 text-center">Load More</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Incidents & Health (40%) -->
+<div class="col-span-12 lg:col-span-5 space-y-8">
+<!-- Active Incidents Panel -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm">
+<div class="p-6 border-b border-surface-container flex items-center justify-between">
+<h2 class="text-lg font-bold text-on-surface tracking-tight">Active Incidents</h2>
+<span class="bg-error/10 text-error text-[10px] px-2 py-0.5 rounded-full font-bold">3 Ongoing</span>
+</div>
+<div class="divide-y divide-surface-container">
+<!-- Incident Item -->
+<div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+<div class="flex space-x-4">
+<div class="w-1.5 h-12 bg-error rounded-full"></div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Store #402 - Sector A4</h4>
+<p class="text-[11px] text-on-surface-variant">Camera 04 | AI Confidence 94%</p>
+<div class="flex items-center space-x-3 mt-1">
+<span class="text-[10px] font-mono text-slate-500 flex items-center">
+<span class="material-symbols-outlined text-[12px] mr-1" data-icon="schedule">schedule</span>
+                                            4m 20s
+                                        </span>
+<span class="text-[10px] bg-error/10 text-error px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">In Progress</span>
+</div>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Incident Item -->
+<div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+<div class="flex space-x-4">
+<div class="w-1.5 h-12 bg-tertiary rounded-full"></div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Store #115 - Produce</h4>
+<p class="text-[11px] text-on-surface-variant">Camera 02 | AI Confidence 82%</p>
+<div class="flex items-center space-x-3 mt-1">
+<span class="text-[10px] font-mono text-slate-500 flex items-center">
+<span class="material-symbols-outlined text-[12px] mr-1" data-icon="schedule">schedule</span>
+                                            12m 45s
+                                        </span>
+<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Cleaning Notified</span>
+</div>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Incident Item -->
+<div class="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+<div class="flex space-x-4">
+<div class="w-1.5 h-12 bg-slate-300 rounded-full"></div>
+<div>
+<h4 class="text-sm font-bold text-on-surface">Store #208 - Frozen</h4>
+<p class="text-[11px] text-on-surface-variant">Camera 11 | Post-Cleanup Audit</p>
+<div class="flex items-center space-x-3 mt-1">
+<span class="text-[10px] font-mono text-slate-500 flex items-center">
+<span class="material-symbols-outlined text-[12px] mr-1" data-icon="schedule">schedule</span>
+                                            21m 10s
+                                        </span>
+<span class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Resolved</span>
+</div>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-lg" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low rounded-b-2xl text-center">
+<button class="text-xs font-bold text-primary hover:text-primary-container transition-colors">Open Incident Management Center</button>
+</div>
+</div>
+<!-- System Health Panel -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm p-6">
+<h2 class="text-lg font-bold text-on-surface tracking-tight mb-6">System Health</h2>
+<div class="space-y-5">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 bg-primary/10 rounded flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-sm" data-icon="dns">dns</span>
+</div>
+<span class="text-sm font-semibold text-on-surface">Backend API</span>
+</div>
+<div class="text-right">
+<p class="text-[11px] font-bold text-primary">120ms</p>
+<p class="text-[9px] text-slate-400 uppercase tracking-tighter">Stable Latency</p>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 bg-tertiary/10 rounded flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-sm" data-icon="psychology">psychology</span>
+</div>
+<span class="text-sm font-semibold text-on-surface">Roboflow API</span>
+</div>
+<div class="text-right">
+<p class="text-[11px] font-bold text-primary">Online</p>
+<p class="text-[9px] text-slate-400 uppercase tracking-tighter">AI Core Heartbeat</p>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-slate-600">
+<span class="material-symbols-outlined text-sm" data-icon="hub">hub</span>
+</div>
+<span class="text-sm font-semibold text-on-surface">Edge Agents</span>
+</div>
+<div class="text-right">
+<p class="text-[11px] font-bold text-on-surface">12/12 Online</p>
+<div class="w-24 h-1 bg-surface-container mt-1 rounded-full overflow-hidden">
+<div class="w-full h-full bg-primary"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-slate-600">
+<span class="material-symbols-outlined text-sm" data-icon="storage">storage</span>
+</div>
+<span class="text-sm font-semibold text-on-surface">Buffer Storage</span>
+</div>
+<div class="text-right">
+<p class="text-[11px] font-bold text-on-surface">65% Full</p>
+<div class="w-24 h-1 bg-surface-container mt-1 rounded-full overflow-hidden">
+<div class="w-[65%] h-full bg-on-secondary-fixed-variant"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Magical AI Insight Chip -->
+<div class="bg-tertiary-container p-4 rounded-xl backdrop-blur-md shadow-lg shadow-tertiary/20 flex items-start space-x-3">
+<span class="material-symbols-outlined text-white" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<div>
+<p class="text-white text-xs font-bold leading-tight">Predictive Insight: Store #402</p>
+<p class="text-white/80 text-[10px] mt-1">High spill probability in Aisle 4 detected due to increased foot traffic near liquid displays. Suggest preventative monitoring.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Contextual FAB (Restricted to Home/Dashboard) -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 group">
+<span class="material-symbols-outlined" data-icon="add_alert">add_alert</span>
+<span class="absolute right-full mr-4 bg-on-surface text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Manual Alert</span>
+</button>
+</body></html>

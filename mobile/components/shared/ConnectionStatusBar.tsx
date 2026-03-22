@@ -28,8 +28,8 @@ export default function ConnectionStatusBar({ state, systemAlertCount = 0 }: Pro
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: config.color,
-        paddingVertical: SPACING.xs,
-        paddingHorizontal: SPACING.md,
+        height: 36,
+        paddingHorizontal: SPACING.lg,
         gap: SPACING.sm,
       }}
       accessibilityRole="alert"
@@ -43,9 +43,10 @@ export default function ConnectionStatusBar({ state, systemAlertCount = 0 }: Pro
           height: 8,
           borderRadius: 4,
           backgroundColor: NEUTRAL.white,
+          opacity: 0.9,
         }}
       />
-      <Text style={{ color: NEUTRAL.white, fontSize: FONT_SIZE.sm, fontWeight: "600" }}>
+      <Text style={{ color: NEUTRAL.white, fontSize: 12, fontWeight: "500" }}>
         {config.label}
         {systemAlertCount > 0 && state === "connected"
           ? ` \u2022 ${systemAlertCount} system alert${systemAlertCount > 1 ? "s" : ""}`

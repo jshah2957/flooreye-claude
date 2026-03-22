@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Bell, Loader2, Save } from "lucide-react";
+import { Bell, Loader2, Save, AlertTriangle, Server, BarChart3, Shield } from "lucide-react";
 
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -22,31 +22,39 @@ const DEFAULT_PREFS: NotificationPrefs = {
 };
 
 interface ToggleRowProps {
+  icon: React.ElementType;
+  iconColor: string;
+  iconBg: string;
   label: string;
   description: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }
 
-function ToggleRow({ label, description, checked, onChange }: ToggleRowProps) {
+function ToggleRow({ icon: Icon, iconColor, iconBg, label, description, checked, onChange }: ToggleRowProps) {
   return (
-    <div className="flex items-center justify-between rounded-md border border-[#E7E5E0] bg-white px-4 py-3">
-      <div>
-        <p className="text-sm font-medium text-[#1C1917]">{label}</p>
-        <p className="text-xs text-[#78716C]">{description}</p>
+    <div className="flex items-center justify-between border-b border-gray-100 py-4 last:border-0">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon size={16} className={iconColor} />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-900">{label}</p>
+          <p className="text-xs text-gray-500">{description}</p>
+        </div>
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-          checked ? "bg-[#0D9488]" : "bg-[#D6D3D1]"
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+          checked ? "bg-[#0D9488]" : "bg-gray-300"
         }`}
       >
         <span
-          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-            checked ? "translate-x-[18px]" : "translate-x-[3px]"
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-6" : "translate-x-1"
           }`}
         />
       </button>
@@ -97,78 +105,127 @@ export default function NotificationPreferencesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-[#0D9488]" />
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+        <div className="space-y-4">
+          <div className="animate-pulse">
+            <div className="mb-6 h-8 w-48 rounded bg-gray-200" />
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-gray-200" />
+                      <div className="space-y-1">
+                        <div className="h-4 w-28 rounded bg-gray-200" />
+                        <div className="h-3 w-44 rounded bg-gray-200" />
+                      </div>
+                    </div>
+                    <div className="h-6 w-11 rounded-full bg-gray-200" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+      {/* Header */}
       <div className="mb-6 flex items-center gap-3">
-        <Bell size={22} className="text-[#0D9488]" />
-        <h1 className="text-xl font-semibold text-[#1C1917]">
-          Notification Preferences
-        </h1>
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50">
+          <Bell size={20} className="text-[#0D9488]" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Notification Preferences
+          </h1>
+          <p className="text-sm text-gray-500">
+            Control which notifications you receive across all devices
+          </p>
+        </div>
       </div>
 
-      <p className="mb-4 text-sm text-[#78716C]">
-        Control which notifications you receive. These preferences apply to your
-        account across all devices.
-      </p>
+      {/* Alert Types */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Alert Types</h2>
+        <p className="mb-4 text-xs text-gray-500">Choose which alerts you want to receive</p>
 
-      <div className="space-y-3">
-        <ToggleRow
-          label="Incident Alerts"
-          description="Receive notifications for wet floor incidents"
-          checked={prefs.incident_alerts}
-          onChange={(v) => updatePref("incident_alerts", v)}
-        />
-        <ToggleRow
-          label="System Alerts"
-          description="Receive system health alerts"
-          checked={prefs.system_alerts}
-          onChange={(v) => updatePref("system_alerts", v)}
-        />
-        <ToggleRow
-          label="Edge Agent Alerts"
-          description="Receive edge agent status alerts"
-          checked={prefs.edge_agent_alerts}
-          onChange={(v) => updatePref("edge_agent_alerts", v)}
-        />
-        <ToggleRow
-          label="Daily Summary"
-          description="Receive daily detection summary"
-          checked={prefs.daily_summary}
-          onChange={(v) => updatePref("daily_summary", v)}
-        />
+        <div>
+          <ToggleRow
+            icon={AlertTriangle}
+            iconColor="text-red-600"
+            iconBg="bg-red-50"
+            label="Incident Alerts"
+            description="Receive notifications for wet floor incidents"
+            checked={prefs.incident_alerts}
+            onChange={(v) => updatePref("incident_alerts", v)}
+          />
+          <ToggleRow
+            icon={Shield}
+            iconColor="text-blue-600"
+            iconBg="bg-blue-50"
+            label="System Alerts"
+            description="Receive system health and status alerts"
+            checked={prefs.system_alerts}
+            onChange={(v) => updatePref("system_alerts", v)}
+          />
+          <ToggleRow
+            icon={Server}
+            iconColor="text-purple-600"
+            iconBg="bg-purple-50"
+            label="Edge Agent Alerts"
+            description="Receive edge agent connection and status alerts"
+            checked={prefs.edge_agent_alerts}
+            onChange={(v) => updatePref("edge_agent_alerts", v)}
+          />
+          <ToggleRow
+            icon={BarChart3}
+            iconColor="text-[#0D9488]"
+            iconBg="bg-teal-50"
+            label="Daily Summary"
+            description="Receive a daily summary of all detection activity"
+            checked={prefs.daily_summary}
+            onChange={(v) => updatePref("daily_summary", v)}
+          />
+        </div>
       </div>
 
       {/* Channel preference */}
-      <div className="mt-6">
-        <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-          Preferred Channel
-        </label>
-        <p className="mb-2 text-xs text-[#78716C]">
-          Select how you would like to receive notifications.
-        </p>
-        <select
-          value={prefs.channel_preference}
-          onChange={(e) => updatePref("channel_preference", e.target.value)}
-          className="w-full max-w-xs rounded-md border border-[#E7E5E0] bg-white px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-        >
-          <option value="email">Email</option>
-          <option value="push">Push</option>
-          <option value="both">Both</option>
-        </select>
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-1 text-sm font-semibold text-gray-900">Delivery Channel</h2>
+        <p className="mb-4 text-xs text-gray-500">Select how you would like to receive notifications</p>
+
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { value: "email", label: "Email" },
+            { value: "push", label: "Push" },
+            { value: "both", label: "Both" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => updatePref("channel_preference", opt.value)}
+              className={`rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all ${
+                prefs.channel_preference === opt.value
+                  ? "border-[#0D9488] bg-teal-50 text-[#0D9488] ring-2 ring-[#0D9488]/20"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Save */}
-      <div className="mt-8">
+      <div className="mt-6 flex justify-end">
         <button
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending}
-          className="flex items-center gap-2 rounded-md bg-[#0D9488] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0F766E] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saveMutation.isPending ? (
             <Loader2 size={14} className="animate-spin" />

@@ -119,140 +119,171 @@ export default function StoreDrawer({ open, store, onClose }: StoreDrawerProps) 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
-      <div className="h-full w-[384px] overflow-y-auto bg-white shadow-lg">
+    <div className="fixed inset-0 z-50 flex justify-end">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Drawer panel */}
+      <div className="relative flex h-full w-full max-w-md flex-col bg-white shadow-2xl sm:w-96 animate-in slide-in-from-right duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-          <h2 className="text-lg font-semibold text-[#1C1917]">
-            {isEdit ? "Edit Store" : "New Store"}
-          </h2>
-          <button onClick={onClose} className="text-[#78716C] hover:text-[#1C1917]">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              {isEdit ? "Edit Store" : "Create Store"}
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-400">
+              {isEdit ? "Update store information" : "Add a new store location"}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          >
             <X size={18} />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-              Store Name *
-            </label>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-              Address *
-            </label>
-            <input
-              required
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        {/* Form - scrollable */}
+        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            {/* Name */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#1C1917]">City</label>
-              <input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-                State / Region
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Store Name <span className="text-red-400">*</span>
               </label>
               <input
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Downtown Branch"
+                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
               />
             </div>
-          </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-              Country *
-            </label>
-            <select
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-            >
-              <option value="US">United States</option>
-              <option value="CA">Canada</option>
-              <option value="GB">United Kingdom</option>
-              <option value="DE">Germany</option>
-              <option value="FR">France</option>
-              <option value="AU">Australia</option>
-              <option value="JP">Japan</option>
-              <option value="IN">India</option>
-            </select>
-          </div>
+            {/* Address */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Address <span className="text-red-400">*</span>
+              </label>
+              <input
+                required
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Main Street"
+                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+              />
+            </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-[#1C1917]">
-              Timezone *
-            </label>
-            <select
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-            >
-              {TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {isEdit && (
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-[#1C1917]">Active</label>
-              <button
-                type="button"
-                onClick={() => setIsActive(!isActive)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${
-                  isActive ? "bg-[#0D9488]" : "bg-gray-300"
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    isActive ? "translate-x-5" : ""
-                  }`}
+            {/* City / State */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">City</label>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="City"
+                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                 />
-              </button>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                  State / Region
+                </label>
+                <input
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  placeholder="State"
+                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+                />
+              </div>
             </div>
-          )}
 
-          {error && (
-            <div className="rounded-md bg-[#FEE2E2] px-3 py-2 text-sm text-[#DC2626]">
-              {error}
+            {/* Country */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Country <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+              >
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="GB">United Kingdom</option>
+                <option value="DE">Germany</option>
+                <option value="FR">France</option>
+                <option value="AU">Australia</option>
+                <option value="JP">Japan</option>
+                <option value="IN">India</option>
+              </select>
             </div>
-          )}
 
-          {/* Footer */}
-          <div className="flex justify-end gap-3 border-t border-[#E7E5E0] pt-4">
+            {/* Timezone */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Timezone <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Active Toggle (edit only) */}
+            {isEdit && (
+              <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Active</label>
+                  <p className="text-xs text-gray-400">Enable or disable this store</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsActive(!isActive)}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${
+                    isActive ? "bg-[#0D9488]" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      isActive ? "translate-x-5" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Footer - sticky at bottom */}
+          <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0F766E] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading && <Loader2 size={14} className="animate-spin" />}
               {isEdit ? "Save Changes" : "Create Store"}

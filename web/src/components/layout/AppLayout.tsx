@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Outlet } from "react-router-dom";
-import { Menu, X } from "lucide-react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import type { User } from "@/types";
@@ -10,47 +9,62 @@ interface AppLayoutProps {
   onLogout: () => void;
 }
 
+const COLLAPSED_KEY = "flooreye-sidebar-collapsed";
+
+function getStoredCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export default function AppLayout({ user, onLogout }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(getStoredCollapsed);
+
+  // Persist collapsed state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, String(collapsed));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [collapsed]);
+
+  const handleMobileClose = useCallback(() => {
+    setMobileOpen(false);
+  }, []);
+
+  const handleMenuToggle = useCallback(() => {
+    setMobileOpen((prev) => !prev);
+  }, []);
+
+  const handleCollapse = useCallback((value: boolean) => {
+    setCollapsed(value);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8F7F4]">
-      {/* Mobile sidebar backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar — hidden on mobile by default, shown when toggled */}
-      <div
-        className={`
-          fixed inset-y-0 left-0 z-50 lg:relative lg:z-auto
-          transition-transform duration-200 ease-in-out
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        `}
-      >
-        <Sidebar role={user.role} />
-      </div>
+      {/* Sidebar */}
+      <Sidebar
+        role={user.role}
+        userName={user.name}
+        collapsed={collapsed}
+        onCollapse={handleCollapse}
+        mobileOpen={mobileOpen}
+        onMobileClose={handleMobileClose}
+      />
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center border-b border-[#E7E5E0] bg-white">
-          {/* Mobile hamburger button */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-4 text-[#78716C] hover:text-[#1C1917] lg:hidden"
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <div className="flex-1">
-            <Header user={user} onLogout={onLogout} />
-          </div>
-        </div>
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="mx-auto max-w-[1440px]">
+        <Header
+          user={user}
+          onLogout={onLogout}
+          onMenuToggle={handleMenuToggle}
+        />
+        <main className="flex-1 overflow-y-auto bg-[#F8F7F4] p-6">
+          <div className="mx-auto w-full max-w-[1440px]">
             <Outlet />
           </div>
         </main>

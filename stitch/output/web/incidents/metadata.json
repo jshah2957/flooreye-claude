@@ -1,0 +1,10 @@
+{
+  "screenName": "incidents",
+  "screenId": "88ef61ae259d4a3d9b65af3271964d6d",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-22T09:05:06.558Z",
+  "prompt": "Incident management page for FloorEye. \"Incident Management\" title + WebSocket connection indicator (green dot = connected) + sound toggle button. Blue \"X new incidents\" info banner. Filter bar: status dropdown (All/New/Acknowledged/Resolved/False Positive), severity dropdown, store dropdown, sort by (Newest/Severity/Detection Count). Incident table rows with: left severity color bar (critical=red, high=orange, medium=yellow, low=green), severity badge, store + camera name, first detected timestamp, duration, max confidence %, wet area %, detection count, status badge, action buttons (Acknowledge/Resolve/False Positive). Right detail panel on row click: incident summary, detection timeline, triggered devices, notes textarea, action buttons (Acknowledge teal, Resolve green, False Positive amber). Show 5+ sample incidents."
+}

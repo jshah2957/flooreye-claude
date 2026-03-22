@@ -93,10 +93,14 @@ export default function AnalyticsScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
         accessibilityLabel="Loading analytics"
       >
         <ActivityIndicator size="large" color={BRAND.primary} />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading analytics...
+        </Text>
       </View>
     );
   }
@@ -104,7 +108,7 @@ export default function AnalyticsScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: BRAND.background }}
-      contentContainerStyle={{ padding: SPACING.lg }}
+      contentContainerStyle={{ padding: 16 }}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -115,10 +119,10 @@ export default function AnalyticsScreen() {
     >
       <Text
         style={{
-          fontSize: FONT_SIZE.xxl,
-          fontWeight: "600",
+          fontSize: 20,
+          fontWeight: "700",
           color: BRAND.textPrimary,
-          marginBottom: SPACING.md,
+          marginBottom: 16,
         }}
         accessibilityRole="header"
         accessibilityLabel="Analytics"
@@ -133,8 +137,8 @@ export default function AnalyticsScreen() {
       <View
         style={{
           flexDirection: "row",
-          gap: SPACING.sm,
-          marginBottom: SPACING.lg,
+          gap: 8,
+          marginBottom: 20,
         }}
         accessibilityLabel="Select time period"
       >
@@ -146,19 +150,19 @@ export default function AnalyticsScreen() {
             accessibilityLabel={`${d} days`}
             accessibilityState={{ selected: days === d }}
             style={{
-              backgroundColor: days === d ? BRAND.primary : BRAND.surface,
-              borderRadius: RADIUS.full,
-              paddingHorizontal: SPACING.lg,
-              paddingVertical: SPACING.xs + 2,
-              borderWidth: 1,
-              borderColor: days === d ? BRAND.primary : BRAND.border,
+              height: 40,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: days === d ? BRAND.primary : "#F3F4F6",
+              borderRadius: 20,
+              paddingHorizontal: 20,
             }}
           >
             <Text
               style={{
-                fontSize: FONT_SIZE.md,
+                fontSize: 14,
                 fontWeight: "600",
-                color: days === d ? NEUTRAL.white : BRAND.textPrimary,
+                color: days === d ? NEUTRAL.white : "#78716C",
               }}
             >
               {d}d
@@ -167,10 +171,10 @@ export default function AnalyticsScreen() {
         ))}
       </View>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — 2x2 Grid */}
       {data && (
-        <View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
-          <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+        <View style={{ gap: 12, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
             <StatCard
               label="Total Detections"
               value={data.total_detections}
@@ -182,7 +186,7 @@ export default function AnalyticsScreen() {
               color={STAT_COLORS.wetRate}
             />
           </View>
-          <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+          <View style={{ flexDirection: "row", gap: 12 }}>
             <StatCard
               label="Incidents"
               value={data.total_incidents}
@@ -202,19 +206,22 @@ export default function AnalyticsScreen() {
         <View
           style={{
             backgroundColor: BRAND.surface,
-            borderRadius: RADIUS.md,
-            borderWidth: 1,
-            borderColor: BRAND.border,
-            padding: SPACING.md,
+            borderRadius: 12,
+            padding: 16,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 3,
+            elevation: 2,
           }}
           accessibilityLabel={`Detection heatmap for ${days} days`}
         >
           <Text
             style={{
-              fontSize: FONT_SIZE.lg,
-              fontWeight: "600",
+              fontSize: 15,
+              fontWeight: "700",
               color: BRAND.textPrimary,
-              marginBottom: SPACING.sm,
+              marginBottom: 8,
             }}
             accessibilityRole="header"
           >
@@ -222,12 +229,12 @@ export default function AnalyticsScreen() {
           </Text>
           <Text
             style={{
-              fontSize: FONT_SIZE.xs,
+              fontSize: 11,
               color: BRAND.textSecondary,
-              marginBottom: SPACING.sm,
+              marginBottom: 10,
             }}
           >
-            Hour → (0-23) | Day ↓ (Mon-Sun)
+            Hour (0-23) | Day (Mon-Sun)
           </Text>
 
           {DAY_LABELS.map((day, rowIdx) => (
@@ -242,9 +249,10 @@ export default function AnalyticsScreen() {
             >
               <Text
                 style={{
-                  width: 28,
-                  fontSize: FONT_SIZE.xs - 1,
+                  width: 30,
+                  fontSize: 10,
                   color: BRAND.textSecondary,
+                  fontWeight: "500",
                 }}
               >
                 {day}
@@ -265,10 +273,11 @@ export default function AnalyticsScreen() {
                         key={colIdx}
                         style={{
                           flex: 1,
-                          height: SPACING.md,
+                          minWidth: 10,
+                          minHeight: 10,
                           backgroundColor: bg,
-                          marginRight: 1,
-                          borderRadius: 1,
+                          margin: 1,
+                          borderRadius: 2,
                         }}
                         accessibilityLabel={`${day} hour ${colIdx}: ${val} detections`}
                       />
@@ -298,28 +307,33 @@ function StatCard({
       style={{
         flex: 1,
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        borderColor: BRAND.border,
-        padding: SPACING.md,
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
       }}
       accessibilityLabel={`${label}: ${value}`}
-      accessibilityRole="summary" as any
     >
       <Text
         style={{
-          fontSize: FONT_SIZE.sm,
-          color: BRAND.textSecondary,
+          fontSize: 11,
+          textTransform: "uppercase",
+          color: "#78716C",
+          fontWeight: "500",
+          letterSpacing: 0.5,
+          marginBottom: 6,
         }}
       >
         {label}
       </Text>
       <Text
         style={{
-          fontSize: FONT_SIZE.h2,
+          fontSize: 24,
           fontWeight: "700",
           color,
-          marginTop: 2,
         }}
       >
         {value}

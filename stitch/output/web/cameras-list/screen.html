@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye | Camera Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-container": "#f4fffc",
+              "on-tertiary-container": "#fffbff",
+              "surface-tint": "#006a61",
+              "tertiary-fixed": "#eaddff",
+              "surface-container-low": "#f4f3f0",
+              "on-secondary-fixed-variant": "#3f465c",
+              "surface-variant": "#e3e2df",
+              "tertiary-container": "#8a4cfc",
+              "on-error-container": "#93000a",
+              "on-primary-fixed-variant": "#005049",
+              "surface-bright": "#faf9f6",
+              "on-surface": "#1a1c1a",
+              "outline-variant": "#bcc9c6",
+              "primary-container": "#008378",
+              "secondary-fixed": "#dae2fd",
+              "on-primary-fixed": "#00201d",
+              "surface-container": "#efeeeb",
+              "inverse-on-surface": "#f2f1ee",
+              "inverse-surface": "#2f312f",
+              "primary-fixed": "#89f5e7",
+              "on-tertiary": "#ffffff",
+              "primary": "#00685f",
+              "on-secondary": "#ffffff",
+              "on-secondary-container": "#5c647a",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed-dim": "#6bd8cb",
+              "surface-container-highest": "#e3e2df",
+              "tertiary-fixed-dim": "#d2bbff",
+              "secondary": "#565e74",
+              "on-background": "#1a1c1a",
+              "surface-container-high": "#e9e8e5",
+              "surface": "#faf9f6",
+              "inverse-primary": "#6bd8cb",
+              "secondary-container": "#dae2fd",
+              "on-secondary-fixed": "#131b2e",
+              "on-tertiary-fixed": "#25005a",
+              "tertiary": "#712ae2",
+              "background": "#faf9f6",
+              "on-surface-variant": "#3d4947",
+              "error": "#ba1a1a",
+              "surface-dim": "#dbdad7",
+              "secondary-fixed-dim": "#bec6e0",
+              "outline": "#6d7a77",
+              "on-primary": "#ffffff",
+              "on-error": "#ffffff",
+              "on-tertiary-fixed-variant": "#5a00c6",
+              "error-container": "#ffdad6"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-header { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .tonal-depth { box-shadow: 0 4px 20px -2px rgba(26, 28, 26, 0.04); }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- SideNavBar (Execution from JSON) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#0F172A] shadow-xl flex flex-col h-full py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-bold text-white tracking-tighter">FloorEye</h1>
+<p class="text-[10px] uppercase tracking-[0.2em] text-[#0D9488] font-bold mt-1">Enterprise AI</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">dashboard</span>
+<span class="font-inter body-md tracking-tight">Dashboard</span>
+</a>
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">videocam</span>
+<span class="font-inter body-md tracking-tight">Live Monitoring</span>
+</a>
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">history</span>
+<span class="font-inter body-md tracking-tight">Detection History</span>
+</a>
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">emergency_home</span>
+<span class="font-inter body-md tracking-tight">Incidents</span>
+</a>
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">storefront</span>
+<span class="font-inter body-md tracking-tight">Stores</span>
+</a>
+<!-- Active State: Cameras -->
+<a class="flex items-center px-6 py-3 space-x-3 border-l-4 border-[#0D9488] text-white bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">videocam_off</span>
+<span class="font-inter body-md tracking-tight">Cameras</span>
+</a>
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">api</span>
+<span class="font-inter body-md tracking-tight">API Manager</span>
+</a>
+<a class="flex items-center px-6 py-3 space-x-3 text-[#CBD5E1] hover:text-white hover:bg-white/5 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined text-lg">settings</span>
+<span class="font-inter body-md tracking-tight">Settings</span>
+</a>
+</nav>
+<div class="px-6 pt-6 mt-auto border-t border-white/10">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white text-xs font-bold">FE</div>
+<div>
+<p class="text-white text-sm font-medium">System Admin</p>
+<p class="text-[#CBD5E1] text-[10px]">v4.2.0-stable</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Execution from JSON) -->
+<header class="sticky top-0 h-16 w-full bg-white/80 backdrop-blur-md dark:bg-[#FAF9F6]/80 flex items-center justify-between px-8 z-40 shadow-sm">
+<div class="flex items-center">
+<span class="font-inter headline-sm font-bold text-[#00685F] tracking-tight">Cameras</span>
+<span class="ml-4 px-2 py-0.5 bg-surface-container text-on-surface-variant text-[11px] font-bold tracking-wider rounded uppercase">42 Active</span>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex space-x-4 text-[#1A1C1A]">
+<span class="material-symbols-outlined cursor-pointer hover:opacity-70 transition-all">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:opacity-70 transition-all">help</span>
+<span class="material-symbols-outlined cursor-pointer hover:opacity-70 transition-all">account_circle</span>
+</div>
+<button class="bg-primary text-white px-5 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-sm hover:bg-primary-container transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Camera</span>
+</button>
+</div>
+</header>
+<!-- Canvas Content -->
+<div class="p-8 max-w-7xl mx-auto space-y-8">
+<!-- Filter Bar Section -->
+<section class="bg-surface-container-low p-1.5 rounded-2xl flex flex-wrap items-center gap-3">
+<div class="flex-1 min-w-[300px] relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-primary/20 rounded-xl pl-12 pr-4 py-2.5 text-sm placeholder:text-on-surface-variant/50" placeholder="Search by name, IP, or location..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<select class="bg-surface-container-lowest border-none text-xs font-semibold px-4 py-2.5 rounded-xl focus:ring-1 focus:ring-primary/20 cursor-pointer">
+<option>All Stores</option>
+<option>San Francisco - Flagship</option>
+<option>Seattle - Distribution</option>
+</select>
+<select class="bg-surface-container-lowest border-none text-xs font-semibold px-4 py-2.5 rounded-xl focus:ring-1 focus:ring-primary/20 cursor-pointer">
+<option>Any Status</option>
+<option>Online</option>
+<option>Offline</option>
+<option>Testing</option>
+</select>
+<select class="bg-surface-container-lowest border-none text-xs font-semibold px-4 py-2.5 rounded-xl focus:ring-1 focus:ring-primary/20 cursor-pointer">
+<option>Inference Mode</option>
+<option>Edge AI</option>
+<option>Hybrid</option>
+<option>Cloud</option>
+</select>
+</div>
+</section>
+<!-- Agent Group 01 -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-outline-variant/15 pb-4">
+<div class="flex items-center gap-3">
+<h2 class="text-lg font-bold tracking-tight">SF-EDGE-01 (Primary Agent)</h2>
+<span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-extrabold rounded uppercase tracking-widest">Active</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-tighter"><span class="text-primary">12</span> configured</span>
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-tighter"><span class="text-tertiary">2</span> waiting</span>
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-tighter"><span class="text-secondary">0</span> paused</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Camera Card 1: Live -->
+<div class="bg-surface-container-lowest rounded-xl p-4 tonal-depth group hover:scale-[1.01] transition-all duration-300">
+<div class="relative h-40 mb-4 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="High angle view of a retail store floor with customers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHo6Om3MGWA2aJNZ6bM6WDQwErpLCsnkFQP0OYleSv9WDxPHTbOkIYSswAw-TRQcori-nSuwwiunCXHC8ksB-UW6HzRHu1aPK0gYcw-GhuIZNosj6ULUSM_MXQWPTif5uGxTG1KCZCV6ZKQzirirndtCydkJrjEak2RacUWqt6TOllg6R6vDtceMiBa83iDn4_C9HWUk41hQ3hXzGYV2DIfbo2YR9OR-69zM11iVywg-GuTcmbN4SJIrkuSPartgh6FAbOaRa_cNA3"/>
+<div class="absolute top-3 left-3 px-2 py-1 bg-black/40 backdrop-blur-md rounded text-[9px] font-bold text-white uppercase tracking-widest flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> Live
+                            </div>
+</div>
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface tracking-tight">Main Entrance North</h3>
+<p class="text-xs text-on-surface-variant">SF - Flagship Store</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-on-surface">more_vert</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-4">
+<span class="px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold rounded">Online</span>
+<span class="px-2 py-0.5 bg-tertiary/10 text-tertiary text-[10px] font-bold rounded">Edge AI</span>
+</div>
+<div class="mt-5 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Detections Active</span>
+<div class="w-10 h-5 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Camera Card 2: No Signal -->
+<div class="bg-surface-container-lowest rounded-xl p-4 tonal-depth group hover:scale-[1.01] transition-all duration-300">
+<div class="relative h-40 mb-4 rounded-lg overflow-hidden bg-surface-dim flex flex-col items-center justify-center space-y-2">
+<span class="material-symbols-outlined text-on-surface-variant text-4xl">videocam_off</span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Signal Lost</span>
+</div>
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface tracking-tight">Checkout Lane 04</h3>
+<p class="text-xs text-on-surface-variant">SF - Flagship Store</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-4">
+<span class="px-2 py-0.5 bg-red-50 text-red-700 text-[10px] font-bold rounded">Offline</span>
+<span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded">Hybrid</span>
+</div>
+<div class="mt-5 pt-4 border-t border-outline-variant/10 flex items-center justify-between opacity-50">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Detections Active</span>
+<div class="w-10 h-5 bg-surface-container-highest rounded-full relative">
+<div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Camera Card 3: Static Snapshot -->
+<div class="bg-surface-container-lowest rounded-xl p-4 tonal-depth group hover:scale-[1.01] transition-all duration-300">
+<div class="relative h-40 mb-4 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Security camera view of a parking lot and store entrance" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlYVw4VoVdO2FT_EsGtyEIwoCIa-9LQ4w2j8R_zuJo54YpCZuDt4jz8Np-pfeRm5AOUIzpz_YuJKkK77kGyKeIWLFf5nPG2ivSDgTjPFd-kgSHwK96dUDMA2SG8W5fkC5I0rRfDEaGCL8JYM2Tnrbhi4hifSkLZ4w4zb4NMh5oCTsKOWJtBql6zGz5d49Ko0njQOj_6DYENHhRrgTv3XAX3yxN8hfzjn0pTtzIGjAvQgRV4TSscZ58ASdOsSpDn6XcqP7r-RkmjRKV"/>
+</div>
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface tracking-tight">Outdoor Loading Dock</h3>
+<p class="text-xs text-on-surface-variant">SF - Flagship Store</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-4">
+<span class="px-2 py-0.5 bg-orange-50 text-orange-700 text-[10px] font-bold rounded">Testing</span>
+<span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded">Cloud</span>
+</div>
+<div class="mt-5 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Detections Active</span>
+<div class="w-10 h-5 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Agent Group 02 -->
+<section class="space-y-6">
+<div class="flex items-baseline justify-between border-b border-outline-variant/15 pb-4">
+<div class="flex items-center gap-3">
+<h2 class="text-lg font-bold tracking-tight">SEA-HUB-04 (Warehouse)</h2>
+<span class="px-2 py-0.5 bg-secondary/10 text-secondary text-[10px] font-extrabold rounded uppercase tracking-widest">Standby</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-tighter"><span class="text-primary">8</span> configured</span>
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-tighter"><span class="text-tertiary">4</span> waiting</span>
+<span class="text-[11px] font-bold text-on-surface-variant uppercase tracking-tighter"><span class="text-secondary">1</span> paused</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Camera Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 tonal-depth group hover:scale-[1.01] transition-all duration-300">
+<div class="relative h-40 mb-4 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Warehouse shelves with boxes and lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoKqUyeE0ANYZ_972-QAsJD0A-thZmGAq2HyA3wawORHfWMCLXYDHhmZ-t3FdwXl-j1Oec0aRlUP7lT2QxjwldGicoud15r3ZbYG3XemLj9p7CEu2ebkXaUkvtxCsUlfVGt0KDz3e8JdEkpN43TtS4CYFWRx0cm-825KN14rf2d1w1HpB2Tq8qoveQ-igfvAEJ6mAWoFglcnwjaSCiqzO09IJsAVuYbf7sGcvMJfzPl6Ej37p3VyN3u7fIvhx5MkdSh0TAZSjmndhy"/>
+</div>
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface tracking-tight">Inventory Row A-12</h3>
+<p class="text-xs text-on-surface-variant">Seattle Warehouse</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-4">
+<span class="px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold rounded">Online</span>
+<span class="px-2 py-0.5 bg-tertiary/10 text-tertiary text-[10px] font-bold rounded">Edge AI</span>
+</div>
+<div class="mt-5 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Detections Active</span>
+<div class="w-10 h-5 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Camera Card 5 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 tonal-depth group hover:scale-[1.01] transition-all duration-300">
+<div class="relative h-40 mb-4 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Security footage of office hallway with glass doors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDTTMAq1OdYIaFZ6MsnZ9BtI_1mWDmvNfFBfaeFx7s3j3Q2aPfKUtlvE2XNhqhLYnosXyXnM_L4Gb7GQvY0duS6vsM-mgcoqpWXDYdA4sDi7Cq83HdHT7xkX-yCSvqvmYY1YoY01yIF6rb8NIkSMEoYQSeJc-C8Rbi0j9qHV5TO4Tq7v7U6Q19pOIqLpgyy0hgBcmSBhkmZqXm5QBYUsnIfRqSSFX2pR1lKgHR_tCABry-sg1Wm9mZPsAXJXHVQ9kbC7M0h8f-kwXm"/>
+</div>
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface tracking-tight">Admin Hallway South</h3>
+<p class="text-xs text-on-surface-variant">Seattle Warehouse</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">more_vert</span>
+</div>
+<div class="flex flex-wrap gap-2 mt-4">
+<span class="px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold rounded">Online</span>
+<span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-bold rounded">Hybrid</span>
+</div>
+<div class="mt-5 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Detections Active</span>
+<div class="w-10 h-5 bg-primary rounded-full relative cursor-pointer">
+<div class="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Inactive Cameras Collapsible -->
+<section class="mt-12 bg-surface-container-low rounded-2xl overflow-hidden">
+<div class="p-6 flex items-center justify-between cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">visibility_off</span>
+</div>
+<div>
+<h3 class="font-bold text-on-surface">Inactive Cameras</h3>
+<p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">14 items currently archived</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-y-0.5 transition-transform">expand_more</span>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB (Only for main landing screens) -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add_a_photo</span>
+</button>
+</div>
+</body></html>

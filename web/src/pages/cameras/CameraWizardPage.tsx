@@ -11,6 +11,7 @@ import {
   Store as StoreIcon,
   Wifi,
   WifiOff,
+  Check,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -30,6 +31,8 @@ interface TestCameraResult {
   error: string | null;
   resolution: string | null;
 }
+
+const STEP_LABELS = ["Select Store", "Camera Details", "Complete"];
 
 export default function CameraWizardPage() {
   const navigate = useNavigate();
@@ -72,7 +75,7 @@ export default function CameraWizardPage() {
   const stores = storesData ?? [];
   const agents = agentsData ?? [];
 
-  // Map store → agent
+  // Map store -> agent
   const agentByStore = new Map(agents.map((a) => [a.store_id, a]));
 
   function storeEdgeStatus(sid: string): "online" | "offline" | "none" {
@@ -157,110 +160,150 @@ export default function CameraWizardPage() {
   const canProceedStep1 = camName.trim() && camUrl.trim() && testResult?.connected;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl pb-12">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-8">
         <button
           onClick={() => navigate("/cameras")}
-          className="mb-2 flex items-center gap-1 text-sm text-[#78716C] hover:text-[#0D9488]"
+          className="mb-3 inline-flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-[#0D9488]"
         >
           <ArrowLeft size={14} /> Back to Cameras
         </button>
-        <h1 className="text-xl font-semibold text-[#1C1917]">Add Camera</h1>
-        <p className="text-sm text-[#78716C]">
+        <h1 className="text-2xl font-bold text-gray-900">Add Camera</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Camera connectivity is validated through the edge device on the store's local network.
         </p>
       </div>
 
       {/* Step indicators */}
-      <div className="mb-6 flex gap-2">
-        {["Select Store", "Details + Validate", "Complete"].map((label, i) => (
-          <div
-            key={label}
-            className={`flex-1 rounded-full py-1.5 text-center text-xs font-medium ${
-              i === step
-                ? "bg-[#0D9488] text-white"
-                : i < step
-                  ? "bg-[#DCFCE7] text-[#16A34A]"
-                  : "bg-[#F1F0ED] text-[#78716C]"
-            }`}
-          >
-            {label}
-          </div>
-        ))}
+      <div className="mb-8">
+        <div className="flex items-center">
+          {STEP_LABELS.map((label, i) => (
+            <div key={label} className="flex flex-1 items-center">
+              {/* Step circle + label */}
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-all ${
+                    i === step
+                      ? "bg-[#0D9488] text-white shadow-md shadow-[#0D9488]/30"
+                      : i < step
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {i < step ? <Check size={16} strokeWidth={3} /> : i + 1}
+                </div>
+                <span
+                  className={`mt-2 text-xs font-medium ${
+                    i === step ? "text-[#0D9488]" : i < step ? "text-green-600" : "text-gray-400"
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+              {/* Connecting line */}
+              {i < STEP_LABELS.length - 1 && (
+                <div className="flex-1 px-3">
+                  <div
+                    className={`h-0.5 rounded-full transition-colors ${
+                      i < step ? "bg-green-400" : "bg-gray-200"
+                    }`}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Step 0: Select Store */}
       {step === 0 && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-          <h2 className="mb-4 text-base font-semibold text-[#1C1917]">Select Store</h2>
-          <p className="mb-4 text-xs text-[#78716C]">
-            Choose the store where this camera is located. Only stores with an online edge agent can
-            be selected.
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-2 text-lg font-bold text-gray-900">Select Store</h2>
+          <p className="mb-5 text-sm text-gray-500">
+            Choose the store where this camera is located. Only stores with an online edge agent can be selected.
           </p>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {stores.map((s) => {
               const edgeStatus = storeEdgeStatus(s.id);
               const agent = agentByStore.get(s.id);
               const isOnline = edgeStatus === "online";
+              const isSelected = storeId === s.id;
               return (
                 <label
                   key={s.id}
-                  className={`flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors ${
-                    storeId === s.id
-                      ? "border-[#0D9488] bg-[#F0FDFA]"
-                      : "border-[#E7E5E0] hover:border-[#0D9488]/50"
-                  } ${!isOnline ? "cursor-not-allowed opacity-50" : ""}`}
+                  className={`flex cursor-pointer items-center justify-between rounded-xl border-2 p-4 transition-all ${
+                    isSelected
+                      ? "border-[#0D9488] bg-[#F0FDFA] shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+                  } ${!isOnline ? "cursor-not-allowed opacity-40" : ""}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <input
                       type="radio"
                       name="store"
                       value={s.id}
-                      checked={storeId === s.id}
+                      checked={isSelected}
                       onChange={() => setStoreId(s.id)}
                       disabled={!isOnline}
-                      className="accent-[#0D9488]"
+                      className="sr-only"
                     />
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                      isSelected ? "bg-[#0D9488]/10" : "bg-gray-100"
+                    }`}>
+                      <StoreIcon size={18} className={isSelected ? "text-[#0D9488]" : "text-gray-400"} />
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <StoreIcon size={14} className="text-[#78716C]" />
-                        <span className="text-sm font-medium text-[#1C1917]">{s.name}</span>
+                        <span className="text-sm font-semibold text-gray-900">{s.name}</span>
+                        {isSelected && (
+                          <span className="rounded-full bg-[#0D9488] px-1.5 py-0.5">
+                            <Check size={10} className="text-white" strokeWidth={3} />
+                          </span>
+                        )}
                       </div>
-                      {agent && (
-                        <span className="text-[10px] text-[#78716C]">Edge: {agent.name}</span>
-                      )}
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-xs text-gray-400">{s.address || s.city || "--"}</span>
+                        {agent && (
+                          <>
+                            <span className="text-gray-300">&middot;</span>
+                            <span className="text-xs text-gray-400">Edge: {agent.name}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div>
                     {edgeStatus === "online" && (
-                      <span className="flex items-center gap-1 text-xs text-[#16A34A]">
+                      <span className="flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-600">
                         <Wifi size={12} /> Online
                       </span>
                     )}
                     {edgeStatus === "offline" && (
-                      <span className="flex items-center gap-1 text-xs text-[#DC2626]">
+                      <span className="flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600">
                         <WifiOff size={12} /> Offline
                       </span>
                     )}
                     {edgeStatus === "none" && (
-                      <span className="text-xs text-[#78716C]">No edge device</span>
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">No edge device</span>
                     )}
                   </div>
                 </label>
               );
             })}
             {stores.length === 0 && (
-              <p className="py-8 text-center text-sm text-[#78716C]">
-                No stores found. Create a store first.
-              </p>
+              <div className="flex flex-col items-center py-12 text-center">
+                <StoreIcon size={32} className="mb-3 text-gray-300" />
+                <p className="text-sm font-medium text-gray-500">No stores found</p>
+                <p className="mt-1 text-xs text-gray-400">Create a store first</p>
+              </div>
             )}
           </div>
           <div className="mt-6 flex justify-end">
             <button
               onClick={() => setStep(1)}
               disabled={!canProceedStep0}
-              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0F766E] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
             >
               Next <ArrowRight size={14} />
             </button>
@@ -270,39 +313,41 @@ export default function CameraWizardPage() {
 
       {/* Step 1: Camera Details + Validate */}
       {step === 1 && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-          <h2 className="mb-4 text-base font-semibold text-[#1C1917]">Camera Details</h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-5 text-lg font-bold text-gray-900">Camera Details</h2>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="mb-1 block text-xs font-medium text-[#78716C]">
-                Camera Name *
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                Camera Name <span className="text-red-400">*</span>
               </label>
               <input
                 value={camName}
                 onChange={(e) => setCamName(e.target.value)}
                 placeholder="e.g. Entrance Camera"
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-[#78716C]">RTSP URL *</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">
+                RTSP URL <span className="text-red-400">*</span>
+              </label>
               <input
                 value={camUrl}
                 onChange={(e) => handleUrlChange(e.target.value)}
                 placeholder="rtsp://admin:pass@192.168.1.100/stream"
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 font-mono text-sm outline-none focus:border-[#0D9488]"
+                className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 font-mono text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#78716C]">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">
                   Stream Type
                 </label>
                 <select
                   value={streamType}
                   onChange={(e) => handleStreamTypeChange(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                 >
                   <option value="rtsp">RTSP</option>
                   <option value="hls">HLS</option>
@@ -311,71 +356,73 @@ export default function CameraWizardPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-[#78716C]">Location</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Location</label>
                 <input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Main entrance"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                 />
               </div>
             </div>
           </div>
 
           {/* Validate button */}
-          <div className="mt-4">
+          <div className="mt-5">
             <button
               onClick={() => testMutation.mutate()}
               disabled={!camUrl.trim() || testMutation.isPending}
-              className="flex items-center gap-2 rounded-md border border-[#0D9488] px-4 py-2 text-sm font-medium text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border-2 border-[#0D9488] px-5 py-2.5 text-sm font-semibold text-[#0D9488] transition-all hover:bg-[#F0FDFA] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {testMutation.isPending ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 <Camera size={14} />
               )}
-              {testMutation.isPending ? "Validating..." : "Validate via Edge"}
+              {testMutation.isPending ? "Testing Connection..." : "Test Connection"}
             </button>
           </div>
 
-          {/* Test result — success */}
+          {/* Test result -- success */}
           {testResult && testResult.connected && (
-            <div className="mt-4 rounded-lg border border-[#DCFCE7] bg-[#F0FDF4] p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[#16A34A]">
-                <CheckCircle size={16} /> Camera connected successfully
+            <div className="mt-5 overflow-hidden rounded-xl border-2 border-green-200 bg-green-50/50">
+              <div className="flex items-center gap-2.5 px-4 py-3 text-sm font-semibold text-green-700">
+                <CheckCircle size={18} /> Camera connected successfully
+                {testResult.resolution && (
+                  <span className="ml-auto rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                    {testResult.resolution}
+                  </span>
+                )}
               </div>
-              {testResult.resolution && (
-                <p className="mb-2 text-xs text-[#78716C]">Resolution: {testResult.resolution}</p>
-              )}
               {testResult.snapshot_base64 && (
                 <img
                   src={`data:image/jpeg;base64,${testResult.snapshot_base64}`}
                   alt="Preview frame"
-                  className="mt-2 max-h-[300px] rounded-md border border-[#E7E5E0]"
+                  className="w-full border-t border-green-200"
                 />
               )}
             </div>
           )}
 
-          {/* Test result — failure */}
+          {/* Test result -- failure */}
           {testError && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg border border-[#FCA5A5] bg-[#FEF2F2] p-4 text-sm text-[#DC2626]">
-              <XCircle size={16} /> {testError}
+            <div className="mt-5 flex items-center gap-2.5 rounded-xl border-2 border-red-200 bg-red-50/50 px-4 py-3 text-sm font-medium text-red-700">
+              <XCircle size={18} /> {testError}
             </div>
           )}
 
           {/* Navigation */}
-          <div className="mt-6 flex justify-between">
+          <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-6">
             <button
               onClick={() => setStep(0)}
-              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
               <ArrowLeft size={14} /> Back
             </button>
             <button
               onClick={() => addMutation.mutate()}
               disabled={!canProceedStep1 || addMutation.isPending}
-              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0F766E] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40"
             >
               {addMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : null}
               {addMutation.isPending ? "Adding..." : "Add Camera"}
@@ -386,34 +433,36 @@ export default function CameraWizardPage() {
 
       {/* Step 2: Complete */}
       {step === 2 && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6 text-center">
+        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center shadow-sm">
           {addMutation.isPending ? (
-            <>
-              <Loader2 size={48} className="mx-auto mb-4 animate-spin text-[#0D9488]" />
-              <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Adding camera...</h2>
-            </>
+            <div className="flex flex-col items-center">
+              <Loader2 size={48} className="mb-4 animate-spin text-[#0D9488]" />
+              <h2 className="text-xl font-bold text-gray-900">Adding camera...</h2>
+            </div>
           ) : (
-            <>
-              <CheckCircle size={48} className="mx-auto mb-4 text-[#16A34A]" />
-              <h2 className="mb-2 text-lg font-semibold text-[#1C1917]">Camera Added</h2>
-              <p className="mb-6 text-sm text-[#78716C]">
+            <div className="flex flex-col items-center">
+              <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-50">
+                <CheckCircle size={48} className="text-green-500" />
+              </div>
+              <h2 className="mb-2 text-xl font-bold text-gray-900">Camera Added Successfully</h2>
+              <p className="mb-8 max-w-sm text-sm text-gray-500">
                 Configure ROI and dry reference to start detection.
               </p>
-              <div className="flex justify-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={() => navigate(`/cameras/${createdCameraId}`)}
-                  className="rounded-md bg-[#0D9488] px-5 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0F766E] hover:shadow-md"
                 >
                   Go to Camera Detail
                 </button>
                 <button
                   onClick={resetWizard}
-                  className="rounded-md border border-[#E7E5E0] px-5 py-2 text-sm text-[#78716C] hover:bg-[#F1F0ED]"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-6 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
                   Add Another Camera
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

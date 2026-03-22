@@ -23,6 +23,14 @@ interface ModelVersion {
   created_at: string;
 }
 
+const STATUS_TABS = [
+  { value: "", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "staging", label: "Staging" },
+  { value: "production", label: "Production" },
+  { value: "retired", label: "Retired" },
+];
+
 export default function ModelRegistryPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
@@ -94,110 +102,159 @@ export default function ModelRegistryPage() {
   const models = (data?.data ?? []) as ModelVersion[];
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#1C1917]">Model Registry</h1>
-        <div className="flex gap-2">
+    <div className="min-h-[calc(100vh-8rem)]">
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Model Registry</h1>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => pullFromRoboflowMutation.mutate()}
             disabled={pullFromRoboflowMutation.isPending}
-            className="flex items-center gap-2 rounded-md border border-[#0D9488] px-4 py-2 text-sm font-medium text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-teal-500 px-4 py-2.5 text-sm font-medium text-teal-600 shadow-sm transition hover:bg-teal-50 disabled:opacity-50"
           >
             {pullFromRoboflowMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <CloudDownload size={16} />}
             Pull from Roboflow
           </button>
           <button onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]">
+            className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700">
             <Plus size={16} /> New Model
           </button>
         </div>
       </div>
 
-      <div className="mb-4 flex gap-3">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-          <option value="">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="staging">Staging</option>
-          <option value="production">Production</option>
-          <option value="retired">Retired</option>
-        </select>
+      {/* Filter Tabs */}
+      <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setStatusFilter(tab.value)}
+            className={`flex-shrink-0 rounded-lg px-4 py-2 text-xs font-medium transition ${
+              statusFilter === tab.value
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
+        {/* Model List */}
         <div className="lg:col-span-2">
           {isLoading ? (
-            <div className="flex h-40 items-center justify-center"><Loader2 size={24} className="animate-spin text-[#0D9488]" /></div>
+            <div className="flex h-48 items-center justify-center">
+              <Loader2 size={28} className="animate-spin text-teal-600" />
+            </div>
           ) : models.length === 0 ? (
             <EmptyState icon={Box} title="No models" description="Train your first model or create one manually." />
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-[#E7E5E0] bg-white">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#E7E5E0] bg-[#F8F7F4]">
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">Version</th>
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">Arch</th>
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">Status</th>
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">Frames</th>
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">mAP@50</th>
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">F1</th>
-                    <th className="px-4 py-2 text-left font-medium text-[#78716C]">Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {models.map((m) => (
-                    <tr key={m.id} onClick={() => setSelectedModel(m)}
-                      className={`border-b border-[#E7E5E0] cursor-pointer hover:bg-[#F8F7F4] ${selectedModel?.id === m.id ? "bg-[#CCFBF1]" : ""}`}>
-                      <td className="px-4 py-2 font-medium text-[#0D9488]">{m.version_str ?? (m as any).name ?? '—'}</td>
-                      <td className="px-4 py-2 text-[#78716C]">{m.architecture ?? 'unknown'}</td>
-                      <td className="px-4 py-2"><StatusBadge status={m.status} /></td>
-                      <td className="px-4 py-2 text-[#78716C]">{m.frame_count ?? 0}</td>
-                      <td className="px-4 py-2 text-[#78716C]">{m.map_50 != null ? `${(m.map_50 * 100).toFixed(1)}%` : "—"}</td>
-                      <td className="px-4 py-2 text-[#78716C]">{m.f1 != null ? `${(m.f1 * 100).toFixed(1)}%` : "—"}</td>
-                      <td className="px-4 py-2 text-[#78716C]">{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Version</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Arch</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Frames</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">mAP@50</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">F1</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Created</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {models.map((m) => (
+                      <tr key={m.id} onClick={() => setSelectedModel(m)}
+                        className={`cursor-pointer border-b border-gray-50 transition hover:bg-gray-50 ${selectedModel?.id === m.id ? "bg-teal-50" : ""}`}>
+                        <td className="px-5 py-3 font-medium text-teal-600">{m.version_str ?? (m as any).name ?? '\u2014'}</td>
+                        <td className="px-5 py-3">
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{m.architecture ?? 'unknown'}</span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-1.5">
+                            {m.status === "training" && <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span>}
+                            <StatusBadge status={m.status} />
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500">{m.frame_count ?? 0}</td>
+                        <td className="px-5 py-3 text-gray-500">{m.map_50 != null ? `${(m.map_50 * 100).toFixed(1)}%` : "\u2014"}</td>
+                        <td className="px-5 py-3 text-gray-500">{m.f1 != null ? `${(m.f1 * 100).toFixed(1)}%` : "\u2014"}</td>
+                        <td className="px-5 py-3 text-gray-500">{m.created_at ? new Date(m.created_at).toLocaleDateString() : '\u2014'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="space-y-3 md:hidden">
+                {models.map((m) => (
+                  <div
+                    key={m.id}
+                    onClick={() => setSelectedModel(m)}
+                    className={`cursor-pointer rounded-xl border bg-white p-4 shadow-sm transition ${
+                      selectedModel?.id === m.id ? "border-teal-500 ring-2 ring-teal-500/20" : "border-gray-200"
+                    }`}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-medium text-teal-600">{m.version_str ?? (m as any).name ?? '\u2014'}</span>
+                      <div className="flex items-center gap-1.5">
+                        {m.status === "training" && <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" /></span>}
+                        <StatusBadge status={m.status} />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">{m.architecture ?? 'unknown'}</span>
+                      {m.map_50 != null && <span>mAP: {(m.map_50 * 100).toFixed(1)}%</span>}
+                      {m.model_size_mb != null && <span>{m.model_size_mb} MB</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
         {/* Detail Panel */}
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           {selectedModel ? (
             <>
-              <h3 className="mb-3 text-base font-semibold text-[#1C1917]">{selectedModel.version_str ?? (selectedModel as any).name ?? '—'}</h3>
-              <dl className="space-y-2 text-xs">
-                <div className="flex justify-between"><dt className="text-[#78716C]">Architecture</dt><dd className="text-[#1C1917]">{selectedModel?.architecture ?? 'unknown'}</dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Status</dt><dd><StatusBadge status={selectedModel.status} /></dd></div>
-                <div className="flex justify-between"><dt className="text-[#78716C]">Frames</dt><dd className="text-[#1C1917]">{selectedModel.frame_count ?? 0}</dd></div>
-                {selectedModel.map_50 != null && <div className="flex justify-between"><dt className="text-[#78716C]">mAP@50</dt><dd className="text-[#1C1917]">{(selectedModel.map_50 * 100).toFixed(1)}%</dd></div>}
-                {selectedModel.precision != null && <div className="flex justify-between"><dt className="text-[#78716C]">Precision</dt><dd className="text-[#1C1917]">{(selectedModel.precision * 100).toFixed(1)}%</dd></div>}
-                {selectedModel.recall != null && <div className="flex justify-between"><dt className="text-[#78716C]">Recall</dt><dd className="text-[#1C1917]">{(selectedModel.recall * 100).toFixed(1)}%</dd></div>}
-                {selectedModel.model_size_mb != null && <div className="flex justify-between"><dt className="text-[#78716C]">Size</dt><dd className="text-[#1C1917]">{selectedModel.model_size_mb} MB</dd></div>}
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">{selectedModel.version_str ?? (selectedModel as any).name ?? '\u2014'}</h3>
+              <dl className="space-y-2.5 text-sm">
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Architecture</dt><dd><span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">{selectedModel?.architecture ?? 'unknown'}</span></dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Status</dt><dd><StatusBadge status={selectedModel.status} /></dd></div>
+                <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Frames</dt><dd className="font-medium text-gray-900">{selectedModel.frame_count ?? 0}</dd></div>
+                {selectedModel.map_50 != null && <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">mAP@50</dt><dd className="font-medium text-gray-900">{(selectedModel.map_50 * 100).toFixed(1)}%</dd></div>}
+                {selectedModel.precision != null && <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Precision</dt><dd className="font-medium text-gray-900">{(selectedModel.precision * 100).toFixed(1)}%</dd></div>}
+                {selectedModel.recall != null && <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Recall</dt><dd className="font-medium text-gray-900">{(selectedModel.recall * 100).toFixed(1)}%</dd></div>}
+                {selectedModel.model_size_mb != null && <div className="flex justify-between rounded-lg bg-gray-50 px-3 py-2"><dt className="text-gray-500">Size</dt><dd className="font-medium text-gray-900">{selectedModel.model_size_mb} MB</dd></div>}
               </dl>
-              <div className="mt-4 flex flex-col gap-2">
+              <div className="mt-5 flex flex-col gap-2.5">
                 {selectedModel.status === "draft" && (
                   <button onClick={() => promoteMutation.mutate({ id: selectedModel.id, target: "staging" })}
-                    className="flex items-center justify-center gap-1 rounded-md bg-[#D97706] px-3 py-2 text-xs text-white hover:bg-amber-700">
-                    <ArrowUpCircle size={12} /> Promote to Staging
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-amber-600">
+                    <ArrowUpCircle size={14} /> Promote to Staging
                   </button>
                 )}
                 {selectedModel.status === "staging" && (
                   <button onClick={() => promoteMutation.mutate({ id: selectedModel.id, target: "production" })}
-                    className="flex items-center justify-center gap-1 rounded-md bg-[#16A34A] px-3 py-2 text-xs text-white hover:bg-green-700">
-                    <ArrowUpCircle size={12} /> Promote to Production
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-green-600 px-4 py-2.5 text-xs font-medium text-white transition hover:bg-green-700">
+                    <ArrowUpCircle size={14} /> Promote to Production
                   </button>
                 )}
                 <button onClick={() => setDeleteTarget(selectedModel.id)}
-                  className="flex items-center justify-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-2 text-xs text-[#DC2626] hover:bg-[#FEE2E2]">
-                  <Trash2 size={12} /> Delete
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-medium text-red-500 transition hover:bg-red-50">
+                  <Trash2 size={14} /> Delete
                 </button>
               </div>
             </>
           ) : (
-            <p className="py-8 text-center text-xs text-[#78716C]">Select a model to view details</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Box size={32} className="mb-3 text-gray-300" />
+              <p className="text-sm text-gray-500">Select a model to view details</p>
+            </div>
           )}
         </div>
       </div>
@@ -214,29 +271,29 @@ export default function ModelRegistryPage() {
 
       {/* Create Dialog */}
       {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-[#1C1917]">New Model Version</h3>
-              <button onClick={() => setCreateOpen(false)} className="text-[#78716C]"><X size={18} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">New Model Version</h3>
+              <button onClick={() => setCreateOpen(false)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"><X size={18} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Version *</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-900">Version *</label>
                 <input value={newVersion} onChange={(e) => setNewVersion(e.target.value)} placeholder="v1.0.0"
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20" />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">Architecture *</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-900">Architecture *</label>
                 <select value={newArch} onChange={(e) => setNewArch(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20">
                   <option value="yolov8n">YOLOv8n (Nano)</option>
                   <option value="yolov8s">YOLOv8s (Small)</option>
                   <option value="yolov8m">YOLOv8m (Medium)</option>
                 </select>
               </div>
               <button onClick={() => createMutation.mutate()} disabled={!newVersion || createMutation.isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50">
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50">
                 {createMutation.isPending && <Loader2 size={14} className="animate-spin" />} Create
               </button>
             </div>

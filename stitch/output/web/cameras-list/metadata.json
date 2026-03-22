@@ -1,0 +1,10 @@
+{
+  "screenName": "cameras-list",
+  "screenId": "3614130d14a54be0828229dad6333f2e",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-22T09:02:59.094Z",
+  "prompt": "Camera management page for FloorEye. \"Cameras\" title + count + teal \"New Camera\" button. Multi-filter bar: search input + store dropdown + status dropdown + inference mode dropdown. Cameras grouped by edge agent with section headers showing agent name and config summary (X configured, Y waiting, Z paused). 3-column camera card grid: each card has snapshot thumbnail (or placeholder), camera name (bold), store name (muted), status badge (online/offline/testing), inference mode pill, detection active toggle switch, dropdown menu (three dots: View, Edit, Test Connection, Deactivate). Collapsible \"Inactive Cameras\" section at bottom."
+}

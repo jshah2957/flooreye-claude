@@ -17,7 +17,7 @@ import {
 
 import api from "@/lib/api";
 
-/* ── Types ── */
+/* -- Types -- */
 
 interface HeaderPair {
   key: string;
@@ -41,7 +41,7 @@ interface ResponseData {
   time: number;
 }
 
-/* ── Endpoint Library ── */
+/* -- Endpoint Library -- */
 
 interface EndpointEntry {
   method: string;
@@ -147,15 +147,22 @@ const ENDPOINT_LIBRARY: EndpointCategory[] = [
 ];
 
 const METHOD_COLORS: Record<string, string> = {
-  GET: "bg-[#16A34A] text-white",
-  POST: "bg-[#2563EB] text-white",
-  PUT: "bg-[#D97706] text-white",
-  DELETE: "bg-[#DC2626] text-white",
+  GET: "bg-green-600 text-white",
+  POST: "bg-blue-600 text-white",
+  PUT: "bg-amber-500 text-white",
+  DELETE: "bg-red-600 text-white",
+};
+
+const METHOD_DOT: Record<string, string> = {
+  GET: "bg-green-500",
+  POST: "bg-blue-500",
+  PUT: "bg-amber-500",
+  DELETE: "bg-red-500",
 };
 
 const METHODS = ["GET", "POST", "PUT", "DELETE"] as const;
 
-/* ── LocalStorage helpers ── */
+/* -- LocalStorage helpers -- */
 
 const STORAGE_KEY = "flooreye_saved_tests";
 
@@ -172,7 +179,7 @@ function persistTests(tests: SavedTest[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tests));
 }
 
-/* ── Component ── */
+/* -- Component -- */
 
 export default function ApiTesterPage() {
   const [method, setMethod] = useState<string>("GET");
@@ -193,6 +200,9 @@ export default function ApiTesterPage() {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
 
+  // Mobile tab state
+  const [mobileTab, setMobileTab] = useState<"endpoints" | "request" | "saved">("request");
+
   // Sync to localStorage
   useEffect(() => {
     persistTests(savedTests);
@@ -201,6 +211,7 @@ export default function ApiTesterPage() {
   function selectEndpoint(ep: EndpointEntry) {
     setMethod(ep.method);
     setUrl(ep.path);
+    setMobileTab("request");
   }
 
   function toggleCategory(name: string) {
@@ -247,7 +258,7 @@ export default function ApiTesterPage() {
         }
       }
 
-      // Strip /api/v1 prefix if present — api client already has baseURL
+      // Strip /api/v1 prefix if present -- api client already has baseURL
       const cleanUrl = url.startsWith("/api/v1") ? url.slice(7) : url;
 
       const res = await api.request({
@@ -307,6 +318,7 @@ export default function ApiTesterPage() {
     setUrl(test.url);
     setHeaders(test.headers);
     setBody(test.body);
+    setMobileTab("request");
   }
 
   function deleteTest(id: string) {
@@ -330,9 +342,9 @@ export default function ApiTesterPage() {
   }
 
   function statusColor(code: number) {
-    if (code >= 200 && code < 300) return "bg-[#16A34A] text-white";
-    if (code >= 400 && code < 500) return "bg-[#D97706] text-white";
-    return "bg-[#DC2626] text-white";
+    if (code >= 200 && code < 300) return "bg-green-600 text-white";
+    if (code >= 400 && code < 500) return "bg-amber-500 text-white";
+    return "bg-red-600 text-white";
   }
 
   const filteredLibrary = ENDPOINT_LIBRARY.map((cat) => ({
@@ -345,73 +357,154 @@ export default function ApiTesterPage() {
     ),
   })).filter((cat) => cat.endpoints.length > 0);
 
-  return (
-    <div className="min-h-[calc(100vh-8rem)]">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[#1C1917]">API Testing Console</h1>
-        <p className="text-sm text-[#78716C]">Send requests to any API endpoint and inspect responses</p>
-      </div>
+  /* -- Shared sub-panels -- */
 
-      <div className="flex gap-4">
-        {/* ── Left: Endpoint Library ── */}
-        <div className="w-72 flex-shrink-0 rounded-lg border border-[#E7E5E0] bg-white p-3">
-          <div className="mb-3 flex items-center gap-2">
-            <BookOpen size={14} className="text-[#0D9488]" />
-            <span className="text-sm font-semibold text-[#1C1917]">Endpoints</span>
-          </div>
-          <div className="relative mb-3">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#78716C]" />
-            <input
-              value={endpointSearch}
-              onChange={(e) => setEndpointSearch(e.target.value)}
-              placeholder="Search endpoints..."
-              className="w-full rounded-md border border-[#E7E5E0] pl-8 pr-3 py-1.5 text-xs outline-none focus:border-[#0D9488]"
-            />
-          </div>
+  function renderEndpointLibrary() {
+    return (
+      <>
+        <div className="mb-3 flex items-center gap-2">
+          <BookOpen size={15} className="text-teal-600" />
+          <span className="text-sm font-semibold text-gray-900">Endpoints</span>
+        </div>
+        <div className="relative mb-3">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={endpointSearch}
+            onChange={(e) => setEndpointSearch(e.target.value)}
+            placeholder="Search endpoints..."
+            className="w-full rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-xs outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+          />
+        </div>
 
-          <div className="max-h-[calc(100vh-16rem)] space-y-1 overflow-y-auto">
-            {filteredLibrary.map((cat) => (
-              <div key={cat.name}>
-                <button
-                  onClick={() => toggleCategory(cat.name)}
-                  className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium text-[#1C1917] hover:bg-[#F8F7F4]"
-                >
-                  {expandedCategories.has(cat.name) ? (
-                    <ChevronDown size={10} />
-                  ) : (
-                    <ChevronRight size={10} />
-                  )}
-                  {cat.name}
-                  <span className="ml-auto text-[9px] text-[#78716C]">{cat.endpoints.length}</span>
-                </button>
-                {expandedCategories.has(cat.name) &&
-                  cat.endpoints.map((ep) => (
-                    <button
-                      key={`${ep.method}-${ep.path}`}
-                      onClick={() => selectEndpoint(ep)}
-                      className="ml-3 flex w-[calc(100%-0.75rem)] items-center gap-2 rounded px-2 py-1 text-xs text-[#78716C] hover:bg-[#F8F7F4] hover:text-[#1C1917]"
+        <div className="max-h-[calc(100vh-16rem)] space-y-0.5 overflow-y-auto">
+          {filteredLibrary.length === 0 && (
+            <p className="py-4 text-center text-xs text-gray-400">No endpoints match your search</p>
+          )}
+          {filteredLibrary.map((cat) => (
+            <div key={cat.name}>
+              <button
+                onClick={() => toggleCategory(cat.name)}
+                className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                {expandedCategories.has(cat.name) ? (
+                  <ChevronDown size={12} className="text-gray-400" />
+                ) : (
+                  <ChevronRight size={12} className="text-gray-400" />
+                )}
+                {cat.name}
+                <span className="ml-auto rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500">{cat.endpoints.length}</span>
+              </button>
+              {expandedCategories.has(cat.name) &&
+                cat.endpoints.map((ep) => (
+                  <button
+                    key={`${ep.method}-${ep.path}`}
+                    onClick={() => selectEndpoint(ep)}
+                    className="ml-4 flex w-[calc(100%-1rem)] items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <span
+                      className={`inline-block w-14 rounded-md px-1.5 py-0.5 text-center text-[9px] font-bold ${METHOD_COLORS[ep.method]}`}
                     >
-                      <span
-                        className={`inline-block w-12 rounded px-1 py-0.5 text-center text-[9px] font-bold ${METHOD_COLORS[ep.method]}`}
-                      >
-                        {ep.method}
-                      </span>
-                      <span className="truncate">{ep.label}</span>
-                    </button>
-                  ))}
+                      {ep.method}
+                    </span>
+                    <span className="truncate">{ep.label}</span>
+                  </button>
+                ))}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  function renderSavedTests() {
+    return (
+      <>
+        <div className="mb-3 flex items-center gap-2">
+          <Save size={15} className="text-teal-600" />
+          <span className="text-sm font-semibold text-gray-900">Saved Tests</span>
+        </div>
+
+        {savedTests.length === 0 ? (
+          <div className="py-6 text-center">
+            <Save size={24} className="mx-auto mb-2 text-gray-300" />
+            <p className="text-xs text-gray-500">No saved tests yet.</p>
+            <p className="text-xs text-gray-400">Build a request and click Save.</p>
+          </div>
+        ) : (
+          <div className="max-h-[calc(100vh-16rem)] space-y-2 overflow-y-auto">
+            {savedTests.map((test) => (
+              <div key={test.id} className="rounded-xl border border-gray-200 p-3 transition hover:border-gray-300">
+                <div className="mb-1.5 flex items-center gap-2">
+                  <span className={`inline-block rounded-md px-1.5 py-0.5 text-[9px] font-bold ${METHOD_COLORS[test.method]}`}>
+                    {test.method}
+                  </span>
+                  <span className="truncate text-xs font-medium text-gray-900">{test.name}</span>
+                </div>
+                <p className="mb-2.5 truncate font-mono text-[10px] text-gray-400">{test.url}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => loadTest(test)}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 py-1.5 text-[10px] font-medium text-gray-700 transition hover:bg-gray-50"
+                  >
+                    <Play size={10} /> Load
+                  </button>
+                  <button
+                    onClick={() => deleteTest(test.id)}
+                    className="flex items-center justify-center rounded-lg border border-gray-200 px-2 py-1.5 text-[10px] text-red-500 transition hover:bg-red-50"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-8rem)]">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">API Testing Console</h1>
+        <p className="mt-1 text-sm text-gray-500">Send requests to any API endpoint and inspect responses</p>
+      </div>
+
+      {/* Mobile Tabs */}
+      <div className="mb-4 flex gap-1 rounded-xl bg-gray-100 p-1 lg:hidden">
+        {([
+          { key: "endpoints", label: "Endpoints" },
+          { key: "request", label: "Request" },
+          { key: "saved", label: "Saved" },
+        ] as const).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setMobileTab(t.key)}
+            className={`flex-1 rounded-lg py-2 text-xs font-medium transition ${
+              mobileTab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+        {/* Left: Endpoint Library */}
+        <div className={`lg:col-span-3 ${mobileTab !== "endpoints" ? "hidden lg:block" : ""}`}>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            {renderEndpointLibrary()}
+          </div>
         </div>
 
-        {/* ── Center: Request Builder + Response ── */}
-        <div className="flex-1 space-y-4">
+        {/* Center: Request Builder + Response */}
+        <div className={`lg:col-span-6 space-y-4 ${mobileTab !== "request" ? "hidden lg:block" : ""}`}>
           {/* URL bar */}
-          <div className="flex gap-2 rounded-lg border border-[#E7E5E0] bg-white p-3">
+          <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row">
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className={`rounded-md px-2 py-1.5 text-xs font-bold outline-none ${METHOD_COLORS[method]} cursor-pointer`}
+              className={`rounded-lg px-3 py-2 text-xs font-bold outline-none cursor-pointer ${METHOD_COLORS[method]}`}
             >
               {METHODS.map((m) => (
                 <option key={m} value={m}>
@@ -423,50 +516,52 @@ export default function ApiTesterPage() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="/api/v1/stores"
-              className="flex-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm font-mono outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
             />
-            <button
-              onClick={sendRequest}
-              disabled={sending || !url}
-              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
-            >
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Send
-            </button>
-            <button
-              onClick={() => setSaveDialogOpen(true)}
-              disabled={!url}
-              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED] disabled:opacity-50"
-            >
-              <Save size={12} /> Save
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={sendRequest}
+                disabled={sending || !url}
+                className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
+              >
+                {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Send
+              </button>
+              <button
+                onClick={() => setSaveDialogOpen(true)}
+                disabled={!url}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 transition hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Save size={13} /> Save
+              </button>
+            </div>
           </div>
 
           {/* Headers */}
-          <div className="rounded-lg border border-[#E7E5E0] bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#1C1917]">Headers</span>
-              <button onClick={addHeader} className="text-[#0D9488] hover:text-[#0F766E]">
-                <Plus size={14} />
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-900">Headers</span>
+              <button onClick={addHeader} className="rounded-lg p-1 text-teal-600 transition hover:bg-teal-50">
+                <Plus size={15} />
               </button>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {headers.map((h, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input
                     value={h.key}
                     onChange={(e) => updateHeader(i, "key", e.target.value)}
                     placeholder="Header name"
-                    className="w-40 rounded-md border border-[#E7E5E0] px-2 py-1 text-xs outline-none focus:border-[#0D9488]"
+                    className="w-36 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs outline-none transition focus:border-teal-500"
                   />
                   <input
                     value={h.value}
                     onChange={(e) => updateHeader(i, "value", e.target.value)}
                     placeholder="Value"
-                    className="flex-1 rounded-md border border-[#E7E5E0] px-2 py-1 text-xs outline-none focus:border-[#0D9488]"
+                    className="flex-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs outline-none transition focus:border-teal-500"
                   />
-                  <button onClick={() => removeHeader(i)} className="text-[#78716C] hover:text-[#DC2626]">
-                    <Minus size={12} />
+                  <button onClick={() => removeHeader(i)} className="rounded-lg p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-500">
+                    <Minus size={13} />
                   </button>
                 </div>
               ))}
@@ -475,115 +570,82 @@ export default function ApiTesterPage() {
 
           {/* Body */}
           {(method === "POST" || method === "PUT") && (
-            <div className="rounded-lg border border-[#E7E5E0] bg-white p-3">
-              <span className="mb-2 block text-xs font-semibold text-[#1C1917]">Request Body (JSON)</span>
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <span className="mb-2.5 block text-xs font-semibold text-gray-900">Request Body (JSON)</span>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder='{ "key": "value" }'
                 rows={6}
-                className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 font-mono text-xs outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+                className="w-full rounded-lg bg-gray-900 px-4 py-3 font-mono text-xs text-green-400 outline-none placeholder:text-gray-600 focus:ring-2 focus:ring-teal-500/20"
               />
             </div>
           )}
 
           {/* Response */}
           {response && (
-            <div className="rounded-lg border border-[#E7E5E0] bg-white p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold text-[#1C1917]">Response</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColor(response.status)}`}>
+                  <span className="text-xs font-semibold text-gray-900">Response</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${statusColor(response.status)}`}>
                     {response.status} {response.statusText}
                   </span>
-                  <span className="text-[10px] text-[#78716C]">{response.time}ms</span>
+                  <span className="text-[10px] text-gray-400">{response.time}ms</span>
                 </div>
                 <button
                   onClick={copyAsCurl}
-                  className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1 text-[10px] text-[#78716C] hover:bg-[#F1F0ED]"
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-[10px] text-gray-500 transition hover:bg-gray-50"
                 >
                   <Copy size={10} /> Copy as cURL
                 </button>
               </div>
-              <pre className="max-h-96 overflow-auto rounded-md bg-[#F8F7F4] p-3 font-mono text-xs text-[#1C1917]">
+              <pre className="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 font-mono text-xs text-green-400">
                 {JSON.stringify(response.data, null, 2)}
               </pre>
             </div>
           )}
 
           {!response && !sending && (
-            <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed border-[#E7E5E0] bg-white text-[#78716C]">
-              <Terminal size={24} className="mb-2" />
+            <div className="flex h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white text-gray-400">
+              <Terminal size={28} className="mb-2" />
               <span className="text-sm">Select an endpoint or enter a URL and click Send</span>
             </div>
           )}
         </div>
 
-        {/* ── Right: Saved Tests ── */}
-        <div className="w-64 flex-shrink-0 rounded-lg border border-[#E7E5E0] bg-white p-3">
-          <div className="mb-3 flex items-center gap-2">
-            <Save size={14} className="text-[#0D9488]" />
-            <span className="text-sm font-semibold text-[#1C1917]">Saved Tests</span>
+        {/* Right: Saved Tests */}
+        <div className={`lg:col-span-3 ${mobileTab !== "saved" ? "hidden lg:block" : ""}`}>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            {renderSavedTests()}
           </div>
-
-          {savedTests.length === 0 ? (
-            <p className="text-xs text-[#78716C]">No saved tests yet. Build a request and click Save.</p>
-          ) : (
-            <div className="max-h-[calc(100vh-16rem)] space-y-2 overflow-y-auto">
-              {savedTests.map((test) => (
-                <div key={test.id} className="rounded-md border border-[#E7E5E0] p-2">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className={`inline-block rounded px-1 py-0.5 text-[8px] font-bold ${METHOD_COLORS[test.method]}`}>
-                      {test.method}
-                    </span>
-                    <span className="truncate text-xs font-medium text-[#1C1917]">{test.name}</span>
-                  </div>
-                  <p className="mb-2 truncate font-mono text-[10px] text-[#78716C]">{test.url}</p>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => loadTest(test)}
-                      className="flex flex-1 items-center justify-center gap-1 rounded border border-[#E7E5E0] px-1.5 py-1 text-[10px] text-[#1C1917] hover:bg-[#F1F0ED]"
-                    >
-                      <Play size={9} /> Load
-                    </button>
-                    <button
-                      onClick={() => deleteTest(test.id)}
-                      className="flex items-center justify-center rounded border border-[#E7E5E0] px-1.5 py-1 text-[10px] text-[#DC2626] hover:bg-[#FEE2E2]"
-                    >
-                      <Trash2 size={9} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
       {/* Save Dialog */}
       {saveDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-80 rounded-lg bg-white p-4 shadow-lg">
-            <h3 className="mb-3 text-sm font-semibold text-[#1C1917]">Save Test</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-80 rounded-2xl bg-white p-5 shadow-2xl">
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">Save Test</h3>
             <input
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               placeholder="Test name..."
               autoFocus
-              className="mb-3 w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+              className="mb-4 w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
               onKeyDown={(e) => e.key === "Enter" && saveTest()}
             />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setSaveDialogOpen(false); setSaveName(""); }}
-                className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
+                className="rounded-lg border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={saveTest}
                 disabled={!saveName.trim()}
-                className="rounded-md bg-[#0D9488] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+                className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
               >
                 Save
               </button>

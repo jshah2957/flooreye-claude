@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   BookOpen,
   ChevronRight,
+  Link,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -69,7 +70,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   roboflow: {
     label: "Roboflow",
     icon: Cloud,
-    color: "text-[#7C3AED]",
+    color: "text-violet-600",
     category: "required",
     fields: [
       { key: "api_key", label: "API Key", type: "password", helper: "Your Roboflow private API key" },
@@ -80,7 +81,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   smtp: {
     label: "SMTP Email",
     icon: Mail,
-    color: "text-[#2563EB]",
+    color: "text-blue-600",
     category: "notification",
     fields: [
       { key: "host", label: "Host", type: "text", helper: "e.g. smtp.sendgrid.net or smtp.gmail.com" },
@@ -93,7 +94,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   sms: {
     label: "SMS (Twilio)",
     icon: MessageSquare,
-    color: "text-[#16A34A]",
+    color: "text-green-600",
     category: "notification",
     fields: [
       { key: "account_sid", label: "Account SID", type: "text", helper: "Starts with AC..." },
@@ -104,7 +105,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   fcm: {
     label: "Firebase FCM",
     icon: Bell,
-    color: "text-[#D97706]",
+    color: "text-amber-600",
     category: "notification",
     fields: [
       { key: "credentials_json", label: "Service Account JSON", type: "textarea", helper: "Paste the entire JSON key file contents" },
@@ -113,7 +114,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   s3: {
     label: "AWS S3",
     icon: HardDrive,
-    color: "text-[#D97706]",
+    color: "text-amber-600",
     category: "storage",
     fields: [
       { key: "endpoint_url", label: "Endpoint URL", type: "text", helper: "Leave blank for default AWS, or custom endpoint" },
@@ -126,7 +127,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   minio: {
     label: "MinIO",
     icon: HardDrive,
-    color: "text-[#0D9488]",
+    color: "text-teal-600",
     category: "storage",
     fields: [
       { key: "endpoint_url", label: "Endpoint URL", type: "text", helper: "e.g. http://localhost:9000" },
@@ -138,7 +139,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   r2: {
     label: "Cloudflare R2",
     icon: HardDrive,
-    color: "text-[#2563EB]",
+    color: "text-blue-600",
     category: "storage",
     fields: [
       { key: "endpoint_url", label: "Endpoint URL", type: "text", helper: "https://<account_id>.r2.cloudflarestorage.com" },
@@ -150,7 +151,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   mqtt: {
     label: "MQTT",
     icon: Radio,
-    color: "text-[#7C3AED]",
+    color: "text-violet-600",
     category: "optional",
     fields: [
       { key: "host", label: "Host", type: "text", helper: "e.g. localhost or broker.hivemq.com" },
@@ -162,17 +163,17 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   "cloudflare-tunnel": {
     label: "CF Tunnel",
     icon: Cloud,
-    color: "text-[#2563EB]",
+    color: "text-blue-600",
     category: "optional",
     fields: [
-      { key: "account_id", label: "Account ID", type: "text", helper: "Cloudflare dashboard → Overview → Account ID" },
+      { key: "account_id", label: "Account ID", type: "text", helper: "Cloudflare dashboard -> Overview -> Account ID" },
       { key: "api_token", label: "API Token", type: "password", helper: "Scoped to Tunnel:Edit permission" },
     ],
   },
   mongodb: {
     label: "MongoDB",
     icon: Database,
-    color: "text-[#16A34A]",
+    color: "text-green-600",
     category: "managed",
     fields: [
       { key: "uri", label: "Connection URI", type: "password", helper: "Managed automatically by FloorEye", readOnly: true },
@@ -181,7 +182,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   redis: {
     label: "Redis",
     icon: Database,
-    color: "text-[#DC2626]",
+    color: "text-red-600",
     category: "managed",
     fields: [
       { key: "url", label: "Redis URL", type: "password", helper: "Managed automatically by FloorEye", readOnly: true },
@@ -190,7 +191,7 @@ const SERVICE_META: Record<string, ServiceMeta> = {
   webhook: {
     label: "Webhook",
     icon: Webhook,
-    color: "text-[#D97706]",
+    color: "text-amber-600",
     category: "notification",
     fields: [
       { key: "url", label: "Webhook URL", type: "text", helper: "HTTPS endpoint that receives POST requests" },
@@ -208,19 +209,19 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
     title: "Roboflow Setup",
     steps: [
       "Go to app.roboflow.com and sign in or create an account.",
-      "Click your profile icon (top-right) → Settings → Roboflow API.",
+      "Click your profile icon (top-right) -> Settings -> Roboflow API.",
       "Copy your Private API Key and paste it in the API Key field.",
       "Note your workspace slug from the URL (app.roboflow.com/<workspace>).",
-      "Find your model under Deployments → copy the Model ID (e.g. wet-floor-detection/3).",
-      "The default API URL is https://detect.roboflow.com — change only if using a dedicated server.",
+      "Find your model under Deployments -> copy the Model ID (e.g. wet-floor-detection/3).",
+      "The default API URL is https://detect.roboflow.com -- change only if using a dedicated server.",
     ],
   },
   smtp: {
     title: "SMTP Email Setup",
     steps: [
-      "Option 1 — SendGrid: Host = smtp.sendgrid.net, Port = 587, Username = apikey, Password = your SendGrid API key.",
-      "Option 2 — Gmail: Host = smtp.gmail.com, Port = 587. Generate an App Password at myaccount.google.com → Security → 2-Step Verification → App Passwords.",
-      "Option 3 — Postmark: Host = smtp.postmarkapp.com, Port = 587, Username = your Postmark Server API Token (same for password).",
+      "Option 1 -- SendGrid: Host = smtp.sendgrid.net, Port = 587, Username = apikey, Password = your SendGrid API key.",
+      "Option 2 -- Gmail: Host = smtp.gmail.com, Port = 587. Generate an App Password at myaccount.google.com -> Security -> 2-Step Verification -> App Passwords.",
+      "Option 3 -- Postmark: Host = smtp.postmarkapp.com, Port = 587, Username = your Postmark Server API Token (same for password).",
       "Set From Email to a verified sender address for your provider.",
       "Test the connection after saving to verify delivery.",
     ],
@@ -231,7 +232,7 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
       "Go to console.twilio.com and sign in.",
       "On the dashboard, copy your Account SID (starts with AC).",
       "Copy your Auth Token (click to reveal).",
-      "Under Phone Numbers → Manage → Active Numbers, copy your Twilio phone number (include country code, e.g. +15551234567).",
+      "Under Phone Numbers -> Manage -> Active Numbers, copy your Twilio phone number (include country code, e.g. +15551234567).",
       "For trial accounts, verify recipient numbers under Verified Caller IDs.",
     ],
   },
@@ -239,8 +240,8 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
     title: "Firebase Cloud Messaging Setup",
     steps: [
       "Go to console.firebase.google.com and select your project (or create one).",
-      "Click the gear icon → Project Settings → Service Accounts tab.",
-      "Click 'Generate new private key' → Confirm.",
+      "Click the gear icon -> Project Settings -> Service Accounts tab.",
+      "Click 'Generate new private key' -> Confirm.",
       "A JSON file will download. Open it and copy the entire contents.",
       "Paste the full JSON into the Credentials JSON field.",
       "Make sure Cloud Messaging API (V1) is enabled in your project.",
@@ -249,8 +250,8 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
   s3: {
     title: "AWS S3 Setup",
     steps: [
-      "Go to AWS Console → S3 → Create Bucket. Choose a region and note the bucket name.",
-      "Go to IAM → Users → Create User. Attach the AmazonS3FullAccess policy (or a scoped policy for your bucket).",
+      "Go to AWS Console -> S3 -> Create Bucket. Choose a region and note the bucket name.",
+      "Go to IAM -> Users -> Create User. Attach the AmazonS3FullAccess policy (or a scoped policy for your bucket).",
       "Under the user's Security Credentials tab, create an Access Key (choose 'Application running outside AWS').",
       "Copy the Access Key ID and Secret Access Key (shown only once).",
       "Leave Endpoint URL blank for standard AWS S3. Fill in region (e.g. us-east-1).",
@@ -259,8 +260,8 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
   r2: {
     title: "Cloudflare R2 Setup",
     steps: [
-      "Go to Cloudflare Dashboard → R2 → Create Bucket. Note the bucket name.",
-      "Go to R2 → Manage R2 API Tokens → Create API Token.",
+      "Go to Cloudflare Dashboard -> R2 -> Create Bucket. Note the bucket name.",
+      "Go to R2 -> Manage R2 API Tokens -> Create API Token.",
       "Select permissions: Object Read & Write. Scope to your bucket.",
       "Copy the Access Key ID and Secret Access Key.",
       "Set Endpoint URL to: https://<your_account_id>.r2.cloudflarestorage.com",
@@ -271,17 +272,17 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
     steps: [
       "Start MinIO with Docker: docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address ':9001'",
       "Open the MinIO Console at http://localhost:9001 (default credentials: minioadmin/minioadmin).",
-      "Create a bucket via Buckets → Create Bucket.",
-      "Create an access key via Access Keys → Create Access Key. Copy both keys.",
+      "Create a bucket via Buckets -> Create Bucket.",
+      "Create an access key via Access Keys -> Create Access Key. Copy both keys.",
       "Set Endpoint URL to http://localhost:9000 (or your MinIO host).",
     ],
   },
   mqtt: {
     title: "MQTT Broker Setup",
     steps: [
-      "Option 1 — Local Mosquitto: Install via 'apt install mosquitto' or Docker: docker run -p 1883:1883 eclipse-mosquitto",
+      "Option 1 -- Local Mosquitto: Install via 'apt install mosquitto' or Docker: docker run -p 1883:1883 eclipse-mosquitto",
       "For local Mosquitto: Host = localhost, Port = 1883. Username/password optional unless configured.",
-      "Option 2 — HiveMQ Cloud: Sign up at hivemq.com/mqtt-cloud-broker. Create a cluster.",
+      "Option 2 -- HiveMQ Cloud: Sign up at hivemq.com/mqtt-cloud-broker. Create a cluster.",
       "For HiveMQ Cloud: Host = <cluster>.hivemq.cloud, Port = 8883. Create credentials in the cluster settings.",
       "Test by publishing a message to the flooreye/# topic.",
     ],
@@ -290,9 +291,9 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
     title: "Cloudflare Tunnel Setup",
     steps: [
       "If you deployed FloorEye via Docker Compose, the tunnel is already configured.",
-      "To get your Account ID: Cloudflare Dashboard → Overview → right sidebar → Account ID.",
-      "To create an API Token: My Profile → API Tokens → Create Token → Custom Token.",
-      "Token permissions needed: Account → Cloudflare Tunnel → Edit.",
+      "To get your Account ID: Cloudflare Dashboard -> Overview -> right sidebar -> Account ID.",
+      "To create an API Token: My Profile -> API Tokens -> Create Token -> Custom Token.",
+      "Token permissions needed: Account -> Cloudflare Tunnel -> Edit.",
       "The tunnel connector (cloudflared) runs as a sidecar container in the edge stack.",
     ],
   },
@@ -317,9 +318,9 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
   webhook: {
     title: "Webhook Setup",
     steps: [
-      "Webhooks are configured per notification rule in Settings → Notification Rules.",
+      "Webhooks are configured per notification rule in Settings -> Notification Rules.",
       "Enter the HTTPS endpoint URL that will receive POST requests.",
-      "Optionally set a Signing Secret — FloorEye will include an X-Signature header (HMAC-SHA256).",
+      "Optionally set a Signing Secret -- FloorEye will include an X-Signature header (HMAC-SHA256).",
       "The payload is JSON with detection event details (see API docs for schema).",
       "Your endpoint should return 2xx within 10 seconds to be considered successful.",
     ],
@@ -344,6 +345,33 @@ const SERVICE_ORDER = [
   "mongodb",
   "redis",
 ];
+
+/* ------------------------------------------------------------------ */
+/*  Skeleton card                                                      */
+/* ------------------------------------------------------------------ */
+
+function SkeletonCard() {
+  return (
+    <div className="animate-pulse rounded-xl border border-gray-200 bg-white p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-gray-200" />
+          <div className="h-4 w-24 rounded bg-gray-200" />
+        </div>
+        <div className="h-5 w-16 rounded-full bg-gray-200" />
+      </div>
+      <div className="mb-3 space-y-1.5">
+        <div className="h-3 w-48 rounded bg-gray-100" />
+        <div className="h-3 w-32 rounded bg-gray-100" />
+      </div>
+      <div className="flex gap-2">
+        <div className="h-8 flex-1 rounded-lg bg-gray-100" />
+        <div className="h-8 flex-1 rounded-lg bg-gray-100" />
+        <div className="h-8 w-8 rounded-lg bg-gray-100" />
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -492,7 +520,7 @@ export default function ApiManagerPage() {
       }
       setFormData(filled);
     } catch {
-      // No existing config — apply defaults
+      // No existing config -- apply defaults
       const meta = SERVICE_META[service];
       const defaults: Record<string, string> = {};
       if (meta) {
@@ -523,9 +551,9 @@ export default function ApiManagerPage() {
 
     if (total > 0 && issueCount === 0) {
       return (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#BBF7D0] bg-[#F0FDF4] px-4 py-3">
-          <ShieldCheck size={18} className="text-[#16A34A]" />
-          <span className="text-sm font-medium text-[#16A34A]">
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-3.5">
+          <ShieldCheck size={20} className="text-green-600" />
+          <span className="text-sm font-medium text-green-700">
             All integrations healthy — {total} service{total !== 1 ? "s" : ""} connected
           </span>
         </div>
@@ -534,9 +562,9 @@ export default function ApiManagerPage() {
 
     if (issueCount > 0) {
       return (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3">
-          <AlertTriangle size={18} className="text-[#D97706]" />
-          <span className="text-sm font-medium text-[#D97706]">
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3.5">
+          <AlertTriangle size={20} className="text-amber-600" />
+          <span className="text-sm font-medium text-amber-700">
             {issueCount} integration{issueCount !== 1 ? "s" : ""} need attention
           </span>
         </div>
@@ -544,9 +572,9 @@ export default function ApiManagerPage() {
     }
 
     return (
-      <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3">
-        <Info size={18} className="text-[#2563EB]" />
-        <span className="text-sm font-medium text-[#2563EB]">
+      <div className="mb-6 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3.5">
+        <Info size={20} className="text-blue-600" />
+        <span className="text-sm font-medium text-blue-700">
           Configure your integrations to enable notifications, storage, and AI detection
         </span>
       </div>
@@ -565,28 +593,30 @@ export default function ApiManagerPage() {
     ];
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowSetupGuide(false)}>
-        <div className="w-full max-w-lg rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between border-b border-[#E7E5E0] px-6 py-4">
-            <div className="flex items-center gap-2">
-              <BookOpen size={18} className="text-[#0D9488]" />
-              <h2 className="text-lg font-semibold text-[#1C1917]">Quick Setup Guide</h2>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowSetupGuide(false)}>
+        <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50">
+                <BookOpen size={16} className="text-teal-600" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Quick Setup Guide</h2>
             </div>
-            <button onClick={() => setShowSetupGuide(false)} className="text-[#78716C] hover:text-[#1C1917]">
+            <button onClick={() => setShowSetupGuide(false)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
               <X size={18} />
             </button>
           </div>
 
-          <div className="px-6 py-4 space-y-5">
+          <div className="space-y-5 px-6 py-5">
             {/* Progress */}
-            <div className="rounded-lg bg-[#F8F7F4] p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-[#1C1917]">Minimum Requirements</span>
-                <span className="text-sm font-semibold text-[#0D9488]">{healthStats.minRequirementsMet}/3 configured</span>
+            <div className="rounded-xl bg-gray-50 p-4">
+              <div className="mb-2.5 flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">Minimum Requirements</span>
+                <span className="text-sm font-semibold text-teal-600">{healthStats.minRequirementsMet}/3 configured</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-[#E7E5E0]">
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200">
                 <div
-                  className="h-2 rounded-full bg-[#0D9488] transition-all"
+                  className="h-2.5 rounded-full bg-teal-500 transition-all duration-500"
                   style={{ width: `${(healthStats.minRequirementsMet / 3) * 100}%` }}
                 />
               </div>
@@ -594,18 +624,18 @@ export default function ApiManagerPage() {
 
             {/* Required */}
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#78716C]">Required</h3>
+              <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Required</h3>
               <div className="space-y-2">
                 {requirements.map((req) => (
-                  <div key={req.label} className="flex items-start gap-3 rounded-lg border border-[#E7E5E0] p-3">
+                  <div key={req.label} className="flex items-start gap-3 rounded-xl border border-gray-200 p-3.5 transition hover:border-gray-300">
                     {req.met ? (
-                      <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-[#16A34A]" />
+                      <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-green-500" />
                     ) : (
-                      <XCircle size={18} className="mt-0.5 shrink-0 text-[#DC2626]" />
+                      <XCircle size={18} className="mt-0.5 shrink-0 text-red-500" />
                     )}
                     <div>
-                      <p className="text-sm font-medium text-[#1C1917]">{req.label}</p>
-                      <p className="text-xs text-[#78716C]">{req.desc}</p>
+                      <p className="text-sm font-medium text-gray-900">{req.label}</p>
+                      <p className="text-xs text-gray-500">{req.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -614,25 +644,25 @@ export default function ApiManagerPage() {
 
             {/* Optional */}
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#78716C]">Optional</h3>
-              <div className="space-y-1 text-sm text-[#1C1917]">
-                <p className="flex items-center gap-2"><ChevronRight size={14} className="text-[#78716C]" /> SMS (Twilio) — text message alerts</p>
-                <p className="flex items-center gap-2"><ChevronRight size={14} className="text-[#78716C]" /> MQTT — IoT device integration</p>
-                <p className="flex items-center gap-2"><ChevronRight size={14} className="text-[#78716C]" /> Cloudflare Tunnel — edge site access</p>
+              <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500">Optional</h3>
+              <div className="space-y-1.5 text-sm text-gray-700">
+                <p className="flex items-center gap-2"><ChevronRight size={14} className="text-gray-400" /> SMS (Twilio) -- text message alerts</p>
+                <p className="flex items-center gap-2"><ChevronRight size={14} className="text-gray-400" /> MQTT -- IoT device integration</p>
+                <p className="flex items-center gap-2"><ChevronRight size={14} className="text-gray-400" /> Cloudflare Tunnel -- edge site access</p>
               </div>
             </div>
 
             {/* Auto-managed */}
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#78716C]">Auto-Managed</h3>
-              <p className="text-sm text-[#78716C]">MongoDB and Redis are configured automatically via Docker Compose. No action needed.</p>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Auto-Managed</h3>
+              <p className="text-sm text-gray-500">MongoDB and Redis are configured automatically via Docker Compose. No action needed.</p>
             </div>
           </div>
 
-          <div className="border-t border-[#E7E5E0] px-6 py-3 flex justify-end">
+          <div className="flex justify-end border-t border-gray-100 px-6 py-4">
             <button
               onClick={() => setShowSetupGuide(false)}
-              className="rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+              className="rounded-lg bg-teal-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-teal-700"
             >
               Got it
             </button>
@@ -652,44 +682,46 @@ export default function ApiManagerPage() {
     const Icon = svc.icon;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setInfoService(null)}>
-        <div className="w-full max-w-lg rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between border-b border-[#E7E5E0] px-6 py-4">
-            <div className="flex items-center gap-2">
-              <Icon size={18} className={svc.color} />
-              <h2 className="text-lg font-semibold text-[#1C1917]">{instructions.title}</h2>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setInfoService(null)}>
+        <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100">
+                <Icon size={16} className={svc.color} />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">{instructions.title}</h2>
             </div>
-            <button onClick={() => setInfoService(null)} className="text-[#78716C] hover:text-[#1C1917]">
+            <button onClick={() => setInfoService(null)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
               <X size={18} />
             </button>
           </div>
 
-          <div className="px-6 py-4">
-            <ol className="space-y-3">
+          <div className="px-6 py-5">
+            <ol className="space-y-3.5">
               {instructions.steps.map((step, i) => (
-                <li key={i} className="flex gap-3 text-sm text-[#1C1917]">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F0FDFA] text-xs font-semibold text-[#0D9488]">
+                <li key={i} className="flex gap-3 text-sm text-gray-700">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-50 text-xs font-semibold text-teal-600">
                     {i + 1}
                   </span>
-                  <span className="pt-0.5">{step}</span>
+                  <span className="pt-0.5 leading-relaxed">{step}</span>
                 </li>
               ))}
             </ol>
           </div>
 
-          <div className="border-t border-[#E7E5E0] px-6 py-3 flex justify-end gap-3">
+          <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
             <button
               onClick={() => {
                 setInfoService(null);
                 openDrawer(infoService);
               }}
-              className="rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
               Configure Now
             </button>
             <button
               onClick={() => setInfoService(null)}
-              className="rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E]"
+              className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700"
             >
               Close
             </button>
@@ -709,38 +741,40 @@ export default function ApiManagerPage() {
     const isConfigured = intg && intg.status !== "not_configured";
 
     return (
-      <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => setDrawerService(null)}>
-        <div className="h-full w-[384px] overflow-y-auto bg-white shadow-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm" onClick={() => setDrawerService(null)}>
+        <div className="h-full w-full max-w-md overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
-            <div className="flex items-center gap-2">
-              <Icon size={18} className={meta.color} />
-              <h2 className="text-lg font-semibold text-[#1C1917]">Configure {meta.label}</h2>
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100">
+                <Icon size={16} className={meta.color} />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-900">Configure {meta.label}</h2>
             </div>
-            <button onClick={() => setDrawerService(null)} className="text-[#78716C] hover:text-[#1C1917]">
+            <button onClick={() => setDrawerService(null)} className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
               <X size={18} />
             </button>
           </div>
 
           {/* Managed notice */}
           {isManaged && (
-            <div className="mx-4 mt-4 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs text-[#2563EB]">
+            <div className="mx-6 mt-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700">
               This service is managed automatically by FloorEye. Changes are typically made via environment variables.
             </div>
           )}
 
           {/* Fields */}
-          <div className="space-y-4 p-4">
+          <div className="space-y-5 p-6">
             {meta.fields.map((field) => (
               <div key={field.key}>
-                <label className="mb-1 block text-sm font-medium text-[#1C1917]">{field.label}</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-900">{field.label}</label>
                 {field.type === "textarea" ? (
                   <textarea
                     value={formData[field.key] ?? ""}
                     onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                     rows={6}
                     readOnly={field.readOnly}
-                    className={`w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm font-mono outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488] ${field.readOnly ? "bg-[#F8F7F4] text-[#78716C]" : ""}`}
+                    className={`w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-mono outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 ${field.readOnly ? "bg-gray-50 text-gray-500" : ""}`}
                   />
                 ) : field.type === "password" ? (
                   <div className="relative">
@@ -749,12 +783,12 @@ export default function ApiManagerPage() {
                       value={formData[field.key] ?? ""}
                       onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                       readOnly={field.readOnly}
-                      className={`w-full rounded-md border border-[#E7E5E0] px-3 py-2 pr-10 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488] ${field.readOnly ? "bg-[#F8F7F4] text-[#78716C]" : ""}`}
+                      className={`w-full rounded-xl border border-gray-200 px-3.5 py-2.5 pr-10 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 ${field.readOnly ? "bg-gray-50 text-gray-500" : ""}`}
                     />
                     <button
                       type="button"
                       onClick={() => toggleSecret(field.key)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[#78716C] hover:text-[#1C1917]"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
                       tabIndex={-1}
                     >
                       {visibleSecrets[field.key] ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -766,27 +800,27 @@ export default function ApiManagerPage() {
                     value={formData[field.key] ?? ""}
                     onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                     readOnly={field.readOnly}
-                    className={`w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488] ${field.readOnly ? "bg-[#F8F7F4] text-[#78716C]" : ""}`}
+                    className={`w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 ${field.readOnly ? "bg-gray-50 text-gray-500" : ""}`}
                   />
                 )}
                 {field.helper && (
-                  <p className="mt-1 text-xs text-[#78716C]">{field.helper}</p>
+                  <p className="mt-1.5 text-xs text-gray-500">{field.helper}</p>
                 )}
               </div>
             ))}
 
             {formError && (
-              <div className="rounded-md bg-[#FEE2E2] px-3 py-2 text-sm text-[#DC2626]">{formError}</div>
+              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</div>
             )}
 
             {/* Action buttons */}
-            <div className="space-y-3 border-t border-[#E7E5E0] pt-4">
+            <div className="space-y-3 border-t border-gray-100 pt-5">
               <div className="flex gap-3">
                 {!isManaged && (
                   <button
                     onClick={() => drawerTestMutation.mutate(drawerService)}
                     disabled={drawerTestMutation.isPending}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                   >
                     {drawerTestMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                     Test Connection
@@ -795,7 +829,7 @@ export default function ApiManagerPage() {
                 <button
                   onClick={handleSave}
                   disabled={saveMutation.isPending || isManaged}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
                 >
                   {saveMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                   Save & Encrypt
@@ -811,7 +845,7 @@ export default function ApiManagerPage() {
                       setDrawerService(null);
                     }
                   }}
-                  className="w-full text-center text-xs text-[#DC2626] hover:underline"
+                  className="w-full text-center text-xs text-red-500 transition hover:text-red-600 hover:underline"
                 >
                   Reset Configuration
                 </button>
@@ -832,60 +866,69 @@ export default function ApiManagerPage() {
     const status = intg?.status ?? "not_configured";
     const Icon = svc.icon;
     const isTesting = testingService === serviceKey;
+    const isActive = status === "active" || status === "connected";
 
     return (
-      <div key={serviceKey} className="rounded-lg border border-[#E7E5E0] bg-white p-4 transition-shadow hover:shadow-sm">
+      <div
+        key={serviceKey}
+        className={`rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md ${
+          isActive ? "border-l-4 border-l-green-500 border-t-gray-200 border-r-gray-200 border-b-gray-200" : status === "error" ? "border-l-4 border-l-red-400 border-t-gray-200 border-r-gray-200 border-b-gray-200" : "border-gray-200"
+        }`}
+      >
         {/* Top: icon + name + status */}
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8F7F4]`}>
-              <Icon size={16} className={svc.color} />
+        <div className="mb-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-50">
+              <Icon size={18} className={svc.color} />
             </div>
-            <span className="text-sm font-medium text-[#1C1917]">{svc.label}</span>
+            <div>
+              <span className="block text-sm font-semibold text-gray-900">{svc.label}</span>
+              <span className="block text-[10px] capitalize text-gray-400">{svc.category}</span>
+            </div>
           </div>
           <StatusBadge status={status} size="sm" />
         </div>
 
-        {/* Last tested + latency */}
-        <div className="mb-3 min-h-[20px]">
+        {/* Middle: last tested + latency */}
+        <div className="mb-3.5 min-h-[28px]">
           {intg?.last_tested ? (
-            <div className="flex items-center gap-1 text-[10px] text-[#78716C]">
-              {intg.last_test_result === "success" && <CheckCircle2 size={10} className="text-[#16A34A]" />}
-              {intg.last_test_result === "failure" && <XCircle size={10} className="text-[#DC2626]" />}
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              {intg.last_test_result === "success" && <CheckCircle2 size={12} className="text-green-500" />}
+              {intg.last_test_result === "failure" && <XCircle size={12} className="text-red-500" />}
               <span>
                 Tested {new Date(intg.last_tested).toLocaleString()}
                 {intg.last_test_response_ms != null && ` \u00B7 ${intg.last_test_response_ms.toFixed(0)}ms`}
               </span>
             </div>
           ) : (
-            <span className="text-[10px] text-[#78716C]">Not tested yet</span>
+            <span className="text-xs text-gray-400">Not tested yet</span>
           )}
           {intg?.last_test_result === "failure" && intg?.last_test_error && (
-            <p className="mt-0.5 truncate text-[10px] text-[#DC2626]" title={intg.last_test_error}>
+            <p className="mt-1 truncate text-xs text-red-500" title={intg.last_test_error}>
               {intg.last_test_error}
             </p>
           )}
         </div>
 
-        {/* Three buttons: Configure | Test | Info */}
+        {/* Bottom: action buttons */}
         <div className="flex gap-2">
           <button
             onClick={() => openDrawer(serviceKey)}
-            className="flex flex-1 items-center justify-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#1C1917] hover:bg-[#F1F0ED]"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
           >
-            <Settings2 size={12} /> Configure
+            <Settings2 size={13} /> Configure
           </button>
           <button
             onClick={() => testMutation.mutate(serviceKey)}
             disabled={status === "not_configured" || isTesting || testMutation.isPending}
-            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-[#0D9488] px-2 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-2.5 py-2 text-xs font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
           >
-            {isTesting ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+            {isTesting ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
             Test
           </button>
           <button
             onClick={() => setInfoService(serviceKey)}
-            className="flex items-center justify-center rounded-md border border-[#E7E5E0] px-2 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED] hover:text-[#1C1917]"
+            className="flex items-center justify-center rounded-lg border border-gray-200 px-2.5 py-2 text-gray-400 transition hover:bg-gray-50 hover:text-gray-600"
             title={`Setup instructions for ${svc.label}`}
           >
             <Info size={14} />
@@ -898,30 +941,30 @@ export default function ApiManagerPage() {
   /* ---- Main render ---- */
 
   return (
-    <div>
+    <div className="min-h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#1C1917]">API Integration Manager</h1>
-          <p className="text-sm text-[#78716C]">Configure and test third-party service connections</p>
+          <h1 className="text-2xl font-bold text-gray-900">API Integration Manager</h1>
+          <p className="mt-1 text-sm text-gray-500">Configure and test third-party service connections</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowSetupGuide(true)}
-            className="flex items-center gap-2 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED]"
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
-            <BookOpen size={14} />
+            <BookOpen size={15} />
             Setup Guide
-            <span className="rounded-full bg-[#0D9488] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            <span className="rounded-full bg-teal-600 px-2 py-0.5 text-[10px] font-bold text-white">
               {healthStats.minRequirementsMet}/3
             </span>
           </button>
           <button
             onClick={() => testAllMutation.mutate()}
             disabled={testAllMutation.isPending}
-            className="flex items-center gap-2 rounded-md border border-[#E7E5E0] px-4 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50"
           >
-            {testAllMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            {testAllMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
             Test All
           </button>
         </div>
@@ -932,8 +975,16 @@ export default function ApiManagerPage() {
 
       {/* Cards */}
       {isLoading ? (
-        <div className="flex h-40 items-center justify-center">
-          <Loader2 size={24} className="animate-spin text-[#0D9488]" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : integrations && integrations.length === 0 && SERVICE_ORDER.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-white py-16">
+          <Link size={40} className="mb-3 text-gray-300" />
+          <h3 className="text-lg font-semibold text-gray-900">No integrations configured</h3>
+          <p className="mt-1 text-sm text-gray-500">Set up your first integration to get started</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -24,34 +24,45 @@ export default function ErrorBanner({ message, type = "error", onRetry, retryLab
     <View
       style={{
         backgroundColor: colors.bg,
-        padding: SPACING.lg,
-        borderRadius: RADIUS.md,
+        padding: 14,
+        borderRadius: 12,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
         marginBottom: SPACING.md,
+        borderLeftWidth: type === "error" ? 4 : 0,
+        borderLeftColor: type === "error" ? colors.text : undefined,
       }}
       accessibilityRole="alert"
       accessibilityLabel={`${type}: ${message}`}
     >
-      <Text
-        style={{ color: colors.text, fontSize: FONT_SIZE.lg, flex: 1, marginRight: SPACING.sm }}
-      >
-        {message}
-      </Text>
+      <View style={{ flex: 1, marginRight: onRetry ? SPACING.md : 0 }}>
+        <Text
+          style={{
+            color: colors.text,
+            fontSize: 14,
+            fontWeight: "500",
+            lineHeight: 20,
+          }}
+        >
+          {message}
+        </Text>
+      </View>
       {onRetry && (
         <TouchableOpacity
           onPress={onRetry}
           style={{
             backgroundColor: colors.button,
-            paddingHorizontal: SPACING.md,
-            paddingVertical: SPACING.xs,
-            borderRadius: RADIUS.sm,
+            minHeight: 36,
+            paddingHorizontal: 14,
+            justifyContent: "center",
+            alignItems: "center",
+            borderRadius: 8,
           }}
           accessibilityLabel={retryLabel}
           accessibilityRole="button"
         >
-          <Text style={{ color: NEUTRAL.white, fontSize: FONT_SIZE.md, fontWeight: "600" }}>
+          <Text style={{ color: NEUTRAL.white, fontSize: 13, fontWeight: "600" }}>
             {retryLabel}
           </Text>
         </TouchableOpacity>

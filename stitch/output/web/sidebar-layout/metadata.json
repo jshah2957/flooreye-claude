@@ -1,0 +1,10 @@
+{
+  "screenName": "sidebar-layout",
+  "screenId": "13b9cc2dfbc840a2b21faab46b8afc84",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-22T09:01:18.296Z",
+  "prompt": "App shell layout for FloorEye. Left sidebar (256px, dark navy #0F172A): FloorEye logo + name at top; navigation groups: Monitoring (Dashboard, Live Monitoring), Detection & Review (Detection History, Incidents, Review Queue), ML & Training (Dataset, Models, Test Inference), Configuration (Stores, Cameras, Detection Control), Integrations (API Manager, API Tester, Roboflow), Edge Management, Administration (Users, Logs, Devices, Notifications, Storage, Clips, Compliance). Each group has label header + nav items with icons. Active item: teal left border + teal text. Collapse button at bottom (shrinks to 64px icon-only). User avatar + name + role at very bottom. Top header (64px, white, sticky): breadcrumbs left, notification bell with unread count badge, user dropdown right. Content area: cream background, max-w 1440px, 24px padding. Show dashboard content placeholder."
+}

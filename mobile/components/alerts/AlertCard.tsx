@@ -34,21 +34,6 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function severityIcon(severity: string): string {
-  switch (severity) {
-    case "critical":
-      return "\u26A0\uFE0F";
-    case "high":
-      return "\uD83D\uDD34";
-    case "medium":
-      return "\uD83D\uDFE0";
-    case "low":
-      return "\uD83D\uDD35";
-    default:
-      return "\u2139\uFE0F";
-  }
-}
-
 export default function AlertCard({ alert, onPress }: AlertCardProps) {
   const barColor = SEVERITY_COLORS[alert.severity] ?? SEVERITY_COLORS.medium;
   const badgeBg = SEVERITY_BG_COLORS[alert.severity] ?? SEVERITY_BG_COLORS.medium;
@@ -62,19 +47,23 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
       style={{
         flexDirection: "row",
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.lg,
-        borderWidth: 1,
-        borderColor: BRAND.border,
+        borderRadius: 12,
         overflow: "hidden",
+        minHeight: 80,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
       }}
       accessibilityLabel={`${alert.severity} severity alert, ${alert.status}, ${alert.detection_count} detections, ${(alert.max_confidence * 100).toFixed(1)}% confidence`}
       accessibilityRole="button"
     >
       {/* Severity color bar */}
-      <View style={{ width: 5, backgroundColor: barColor }} />
+      <View style={{ width: 4, backgroundColor: barColor, borderRadius: 2 }} />
 
-      <View style={{ flex: 1, padding: SPACING.md }}>
-        {/* Top row: icon + severity + status badges */}
+      <View style={{ flex: 1, padding: 14 }}>
+        {/* Top row: severity + status badges + time */}
         <View
           style={{
             flexDirection: "row",
@@ -82,22 +71,22 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
             alignItems: "center",
           }}
         >
-          <View style={{ flexDirection: "row", gap: SPACING.xs + 2, alignItems: "center" }}>
-            <Text style={{ fontSize: FONT_SIZE.lg }}>{severityIcon(alert.severity)}</Text>
+          <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
             <View
               style={{
                 backgroundColor: badgeBg,
-                borderRadius: RADIUS.lg,
-                paddingHorizontal: SPACING.sm - 1,
-                paddingVertical: 2,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
               }}
             >
               <Text
                 style={{
-                  fontSize: FONT_SIZE.xs,
+                  fontSize: 11,
                   fontWeight: "700",
                   color: badgeText,
                   textTransform: "uppercase",
+                  letterSpacing: 0.3,
                 }}
               >
                 {alert.severity}
@@ -106,17 +95,18 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
             <View
               style={{
                 backgroundColor: statusStyle.bg,
-                borderRadius: RADIUS.lg,
-                paddingHorizontal: SPACING.sm - 1,
-                paddingVertical: 2,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
               }}
             >
               <Text
                 style={{
-                  fontSize: FONT_SIZE.xs,
+                  fontSize: 11,
                   fontWeight: "600",
                   color: statusStyle.text,
                   textTransform: "uppercase",
+                  letterSpacing: 0.3,
                 }}
               >
                 {alert.status}
@@ -125,7 +115,7 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
           </View>
 
           {/* Time ago */}
-          <Text style={{ fontSize: FONT_SIZE.xs, color: BRAND.textSecondary }}>
+          <Text style={{ fontSize: 12, color: BRAND.textSecondary }}>
             {timeAgo(alert.start_time)}
           </Text>
         </View>
@@ -133,10 +123,10 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
         {/* Store / Camera name row */}
         <Text
           style={{
-            fontSize: FONT_SIZE.lg - 1,
-            fontWeight: "500",
+            fontSize: 14,
+            fontWeight: "600",
             color: BRAND.textPrimary,
-            marginTop: SPACING.xs + 2,
+            marginTop: 8,
           }}
           numberOfLines={1}
         >
@@ -150,14 +140,14 @@ export default function AlertCard({ alert, onPress }: AlertCardProps) {
           style={{
             flexDirection: "row",
             gap: SPACING.md,
-            marginTop: SPACING.xs,
+            marginTop: 4,
             alignItems: "center",
           }}
         >
-          <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
+          <Text style={{ fontSize: 12, color: BRAND.textSecondary }}>
             {(alert.max_confidence * 100).toFixed(1)}% confidence
           </Text>
-          <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
+          <Text style={{ fontSize: 12, color: BRAND.textSecondary }}>
             {alert.detection_count} detection{alert.detection_count !== 1 ? "s" : ""}
           </Text>
         </View>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye - Operational Insights</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00685f",
+                        "background": "#faf9f6",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#005049",
+                        "on-secondary-container": "#5c647a",
+                        "on-secondary-fixed": "#131b2e",
+                        "secondary-fixed": "#dae2fd",
+                        "surface-container-high": "#e9e8e5",
+                        "on-tertiary": "#ffffff",
+                        "surface": "#faf9f6",
+                        "inverse-on-surface": "#f2f1ee",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#dae2fd",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-surface": "#2f312f",
+                        "on-error": "#ffffff",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "outline-variant": "#bcc9c6",
+                        "surface-container": "#efeeeb",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "tertiary-fixed": "#eaddff",
+                        "surface-tint": "#006a61",
+                        "primary-container": "#008378",
+                        "on-primary-fixed": "#00201d",
+                        "surface-container-highest": "#e3e2df",
+                        "surface-container-low": "#f4f3f0",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "outline": "#6d7a77",
+                        "surface-bright": "#faf9f6",
+                        "on-surface": "#1a1c1a",
+                        "inverse-primary": "#6bd8cb",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#1a1c1a",
+                        "secondary": "#565e74",
+                        "on-surface-variant": "#3d4947",
+                        "tertiary": "#712ae2",
+                        "on-tertiary-fixed": "#25005a",
+                        "on-primary-container": "#f4fffc",
+                        "primary-fixed": "#89f5e7",
+                        "surface-dim": "#dbdad7",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "surface-variant": "#e3e2df",
+                        "tertiary-container": "#8a4cfc",
+                        "on-error-container": "#93000a"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex min-h-screen">
+<!-- SideNavBar (JSON Derived) -->
+<aside class="w-[256px] h-screen sticky left-0 top-0 bg-[#131b2e] dark:bg-slate-950 flex flex-col py-6 px-4 shadow-2xl shadow-navy-900/20 z-50 overflow-hidden">
+<!-- Brand Header -->
+<div class="flex items-center gap-3 px-2 mb-8">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1;">visibility</span>
+</div>
+<div>
+<h1 class="text-xl font-bold text-white tracking-wider">FloorEye</h1>
+<p class="text-[10px] text-slate-400 font-medium uppercase tracking-[0.2em]">AI Monitoring</p>
+</div>
+</div>
+<!-- Navigation Groups -->
+<nav class="flex-1 overflow-y-auto sidebar-scroll space-y-6 pr-2">
+<!-- Monitoring Group -->
+<div>
+<p class="px-2 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Monitoring</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#00685f] border-l-4 border-[#00685f] bg-white/5 font-bold transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">dashboard</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">videocam</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Live Monitoring</span>
+</a>
+</div>
+</div>
+<!-- Detection Group -->
+<div>
+<p class="px-2 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Detection &amp; Review</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">history</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Detection History</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">warning</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">rate_review</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Review Queue</span>
+</a>
+</div>
+</div>
+<!-- ML Group -->
+<div>
+<p class="px-2 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">ML &amp; Training</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">database</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Dataset</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">model_training</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Models</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">biotech</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Test Inference</span>
+</a>
+</div>
+</div>
+<!-- Administration Group -->
+<div>
+<p class="px-2 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Administration</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">group</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Users</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">assignment</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-colors transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">gavel</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Compliance</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Footer Section -->
+<div class="mt-auto pt-6 border-t border-white/5">
+<div class="flex items-center gap-3 px-2 mb-6">
+<img class="w-10 h-10 rounded-lg object-cover" data-alt="Alex Ross Head of Security Portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7KSY-9vigSGGgPnBgLobRpWdGxNSEb4iQFKRxbmp1x_B6bliHU04ZZxR7RBxSAbxjVzIAbGsESo2hkIhKMmdd6ACjFd-2lejPwKPnmSjCISD4I-hBXzV2R37fDH9CvRC-TuYnAqGk_ZnLTvAAKRiuETFB38yexJM6XKRmYKYS45utIW8bevB-w6c7MHyP1cp5v1F9NnbkJKQZ914hpZdTgj84OKEEVEHUgqK0B9PJJn7VH4C2n-OPJdwvhrI4SPjvy9pFbkYd9a5y"/>
+<div class="overflow-hidden">
+<p class="text-white text-sm font-bold truncate">Alex Ross</p>
+<p class="text-slate-400 text-[10px] truncate uppercase tracking-tighter">Head of Security</p>
+</div>
+</div>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-sm">settings</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Settings</span>
+</a>
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white transition-all duration-200">
+<span class="material-symbols-outlined text-sm">keyboard_double_arrow_left</span>
+<span class="font-inter body-md tracking-tight uppercase label-sm">Collapse</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-w-0">
+<!-- TopNavBar (JSON Derived) -->
+<header class="h-16 w-full sticky top-0 z-40 bg-[#faf9f6]/80 backdrop-blur-md flex justify-between items-center px-8">
+<div class="flex items-center gap-4">
+<nav class="flex text-xs font-medium text-slate-500 uppercase tracking-wider">
+<a class="hover:text-primary transition-colors" href="#">Home</a>
+<span class="mx-2 text-slate-300">/</span>
+<span class="text-on-surface font-bold">Dashboard</span>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<button class="text-slate-600 hover:text-primary transition-colors p-2 flex items-center justify-center">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-4 h-4 bg-error text-white text-[10px] flex items-center justify-center rounded-full font-bold">3</span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-surface-container">
+<button class="flex items-center gap-2 group">
+<span class="font-inter headline-lg font-bold text-sm text-on-surface">Account</span>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary transition-colors">expand_more</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 p-8 overflow-y-auto bg-surface-container-low">
+<div class="max-w-[1440px] mx-auto space-y-8">
+<!-- Page Title -->
+<div class="flex items-center justify-between">
+<div>
+<h2 class="text-3xl font-black text-on-surface tracking-tight">Operational Insights</h2>
+<p class="text-slate-500 mt-1">Real-time floor intelligence and ML performance metrics.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-surface-container-lowest text-on-surface text-sm font-semibold rounded-lg shadow-sm border-0 flex items-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+                            Last 24 Hours
+                        </button>
+<button class="px-4 py-2 bg-gradient-to-br from-primary to-primary-container text-white text-sm font-semibold rounded-lg flex items-center gap-2 hover:shadow-lg transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm">download</span>
+                            Export Report
+                        </button>
+</div>
+</div>
+<!-- KPI Cards - Bento Style -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0 group hover:bg-primary transition-colors duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg group-hover:bg-white/20">
+<span class="material-symbols-outlined text-primary group-hover:text-white">groups</span>
+</div>
+<span class="text-xs font-bold text-primary group-hover:text-white/80">+12%</span>
+</div>
+<p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-white/70">Total Floor Traffic</p>
+<h3 class="text-2xl font-black text-on-surface mt-1 group-hover:text-white">12,482</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0 group hover:bg-primary transition-colors duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg group-hover:bg-white/20">
+<span class="material-symbols-outlined text-primary group-hover:text-white">sensors</span>
+</div>
+<span class="text-xs font-bold text-primary group-hover:text-white/80">Active</span>
+</div>
+<p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-white/70">Active Units</p>
+<h3 class="text-2xl font-black text-on-surface mt-1 group-hover:text-white">842 / 850</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0 group hover:bg-primary transition-colors duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg group-hover:bg-white/20">
+<span class="material-symbols-outlined text-primary group-hover:text-white">speed</span>
+</div>
+<span class="text-xs font-bold text-error group-hover:text-white/80">-2%</span>
+</div>
+<p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-white/70">Detections/Hr</p>
+<h3 class="text-2xl font-black text-on-surface mt-1 group-hover:text-white">1,240</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0 group hover:bg-primary transition-colors duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary/10 rounded-lg group-hover:bg-white/20">
+<span class="material-symbols-outlined text-primary group-hover:text-white">psychology</span>
+</div>
+<span class="text-xs font-bold text-primary group-hover:text-white/80">99.2%</span>
+</div>
+<p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest group-hover:text-white/70">ML Efficiency</p>
+<h3 class="text-2xl font-black text-on-surface mt-1 group-hover:text-white">Optimal</h3>
+</div>
+</div>
+<!-- Main Grid Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Real-time Occupancy Chart -->
+<div class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="text-lg font-black text-on-surface">Real-time Occupancy</h3>
+<p class="text-sm text-slate-400">Visitor volume across primary sectors</p>
+</div>
+<div class="flex gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span class="w-3 h-3 rounded-full bg-primary/40"></span>
+<span class="w-3 h-3 rounded-full bg-primary/10"></span>
+</div>
+</div>
+<!-- Bar Chart Mockup -->
+<div class="flex items-end justify-between h-64 gap-4 px-4">
+<div class="flex-1 bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500 h-[65%]" style="height: 65%;"></div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 uppercase">Sector A</div>
+</div>
+<div class="flex-1 bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500 h-[45%]" style="height: 45%;"></div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 uppercase">Sector B</div>
+</div>
+<div class="flex-1 bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500 h-[85%]" style="height: 85%;"></div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 uppercase">Sector C</div>
+</div>
+<div class="flex-1 bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500 h-[30%]" style="height: 30%;"></div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 uppercase">Sector D</div>
+</div>
+<div class="flex-1 bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500 h-[55%]" style="height: 55%;"></div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 uppercase">Sector E</div>
+</div>
+<div class="flex-1 bg-surface-container rounded-t-lg relative group">
+<div class="absolute bottom-0 w-full bg-primary rounded-t-lg transition-all duration-500 h-[72%]" style="height: 72%;"></div>
+<div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 uppercase">Sector F</div>
+</div>
+</div>
+</div>
+<!-- Recent Detections List -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-lg font-black text-on-surface">Recent Detections</h3>
+<a class="text-primary text-xs font-bold uppercase tracking-wider hover:underline" href="#">View All</a>
+</div>
+<div class="space-y-6">
+<div class="flex items-center gap-4 group cursor-pointer">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="CCTV Capture Person Detection" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAe5W7u8Kti22qcDxH06WrGaNElNAPCEyKwQxdqphmtkyZFkXhcEUHHAFwd5cPo8sV0F9oGKkyeBVjBdlgLbGDCAfOw9VUXVeHmAnJT1uaTJnHo2dQmBiGeqAaxABnvyT7uMXWzCyheNXmTGxZtWDdpJ2hlhJvRGciiL85EHWXAAtYKP7abhVhmKov2d5AeoB0nH6lhnBeOJEXSoWyMxLaXdv3ON8ylgEYGU4CW8jDYSHU1stwOeLGwyfCtE9kNneMjwtQ9r4bMLzvP"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-bold text-on-surface truncate">Unauthorized Access</p>
+<p class="text-[11px] text-slate-400 uppercase font-medium">Zone 4 • 2m ago</p>
+</div>
+<span class="px-2 py-1 bg-error-container text-on-error-container text-[10px] font-black rounded uppercase">Critical</span>
+</div>
+<div class="flex items-center gap-4 group cursor-pointer">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover opacity-60" data-alt="Office Hallway Empty" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB238IPvPLsSpqmWIIG-su7yTIzxzyHqBrcevxnihIHwCUl9R5exmbos7WUx5-NAwpdGEQNdU0larqtV_47IdpDPhqIhYERKV2Ma0kL6dKKNq29SppeDdi-5fFMRvNxln1Gt91qu1bFtOBTJfA8CerBwKvSStzxlyMcrHPU-yS9lsj4i0iu5fbtbCeTANx-zHbV0OZE-vEsEKCWXUKT2jdtLJf9hp-X_A1fJCMuN3SyaE4vCYy3xu5tcTvO_63rrzAV5NT9wZyn61bw"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-bold text-on-surface truncate">Motion Trigger</p>
+<p class="text-[11px] text-slate-400 uppercase font-medium">Lobby B • 15m ago</p>
+</div>
+<span class="px-2 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-black rounded uppercase">Logged</span>
+</div>
+<div class="flex items-center gap-4 group cursor-pointer">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Conference Room Meeting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBExWn8YrOAsToqAsI_Ix7Wt398jOLHKQ525EUXJ28VYgnJfApeXKhyY_dSrmPf8kqj2kH2Tbpa8MPaPubgiMLW1xnV1btDnsGX-x3W7p-dXFovxTAJs8b2Mq2zW3Lo61dAeV9GWgbw6aQ3wHHPag073tsOJZRBReam_APPCEg9cKnFxSa7lA6WHQbvYAGh9zX1XF75gi8dCxKJaZBv0q2lDeTudnh64Rcrr94MaG5BFwKpz5dEjFxpAngGyfSOLIS-tRXtw8H2fWj1"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-bold text-on-surface truncate">Crowd Formation</p>
+<p class="text-[11px] text-slate-400 uppercase font-medium">Level 2 • 34m ago</p>
+</div>
+<span class="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-black rounded uppercase">Insight</span>
+</div>
+<div class="flex items-center gap-4 group cursor-pointer">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Elevator Entry Camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCifKqx9C0K5AvIT0elBOURoVirQkZzRvtWu_AShF006MGLJxBfW-Jn1bZ6mkBGcaBjSE8Igr7q4MkrBm34xthiItNLc53uGkX4mC1Y539jZZjTL8Dj8fhcSwcZ8L1gmjwIVSKnKlhQnWB9Spc7Yq6P1rY6ROE91z28z6HrWFl-MX4RE72pG7z_ETRkhCS9qOQj7jwjN7CVTi2_fgBXGhnw7x1sZxQu51_gMIZTsAAFMncdXqpKcpekNCrS1lr42e0-Epy2Ta135gB8"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-bold text-on-surface truncate">Mask Compliance</p>
+<p class="text-[11px] text-slate-400 uppercase font-medium">Entrance • 1h ago</p>
+</div>
+<span class="px-2 py-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-black rounded uppercase">Success</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Stats -->
+<div class="flex flex-wrap items-center justify-between pt-8 gap-4 border-t border-surface-container-high">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs font-bold text-slate-500 uppercase tracking-widest">System Online</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Cloud Latency:</span>
+<span class="text-xs font-bold text-on-surface">14ms</span>
+</div>
+</div>
+<div class="text-[11px] text-slate-400 font-medium uppercase tracking-[0.2em]">
+                        FloorEye AI Core v2.4.8-stable
+                    </div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

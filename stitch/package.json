@@ -1,0 +1,17 @@
+{
+  "name": "flooreye-stitch",
+  "version": "1.0.0",
+  "description": "FloorEye UI generation with Google Stitch AI SDK",
+  "type": "module",
+  "scripts": {
+    "test": "node test-connection.js",
+    "generate": "node generate-ui.js",
+    "generate:web": "node generate-ui.js --project web",
+    "generate:mobile": "node generate-ui.js --project mobile",
+    "generate:edge": "node generate-ui.js --project edge",
+    "download": "node download-outputs.js"
+  },
+  "dependencies": {
+    "@google/stitch-sdk": "^0.0.3"
+  }
+}

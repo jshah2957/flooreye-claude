@@ -32,18 +32,20 @@ const SOURCE_OPTIONS = [
   { value: "model", label: "Model" },
 ] as const;
 
-function levelColor(level: string) {
+function levelBadge(level: string) {
   switch ((level ?? "info").toLowerCase()) {
     case "error":
-      return "text-[#DC2626] bg-[#FEE2E2]";
+      return "bg-red-50 text-red-700 border-red-200";
+    case "critical":
+      return "bg-red-100 text-red-800 border-red-300 font-bold";
     case "warning":
-      return "text-[#D97706] bg-[#FEF3C7]";
+      return "bg-amber-50 text-amber-700 border-amber-200";
     case "info":
-      return "text-[#2563EB] bg-[#DBEAFE]";
+      return "bg-blue-50 text-blue-700 border-blue-200";
     case "audit":
-      return "text-[#7C3AED] bg-[#EDE9FE]";
+      return "bg-purple-50 text-purple-700 border-purple-200";
     default:
-      return "text-[#78716C] bg-gray-100";
+      return "bg-gray-50 text-gray-600 border-gray-200";
   }
 }
 
@@ -73,6 +75,7 @@ export default function LogsPage() {
   const [loading, setLoading] = useState(true);
   const [autoFollow, setAutoFollow] = useState(true);
   const [paused, setPaused] = useState(false);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState("");
@@ -150,21 +153,17 @@ export default function LogsPage() {
 
   // Apply all filters
   const filtered = logs.filter((l) => {
-    // Level tab
     if (tab !== "All" && (l.level ?? "info").toLowerCase() !== tab.toLowerCase()) {
       return false;
     }
-    // Source filter
     if (sourceFilter && (l.source ?? "").toLowerCase() !== sourceFilter.toLowerCase()) {
       return false;
     }
-    // Text search (client-side)
     if (searchText) {
       const q = searchText.toLowerCase();
       const haystack = `${l.message} ${l.source ?? ""} ${l.level}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
-    // Date range
     if (startDate) {
       const logDate = new Date(l.timestamp);
       const start = new Date(startDate);
@@ -187,23 +186,27 @@ export default function LogsPage() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-[#1C1917]">System Logs</h1>
-          <p className="text-sm text-[#78716C]">
-            {connected ? "Live streaming" : "Connecting..."} &middot;{" "}
-            {filtered.length} of {logs.length} entries
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">System Logs</h1>
+          <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+            <span className={`inline-flex items-center gap-1.5 ${connected ? "text-green-600" : "text-amber-600"}`}>
+              <span className={`h-2 w-2 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-amber-500"}`} />
+              {connected ? "Live streaming" : "Connecting..."}
+            </span>
+            <span>&middot;</span>
+            <span>{filtered.length} of {logs.length} entries</span>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setAutoFollow(!autoFollow)}
-            className={`flex items-center gap-1.5 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm ${
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
               autoFollow
-                ? "bg-[#0D9488] text-white"
-                : "text-[#1C1917] hover:bg-[#F1F0ED]"
+                ? "border-[#0D9488] bg-[#0D9488] text-white"
+                : "border-gray-200 text-gray-600 hover:bg-gray-50"
             }`}
           >
             <ArrowDownToLine size={14} />
@@ -211,10 +214,10 @@ export default function LogsPage() {
           </button>
           <button
             onClick={() => setPaused(!paused)}
-            className={`flex items-center gap-1.5 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm ${
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
               paused
-                ? "bg-[#FEE2E2] text-[#DC2626]"
-                : "text-[#1C1917] hover:bg-[#F1F0ED]"
+                ? "border-red-200 bg-red-50 text-red-600"
+                : "border-gray-200 text-gray-600 hover:bg-gray-50"
             }`}
           >
             <Pause size={14} />
@@ -223,14 +226,14 @@ export default function LogsPage() {
           <button
             onClick={handleExportCSV}
             disabled={filtered.length === 0}
-            className="flex items-center gap-1.5 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Download size={14} />
-            Export CSV
+            Export
           </button>
           <button
             onClick={() => setLogs([])}
-            className="flex items-center gap-1.5 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-sm text-[#1C1917] hover:bg-[#F1F0ED]"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
           >
             <Trash2 size={14} />
             Clear
@@ -240,26 +243,24 @@ export default function LogsPage() {
 
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        {/* Text search */}
         <div className="relative">
           <Search
             size={14}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#78716C]"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
           />
           <input
             type="text"
             placeholder="Search logs..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            className="h-9 rounded-md border border-[#E7E5E0] bg-white pl-8 pr-3 text-sm text-[#1C1917] placeholder:text-[#A8A29E] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]"
+            className="h-10 w-56 rounded-lg border border-gray-300 bg-white pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20"
           />
         </div>
 
-        {/* Source dropdown */}
         <select
           value={sourceFilter}
           onChange={(e) => setSourceFilter(e.target.value)}
-          className="h-9 rounded-md border border-[#E7E5E0] bg-white px-3 text-sm text-[#1C1917] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]"
+          className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20"
         >
           {SOURCE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -268,27 +269,25 @@ export default function LogsPage() {
           ))}
         </select>
 
-        {/* Date range */}
         <div className="flex items-center gap-1.5">
-          <label className="text-xs text-[#78716C]">From</label>
+          <label className="text-xs font-medium text-gray-500">From</label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="h-9 rounded-md border border-[#E7E5E0] bg-white px-2 text-sm text-[#1C1917] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]"
+            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20"
           />
         </div>
         <div className="flex items-center gap-1.5">
-          <label className="text-xs text-[#78716C]">To</label>
+          <label className="text-xs font-medium text-gray-500">To</label>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="h-9 rounded-md border border-[#E7E5E0] bg-white px-2 text-sm text-[#1C1917] focus:border-[#0D9488] focus:outline-none focus:ring-1 focus:ring-[#0D9488]"
+            className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 focus:border-[#0D9488] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20"
           />
         </div>
 
-        {/* Clear filters */}
         {(searchText || sourceFilter || startDate || endDate) && (
           <button
             onClick={() => {
@@ -297,7 +296,7 @@ export default function LogsPage() {
               setStartDate("");
               setEndDate("");
             }}
-            className="h-9 rounded-md px-3 text-xs text-[#0D9488] hover:bg-[#F0FDFA]"
+            className="h-10 rounded-lg px-3 text-sm font-medium text-[#0D9488] hover:bg-teal-50"
           >
             Clear filters
           </button>
@@ -305,63 +304,108 @@ export default function LogsPage() {
       </div>
 
       {/* Level tabs */}
-      <div className="mb-4 flex gap-1 border-b border-[#E7E5E0]">
+      <div className="mb-4 flex gap-1 border-b border-gray-200">
         {LEVEL_TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-medium ${
+            className={`relative px-4 py-3 text-sm font-medium transition-colors ${
               tab === t
-                ? "border-b-2 border-[#0D9488] text-[#0D9488]"
-                : "text-[#78716C]"
+                ? "text-[#0D9488]"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             {t}
+            {tab === t && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0D9488]" />
+            )}
           </button>
         ))}
       </div>
 
       {/* Log output */}
       {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#0D9488] border-t-transparent" />
-          <span className="ml-2 text-sm text-[#78716C]">Loading logs...</span>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex animate-pulse items-center gap-3">
+                <div className="h-3 w-36 rounded bg-gray-200" />
+                <div className="h-5 w-14 rounded bg-gray-200" />
+                <div className="h-3 w-16 rounded bg-gray-200" />
+                <div className="h-3 flex-1 rounded bg-gray-200" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed border-[#E7E5E0]">
-          <ScrollText size={32} className="mb-2 text-[#78716C]" />
-          <p className="text-sm text-[#78716C]">
+        <div className="flex h-64 flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50">
+          <ScrollText size={32} className="mb-2 text-gray-300" />
+          <p className="text-sm font-medium text-gray-500">
             {logs.length === 0
               ? "Waiting for log events..."
               : "No logs matching current filters"}
           </p>
+          <p className="mt-1 text-xs text-gray-400">
+            {logs.length === 0 ? "Logs will appear here as they stream in" : "Try adjusting your filters"}
+          </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-[#E7E5E0] bg-[#0F172A]">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/80">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Timestamp</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Level</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Message</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
           <div
             ref={scrollRef}
-            className="max-h-[600px] overflow-y-auto p-3 font-mono text-xs"
+            className="max-h-[600px] overflow-y-auto"
           >
-            {filtered.map((log) => (
-              <div key={log.id} className="flex gap-3 py-0.5">
-                <span className="w-36 shrink-0 text-gray-500">
-                  {new Date(log.timestamp).toLocaleString()}
-                </span>
-                <span
-                  className={`w-14 shrink-0 rounded px-1 text-center text-[10px] font-semibold ${levelColor(
-                    log.level
-                  )}`}
-                >
-                  {(log.level ?? "INFO").toUpperCase()}
-                </span>
-                {log.source && (
-                  <span className="w-20 shrink-0 truncate text-[#5EEAD4]">
-                    [{log.source}]
-                  </span>
-                )}
-                <span className="text-gray-300">{log.message}</span>
-              </div>
-            ))}
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((log) => (
+                  <>
+                    <tr
+                      key={log.id}
+                      onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
+                      className="cursor-pointer transition-colors hover:bg-gray-50"
+                    >
+                      <td className="w-40 whitespace-nowrap px-4 py-2.5 font-mono text-xs text-gray-500">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td className="w-20 whitespace-nowrap px-4 py-2.5">
+                        <span
+                          className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${levelBadge(log.level)}`}
+                        >
+                          {(log.level ?? "INFO").toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="w-24 whitespace-nowrap px-4 py-2.5 text-xs font-medium text-[#0D9488]">
+                        {log.source || "\u2014"}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-gray-700">
+                        <span className="line-clamp-1">{log.message}</span>
+                      </td>
+                    </tr>
+                    {expandedLog === log.id && (
+                      <tr key={`${log.id}-detail`}>
+                        <td colSpan={4} className="bg-gray-50 px-6 py-3">
+                          <pre className="whitespace-pre-wrap font-mono text-xs text-gray-600">
+                            {log.message}
+                          </pre>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

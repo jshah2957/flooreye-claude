@@ -58,7 +58,6 @@ export default function NotificationCenterPage() {
   const { success, error: showError } = useToast();
   const [tab, setTab] = useState<FilterTab>("all");
 
-  // Fetch unread/new incidents
   const { data: incidentsData, isLoading: incidentsLoading } = useQuery({
     queryKey: ["notification-center-incidents"],
     queryFn: async () => {
@@ -69,7 +68,6 @@ export default function NotificationCenterPage() {
     },
   });
 
-  // Fetch recent notification deliveries
   const { data: deliveriesData, isLoading: deliveriesLoading } = useQuery({
     queryKey: ["notification-center-deliveries"],
     queryFn: async () => {
@@ -80,7 +78,6 @@ export default function NotificationCenterPage() {
     },
   });
 
-  // Fetch stores and cameras for display names
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
     queryFn: async () => {
@@ -101,7 +98,6 @@ export default function NotificationCenterPage() {
     },
   });
 
-  // Acknowledge all new incidents
   const ackAllMutation = useMutation({
     mutationFn: async () => {
       const incidents = incidentsData?.data ?? [];
@@ -128,7 +124,6 @@ export default function NotificationCenterPage() {
 
   const isLoading = incidentsLoading || deliveriesLoading;
 
-  // Filter deliveries based on tab
   const filteredDeliveries =
     tab === "all" || tab === "incidents"
       ? deliveries
@@ -147,25 +142,30 @@ export default function NotificationCenterPage() {
   ];
 
   return (
-    <div>
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Bell size={22} className="text-[#0D9488]" />
-          <h1 className="text-xl font-semibold text-[#1C1917]">
-            Notification Center
-          </h1>
-          {incidents.length > 0 && (
-            <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-[#DC2626] px-2 text-xs font-bold text-white">
-              {incidents.length}
-            </span>
-          )}
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50">
+            <Bell size={20} className="text-[#0D9488]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+              {incidents.length > 0 && (
+                <span className="flex h-6 min-w-[24px] items-center justify-center rounded-full bg-red-500 px-2 text-xs font-bold text-white">
+                  {incidents.length}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-sm text-gray-500">Incidents and delivery notifications</p>
+          </div>
         </div>
         {incidents.length > 0 && (
           <button
             onClick={() => ackAllMutation.mutate()}
             disabled={ackAllMutation.isPending}
-            className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0F766E] disabled:opacity-50"
             aria-label="Mark all incidents as read"
           >
             {ackAllMutation.isPending ? (
@@ -173,31 +173,45 @@ export default function NotificationCenterPage() {
             ) : (
               <CheckCheck size={16} />
             )}
-            Mark all as read
+            Mark All Read
           </button>
         )}
       </div>
 
       {/* Filter Tabs */}
-      <div className="mb-4 flex gap-1 border-b border-[#E7E5E0]">
+      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-gray-200">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium ${
+            className={`relative whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${
               tab === t.key
-                ? "border-b-2 border-[#0D9488] text-[#0D9488]"
-                : "text-[#78716C] hover:text-[#1C1917]"
+                ? "text-[#0D9488]"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             {t.label}
+            {tab === t.key && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0D9488]" />
+            )}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="flex h-40 items-center justify-center">
-          <Loader2 size={24} className="animate-spin text-[#0D9488]" />
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="divide-y divide-gray-100">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex animate-pulse items-center gap-4 p-4">
+                <div className="h-10 w-10 rounded-lg bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-40 rounded bg-gray-200" />
+                  <div className="h-3 w-64 rounded bg-gray-200" />
+                </div>
+                <div className="h-3 w-12 rounded bg-gray-200" />
+              </div>
+            ))}
+          </div>
         </div>
       ) : incidents.length === 0 && deliveries.length === 0 ? (
         <EmptyState
@@ -206,152 +220,157 @@ export default function NotificationCenterPage() {
           description="When incidents occur or notifications are sent, they will appear here."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {/* Unread Incidents Section */}
           {showIncidents && incidents.length > 0 && (
-            <>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+            <div>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Unread Incidents ({incidents.length})
               </h2>
-              <div className="space-y-2">
-                {incidents.map((inc) => {
-                  const storeName = storeMap.get(inc.store_id) ?? "Unknown Store";
-                  const cameraName = cameraMap.get(inc.camera_id) ?? "Unknown Camera";
-                  const SeverityDot = SEVERITY_COLORS[inc.severity] ?? SEVERITY_COLORS.low;
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="divide-y divide-gray-100">
+                  {incidents.map((inc) => {
+                    const storeName = storeMap.get(inc.store_id) ?? "Unknown Store";
+                    const cameraName = cameraMap.get(inc.camera_id) ?? "Unknown Camera";
+                    const SeverityDot = SEVERITY_COLORS[inc.severity] ?? SEVERITY_COLORS.low;
 
-                  return (
-                    <Link
-                      key={inc.id}
-                      to={`/incidents/${inc.id}`}
-                      className="flex items-center gap-4 rounded-lg border border-[#E7E5E0] bg-white p-4 transition-colors hover:border-[#0D9488]/30 hover:bg-[#F0FDFA]"
-                    >
-                      {/* Severity indicator */}
-                      <div className="flex flex-col items-center gap-1">
-                        <AlertTriangle
-                          size={18}
-                          className={
-                            inc.severity === "critical"
-                              ? "text-[#DC2626]"
-                              : inc.severity === "high"
-                              ? "text-[#EA580C]"
-                              : inc.severity === "medium"
-                              ? "text-[#D97706]"
-                              : "text-[#2563EB]"
-                          }
-                        />
-                        <span
-                          className={`inline-block h-2 w-2 rounded-full ${SeverityDot}`}
-                        />
-                      </div>
-
-                      {/* Content */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-[#1C1917]">
-                            Spill Detected
-                          </span>
-                          <StatusBadge status={inc.severity} size="sm" />
-                          <StatusBadge status={inc.status} size="sm" />
+                    return (
+                      <Link
+                        key={inc.id}
+                        to={`/incidents/${inc.id}`}
+                        className="flex items-center gap-4 border-l-2 border-[#0D9488] bg-teal-50/30 p-4 transition-colors hover:bg-teal-50/60"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50">
+                          <AlertTriangle
+                            size={18}
+                            className={
+                              inc.severity === "critical"
+                                ? "text-red-600"
+                                : inc.severity === "high"
+                                ? "text-orange-600"
+                                : inc.severity === "medium"
+                                ? "text-amber-600"
+                                : "text-blue-600"
+                            }
+                          />
                         </div>
-                        <p className="mt-0.5 text-xs text-[#78716C]">
-                          {cameraName} &middot; {storeName} &middot;{" "}
-                          Confidence: {(inc.max_confidence * 100).toFixed(0)}%
-                          &middot; {inc.detection_count} detection
-                          {inc.detection_count !== 1 ? "s" : ""}
-                        </p>
-                      </div>
 
-                      {/* Time + link */}
-                      <div className="flex items-center gap-3 text-xs text-[#78716C]">
-                        <span>{timeAgo(inc.start_time)}</span>
-                        <ExternalLink size={14} className="text-[#0D9488]" />
-                      </div>
-                    </Link>
-                  );
-                })}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-gray-900">
+                              Spill Detected
+                            </span>
+                            <StatusBadge status={inc.severity} size="sm" />
+                            <StatusBadge status={inc.status} size="sm" />
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">
+                            {cameraName} &middot; {storeName} &middot;{" "}
+                            Confidence: {(inc.max_confidence * 100).toFixed(0)}%
+                            &middot; {inc.detection_count} detection
+                            {inc.detection_count !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2 text-xs text-gray-400">
+                          <span>{timeAgo(inc.start_time)}</span>
+                          <ExternalLink size={14} className="text-[#0D9488]" />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </>
+            </div>
           )}
 
           {/* Notification Deliveries Section */}
           {showDeliveries && (
-            <>
-              {showIncidents && incidents.length > 0 && (
-                <div className="my-4 border-t border-[#E7E5E0]" />
-              )}
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+            <div>
+              {showIncidents && incidents.length > 0 && <div className="h-2" />}
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Recent Deliveries ({filteredDeliveries.length})
               </h2>
               {filteredDeliveries.length === 0 ? (
-                <div className="rounded-lg border border-[#E7E5E0] bg-white p-8 text-center text-sm text-[#78716C]">
-                  No deliveries for this filter.
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-8 text-center">
+                  <Bell size={24} className="mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm text-gray-500">No deliveries for this filter.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-lg border border-[#E7E5E0] bg-white">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#E7E5E0] bg-[#F8F7F4]">
-                        <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                          Channel
-                        </th>
-                        <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                          Recipient
-                        </th>
-                        <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                          Status
-                        </th>
-                        <th className="px-4 py-2 text-left font-medium text-[#78716C]">
-                          Sent
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDeliveries.map((d) => {
-                        const ChannelIcon =
-                          CHANNEL_ICONS[d.channel] ?? Bell;
-                        return (
-                          <tr
-                            key={d.id}
-                            className="border-b border-[#E7E5E0] last:border-0"
-                          >
-                            <td className="px-4 py-2.5">
-                              <div className="flex items-center gap-2">
-                                <ChannelIcon
-                                  size={14}
-                                  className="text-[#78716C]"
-                                />
-                                <StatusBadge
-                                  status={d.channel}
-                                  size="sm"
-                                />
-                              </div>
-                            </td>
-                            <td className="max-w-[200px] truncate px-4 py-2.5 text-[#78716C]">
-                              {d.recipient}
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <StatusBadge
-                                status={
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50/80">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Channel
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Recipient
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            Sent
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredDeliveries.map((d) => {
+                          const ChannelIcon =
+                            CHANNEL_ICONS[d.channel] ?? Bell;
+                          return (
+                            <tr
+                              key={d.id}
+                              className="transition-colors hover:bg-gray-50"
+                            >
+                              <td className="whitespace-nowrap px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <ChannelIcon
+                                    size={14}
+                                    className="text-gray-400"
+                                  />
+                                  <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                    d.channel === "email" ? "bg-blue-50 text-blue-700" :
+                                    d.channel === "webhook" ? "bg-purple-50 text-purple-700" :
+                                    d.channel === "sms" ? "bg-green-50 text-green-700" :
+                                    "bg-amber-50 text-amber-700"
+                                  }`}>
+                                    {d.channel}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="max-w-[200px] truncate px-4 py-3 text-gray-600">
+                                {d.recipient}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3">
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                                   d.status === "sent"
-                                    ? "online"
+                                    ? "bg-green-50 text-green-700"
                                     : d.status === "pending"
-                                    ? "staging"
-                                    : "error"
-                                }
-                                size="sm"
-                              />
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-[#78716C]">
-                              {timeAgo(d.sent_at)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                    ? "bg-amber-50 text-amber-700"
+                                    : "bg-red-50 text-red-700"
+                                }`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${
+                                    d.status === "sent" ? "bg-green-500" :
+                                    d.status === "pending" ? "bg-amber-500" :
+                                    "bg-red-500"
+                                  }`} />
+                                  {d.status === "sent" ? "Delivered" : d.status === "pending" ? "Pending" : "Failed"}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">
+                                {timeAgo(d.sent_at)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       )}

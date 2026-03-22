@@ -16,19 +16,34 @@ export default function EmptyState({ message, icon, actionLabel, onAction }: Pro
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        padding: SPACING.xxl,
+        paddingVertical: 40,
+        paddingHorizontal: SPACING.xxl,
       }}
       accessibilityLabel={message}
     >
       {icon && (
-        <Text style={{ fontSize: 48, marginBottom: SPACING.lg }}>{icon}</Text>
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: "#F3F4F6",
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: SPACING.lg,
+          }}
+        >
+          <Text style={{ fontSize: 28, opacity: 0.6 }}>{icon}</Text>
+        </View>
       )}
       <Text
         style={{
-          color: BRAND.textSecondary,
-          fontSize: FONT_SIZE.xl,
+          color: "#78716C",
+          fontSize: 15,
+          fontWeight: "500",
           textAlign: "center",
-          marginBottom: actionLabel ? SPACING.lg : 0,
+          lineHeight: 22,
+          marginBottom: actionLabel ? SPACING.xl : 0,
         }}
       >
         {message}
@@ -38,14 +53,16 @@ export default function EmptyState({ message, icon, actionLabel, onAction }: Pro
           onPress={onAction}
           style={{
             backgroundColor: BRAND.primary,
-            paddingHorizontal: SPACING.xl,
-            paddingVertical: SPACING.sm,
-            borderRadius: RADIUS.md,
+            paddingHorizontal: SPACING.xxl,
+            minHeight: 48,
+            justifyContent: "center",
+            alignItems: "center",
+            borderRadius: 12,
           }}
           accessibilityLabel={actionLabel}
           accessibilityRole="button"
         >
-          <Text style={{ color: NEUTRAL.white, fontSize: FONT_SIZE.lg, fontWeight: "600" }}>
+          <Text style={{ color: NEUTRAL.white, fontSize: 15, fontWeight: "600" }}>
             {actionLabel}
           </Text>
         </TouchableOpacity>

@@ -78,10 +78,10 @@ export default function RoboflowTestPage() {
   );
 
   return (
-    <div>
+    <div className="min-h-[calc(100vh-8rem)]">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[#1C1917]">Roboflow Test Inference</h1>
-        <p className="text-sm text-[#78716C]">
+        <h1 className="text-2xl font-bold text-gray-900">Roboflow Test Inference</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Upload an image to test against the Roboflow API. This is the only place Roboflow runs inference.
         </p>
       </div>
@@ -89,60 +89,66 @@ export default function RoboflowTestPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left: Upload + Controls */}
         <div className="space-y-4">
+          {/* Drop zone */}
           <div
             onClick={() => fileInputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
-            className="flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#E7E5E0] bg-[#FAFAF9] hover:border-[#0D9488]"
+            className="flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-teal-500 hover:bg-teal-50/30"
           >
             {imagePreview ? (
-              <img src={imagePreview} alt="Preview" className="max-h-[400px] rounded object-contain" />
+              <img src={imagePreview} alt="Preview" className="max-h-[400px] rounded-lg object-contain" />
             ) : (
               <>
-                <Upload size={32} className="mb-2 text-[#78716C]" />
-                <p className="text-sm text-[#78716C]">Click or drag an image here</p>
-                <p className="text-xs text-[#A8A29E]">JPEG, PNG up to 10MB</p>
+                <Upload size={36} className="mb-3 text-gray-400" />
+                <p className="text-sm font-medium text-gray-600">Click or drag an image here</p>
+                <p className="mt-1 text-xs text-gray-400">JPEG, PNG up to 10MB</p>
               </>
             )}
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-[#78716C]">
-              Model ID Override (optional)
-            </label>
-            <input
-              value={modelIdOverride}
-              onChange={(e) => setModelIdOverride(e.target.value)}
-              placeholder="e.g. wet-floor-detection/3"
-              className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
-            />
-          </div>
+          {/* Controls */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">
+                  Model ID Override (optional)
+                </label>
+                <input
+                  value={modelIdOverride}
+                  onChange={(e) => setModelIdOverride(e.target.value)}
+                  placeholder="e.g. wet-floor-detection/3"
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                />
+              </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-[#78716C]">
-              Confidence Threshold: {confidence.toFixed(2)}
-            </label>
-            <input
-              type="range"
-              min={0.1}
-              max={1.0}
-              step={0.05}
-              value={confidence}
-              onChange={(e) => setConfidence(parseFloat(e.target.value))}
-              className="w-full accent-[#0D9488]"
-            />
-            <div className="flex justify-between text-[10px] text-[#A8A29E]">
-              <span>0.10</span>
-              <span>0.50</span>
-              <span>1.00</span>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-500">
+                  Confidence Threshold: {confidence.toFixed(2)}
+                </label>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1.0}
+                  step={0.05}
+                  value={confidence}
+                  onChange={(e) => setConfidence(parseFloat(e.target.value))}
+                  className="w-full accent-teal-600"
+                />
+                <div className="flex justify-between text-[10px] text-gray-400">
+                  <span>0.10</span>
+                  <span>0.50</span>
+                  <span>1.00</span>
+                </div>
+              </div>
             </div>
           </div>
 
           <button
             onClick={() => inferMutation.mutate()}
             disabled={!imageBase64 || inferMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700 disabled:opacity-50"
           >
             {inferMutation.isPending ? (
               <Loader2 size={16} className="animate-spin" />
@@ -152,10 +158,10 @@ export default function RoboflowTestPage() {
             Run Roboflow Inference
           </button>
 
-          <div className="rounded-md bg-[#FFF7ED] p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={14} className="mt-0.5 text-[#D97706]" />
-              <p className="text-xs text-[#92400E]">
+          <div className="rounded-xl bg-amber-50 p-4">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+              <p className="text-xs leading-relaxed text-amber-800">
                 This calls the Roboflow API directly. For production detections, the system uses local ONNX inference.
               </p>
             </div>
@@ -163,13 +169,15 @@ export default function RoboflowTestPage() {
         </div>
 
         {/* Right: Results */}
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
-          <h3 className="mb-3 text-sm font-semibold text-[#1C1917]">Results</h3>
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-base font-semibold text-gray-900">Results</h3>
 
           {!result ? (
-            <p className="py-12 text-center text-xs text-[#78716C]">
-              Upload an image and run inference to see results
-            </p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Upload size={36} className="mb-3 text-gray-300" />
+              <p className="text-sm text-gray-500">Upload an image to test</p>
+              <p className="mt-1 text-xs text-gray-400">Run inference to see results here</p>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Annotated frame overlay */}
@@ -178,61 +186,63 @@ export default function RoboflowTestPage() {
               )}
 
               {/* Verdict */}
-              <div className={`rounded-md p-3 ${isWet ? "bg-[#FEE2E2]" : "bg-[#DCFCE7]"}`}>
-                <span className={`text-lg font-bold ${isWet ? "text-[#DC2626]" : "text-[#16A34A]"}`}>
+              <div className={`rounded-xl p-4 ${isWet ? "bg-red-50" : "bg-green-50"}`}>
+                <span className={`text-lg font-bold ${isWet ? "text-red-600" : "text-green-600"}`}>
                   {isWet ? "WET DETECTED" : "DRY"}
                 </span>
               </div>
 
               {/* Metrics */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-md border border-[#E7E5E0] p-3">
-                  <p className="text-[10px] text-[#78716C]">Predictions</p>
-                  <p className="text-lg font-semibold text-[#1C1917]">{result.predictions.length}</p>
+                <div className="rounded-xl border border-gray-200 p-4 text-center">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Predictions</p>
+                  <p className="text-xl font-bold text-gray-900">{result.predictions.length}</p>
                 </div>
-                <div className="rounded-md border border-[#E7E5E0] p-3">
-                  <p className="text-[10px] text-[#78716C]">Inference Time</p>
-                  <p className="text-lg font-semibold text-[#1C1917]">{result.inference_time_ms.toFixed(0)}ms</p>
+                <div className="rounded-xl border border-gray-200 p-4 text-center">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">Inference Time</p>
+                  <p className="text-xl font-bold text-gray-900">{result.inference_time_ms.toFixed(0)}ms</p>
                 </div>
               </div>
 
               {/* Predictions Table */}
               {result.predictions.length > 0 && (
                 <div>
-                  <h4 className="mb-2 text-xs font-semibold text-[#78716C]">Predictions</h4>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-[#E7E5E0]">
-                        <th className="pb-1 text-left text-[#78716C]">Class</th>
-                        <th className="pb-1 text-right text-[#78716C]">Confidence</th>
-                        <th className="pb-1 text-right text-[#78716C]">Area %</th>
-                        <th className="pb-1 text-right text-[#78716C]">Severity</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.predictions.map((p, i) => (
-                        <tr key={i} className="border-b border-[#F5F5F4]">
-                          <td className="py-1.5 font-medium text-[#1C1917]">{p.class_name}</td>
-                          <td className="py-1.5 text-right text-[#1C1917]">{(p.confidence * 100).toFixed(1)}%</td>
-                          <td className="py-1.5 text-right text-[#1C1917]">{p.area_percent.toFixed(1)}%</td>
-                          <td className="py-1.5 text-right">
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                              p.severity === "critical" ? "bg-[#FEE2E2] text-[#DC2626]" :
-                              p.severity === "high" ? "bg-[#FFF7ED] text-[#D97706]" :
-                              p.severity === "medium" ? "bg-[#FEF9C3] text-[#CA8A04]" :
-                              "bg-[#F1F0ED] text-[#78716C]"
-                            }`}>
-                              {p.severity ?? "low"}
-                            </span>
-                          </td>
+                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Predictions</h4>
+                  <div className="rounded-xl border border-gray-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100 bg-gray-50">
+                          <th className="px-4 py-2.5 text-left text-gray-500">Class</th>
+                          <th className="px-4 py-2.5 text-right text-gray-500">Confidence</th>
+                          <th className="px-4 py-2.5 text-right text-gray-500">Area %</th>
+                          <th className="px-4 py-2.5 text-right text-gray-500">Severity</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {result.predictions.map((p, i) => (
+                          <tr key={i} className="border-b border-gray-50">
+                            <td className="px-4 py-2.5 font-medium text-gray-900">{p.class_name}</td>
+                            <td className="px-4 py-2.5 text-right text-gray-700">{(p.confidence * 100).toFixed(1)}%</td>
+                            <td className="px-4 py-2.5 text-right text-gray-700">{p.area_percent.toFixed(1)}%</td>
+                            <td className="px-4 py-2.5 text-right">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                p.severity === "critical" ? "bg-red-50 text-red-600" :
+                                p.severity === "high" ? "bg-orange-50 text-orange-600" :
+                                p.severity === "medium" ? "bg-amber-50 text-amber-600" :
+                                "bg-gray-100 text-gray-500"
+                              }`}>
+                                {p.severity ?? "low"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
-              <p className="text-[10px] text-[#A8A29E]">Source: {result.model_source}</p>
+              <p className="text-[10px] text-gray-400">Source: {result.model_source}</p>
             </div>
           )}
         </div>

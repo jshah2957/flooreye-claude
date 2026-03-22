@@ -37,19 +37,19 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1, backgroundColor: "#F8F7F4" }}
     >
-      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
+      <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 28 }}>
         {/* Branding */}
-        <View style={{ alignItems: "center", marginBottom: 40 }}>
-          <Text style={{ fontSize: 32, fontWeight: "700", color: "#0D9488" }}>
+        <View style={{ alignItems: "center", marginBottom: 48 }}>
+          <Text style={{ fontSize: 32, fontWeight: "800", color: "#0D9488", letterSpacing: -0.5 }}>
             FloorEye
           </Text>
-          <Text style={{ fontSize: 14, color: "#78716C", marginTop: 4 }}>
+          <Text style={{ fontSize: 14, color: "#78716C", marginTop: 6, letterSpacing: 0.2 }}>
             See Every Drop. Stop Every Slip.
           </Text>
         </View>
 
         {/* Email */}
-        <Text style={{ fontSize: 14, fontWeight: "500", color: "#1C1917", marginBottom: 6 }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: "#1C1917", marginBottom: 8 }}>
           Email address
         </Text>
         <TextInput
@@ -61,23 +61,23 @@ export default function LoginScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           style={{
+            height: 52,
             borderWidth: 1,
             borderColor: "#E7E5E0",
-            borderRadius: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 12,
-            fontSize: 14,
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            fontSize: 16,
             backgroundColor: "#FFFFFF",
-            marginBottom: 16,
+            marginBottom: 20,
             color: "#1C1917",
           }}
         />
 
         {/* Password */}
-        <Text style={{ fontSize: 14, fontWeight: "500", color: "#1C1917", marginBottom: 6 }}>
+        <Text style={{ fontSize: 14, fontWeight: "600", color: "#1C1917", marginBottom: 8 }}>
           Password
         </Text>
-        <View style={{ position: "relative", marginBottom: 16 }}>
+        <View style={{ position: "relative", marginBottom: 20 }}>
           <TextInput
             value={password}
             onChangeText={setPassword}
@@ -85,13 +85,13 @@ export default function LoginScreen() {
             placeholderTextColor="#9CA3AF"
             secureTextEntry={!showPassword}
             style={{
+              height: 52,
               borderWidth: 1,
               borderColor: "#E7E5E0",
-              borderRadius: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 12,
-              paddingRight: 60,
-              fontSize: 14,
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingRight: 72,
+              fontSize: 16,
               backgroundColor: "#FFFFFF",
               color: "#1C1917",
             }}
@@ -100,13 +100,16 @@ export default function LoginScreen() {
             onPress={() => setShowPassword(!showPassword)}
             style={{
               position: "absolute",
-              right: 12,
+              right: 0,
               top: 0,
               bottom: 0,
               justifyContent: "center",
+              paddingHorizontal: 16,
+              minHeight: 48,
+              minWidth: 48,
             }}
           >
-            <Text style={{ fontSize: 13, color: "#0D9488" }}>
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0D9488" }}>
               {showPassword ? "Hide" : "Show"}
             </Text>
           </Pressable>
@@ -117,12 +120,14 @@ export default function LoginScreen() {
           <View
             style={{
               backgroundColor: "#FEE2E2",
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 16,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 20,
+              borderLeftWidth: 4,
+              borderLeftColor: "#DC2626",
             }}
           >
-            <Text style={{ fontSize: 14, color: "#DC2626" }}>{error}</Text>
+            <Text style={{ fontSize: 14, fontWeight: "500", color: "#DC2626" }}>{error}</Text>
           </View>
         ) : null}
 
@@ -132,24 +137,34 @@ export default function LoginScreen() {
           disabled={loading}
           activeOpacity={0.8}
           style={{
+            height: 52,
             backgroundColor: loading ? "#5EEAD4" : "#0D9488",
-            borderRadius: 8,
-            paddingVertical: 14,
+            borderRadius: 12,
+            justifyContent: "center",
             alignItems: "center",
+            flexDirection: "row",
+            gap: 8,
           }}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
+            <>
+              <ActivityIndicator color="#FFFFFF" size="small" />
+              <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>
+                Signing in...
+              </Text>
+            </>
           ) : (
-            <Text style={{ fontSize: 15, fontWeight: "600", color: "#FFFFFF" }}>
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#FFFFFF" }}>
               Sign In
             </Text>
           )}
         </TouchableOpacity>
 
         {/* Forgot password */}
-        <TouchableOpacity style={{ alignItems: "center", marginTop: 16 }}>
-          <Text style={{ fontSize: 13, color: "#0D9488" }}>
+        <TouchableOpacity
+          style={{ alignItems: "center", marginTop: 20, minHeight: 48, justifyContent: "center" }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "500", color: "#0D9488" }}>
             Forgot password?
           </Text>
         </TouchableOpacity>

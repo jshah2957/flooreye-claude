@@ -17,6 +17,12 @@ import {
   Pencil,
   Trash2,
   X,
+  Monitor,
+  Crosshair,
+  Image,
+  Activity,
+  Shield,
+  ScrollText,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -66,6 +72,39 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number];
 
+const TAB_ICONS: Record<Tab, React.ElementType> = {
+  "Overview": Monitor,
+  "Live Feed": Play,
+  "Detection History": Activity,
+  "ROI": Crosshair,
+  "Dry Reference": Image,
+  "Inference Config": Settings,
+  "Detection Overrides": Shield,
+  "Audit Log": ScrollText,
+};
+
+function TabSkeleton() {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="space-y-4">
+        <div className="h-5 w-40 animate-pulse rounded bg-gray-200" />
+        <div className="grid gap-6 sm:grid-cols-2">
+          {[0, 1].map((col) => (
+            <div key={col} className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex justify-between">
+                  <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+                  <div className="h-4 w-20 animate-pulse rounded bg-gray-200" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RoiHistory({ cameraId, snapshotBase64 }: { cameraId: string; snapshotBase64?: string }) {
   const [open, setOpen] = useState(false);
   const [previewVersion, setPreviewVersion] = useState<ROIData | null>(null);
@@ -80,29 +119,29 @@ function RoiHistory({ cameraId, snapshotBase64 }: { cameraId: string; snapshotBa
   const history = data ?? [];
   if (history.length <= 1 && !open) return null;
   return (
-    <div className="mt-4">
-      <button onClick={() => setOpen(!open)} className="text-xs text-[#0D9488] hover:underline">
+    <div className="mt-5 border-t border-gray-100 pt-5">
+      <button onClick={() => setOpen(!open)} className="text-sm font-medium text-[#0D9488] transition-colors hover:text-[#0F766E]">
         {open ? "Hide" : "Show"} version history ({history.length} versions)
       </button>
       {open && history.length > 0 && (
-        <div className="mt-2 space-y-1">
+        <div className="mt-3 space-y-1.5">
           {history.map((r) => (
             <div
               key={r.version}
               onClick={() => setPreviewVersion(previewVersion?.version === r.version ? null : r)}
-              className={`flex cursor-pointer items-center justify-between rounded border px-3 py-1.5 text-xs transition-colors ${
+              className={`flex cursor-pointer items-center justify-between rounded-lg border px-4 py-2.5 text-sm transition-all ${
                 previewVersion?.version === r.version
-                  ? "border-[#0D9488] bg-[#F0FDFA]"
-                  : "border-[#F5F5F4] hover:border-[#E7E5E0] hover:bg-[#F8F7F4]"
+                  ? "border-[#0D9488] bg-[#F0FDFA] shadow-sm"
+                  : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
               }`}
             >
-              <span className="text-[#1C1917]">
+              <span className="font-medium text-gray-900">
                 v{r.version}
-                {r.is_active && <span className="ml-1 rounded bg-[#DCFCE7] px-1 text-[10px] text-[#16A34A]">active</span>}
+                {r.is_active && <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">active</span>}
               </span>
-              <div className="flex items-center gap-3">
-                <span className="text-[#78716C]">{r.polygon_points.length} points</span>
-                <span className="text-[#78716C]">{new Date(r.created_at).toLocaleString()}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-gray-400">{r.polygon_points.length} points</span>
+                <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleString()}</span>
               </div>
             </div>
           ))}
@@ -110,13 +149,13 @@ function RoiHistory({ cameraId, snapshotBase64 }: { cameraId: string; snapshotBa
       )}
       {/* Read-only polygon overlay preview */}
       {previewVersion && (
-        <div className="mt-3 rounded-lg border border-[#E7E5E0] bg-[#F8F7F4] p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-[#1C1917]">
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-900">
               Preview: v{previewVersion.version}
-              {previewVersion.mask_outside && <span className="ml-2 text-[10px] text-[#78716C]">(mask outside)</span>}
+              {previewVersion.mask_outside && <span className="ml-2 text-xs text-gray-400">(mask outside)</span>}
             </span>
-            <button onClick={() => setPreviewVersion(null)} className="text-xs text-[#78716C] hover:text-[#1C1917]">
+            <button onClick={() => setPreviewVersion(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600">
               <X size={14} />
             </button>
           </div>
@@ -170,7 +209,7 @@ function RoiPreviewOverlay({ snapshotBase64, points }: { snapshotBase64?: string
     };
 
     if (snapshotBase64) {
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const displayW = Math.min(img.width, 640);
         const scale = displayW / img.width;
@@ -182,7 +221,7 @@ function RoiPreviewOverlay({ snapshotBase64, points }: { snapshotBase64?: string
       };
       img.src = `data:image/jpeg;base64,${snapshotBase64}`;
     } else {
-      // No snapshot — draw on grey background
+      // No snapshot -- draw on grey background
       draw(640, 360);
       ctx.fillStyle = "#E7E5E0";
       ctx.fillRect(0, 0, 640, 360);
@@ -209,7 +248,7 @@ function RoiPreviewOverlay({ snapshotBase64, points }: { snapshotBase64?: string
     }
   }, [snapshotBase64, points]);
 
-  return <canvas ref={canvasRef} className="w-full rounded" style={{ maxWidth: dimensions.w }} />;
+  return <canvas ref={canvasRef} className="w-full rounded-lg" style={{ maxWidth: dimensions.w }} />;
 }
 
 export default function CameraDetailPage() {
@@ -370,15 +409,20 @@ export default function CameraDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-[#0D9488]" />
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={28} className="animate-spin text-[#0D9488]" />
+          <p className="text-sm text-gray-400">Loading camera details...</p>
+        </div>
       </div>
     );
   }
 
   if (!camera) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-[#78716C]">
-        Camera not found
+      <div className="flex h-64 flex-col items-center justify-center">
+        <CamIcon size={40} className="mb-3 text-gray-300" />
+        <p className="text-sm font-medium text-gray-500">Camera not found</p>
+        <Link to="/cameras" className="mt-2 text-sm text-[#0D9488] hover:underline">Back to Cameras</Link>
       </div>
     );
   }
@@ -393,113 +437,122 @@ export default function CameraDetailPage() {
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="mb-6">
-        <Link to="/cameras" className="mb-2 inline-flex items-center gap-1 text-sm text-[#78716C] hover:text-[#0D9488]">
-          <ArrowLeft size={14} /> Back to Cameras
+    <div className="min-h-[calc(100vh-120px)]">
+      {/* Breadcrumbs */}
+      <nav className="mb-4 flex items-center gap-2 text-sm text-gray-400">
+        <Link to="/cameras" className="flex items-center gap-1 transition-colors hover:text-[#0D9488]">
+          <ArrowLeft size={14} />
+          Cameras
         </Link>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-[#1C1917]">{camera.name}</h1>
-            <p className="text-sm text-[#78716C]">
-              {(camera.stream_type ?? 'rtsp').toUpperCase()} &middot; {camera.floor_type ?? 'tile'} &middot; {camera.resolution ?? "Unknown"}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
+        <span>/</span>
+        <span className="font-medium text-gray-700">{camera.name}</span>
+      </nav>
+
+      {/* Header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-gray-900">{camera.name}</h1>
             <StatusBadge status={camera.status} />
             <StatusBadge status={camera.inference_mode} />
-            <button
-              onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending}
-              className="flex items-center gap-2 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm font-medium text-[#1C1917] hover:bg-[#F1F0ED] disabled:opacity-50"
-            >
-              {testMutation.isPending ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Wifi size={14} />
-              )}
-              Test
-            </button>
-            <button
-              onClick={() => { setEditName(camera.name); setEditStreamUrl(""); setEditShowStreamUrl(false); setEditFloorType(camera.floor_type); setEditFps(camera.fps_config); setEditOpen(true); }}
-              className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-2 text-sm text-[#1C1917] hover:bg-[#F1F0ED]"
-            >
-              <Pencil size={14} /> Edit
-            </button>
-            {camera.status !== "inactive" && (
-              <button
-                onClick={() => setDeactivateOpen(true)}
-                className="flex items-center gap-1 rounded-md border border-[#FCA5A5] px-3 py-2 text-sm text-[#DC2626] hover:bg-[#FEE2E2]"
-              >
-                <Trash2 size={14} /> Deactivate
-              </button>
-            )}
           </div>
+          <p className="mt-1 text-sm text-gray-400">
+            {(camera.stream_type ?? 'rtsp').toUpperCase()} &middot; {camera.floor_type ?? 'tile'} &middot; {camera.resolution ?? "Unknown"}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => testMutation.mutate()}
+            disabled={testMutation.isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md disabled:opacity-50"
+          >
+            {testMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Wifi size={14} />
+            )}
+            Test
+          </button>
+          <button
+            onClick={() => { setEditName(camera.name); setEditStreamUrl(""); setEditShowStreamUrl(false); setEditFloorType(camera.floor_type); setEditFps(camera.fps_config); setEditOpen(true); }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+          >
+            <Pencil size={14} /> Edit
+          </button>
+          {camera.status !== "inactive" && (
+            <button
+              onClick={() => setDeactivateOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-medium text-red-600 shadow-sm transition-all hover:bg-red-50 hover:shadow-md"
+            >
+              <Trash2 size={14} /> Deactivate
+            </button>
+          )}
         </div>
       </div>
 
       {/* Edit Modal */}
       {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[440px] rounded-lg bg-white p-6 shadow-lg">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#1C1917]">Edit Camera</h3>
-              <button onClick={() => setEditOpen(false)} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditOpen(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Edit Camera</h3>
+              <button onClick={() => setEditOpen(false)} className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"><X size={16} /></button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">Name</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Name</label>
                 <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]" />
+                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">RTSP / Stream URL</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">RTSP / Stream URL</label>
                 <div className="relative">
                   <input
                     type={editShowStreamUrl ? "text" : "password"}
                     value={editStreamUrl}
                     onChange={(e) => setEditStreamUrl(e.target.value)}
                     placeholder="rtsp://..."
-                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 pr-9 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+                    className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 pr-10 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
                   />
                   <button
                     type="button"
                     onClick={() => setEditShowStreamUrl(!editShowStreamUrl)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[#78716C] hover:text-[#1C1917]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     {editShowStreamUrl ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
-                <p className="mt-1 text-[10px] text-[#A8A29E]">Leave empty to keep current URL</p>
+                <p className="mt-1 text-xs text-gray-400">Leave empty to keep current URL</p>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">Floor Type</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Floor Type</label>
                 <select value={editFloorType} onChange={(e) => setEditFloorType(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]">
+                  className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20">
                   {["tile","wood","concrete","carpet","vinyl","linoleum"].map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#78716C]">FPS ({editFps})</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">FPS ({editFps})</label>
                 <input type="range" min={1} max={30} value={editFps} onChange={(e) => setEditFps(Number(e.target.value))}
                   className="w-full accent-[#0D9488]" />
-                <div className="flex justify-between text-[10px] text-[#A8A29E]">
+                <div className="flex justify-between text-xs text-gray-400">
                   <span>1</span>
                   <span>15</span>
                   <span>30</span>
                 </div>
               </div>
             </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setEditOpen(false)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs text-[#78716C] hover:bg-[#F1F0ED]">Cancel</button>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setEditOpen(false)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">Cancel</button>
               <button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName.trim()}
-                className="rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50">
+                className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0F766E] disabled:opacity-50">
+                {editMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                 {editMutation.isPending ? "Saving..." : "Save Changes"}
               </button>
             </div>
             {camera.edge_agent_id && (
-              <p className="mt-3 text-[10px] text-[#A8A29E]">
+              <p className="mt-3 text-xs text-gray-400">
                 This camera is edge-managed. Config will be pushed to edge agent after save.
               </p>
             )}
@@ -519,112 +572,124 @@ export default function CameraDetailPage() {
       />
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-[#E7E5E0]">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === tab
-                ? "border-b-2 border-[#0D9488] text-[#0D9488]"
-                : "text-[#78716C] hover:text-[#1C1917]"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="mb-6 -mx-1 overflow-x-auto scrollbar-none">
+        <div className="flex min-w-max gap-0.5 border-b border-gray-200 px-1">
+          {TABS.map((tab) => {
+            const Icon = TAB_ICONS[tab];
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative flex items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${
+                  activeTab === tab
+                    ? "text-[#0D9488]"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Icon size={14} />
+                {tab}
+                {activeTab === tab && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-[#0D9488]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Overview */}
       {activeTab === "Overview" && (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Snapshot */}
-          <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
             {camera.snapshot_base64 ? (
               <img
                 src={`data:image/jpeg;base64,${camera.snapshot_base64}`}
                 alt="Camera snapshot"
-                className="w-full rounded"
+                className="w-full"
               />
             ) : (
-              <div className="flex h-[300px] items-center justify-center rounded bg-gray-100 text-sm text-[#78716C]">
-                No snapshot available — run a connection test
+              <div className="flex h-72 flex-col items-center justify-center bg-gray-100 text-gray-400">
+                <CamIcon size={32} className="mb-2" />
+                <p className="text-sm">No snapshot available</p>
+                <p className="text-xs">Run a connection test to capture</p>
               </div>
             )}
           </div>
 
           {/* Config details */}
-          <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-            <h3 className="mb-4 text-base font-semibold text-[#1C1917]">Configuration</h3>
+          <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-gray-400">Configuration</h3>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Stream URL</dt>
-                <dd className="flex items-center gap-2 text-[#1C1917]">
-                  {showUrl ? camera.stream_url : maskUrl(camera.stream_url)}
-                  <button onClick={() => setShowUrl(!showUrl)} className="text-[#78716C] hover:text-[#1C1917]">
+                <dt className="text-gray-500">Stream URL</dt>
+                <dd className="flex items-center gap-2 font-medium text-gray-900">
+                  <span className="max-w-[180px] truncate font-mono text-xs">{showUrl ? camera.stream_url : maskUrl(camera.stream_url)}</span>
+                  <button onClick={() => setShowUrl(!showUrl)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
                     {showUrl ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Stream Type</dt>
-                <dd className="text-[#1C1917]">{(camera.stream_type ?? 'rtsp').toUpperCase()}</dd>
+                <dt className="text-gray-500">Stream Type</dt>
+                <dd className="font-medium text-gray-900">{(camera.stream_type ?? 'rtsp').toUpperCase()}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Resolution</dt>
-                <dd className="text-[#1C1917]">{camera.resolution ?? "Unknown"}</dd>
+                <dt className="text-gray-500">Resolution</dt>
+                <dd className="font-medium text-gray-900">{camera.resolution ?? "Unknown"}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">FPS Config</dt>
-                <dd className="text-[#1C1917]">{camera.fps_config}</dd>
+                <dt className="text-gray-500">FPS Config</dt>
+                <dd className="font-medium text-gray-900">{camera.fps_config}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Floor Type</dt>
-                <dd className="text-[#1C1917] capitalize">{camera.floor_type}</dd>
+                <dt className="text-gray-500">Floor Type</dt>
+                <dd className="font-medium capitalize text-gray-900">{camera.floor_type}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Min Wet Area</dt>
-                <dd className="text-[#1C1917]">{camera.min_wet_area_percent}%</dd>
+                <dt className="text-gray-500">Min Wet Area</dt>
+                <dd className="font-medium text-gray-900">{camera.min_wet_area_percent}%</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Detection</dt>
+                <dt className="text-gray-500">Detection</dt>
                 <dd>
                   {camera.detection_enabled ? (
-                    <span className="text-[#16A34A]">Enabled</span>
+                    <span className="font-semibold text-green-600">Enabled</span>
                   ) : (
-                    <span className="text-[#78716C]">Disabled</span>
+                    <span className="font-medium text-gray-400">Disabled</span>
                   )}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Inference Mode</dt>
+                <dt className="text-gray-500">Inference Mode</dt>
                 <dd><StatusBadge status={camera.inference_mode} /></dd>
               </div>
               {camera.hybrid_threshold && camera.inference_mode === "hybrid" && (
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Escalation Threshold</dt>
-                  <dd className="text-[#1C1917]">{camera.hybrid_threshold}</dd>
+                  <dt className="text-gray-500">Escalation Threshold</dt>
+                  <dd className="font-medium text-gray-900">{camera.hybrid_threshold}</dd>
                 </div>
               )}
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Last Seen</dt>
-                <dd className="text-[#1C1917]">
+                <dt className="text-gray-500">Last Seen</dt>
+                <dd className="font-medium text-gray-900">
                   {camera.last_seen ? new Date(camera.last_seen).toLocaleString() : "Never"}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#78716C]">Created</dt>
-                <dd className="text-[#1C1917]">{new Date(camera.created_at).toLocaleString()}</dd>
+                <dt className="text-gray-500">Created</dt>
+                <dd className="font-medium text-gray-900">{new Date(camera.created_at).toLocaleString()}</dd>
               </div>
               {camera.edge_agent_id && (
                 <>
+                  <div className="my-2 border-t border-gray-100" />
                   <div className="flex justify-between">
-                    <dt className="text-[#78716C]">Edge Config</dt>
+                    <dt className="text-gray-500">Edge Config</dt>
                     <dd>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        camera.config_status === "received" ? "bg-[#DCFCE7] text-[#16A34A]" :
-                        camera.config_status === "failed" ? "bg-[#FEE2E2] text-[#DC2626]" :
-                        "bg-[#FEF9C3] text-[#CA8A04]"
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        camera.config_status === "received" ? "bg-green-100 text-green-700" :
+                        camera.config_status === "failed" ? "bg-red-100 text-red-700" :
+                        "bg-amber-100 text-amber-700"
                       }`}>
                         {camera.config_status || "waiting"}
                       </span>
@@ -632,14 +697,14 @@ export default function CameraDetailPage() {
                   </div>
                   {camera.last_config_push_at && (
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Last Push</dt>
-                      <dd className="text-[#1C1917] text-[11px]">{new Date(camera.last_config_push_at).toLocaleString()}</dd>
+                      <dt className="text-gray-500">Last Push</dt>
+                      <dd className="text-xs font-medium text-gray-900">{new Date(camera.last_config_push_at).toLocaleString()}</dd>
                     </div>
                   )}
                   {camera.last_config_ack_at && (
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Edge ACK</dt>
-                      <dd className="text-[#1C1917] text-[11px]">{new Date(camera.last_config_ack_at).toLocaleString()}</dd>
+                      <dt className="text-gray-500">Edge ACK</dt>
+                      <dd className="text-xs font-medium text-gray-900">{new Date(camera.last_config_ack_at).toLocaleString()}</dd>
                     </div>
                   )}
                 </>
@@ -647,9 +712,9 @@ export default function CameraDetailPage() {
             </dl>
             {/* Config ACK error alert */}
             {camera.config_ack_error && (
-              <div className="mt-3 rounded-md border border-[#FCA5A5] bg-[#FEE2E2] px-4 py-3">
-                <p className="text-xs font-semibold text-[#DC2626]">Edge Config Error</p>
-                <p className="mt-1 text-xs text-[#DC2626]">{camera.config_ack_error}</p>
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-xs font-semibold text-red-700">Edge Config Error</p>
+                <p className="mt-1 text-xs text-red-600">{camera.config_ack_error}</p>
               </div>
             )}
             {camera.edge_agent_id && (
@@ -668,20 +733,20 @@ export default function CameraDetailPage() {
                     });
                 }}
                 disabled={pushStatus === "pushing"}
-                className="mt-3 flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-[#0D9488] px-4 py-2 text-sm font-medium text-[#0D9488] transition-colors hover:bg-[#F0FDFA] disabled:opacity-50"
               >
                 {pushStatus === "pushing" ? (
-                  <><Loader2 size={12} className="animate-spin" /> Pushing...</>
+                  <><Loader2 size={14} className="animate-spin" /> Pushing...</>
                 ) : (
                   "Push Config to Edge"
                 )}
               </button>
             )}
             {pushStatus === "pushed" && (
-              <p className="mt-2 text-xs text-[#16A34A]">Edge received config</p>
+              <p className="mt-2 text-xs font-medium text-green-600">Edge received config</p>
             )}
             {pushStatus === "unreachable" && (
-              <p className="mt-2 text-xs text-[#D97706]">Edge unreachable -- retry later</p>
+              <p className="mt-2 text-xs font-medium text-amber-600">Edge unreachable -- retry later</p>
             )}
           </div>
         </div>
@@ -689,11 +754,11 @@ export default function CameraDetailPage() {
 
       {/* ROI Tab */}
       {activeTab === "ROI" && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-[#1C1917]">Region of Interest</h3>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Region of Interest</h3>
             {roi && (
-              <span className="text-xs text-[#78716C]">Version {roi.version}</span>
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Version {roi.version}</span>
             )}
           </div>
           <RoiCanvas
@@ -717,17 +782,17 @@ export default function CameraDetailPage() {
           />
           {/* ROI push status feedback */}
           {roiPushStatus === "pushing" && (
-            <div className="mt-3 flex items-center gap-2 rounded-md bg-[#F0FDFA] px-3 py-2 text-xs text-[#0D9488]">
-              <Loader2 size={12} className="animate-spin" /> Pushing ROI config to edge...
+            <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#F0FDFA] px-4 py-2.5 text-sm text-[#0D9488]">
+              <Loader2 size={14} className="animate-spin" /> Pushing ROI config to edge...
             </div>
           )}
           {roiPushStatus === "received" && (
-            <div className="mt-3 rounded-md bg-[#DCFCE7] px-3 py-2 text-xs text-[#16A34A]">
+            <div className="mt-4 rounded-lg bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700">
               Edge received updated ROI config
             </div>
           )}
           {roiPushStatus === "unreachable" && (
-            <div className="mt-3 rounded-md bg-[#FEF3C7] px-3 py-2 text-xs text-[#D97706]">
+            <div className="mt-4 rounded-lg bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-700">
               Edge unreachable -- ROI saved but config push failed
             </div>
           )}
@@ -738,12 +803,12 @@ export default function CameraDetailPage() {
 
       {/* Dry Reference Tab */}
       {activeTab === "Dry Reference" && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-base font-semibold text-[#1C1917]">Dry Reference Frames</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Dry Reference Frames</h3>
               {dryRef && (
-                <p className="text-xs text-[#78716C]">
+                <p className="mt-1 text-xs text-gray-500">
                   Version {dryRef.version} &middot; {dryRef.frames.length} frames &middot;
                   Captured {new Date(dryRef.created_at).toLocaleString()}
                 </p>
@@ -752,7 +817,7 @@ export default function CameraDetailPage() {
             <button
               onClick={() => captureDryRefMutation.mutate()}
               disabled={captureDryRefMutation.isPending}
-              className="flex items-center gap-2 rounded-md bg-[#0D9488] px-4 py-2 text-sm font-medium text-white hover:bg-[#0F766E] disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#0F766E] hover:shadow-md disabled:opacity-50"
             >
               {captureDryRefMutation.isPending ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -766,22 +831,24 @@ export default function CameraDetailPage() {
           {dryRef && dryRef.frames.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {dryRef.frames.map((frame, i) => (
-                <div key={i} className="rounded-lg border border-[#E7E5E0] p-2">
+                <div key={i} className="overflow-hidden rounded-xl border border-gray-200">
                   <img
                     src={`data:image/jpeg;base64,${frame.frame_base64}`}
                     alt={`Dry ref ${i + 1}`}
-                    className="mb-2 w-full rounded"
+                    className="w-full"
                   />
-                  <div className="flex items-center justify-between text-xs text-[#78716C]">
-                    <span>Brightness: {frame.brightness_score}</span>
-                    <span>Reflection: {(frame.reflection_score * 100).toFixed(1)}%</span>
+                  <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                    <span>Brightness: <span className="font-medium text-gray-700">{frame.brightness_score}</span></span>
+                    <span>Reflection: <span className="font-medium text-gray-700">{(frame.reflection_score * 100).toFixed(1)}%</span></span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-[#E7E5E0] text-sm text-[#78716C]">
-              No dry reference captured yet
+            <div className="flex h-52 flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/50">
+              <Image size={32} className="mb-2 text-gray-300" />
+              <p className="text-sm font-medium text-gray-500">No dry reference captured yet</p>
+              <p className="mt-1 text-xs text-gray-400">Capture a reference to enable Layer 4 validation</p>
             </div>
           )}
         </div>
@@ -789,56 +856,62 @@ export default function CameraDetailPage() {
 
       {/* Live Feed Tab */}
       {activeTab === "Live Feed" && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-[#1C1917]">Live Feed</h3>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px]">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Live Feed</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs">
                 <input type="checkbox" checked={liveDetection} onChange={(e) => setLiveDetection(e.target.checked)} className="accent-[#0D9488]" />
                 Detection Overlay
               </label>
               <select value={liveInterval} onChange={(e) => setLiveInterval(Number(e.target.value))}
-                className="rounded-md border border-[#E7E5E0] px-2 py-1.5 text-[10px]">
+                className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs">
                 <option value={1000}>1s</option>
                 <option value={2000}>2s</option>
                 <option value={3000}>3s</option>
                 <option value={5000}>5s</option>
               </select>
               <button onClick={() => setLivePlaying(!livePlaying)}
-                className="flex items-center gap-1 rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs font-medium text-[#1C1917] hover:bg-[#F1F0ED]">
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  livePlaying
+                    ? "border-red-200 text-red-600 hover:bg-red-50"
+                    : "border-[#0D9488] text-[#0D9488] hover:bg-[#F0FDFA]"
+                }`}>
                 {livePlaying ? <Pause size={12} /> : <Play size={12} />}
                 {livePlaying ? "Pause" : "Play"}
               </button>
             </div>
           </div>
-          {liveFrame ? (
-            <img
-              src={`data:image/jpeg;base64,${liveFrame}`}
-              alt="Live camera feed"
-              className="w-full rounded"
-            />
-          ) : (
-            <div className="flex h-[300px] items-center justify-center rounded bg-gray-100 text-sm text-[#78716C]">
-              {livePlaying ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 size={16} className="animate-spin" />
-                  Connecting to live feed...
-                </div>
-              ) : (
-                "No live feed available"
-              )}
-            </div>
-          )}
-          {livePlaying && liveFrame && (
-            <p className="mt-2 text-xs text-[#78716C]">
-              Refreshing every {liveInterval / 1000}s {liveDetection && "· Detection overlay ON"}
-            </p>
-          )}
-          {liveError >= 3 && (
-            <div className="mt-2 rounded bg-[#FEE2E2] px-3 py-2 text-xs text-[#DC2626]">
-              Camera offline — {liveError} consecutive failures. Retrying...
-            </div>
-          )}
+          <div className="p-4">
+            {liveFrame ? (
+              <img
+                src={`data:image/jpeg;base64,${liveFrame}`}
+                alt="Live camera feed"
+                className="w-full rounded-lg"
+              />
+            ) : (
+              <div className="flex aspect-video items-center justify-center rounded-lg bg-gray-900">
+                {livePlaying ? (
+                  <div className="flex flex-col items-center gap-2 text-gray-400">
+                    <Loader2 size={24} className="animate-spin" />
+                    <span className="text-sm">Connecting to live feed...</span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-500">Feed paused</span>
+                )}
+              </div>
+            )}
+            {livePlaying && liveFrame && (
+              <p className="mt-3 text-xs text-gray-400">
+                Refreshing every {liveInterval / 1000}s {liveDetection && " -- Detection overlay ON"}
+              </p>
+            )}
+            {liveError >= 3 && (
+              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-medium text-red-700">
+                Camera offline -- {liveError} consecutive failures. Retrying...
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -846,64 +919,67 @@ export default function CameraDetailPage() {
       {activeTab === "Detection History" && (
         <div>
           {historyLoading ? (
-            <div className="flex h-48 items-center justify-center">
-              <Loader2 size={20} className="animate-spin text-[#0D9488]" />
-            </div>
+            <TabSkeleton />
           ) : !detectionHistory?.data?.length ? (
-            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-[#E7E5E0]">
-              <CamIcon size={24} className="mb-2 text-[#78716C]" />
-              <p className="text-sm text-[#78716C]">No detection history for this camera.</p>
+            <div className="flex h-52 flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/50">
+              <div className="mb-3 rounded-full bg-gray-100 p-3">
+                <Activity size={24} className="text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">No detection history</p>
+              <p className="mt-1 text-xs text-gray-400">Detections will appear here once monitoring begins</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-[#E7E5E0]">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#F8F7F4] text-xs font-medium text-[#78716C]">
-                  <tr>
-                    <th className="px-4 py-3">Timestamp</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Confidence</th>
-                    <th className="px-4 py-3">Model Source</th>
-                    <th className="px-4 py-3">Wet Area</th>
-                    <th className="px-4 py-3">Inference Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E7E5E0]">
-                  {detectionHistory.data.map((det: any) => (
-                    <tr key={det.id} className="hover:bg-[#F8F7F4]">
-                      <td className="px-4 py-3 text-[#1C1917]">
-                        {new Date(det.timestamp).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        {det.is_wet ? (
-                          <span className="inline-flex items-center rounded-full bg-[#FEE2E2] px-2 py-0.5 text-xs font-semibold text-[#DC2626]">
-                            Wet
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-[#DCFCE7] px-2 py-0.5 text-xs font-semibold text-[#16A34A]">
-                            Dry
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-[#1C1917]">
-                        {(det.confidence * 100).toFixed(1)}%
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center rounded-full bg-[#DBEAFE] px-2 py-0.5 text-xs font-semibold text-[#2563EB]">
-                          {det.model_source}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-[#1C1917]">
-                        {det.wet_area_percent != null ? `${det.wet_area_percent.toFixed(1)}%` : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-[#78716C]">
-                        {det.inference_time_ms != null ? `${det.inference_time_ms}ms` : "—"}
-                      </td>
+            <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-100 bg-gray-50/80">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-6">Timestamp</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-6">Status</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-6">Confidence</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-6">Model Source</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-6">Wet Area</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:px-6">Inference Time</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 bg-white">
+                    {detectionHistory.data.map((det: any) => (
+                      <tr key={det.id} className="transition-colors hover:bg-gray-50/70">
+                        <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-900 sm:px-6">
+                          {new Date(det.timestamp).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 sm:px-6">
+                          {det.is_wet ? (
+                            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                              Wet
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                              Dry
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 sm:px-6">
+                          {(det.confidence * 100).toFixed(1)}%
+                        </td>
+                        <td className="px-4 py-3 sm:px-6">
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                            {det.model_source}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 sm:px-6">
+                          {det.wet_area_percent != null ? `${det.wet_area_percent.toFixed(1)}%` : "--"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 sm:px-6">
+                          {det.inference_time_ms != null ? `${det.inference_time_ms}ms` : "--"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {detectionHistory.meta && (
-                <div className="border-t border-[#E7E5E0] bg-[#F8F7F4] px-4 py-2 text-xs text-[#78716C]">
+                <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-2.5 text-xs text-gray-500">
                   Showing {detectionHistory.data.length} of {detectionHistory.meta.total} detections
                 </div>
               )}
@@ -914,69 +990,69 @@ export default function CameraDetailPage() {
 
       {/* Inference Config Tab */}
       {activeTab === "Inference Config" && camera && (
-        <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-[#1C1917]">Inference Configuration</h3>
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Inference Configuration</h3>
             <Link
               to="/detection-control"
-              className="flex items-center gap-1 text-sm font-medium text-[#0D9488] hover:text-[#0F766E]"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9488] transition-colors hover:text-[#0F766E]"
             >
               Detection Control Center <ExternalLink size={14} />
             </Link>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-8 sm:grid-cols-2">
             <div>
-              <h4 className="mb-3 text-sm font-medium text-[#78716C]">Detection Mode</h4>
-              <dl className="space-y-2 text-sm">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Detection Mode</h4>
+              <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Inference Mode</dt>
+                  <dt className="text-gray-500">Inference Mode</dt>
                   <dd><StatusBadge status={camera.inference_mode} /></dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Detection Enabled</dt>
-                  <dd className="text-[#1C1917]">
+                  <dt className="text-gray-500">Detection Enabled</dt>
+                  <dd className="font-medium">
                     {camera.detection_enabled ? (
-                      <span className="text-[#16A34A]">Yes</span>
+                      <span className="text-green-600">Yes</span>
                     ) : (
-                      <span className="text-[#78716C]">No</span>
+                      <span className="text-gray-400">No</span>
                     )}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">FPS Config</dt>
-                  <dd className="text-[#1C1917]">{camera.fps_config}</dd>
+                  <dt className="text-gray-500">FPS Config</dt>
+                  <dd className="font-medium text-gray-900">{camera.fps_config}</dd>
                 </div>
                 {camera.inference_mode === "hybrid" && camera.hybrid_threshold && (
                   <div className="flex justify-between">
-                    <dt className="text-[#78716C]">Hybrid Escalation Threshold</dt>
-                    <dd className="text-[#1C1917]">{camera.hybrid_threshold}</dd>
+                    <dt className="text-gray-500">Hybrid Escalation Threshold</dt>
+                    <dd className="font-medium text-gray-900">{camera.hybrid_threshold}</dd>
                   </div>
                 )}
               </dl>
             </div>
             <div>
-              <h4 className="mb-3 text-sm font-medium text-[#78716C]">Model & Floor Settings</h4>
-              <dl className="space-y-2 text-sm">
+              <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Model & Floor Settings</h4>
+              <dl className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Floor Type</dt>
-                  <dd className="text-[#1C1917] capitalize">{camera.floor_type}</dd>
+                  <dt className="text-gray-500">Floor Type</dt>
+                  <dd className="font-medium capitalize text-gray-900">{camera.floor_type}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Min Wet Area</dt>
-                  <dd className="text-[#1C1917]">{camera.min_wet_area_percent}%</dd>
+                  <dt className="text-gray-500">Min Wet Area</dt>
+                  <dd className="font-medium text-gray-900">{camera.min_wet_area_percent}%</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Mask Outside ROI</dt>
-                  <dd className="text-[#1C1917]">{camera.mask_outside_roi ? "Yes" : "No"}</dd>
+                  <dt className="text-gray-500">Mask Outside ROI</dt>
+                  <dd className="font-medium text-gray-900">{camera.mask_outside_roi ? "Yes" : "No"}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-[#78716C]">Student Model Version</dt>
-                  <dd className="text-[#1C1917]">{camera.student_model_version ?? "None"}</dd>
+                  <dt className="text-gray-500">Student Model Version</dt>
+                  <dd className="font-medium text-gray-900">{camera.student_model_version ?? "None"}</dd>
                 </div>
                 {camera.edge_agent_id && (
                   <div className="flex justify-between">
-                    <dt className="text-[#78716C]">Edge Agent</dt>
-                    <dd className="truncate text-[#1C1917]">{camera.edge_agent_id}</dd>
+                    <dt className="text-gray-500">Edge Agent</dt>
+                    <dd className="max-w-[120px] truncate font-mono text-xs font-medium text-gray-900">{camera.edge_agent_id}</dd>
                   </div>
                 )}
               </dl>
@@ -989,35 +1065,35 @@ export default function CameraDetailPage() {
       {activeTab === "Detection Overrides" && (
         <div>
           {overridesLoading ? (
-            <div className="flex h-48 items-center justify-center">
-              <Loader2 size={20} className="animate-spin text-[#0D9488]" />
-            </div>
+            <TabSkeleton />
           ) : !effectiveSettings?.settings ? (
-            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-[#E7E5E0]">
-              <Settings size={24} className="mb-2 text-[#78716C]" />
-              <p className="text-sm text-[#78716C]">Using global defaults</p>
-              <p className="mt-1 text-xs text-[#78716C]">
+            <div className="flex h-52 flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50/50">
+              <div className="mb-3 rounded-full bg-gray-100 p-3">
+                <Shield size={24} className="text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Using global defaults</p>
+              <p className="mt-1 max-w-sm text-center text-xs text-gray-400">
                 No camera-level detection overrides configured. Settings are inherited from store, organization, or global defaults.
               </p>
             </div>
           ) : (
-            <div className="rounded-lg border border-[#E7E5E0] bg-white p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-[#1C1917]">Effective Detection Settings</h3>
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">Effective Detection Settings</h3>
                 <Link
                   to="/detection-control"
-                  className="flex items-center gap-1 text-sm font-medium text-[#0D9488] hover:text-[#0F766E]"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0D9488] transition-colors hover:text-[#0F766E]"
                 >
                   Edit in Detection Control Center <ExternalLink size={14} />
                 </Link>
               </div>
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-8 sm:grid-cols-2">
                 <div>
-                  <h4 className="mb-3 text-sm font-medium text-[#78716C]">Validation Layers</h4>
-                  <dl className="space-y-2 text-sm">
+                  <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Validation Layers</h4>
+                  <dl className="space-y-3 text-sm">
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Layer 1 (Confidence)</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Layer 1 (Confidence)</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.layer1_enabled != null
                           ? effectiveSettings.settings.layer1_enabled
                             ? `Enabled (${effectiveSettings.settings.layer1_confidence ?? "default"})`
@@ -1026,8 +1102,8 @@ export default function CameraDetailPage() {
                       </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Layer 2 (Area)</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Layer 2 (Area)</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.layer2_enabled != null
                           ? effectiveSettings.settings.layer2_enabled
                             ? `Enabled (${effectiveSettings.settings.layer2_min_area_percent ?? "default"}%)`
@@ -1036,8 +1112,8 @@ export default function CameraDetailPage() {
                       </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Layer 3 (Voting)</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Layer 3 (Voting)</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.layer3_enabled != null
                           ? effectiveSettings.settings.layer3_enabled
                             ? `Enabled (${effectiveSettings.settings.layer3_voting_mode ?? "default"})`
@@ -1046,8 +1122,8 @@ export default function CameraDetailPage() {
                       </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Layer 4 (Dry Ref)</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Layer 4 (Dry Ref)</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.layer4_enabled != null
                           ? effectiveSettings.settings.layer4_enabled ? "Enabled" : "Disabled"
                           : "Inherited"}
@@ -1056,31 +1132,31 @@ export default function CameraDetailPage() {
                   </dl>
                 </div>
                 <div>
-                  <h4 className="mb-3 text-sm font-medium text-[#78716C]">Detection Settings</h4>
-                  <dl className="space-y-2 text-sm">
+                  <h4 className="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-400">Detection Settings</h4>
+                  <dl className="space-y-3 text-sm">
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Detection Enabled</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Detection Enabled</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.detection_enabled != null
                           ? effectiveSettings.settings.detection_enabled ? "Yes" : "No"
                           : "Inherited"}
                       </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Capture FPS</dt>
-                      <dd className="text-[#1C1917]">{effectiveSettings.settings.capture_fps ?? "Inherited"}</dd>
+                      <dt className="text-gray-500">Capture FPS</dt>
+                      <dd className="font-medium text-gray-900">{effectiveSettings.settings.capture_fps ?? "Inherited"}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Detection Interval</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Detection Interval</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.detection_interval_seconds != null
                           ? `${effectiveSettings.settings.detection_interval_seconds}s`
                           : "Inherited"}
                       </dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-[#78716C]">Auto Create Incident</dt>
-                      <dd className="text-[#1C1917]">
+                      <dt className="text-gray-500">Auto Create Incident</dt>
+                      <dd className="font-medium text-gray-900">
                         {effectiveSettings.settings.auto_create_incident != null
                           ? effectiveSettings.settings.auto_create_incident ? "Yes" : "No"
                           : "Inherited"}
@@ -1090,12 +1166,12 @@ export default function CameraDetailPage() {
                 </div>
               </div>
               {effectiveSettings.provenance && (
-                <div className="mt-4 rounded border border-[#E7E5E0] bg-[#F8F7F4] p-3">
-                  <h4 className="mb-2 text-xs font-medium text-[#78716C]">Setting Sources</h4>
-                  <div className="flex flex-wrap gap-2 text-xs text-[#78716C]">
+                <div className="mt-5 border-t border-gray-100 pt-5">
+                  <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Setting Sources</h4>
+                  <div className="flex flex-wrap gap-2">
                     {Object.entries(effectiveSettings.provenance).map(([key, source]) => (
-                      <span key={key} className="rounded bg-white px-2 py-1 border border-[#E7E5E0]">
-                        {key}: <span className="font-medium text-[#1C1917]">{String(source)}</span>
+                      <span key={key} className="rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-500">
+                        {key}: <span className="font-semibold text-gray-700">{String(source)}</span>
                       </span>
                     ))}
                   </div>
@@ -1108,10 +1184,12 @@ export default function CameraDetailPage() {
 
       {/* Audit Log Tab */}
       {activeTab === "Audit Log" && (
-        <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-[#E7E5E0] bg-white">
-          <FileText size={24} className="mb-2 text-[#78716C]" />
-          <p className="text-sm font-medium text-[#1C1917]">Audit Logging</p>
-          <p className="mt-1 text-xs text-[#78716C]">
+        <div className="flex h-52 flex-col items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="mb-3 rounded-full bg-gray-100 p-3">
+            <ScrollText size={24} className="text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-500">Audit Logging</p>
+          <p className="mt-1 text-xs text-gray-400">
             Camera-level audit logging will be available in a future update.
           </p>
         </div>

@@ -168,10 +168,14 @@ export default function SettingsScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
         accessibilityLabel="Loading settings"
       >
         <ActivityIndicator size="large" color={BRAND.primary} />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading settings...
+        </Text>
       </View>
     );
   }
@@ -179,7 +183,7 @@ export default function SettingsScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: BRAND.background }}
-      contentContainerStyle={{ padding: SPACING.lg }}
+      contentContainerStyle={{ padding: 16 }}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -191,10 +195,10 @@ export default function SettingsScreen() {
     >
       <Text
         style={{
-          fontSize: FONT_SIZE.xxl,
-          fontWeight: "600",
+          fontSize: 20,
+          fontWeight: "700",
           color: BRAND.textPrimary,
-          marginBottom: SPACING.lg,
+          marginBottom: 20,
         }}
         accessibilityRole="header"
       >
@@ -223,7 +227,7 @@ export default function SettingsScreen() {
       <SectionCard title="Profile">
         <DetailRow label="Name" value={user?.name ?? "\u2014"} />
         <DetailRow label="Email" value={user?.email ?? "\u2014"} />
-        <DetailRow label="Role" value={user?.role ?? "\u2014"} />
+        <DetailRow label="Role" value={user?.role ?? "\u2014"} last />
 
         {!showPasswordForm ? (
           <TouchableOpacity
@@ -233,12 +237,12 @@ export default function SettingsScreen() {
               setPasswordSuccess(false);
             }}
             style={{
-              marginTop: SPACING.md,
-              paddingVertical: SPACING.sm,
-              paddingHorizontal: SPACING.md,
+              marginTop: 16,
+              height: 48,
+              justifyContent: "center",
+              alignItems: "center",
               backgroundColor: BRAND.primary,
-              borderRadius: RADIUS.md,
-              alignSelf: "flex-start",
+              borderRadius: 12,
             }}
             accessibilityLabel="Change password"
             accessibilityRole="button"
@@ -246,7 +250,7 @@ export default function SettingsScreen() {
             <Text
               style={{
                 color: NEUTRAL.white,
-                fontSize: FONT_SIZE.md,
+                fontSize: 14,
                 fontWeight: "600",
               }}
             >
@@ -254,7 +258,7 @@ export default function SettingsScreen() {
             </Text>
           </TouchableOpacity>
         ) : (
-          <View style={{ marginTop: SPACING.md }}>
+          <View style={{ marginTop: 16 }}>
             {passwordError && (
               <ErrorBanner message={passwordError} type="warning" />
             )}
@@ -266,17 +270,17 @@ export default function SettingsScreen() {
               value={currentPassword}
               onChangeText={setCurrentPassword}
               style={{
+                height: 48,
                 borderWidth: 1,
                 borderColor: BRAND.border,
-                borderRadius: RADIUS.md,
-                padding: SPACING.md,
-                fontSize: FONT_SIZE.lg,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                fontSize: 15,
                 color: BRAND.textPrimary,
                 backgroundColor: NEUTRAL.white,
-                marginBottom: SPACING.sm,
+                marginBottom: 10,
               }}
               accessibilityLabel="Current password"
-              accessibilityRole="none"
             />
             <TextInput
               placeholder="New password"
@@ -285,17 +289,17 @@ export default function SettingsScreen() {
               value={newPassword}
               onChangeText={setNewPassword}
               style={{
+                height: 48,
                 borderWidth: 1,
                 borderColor: BRAND.border,
-                borderRadius: RADIUS.md,
-                padding: SPACING.md,
-                fontSize: FONT_SIZE.lg,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                fontSize: 15,
                 color: BRAND.textPrimary,
                 backgroundColor: NEUTRAL.white,
-                marginBottom: SPACING.sm,
+                marginBottom: 10,
               }}
               accessibilityLabel="New password"
-              accessibilityRole="none"
             />
             <TextInput
               placeholder="Confirm new password"
@@ -304,27 +308,28 @@ export default function SettingsScreen() {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               style={{
+                height: 48,
                 borderWidth: 1,
                 borderColor: BRAND.border,
-                borderRadius: RADIUS.md,
-                padding: SPACING.md,
-                fontSize: FONT_SIZE.lg,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                fontSize: 15,
                 color: BRAND.textPrimary,
                 backgroundColor: NEUTRAL.white,
-                marginBottom: SPACING.md,
+                marginBottom: 14,
               }}
               accessibilityLabel="Confirm new password"
-              accessibilityRole="none"
             />
-            <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
                 onPress={handleChangePassword}
                 disabled={passwordSaving}
                 style={{
                   flex: 1,
+                  height: 48,
                   backgroundColor: BRAND.primary,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACING.md,
+                  borderRadius: 12,
+                  justifyContent: "center",
                   alignItems: "center",
                   opacity: passwordSaving ? 0.6 : 1,
                 }}
@@ -337,7 +342,7 @@ export default function SettingsScreen() {
                   <Text
                     style={{
                       color: NEUTRAL.white,
-                      fontSize: FONT_SIZE.lg,
+                      fontSize: 15,
                       fontWeight: "600",
                     }}
                   >
@@ -355,9 +360,10 @@ export default function SettingsScreen() {
                 }}
                 style={{
                   flex: 1,
-                  backgroundColor: NEUTRAL.surface,
-                  borderRadius: RADIUS.md,
-                  paddingVertical: SPACING.md,
+                  height: 48,
+                  backgroundColor: NEUTRAL.white,
+                  borderRadius: 12,
+                  justifyContent: "center",
                   alignItems: "center",
                   borderWidth: 1,
                   borderColor: BRAND.border,
@@ -368,7 +374,7 @@ export default function SettingsScreen() {
                 <Text
                   style={{
                     color: BRAND.textPrimary,
-                    fontSize: FONT_SIZE.lg,
+                    fontSize: 15,
                     fontWeight: "600",
                   }}
                 >
@@ -385,21 +391,24 @@ export default function SettingsScreen() {
         {stores.length === 0 ? (
           <EmptyState message="No stores assigned" />
         ) : (
-          stores.map((s) => (
+          stores.map((s, i) => (
             <View
               key={s.id}
               style={{
-                paddingVertical: SPACING.sm,
-                borderBottomWidth: 1,
-                borderBottomColor: NEUTRAL.divider,
+                borderRadius: 12,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: "#E7E5E0",
+                marginBottom: i < stores.length - 1 ? 8 : 0,
+                backgroundColor: "#FAFAF9",
               }}
               accessibilityLabel={`Store: ${s.name}`}
             >
-              <Text style={{ fontSize: FONT_SIZE.lg, color: BRAND.textPrimary }}>
+              <Text style={{ fontSize: 15, fontWeight: "600", color: BRAND.textPrimary }}>
                 {s.name}
               </Text>
               {s.city && (
-                <Text style={{ fontSize: FONT_SIZE.md, color: BRAND.textSecondary }}>
+                <Text style={{ fontSize: 13, color: BRAND.textSecondary, marginTop: 2 }}>
                   {s.city}{s.state ? `, ${s.state}` : ""}
                 </Text>
               )}
@@ -412,23 +421,28 @@ export default function SettingsScreen() {
       <SectionCard title="Notification Preferences">
         <PrefToggle
           label="Incident Alerts"
+          description="Get notified about new incidents"
           value={prefs.incident_alerts !== false}
           onToggle={(v) => togglePref("incident_alerts", v)}
         />
         <PrefToggle
           label="System Alerts"
+          description="Camera offline, edge agent issues"
           value={prefs.system_alerts !== false}
           onToggle={(v) => togglePref("system_alerts", v)}
         />
         <PrefToggle
           label="Edge Agent Alerts"
+          description="Agent connectivity warnings"
           value={prefs.edge_alerts ?? false}
           onToggle={(v) => togglePref("edge_alerts", v)}
         />
         <PrefToggle
           label="Daily Summary"
+          description="Daily detection summary email"
           value={prefs.daily_summary ?? false}
           onToggle={(v) => togglePref("daily_summary", v)}
+          last
         />
       </SectionCard>
 
@@ -436,11 +450,12 @@ export default function SettingsScreen() {
       <TouchableOpacity
         onPress={handleLogout}
         style={{
-          backgroundColor: ACTIONS.danger,
-          borderRadius: RADIUS.md,
-          paddingVertical: SPACING.lg,
+          height: 52,
+          backgroundColor: "#DC2626",
+          borderRadius: 12,
+          justifyContent: "center",
           alignItems: "center",
-          marginTop: SPACING.lg,
+          marginTop: 8,
         }}
         accessibilityLabel="Log out"
         accessibilityRole="button"
@@ -448,7 +463,7 @@ export default function SettingsScreen() {
         <Text
           style={{
             color: NEUTRAL.white,
-            fontSize: FONT_SIZE.xl,
+            fontSize: 16,
             fontWeight: "600",
           }}
         >
@@ -459,10 +474,10 @@ export default function SettingsScreen() {
       <Text
         style={{
           textAlign: "center",
-          color: BRAND.textSecondary,
-          fontSize: FONT_SIZE.sm,
-          marginTop: SPACING.lg,
-          marginBottom: SPACING.xxl,
+          color: "#A3A3A3",
+          fontSize: 12,
+          marginTop: 24,
+          marginBottom: 32,
         }}
         accessibilityLabel={`App version ${APP.VERSION}`}
       >
@@ -483,20 +498,23 @@ function SectionCard({
     <View
       style={{
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        borderColor: BRAND.border,
-        padding: SPACING.lg,
-        marginBottom: SPACING.md,
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
       }}
       accessibilityLabel={`${title} section`}
     >
       <Text
         style={{
-          fontSize: FONT_SIZE.lg,
-          fontWeight: "600",
+          fontSize: 17,
+          fontWeight: "700",
           color: BRAND.textPrimary,
-          marginBottom: SPACING.sm,
+          marginBottom: 16,
         }}
         accessibilityRole="header"
       >
@@ -507,20 +525,24 @@ function SectionCard({
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
     <View
       style={{
         flexDirection: "row",
         justifyContent: "space-between",
-        paddingVertical: SPACING.xs,
+        alignItems: "center",
+        minHeight: 48,
+        paddingVertical: 12,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: "#F3F4F6",
       }}
       accessibilityLabel={`${label}: ${value}`}
     >
-      <Text style={{ fontSize: FONT_SIZE.lg, color: BRAND.textSecondary }}>
+      <Text style={{ fontSize: 14, color: "#78716C" }}>
         {label}
       </Text>
-      <Text style={{ fontSize: FONT_SIZE.lg, color: BRAND.textPrimary }}>
+      <Text style={{ fontSize: 14, fontWeight: "500", color: "#1C1917" }}>
         {value}
       </Text>
     </View>
@@ -529,12 +551,16 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function PrefToggle({
   label,
+  description,
   value,
   onToggle,
+  last,
 }: {
   label: string;
+  description?: string;
   value: boolean;
   onToggle: (v: boolean) => void;
+  last?: boolean;
 }) {
   return (
     <View
@@ -542,12 +568,22 @@ function PrefToggle({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        paddingVertical: SPACING.sm,
+        minHeight: 52,
+        paddingVertical: 10,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: "#F3F4F6",
       }}
     >
-      <Text style={{ fontSize: FONT_SIZE.lg, color: BRAND.textPrimary }}>
-        {label}
-      </Text>
+      <View style={{ flex: 1, marginRight: 12 }}>
+        <Text style={{ fontSize: 14, fontWeight: "500", color: BRAND.textPrimary }}>
+          {label}
+        </Text>
+        {description && (
+          <Text style={{ fontSize: 12, color: BRAND.textSecondary, marginTop: 2 }}>
+            {description}
+          </Text>
+        )}
+      </View>
       <Switch
         value={value}
         onValueChange={onToggle}

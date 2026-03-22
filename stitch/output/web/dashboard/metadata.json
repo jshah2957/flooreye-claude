@@ -1,0 +1,10 @@
+{
+  "screenName": "dashboard",
+  "screenId": "a3b52f25a1524c11805586adfe6180f8",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-22T08:42:46.845Z",
+  "prompt": "Main monitoring dashboard for FloorEye. Inside app shell with dark navy sidebar. Full width status banner: red \"ACTIVE SPILL ALERT\" or green \"ALL CLEAR\". Row of 6 stat cards: Total Stores, Total Cameras (online/total), Active Incidents (red if >0), Today's Events, Inference Mode breakdown (cloud/edge/hybrid colored pills), Online Edge Agents. Below: 2-column layout (60/40). Left: live monitoring panel with store/camera selector dropdowns, 16:9 live video frame viewer with FPS indicator, stream quality badge, detection overlay toggle, play/pause and fullscreen controls. Below that: horizontal scrollable gallery of last 10 detection thumbnails with wet/dry badges, confidence %, timestamps. Right column: active incidents list with severity color bars (left edge), store/camera name, duration, detection count, status badges. Below: system health panel with 4 rows: Backend API (response time), Roboflow API (status), Edge Agents (X/Y online), Storage (usage %). Professional enterprise monitoring dashboard."
+}

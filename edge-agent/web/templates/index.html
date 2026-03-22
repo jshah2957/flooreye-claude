@@ -4,167 +4,206 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FloorEye Edge Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <header>
-        <h1>FloorEye Edge Agent</h1>
-        <div class="agent-info">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header class="header" role="banner">
+        <h1>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            FloorEye Edge Agent
+        </h1>
+        <nav class="agent-info" aria-label="Agent information">
             <span>Agent: {{ agent_info.get('agent_id', 'N/A')[:8] }}</span>
             <span>Model: {{ agent_info.get('model_version', 'N/A') }}</span>
-            <span>Backend: <span id="backend-status">checking...</span></span>
-        </div>
+            <span>Backend: <span id="backend-status" aria-live="polite">checking...</span></span>
+        </nav>
     </header>
 
-    <main>
+    <main id="main-content" role="main">
         <!-- System Status Section -->
-        <section id="system-status-section">
-            <div class="section-header">
-                <h2>System Status</h2>
-                <span id="last-refresh" style="font-size:11px; color:#a8a29e;">refreshing...</span>
+        <section id="system-status-section" class="card animate-fade-in" aria-labelledby="status-heading">
+            <div class="card-header">
+                <h2 id="status-heading">System Status</h2>
+                <span id="last-refresh" style="font-size:12px; color:var(--text-secondary);" aria-live="polite">refreshing...</span>
             </div>
-            <div class="status-grid">
-                <div class="status-card">
-                    <div class="status-label">CPU</div>
-                    <div class="status-value" id="sys-cpu">--</div>
-                    <div class="status-bar"><div class="status-bar-fill" id="sys-cpu-bar" style="width:0%"></div></div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">RAM</div>
-                    <div class="status-value" id="sys-ram">--</div>
-                    <div class="status-bar"><div class="status-bar-fill" id="sys-ram-bar" style="width:0%"></div></div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">Disk</div>
-                    <div class="status-value" id="sys-disk">--</div>
-                    <div class="status-bar"><div class="status-bar-fill" id="sys-disk-bar" style="width:0%"></div></div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">Model</div>
-                    <div class="status-value" id="sys-model">{{ agent_info.get('model_version', 'N/A') }}</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">Cameras</div>
-                    <div class="status-value" id="sys-cameras">{{ cameras|length }}</div>
-                    <div class="status-sub" id="sys-cameras-detail">--</div>
-                </div>
-                <div class="status-card">
-                    <div class="status-label">Devices</div>
-                    <div class="status-value" id="sys-devices">{{ devices|length }}</div>
+            <div class="card-body">
+                <div class="status-grid" role="list" aria-label="System metrics">
+                    <div class="status-card" role="listitem">
+                        <div class="label">CPU</div>
+                        <div class="value" id="sys-cpu" aria-label="CPU usage">--</div>
+                        <div class="status-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="CPU usage bar"><div class="status-bar-fill" id="sys-cpu-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="status-card" role="listitem">
+                        <div class="label">RAM</div>
+                        <div class="value" id="sys-ram" aria-label="RAM usage">--</div>
+                        <div class="status-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="RAM usage bar"><div class="status-bar-fill" id="sys-ram-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="status-card" role="listitem">
+                        <div class="label">Disk</div>
+                        <div class="value" id="sys-disk" aria-label="Disk usage">--</div>
+                        <div class="status-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Disk usage bar"><div class="status-bar-fill" id="sys-disk-bar" style="width:0%"></div></div>
+                    </div>
+                    <div class="status-card" role="listitem">
+                        <div class="label">Model</div>
+                        <div class="value" id="sys-model">{{ agent_info.get('model_version', 'N/A') }}</div>
+                    </div>
+                    <div class="status-card" role="listitem">
+                        <div class="label">Cameras</div>
+                        <div class="value" id="sys-cameras">{{ cameras|length }}</div>
+                        <div class="sub" id="sys-cameras-detail">--</div>
+                    </div>
+                    <div class="status-card" role="listitem">
+                        <div class="label">Devices</div>
+                        <div class="value" id="sys-devices">{{ devices|length }}</div>
+                    </div>
                 </div>
             </div>
         </section>
 
         <!-- Cameras Section -->
-        <section>
-            <div class="section-header">
-                <h2>Cameras ({{ cameras|length }})</h2>
-                <button onclick="showAddCamera()" class="btn btn-primary">+ Add Camera</button>
+        <section class="card animate-fade-in" aria-labelledby="cameras-heading">
+            <div class="card-header">
+                <h2 id="cameras-heading">Cameras ({{ cameras|length }})</h2>
+                <button onclick="showAddCamera()" class="btn btn-primary" aria-label="Add a new camera">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Camera
+                </button>
             </div>
-
-            <table id="cameras-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>URL</th>
-                        <th>Stream</th>
-                        <th>Detection</th>
-                        <th>Config</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for cam in cameras %}
-                    <tr data-id="{{ cam.id }}">
-                        <td>{{ cam.name }}</td>
-                        <td class="url-cell">{{ cam.url[:30] }}...</td>
-                        <td><span class="badge badge-{{ cam.status }}">{{ cam.status }}</span></td>
-                        <td><span class="badge badge-{{ cam.detection_status }}">{{ cam.detection_status.replace('_', ' ') }}</span></td>
-                        <td>{{ 'v' ~ cam.get('config_version', '-') if cam.config_received else 'None' }}</td>
-                        <td>
-                            <button onclick="testCamera('{{ cam.id }}')" class="btn btn-sm">Test</button>
-                            <button onclick="removeCamera('{{ cam.id }}', '{{ cam.name }}')" class="btn btn-sm btn-danger">Remove</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {% if not cameras %}
-                    <tr><td colspan="6" class="empty">No cameras configured. Click "Add Camera" to get started.</td></tr>
-                    {% endif %}
-                </tbody>
-            </table>
+            <div class="card-body" style="padding:0;">
+                <div class="table-container">
+                    <table id="cameras-table" aria-label="Cameras list">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">URL</th>
+                                <th scope="col">Stream</th>
+                                <th scope="col">Detection</th>
+                                <th scope="col">Config</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cam in cameras %}
+                            <tr data-id="{{ cam.id }}">
+                                <td>{{ cam.name }}</td>
+                                <td class="url-cell">{{ cam.url[:30] }}...</td>
+                                <td><span class="badge badge-{{ cam.status }}">{{ cam.status }}</span></td>
+                                <td><span class="badge badge-{{ cam.detection_status }}">{{ cam.detection_status.replace('_', ' ') }}</span></td>
+                                <td>{{ 'v' ~ cam.get('config_version', '-') if cam.config_received else 'None' }}</td>
+                                <td>
+                                    <button onclick="testCamera('{{ cam.id }}')" class="btn btn-sm" aria-label="Test camera {{ cam.name }}">Test</button>
+                                    <button onclick="removeCamera('{{ cam.id }}', '{{ cam.name }}')" class="btn btn-sm btn-danger" aria-label="Remove camera {{ cam.name }}">Remove</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not cameras %}
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="icon" aria-hidden="true">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                    </div>
+                                    <p>No cameras configured. Click "Add Camera" to get started.</p>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- Devices Section -->
-        <section>
-            <div class="section-header">
-                <h2>IoT Devices ({{ devices|length }})</h2>
-                <button onclick="showAddDevice()" class="btn btn-primary">+ Add Device</button>
+        <section class="card animate-fade-in" aria-labelledby="devices-heading">
+            <div class="card-header">
+                <h2 id="devices-heading">IoT Devices ({{ devices|length }})</h2>
+                <button onclick="showAddDevice()" class="btn btn-primary" aria-label="Add a new IoT device">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Device
+                </button>
             </div>
-
-            <table id="devices-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>IP</th>
-                        <th>Type</th>
-                        <th>Protocol</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for dev in devices %}
-                    <tr data-id="{{ dev.id }}">
-                        <td>{{ dev.name }}</td>
-                        <td>{{ dev.ip }}</td>
-                        <td>{{ dev.type }}</td>
-                        <td>{{ dev.get('protocol', 'tcp') }}</td>
-                        <td><span class="badge badge-{{ dev.status }}">{{ dev.status }}</span></td>
-                        <td>
-                            <button onclick="showEditDevice('{{ dev.id }}', '{{ dev.name }}', '{{ dev.ip }}', '{{ dev.type }}', '{{ dev.get('protocol', 'tcp') }}')" class="btn btn-sm">Edit</button>
-                            <button onclick="testDevice('{{ dev.id }}')" class="btn btn-sm">Test</button>
-                            <button onclick="removeDevice('{{ dev.id }}', '{{ dev.name }}')" class="btn btn-sm btn-danger">Remove</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {% if not devices %}
-                    <tr><td colspan="6" class="empty">No devices configured.</td></tr>
-                    {% endif %}
-                </tbody>
-            </table>
+            <div class="card-body" style="padding:0;">
+                <div class="table-container">
+                    <table id="devices-table" aria-label="IoT devices list">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">IP</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Protocol</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dev in devices %}
+                            <tr data-id="{{ dev.id }}">
+                                <td>{{ dev.name }}</td>
+                                <td>{{ dev.ip }}</td>
+                                <td>{{ dev.type }}</td>
+                                <td>{{ dev.get('protocol', 'tcp') }}</td>
+                                <td><span class="badge badge-{{ dev.status }}">{{ dev.status }}</span></td>
+                                <td>
+                                    <button onclick="showEditDevice('{{ dev.id }}', '{{ dev.name }}', '{{ dev.ip }}', '{{ dev.type }}', '{{ dev.get('protocol', 'tcp') }}')" class="btn btn-sm" aria-label="Edit device {{ dev.name }}">Edit</button>
+                                    <button onclick="testDevice('{{ dev.id }}')" class="btn btn-sm" aria-label="Test device {{ dev.name }}">Test</button>
+                                    <button onclick="removeDevice('{{ dev.id }}', '{{ dev.name }}')" class="btn btn-sm btn-danger" aria-label="Remove device {{ dev.name }}">Remove</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not devices %}
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="icon" aria-hidden="true">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                                    </div>
+                                    <p>No devices configured. Click "Add Device" to get started.</p>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
 
         <!-- Recent Alerts Section -->
-        <section id="alerts-section">
-            <div class="section-header">
-                <h2>Recent Alerts</h2>
-                <span id="alerts-count" style="font-size:12px; color:#a8a29e;">loading...</span>
+        <section id="alerts-section" class="card animate-fade-in" aria-labelledby="alerts-heading">
+            <div class="card-header">
+                <h2 id="alerts-heading">Recent Alerts</h2>
+                <span id="alerts-count" style="font-size:12px; color:var(--text-secondary);" aria-live="polite">loading...</span>
             </div>
-
-            <table id="alerts-table">
-                <thead>
-                    <tr>
-                        <th>Event Type</th>
-                        <th>Camera</th>
-                        <th>Timestamp</th>
-                        <th>Details</th>
-                    </tr>
-                </thead>
-                <tbody id="alerts-tbody">
-                    <tr><td colspan="4" class="empty">Loading alerts...</td></tr>
-                </tbody>
-            </table>
+            <div class="card-body" style="padding:0;">
+                <div class="table-container">
+                    <table id="alerts-table" aria-label="Recent alerts list">
+                        <thead>
+                            <tr>
+                                <th scope="col">Event Type</th>
+                                <th scope="col">Camera</th>
+                                <th scope="col">Timestamp</th>
+                                <th scope="col">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-tbody">
+                            <tr><td colspan="4" class="empty">Loading alerts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     </main>
 
     <!-- Add Camera Modal (test-before-add) -->
-    <div id="add-camera-modal" class="modal" style="display:none;">
+    <div id="add-camera-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="add-camera-title">
         <div class="modal-content">
-            <h3>Add Camera</h3>
-            <label>Name *<input type="text" id="cam-name" required placeholder="e.g. Entrance Camera"></label>
-            <label>RTSP URL *<input type="text" id="cam-url" required placeholder="rtsp://user:pass@192.168.1.100/stream"></label>
+            <h3 id="add-camera-title">Add Camera</h3>
+            <label>Name *<input type="text" id="cam-name" required placeholder="e.g. Entrance Camera" aria-required="true"></label>
+            <label>RTSP URL *<input type="text" id="cam-url" required placeholder="rtsp://user:pass@192.168.1.100/stream" aria-required="true"></label>
             <label>Stream Type
-                <select id="cam-type">
+                <select id="cam-type" aria-label="Stream type">
                     <option value="rtsp">RTSP</option>
                     <option value="hls">HLS</option>
                     <option value="mjpeg">MJPEG</option>
@@ -172,98 +211,107 @@
                 </select>
             </label>
             <label>Location<input type="text" id="cam-location" placeholder="e.g. Main entrance, aisle 3"></label>
-            <div id="cam-test-result" style="display:none; margin:12px 0;"></div>
-            <div id="cam-preview" style="display:none; margin:12px 0; text-align:center;">
-                <img id="cam-preview-img" style="max-width:100%; border-radius:6px; border:1px solid #e7e5e0;" />
+            <div id="cam-test-result" class="test-result" style="display:none;" role="status" aria-live="polite"></div>
+            <div id="cam-preview" class="cam-preview" style="display:none;">
+                <img id="cam-preview-img" alt="Camera preview snapshot" />
             </div>
             <div class="modal-actions">
-                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                <button type="button" onclick="testCameraBeforeAdd()" id="cam-test-btn" class="btn" style="border-color:#0d9488; color:#0d9488;">Test Connection</button>
-                <button type="button" onclick="submitAddCamera()" id="cam-add-btn" class="btn btn-primary" disabled>Add Camera</button>
+                <button type="button" onclick="closeModals()" class="btn" aria-label="Cancel adding camera">Cancel</button>
+                <button type="button" onclick="testCameraBeforeAdd()" id="cam-test-btn" class="btn btn-outline-brand" aria-label="Test camera connection">Test Connection</button>
+                <button type="button" onclick="submitAddCamera()" id="cam-add-btn" class="btn btn-primary" disabled aria-label="Add camera">Add Camera</button>
             </div>
         </div>
     </div>
 
     <!-- Add Device Modal (test-before-add) -->
-    <div id="add-device-modal" class="modal" style="display:none;">
+    <div id="add-device-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="add-device-title">
         <div class="modal-content">
-            <h3>Add IoT Device</h3>
-            <label>Name *<input type="text" id="dev-name" required placeholder="e.g. Caution Sign Plug"></label>
-            <label>IP Address *<input type="text" id="dev-ip" required placeholder="192.168.1.50"></label>
+            <h3 id="add-device-title">Add IoT Device</h3>
+            <label>Name *<input type="text" id="dev-name" required placeholder="e.g. Caution Sign Plug" aria-required="true"></label>
+            <label>IP Address *<input type="text" id="dev-ip" required placeholder="192.168.1.50" aria-required="true"></label>
             <label>Type
-                <select id="dev-type" onchange="updateDevProtocolHint()">
+                <select id="dev-type" onchange="updateDevProtocolHint()" aria-label="Device type">
                     <option value="tplink">TP-Link Kasa</option>
                     <option value="mqtt">MQTT Broker</option>
                     <option value="webhook">HTTP Webhook</option>
                 </select>
             </label>
             <label>Protocol
-                <select id="dev-protocol">
+                <select id="dev-protocol" aria-label="Device protocol">
                     <option value="tcp">TCP</option>
                     <option value="udp">UDP</option>
                     <option value="http">HTTP</option>
                 </select>
             </label>
-            <div id="dev-protocol-hint" style="font-size:11px; color:#78716c; margin:-8px 0 8px 0;">TP-Link: port 9999 (TCP) &bull; MQTT: port 1883 (TCP) &bull; Webhook: port 80 (HTTP)</div>
-            <div id="dev-test-result" style="display:none; margin:12px 0;"></div>
+            <div id="dev-protocol-hint" class="protocol-hint">TP-Link: port 9999 (TCP) &bull; MQTT: port 1883 (TCP) &bull; Webhook: port 80 (HTTP)</div>
+            <div id="dev-test-result" class="test-result" style="display:none;" role="status" aria-live="polite"></div>
             <div class="modal-actions">
-                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                <button type="button" onclick="testDeviceBeforeAdd()" id="dev-test-btn" class="btn" style="border-color:#0d9488; color:#0d9488;">Test Connection</button>
-                <button type="button" onclick="submitAddDevice()" id="dev-add-btn" class="btn btn-primary" disabled>Add Device</button>
+                <button type="button" onclick="closeModals()" class="btn" aria-label="Cancel adding device">Cancel</button>
+                <button type="button" onclick="testDeviceBeforeAdd()" id="dev-test-btn" class="btn btn-outline-brand" aria-label="Test device connection">Test Connection</button>
+                <button type="button" onclick="submitAddDevice()" id="dev-add-btn" class="btn btn-primary" disabled aria-label="Add device">Add Device</button>
             </div>
         </div>
     </div>
 
     <!-- Edit Device Modal -->
-    <div id="edit-device-modal" class="modal" style="display:none;">
+    <div id="edit-device-modal" class="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="edit-device-title">
         <div class="modal-content">
-            <h3>Edit IoT Device</h3>
+            <h3 id="edit-device-title">Edit IoT Device</h3>
             <input type="hidden" id="edit-dev-id">
-            <label>Name *<input type="text" id="edit-dev-name" required></label>
-            <label>IP Address *<input type="text" id="edit-dev-ip" required></label>
+            <label>Name *<input type="text" id="edit-dev-name" required aria-required="true"></label>
+            <label>IP Address *<input type="text" id="edit-dev-ip" required aria-required="true"></label>
             <label>Type
-                <select id="edit-dev-type">
+                <select id="edit-dev-type" aria-label="Device type">
                     <option value="tplink">TP-Link Kasa</option>
                     <option value="mqtt">MQTT</option>
                     <option value="webhook">HTTP Webhook</option>
                 </select>
             </label>
             <label>Protocol
-                <select id="edit-dev-protocol">
+                <select id="edit-dev-protocol" aria-label="Device protocol">
                     <option value="tcp">TCP</option>
                     <option value="udp">UDP</option>
                     <option value="http">HTTP</option>
                 </select>
             </label>
-            <div id="edit-dev-status" style="display:none; margin:12px 0;"></div>
+            <div id="edit-dev-status" class="test-result" style="display:none;" role="status" aria-live="polite"></div>
             <div class="modal-actions">
-                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                <button type="button" onclick="submitEditDevice()" class="btn btn-primary">Save Changes</button>
+                <button type="button" onclick="closeModals()" class="btn" aria-label="Cancel editing device">Cancel</button>
+                <button type="button" onclick="submitEditDevice()" class="btn btn-primary" aria-label="Save device changes">Save Changes</button>
             </div>
         </div>
     </div>
 
     <!-- Confirm Delete Modal -->
-    <div id="confirm-modal" class="modal" style="display:none;">
+    <div id="confirm-modal" class="modal" style="display:none;" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-msg">
         <div class="modal-content">
-            <div style="display:flex; align-items:flex-start; gap:12px; margin-bottom:16px;">
-                <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+            <div style="display:flex; align-items:flex-start; gap:12px; padding:20px 24px;">
+                <div class="confirm-icon-wrapper" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 </div>
                 <div>
-                    <h3 id="confirm-title" style="margin-bottom:4px;">Confirm</h3>
-                    <p id="confirm-msg" style="font-size:13px; color:#78716c; margin:0;"></p>
+                    <h3 id="confirm-title" style="font-size:16px; font-weight:600; margin-bottom:4px; padding:0; border:none;">Confirm</h3>
+                    <p id="confirm-msg" style="font-size:13px; color:var(--text-secondary); margin:0;"></p>
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" onclick="closeModals()" class="btn">Cancel</button>
-                <button type="button" id="confirm-btn" class="btn btn-danger-solid">Delete</button>
+                <button type="button" onclick="closeModals()" class="btn" aria-label="Cancel deletion">Cancel</button>
+                <button type="button" id="confirm-btn" class="btn btn-danger-solid" aria-label="Confirm deletion">Delete</button>
             </div>
         </div>
     </div>
 
     <!-- Toast -->
-    <div id="toast" class="toast" style="display:none;"></div>
+    <div id="toast" role="alert" aria-live="assertive" aria-atomic="true"></div>
+
+    <!-- Keyboard: ESC to close modals -->
+    <script>
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModals();
+            }
+        });
+    </script>
 
     <!-- Logout button in header -->
     <script>
@@ -274,7 +322,8 @@
                 const logoutBtn = document.createElement('button');
                 logoutBtn.textContent = 'Logout';
                 logoutBtn.className = 'btn btn-sm';
-                logoutBtn.style.cssText = 'margin-left:12px; padding:4px 12px; font-size:12px; border:1px solid #d6d3d1; border-radius:4px; background:transparent; cursor:pointer;';
+                logoutBtn.setAttribute('aria-label', 'Log out of edge agent');
+                logoutBtn.style.cssText = 'margin-left:12px; padding:4px 12px; font-size:12px; border:1px solid rgba(255,255,255,0.3); border-radius:6px; background:transparent; color:white; cursor:pointer;';
                 logoutBtn.onclick = () => {
                     sessionStorage.removeItem('edge_api_key');
                     document.cookie = 'edge_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -313,6 +362,7 @@
             document.getElementById('cam-url').value = '';
             document.getElementById('cam-location').value = '';
             document.getElementById('add-camera-modal').style.display = 'flex';
+            document.getElementById('cam-name').focus();
         }
         function showAddDevice() {
             _devTestPassed = false;
@@ -324,6 +374,7 @@
             document.getElementById('dev-protocol').value = 'tcp';
             updateDevProtocolHint();
             document.getElementById('add-device-modal').style.display = 'flex';
+            document.getElementById('dev-name').focus();
         }
         function closeModals() {
             document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
@@ -332,9 +383,9 @@
         function toast(msg, type) {
             const t = document.getElementById('toast');
             t.textContent = msg;
-            t.className = 'toast toast-' + (type || 'info');
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
+            t.className = 'toast-' + (type || 'info') + ' show';
+            clearTimeout(t._timeout);
+            t._timeout = setTimeout(() => { t.className = ''; }, 3000);
         }
         function showConfirm(title, msg, action, btnLabel) {
             document.getElementById('confirm-title').textContent = title;
@@ -348,6 +399,7 @@
                 location.reload();
             };
             document.getElementById('confirm-modal').style.display = 'flex';
+            confirmBtn.focus();
         }
 
         // --- Camera test-before-add ---
@@ -485,10 +537,13 @@
                 const overlay = document.createElement('div');
                 overlay.className = 'modal';
                 overlay.style.display = 'flex';
-                overlay.innerHTML = `<div class="modal-content" style="text-align:center;">
-                    <h3 style="color:#16a34a;">Connected</h3>
-                    <img src="data:image/jpeg;base64,${d.data.snapshot}" style="max-width:100%;border-radius:6px;margin:12px 0;" />
-                    <button onclick="this.closest('.modal').remove()" class="btn btn-primary">Close</button>
+                overlay.setAttribute('role', 'dialog');
+                overlay.setAttribute('aria-modal', 'true');
+                overlay.setAttribute('aria-label', 'Camera test result');
+                overlay.innerHTML = `<div class="modal-content" style="text-align:center; padding:24px;">
+                    <h3 style="color:#16a34a; padding:0; border:none;">Connected</h3>
+                    <img src="data:image/jpeg;base64,${d.data.snapshot}" style="max-width:100%;border-radius:8px;margin:12px 0;" alt="Camera snapshot preview" />
+                    <button onclick="this.closest('.modal').remove()" class="btn btn-primary" aria-label="Close preview">Close</button>
                 </div>`;
                 document.body.appendChild(overlay);
             } else {
@@ -526,6 +581,7 @@
             document.getElementById('edit-dev-protocol').value = protocol || 'tcp';
             document.getElementById('edit-dev-status').style.display = 'none';
             document.getElementById('edit-device-modal').style.display = 'flex';
+            document.getElementById('edit-dev-name').focus();
         }
 
         async function submitEditDevice() {
@@ -635,7 +691,7 @@
                 const countEl = document.getElementById('alerts-count');
 
                 if (!data.data || data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="empty">No recent alerts.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="icon" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div><p>No recent alerts.</p></td></tr>';
                     countEl.textContent = '0 alerts';
                     return;
                 }

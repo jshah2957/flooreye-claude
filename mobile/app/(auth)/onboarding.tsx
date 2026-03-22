@@ -61,15 +61,56 @@ export default function OnboardingScreen() {
         }}
         keyExtractor={(_, i) => String(i)}
         renderItem={({ item }) => (
-          <View style={{ width, flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 32 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: item.color, opacity: 0.15, marginBottom: 24 }} />
-            <Text style={{ fontSize: 28, fontWeight: "700", color: "#1C1917", textAlign: "center", marginBottom: 8 }}>
+          <View
+            style={{
+              width,
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingHorizontal: 36,
+            }}
+          >
+            <View
+              style={{
+                width: 96,
+                height: 96,
+                borderRadius: 48,
+                backgroundColor: item.color,
+                opacity: 0.12,
+                marginBottom: 32,
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: "800",
+                color: "#1C1917",
+                textAlign: "center",
+                marginBottom: 10,
+                letterSpacing: -0.3,
+              }}
+            >
               {item.title}
             </Text>
-            <Text style={{ fontSize: 16, fontWeight: "500", color: item.color, textAlign: "center", marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: "600",
+                color: item.color,
+                textAlign: "center",
+                marginBottom: 20,
+              }}
+            >
               {item.subtitle}
             </Text>
-            <Text style={{ fontSize: 14, color: "#78716C", textAlign: "center", lineHeight: 22 }}>
+            <Text
+              style={{
+                fontSize: 15,
+                color: "#78716C",
+                textAlign: "center",
+                lineHeight: 24,
+              }}
+            >
               {item.description}
             </Text>
           </View>
@@ -77,7 +118,7 @@ export default function OnboardingScreen() {
       />
 
       {/* Dots */}
-      <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+      <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 20 }}>
         {slides.map((_, i) => (
           <View
             key={i}
@@ -92,10 +133,22 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Buttons */}
-      <View style={{ flexDirection: "row", paddingHorizontal: 24, paddingBottom: 40, gap: 12 }}>
+      <View style={{ flexDirection: "row", paddingHorizontal: 24, paddingBottom: 48, gap: 12 }}>
         {currentIndex < slides.length - 1 && (
-          <TouchableOpacity onPress={skip} style={{ flex: 1, paddingVertical: 14, alignItems: "center" }}>
-            <Text style={{ fontSize: 15, color: "#78716C" }}>Skip</Text>
+          <TouchableOpacity
+            onPress={skip}
+            style={{
+              flex: 1,
+              minHeight: 52,
+              justifyContent: "center",
+              alignItems: "center",
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#E7E5E0",
+              backgroundColor: "#FFFFFF",
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "600", color: "#78716C" }}>Skip</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
@@ -104,11 +157,12 @@ export default function OnboardingScreen() {
             flex: 2,
             backgroundColor: "#0D9488",
             borderRadius: 12,
-            paddingVertical: 14,
+            minHeight: 52,
+            justifyContent: "center",
             alignItems: "center",
           }}
         >
-          <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>
+          <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>
             {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
           </Text>
         </TouchableOpacity>

@@ -74,9 +74,13 @@ export default function HomeScreen() {
           justifyContent: "center",
           alignItems: "center",
           backgroundColor: BRAND.background,
+          gap: 12,
         }}
       >
         <ActivityIndicator size="large" color={BRAND.primary} />
+        <Text style={{ fontSize: 14, color: BRAND.textSecondary }}>
+          Loading dashboard...
+        </Text>
       </View>
     );
   }
@@ -87,7 +91,7 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: BRAND.background }}>
       <ConnectionStatusBar state={wsState} />
       <ScrollView
-        contentContainerStyle={{ padding: SPACING.lg }}
+        contentContainerStyle={{ padding: 16 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -111,8 +115,8 @@ export default function HomeScreen() {
           style={{
             flexDirection: "row",
             flexWrap: "wrap",
-            gap: SPACING.sm,
-            marginBottom: SPACING.lg,
+            gap: 10,
+            marginBottom: 20,
           }}
         >
           <StatCard
@@ -137,8 +141,8 @@ export default function HomeScreen() {
         <View
           style={{
             flexDirection: "row",
-            gap: SPACING.sm,
-            marginBottom: SPACING.lg,
+            gap: 10,
+            marginBottom: 20,
           }}
         >
           <StatusChip
@@ -162,7 +166,7 @@ export default function HomeScreen() {
         {(data?.active_incidents ?? []).length === 0 ? (
           <EmptyCard message="No active incidents" />
         ) : (
-          <View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
+          <View style={{ gap: 8, marginBottom: 20 }}>
             {data!.active_incidents.map((inc) => (
               <TouchableOpacity
                 key={inc.id}
@@ -171,10 +175,14 @@ export default function HomeScreen() {
                 style={{
                   flexDirection: "row",
                   backgroundColor: BRAND.surface,
-                  borderRadius: RADIUS.md,
-                  borderWidth: 1,
-                  borderColor: BRAND.border,
+                  borderRadius: 12,
                   overflow: "hidden",
+                  minHeight: 80,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.06,
+                  shadowRadius: 3,
+                  elevation: 2,
                 }}
                 accessibilityLabel={`${inc.severity} severity incident, ${inc.detection_count} detections, ${(inc.max_confidence * 100).toFixed(0)}% confidence`}
                 accessibilityRole="button"
@@ -184,26 +192,27 @@ export default function HomeScreen() {
                     width: 4,
                     backgroundColor:
                       SEVERITY_COLORS[inc.severity] ?? SEVERITY_COLORS.medium,
+                    borderRadius: 2,
                   }}
                 />
-                <View style={{ flex: 1, padding: SPACING.md }}>
+                <View style={{ flex: 1, padding: 16 }}>
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: SPACING.xs + 2,
+                      gap: 8,
                     }}
                   >
                     <SeverityBadge severity={inc.severity} />
-                    <Text style={{ fontSize: FONT_SIZE.md, color: BRAND.textSecondary }}>
+                    <Text style={{ fontSize: 13, color: BRAND.textSecondary }}>
                       {inc.detection_count} detections
                     </Text>
                   </View>
                   <Text
                     style={{
-                      fontSize: FONT_SIZE.sm,
+                      fontSize: 12,
                       color: BRAND.textSecondary,
-                      marginTop: SPACING.xs,
+                      marginTop: 6,
                     }}
                   >
                     {new Date(inc.start_time).toLocaleTimeString()} ·{" "}
@@ -220,7 +229,7 @@ export default function HomeScreen() {
         {(data?.recent_detections ?? []).length === 0 ? (
           <EmptyCard message="No recent detections" />
         ) : (
-          <View style={{ gap: SPACING.xs + 2 }}>
+          <View style={{ gap: 8 }}>
             {data!.recent_detections
               .slice(0, API_LIMITS.MAX_DASHBOARD_DETECTIONS)
               .map((d) => (
@@ -229,29 +238,54 @@ export default function HomeScreen() {
                   style={{
                     flexDirection: "row",
                     justifyContent: "space-between",
+                    alignItems: "center",
                     backgroundColor: BRAND.surface,
-                    borderRadius: RADIUS.md,
-                    borderWidth: 1,
-                    borderColor: BRAND.border,
-                    padding: SPACING.md - 2,
+                    borderRadius: 12,
+                    padding: 14,
+                    minHeight: 60,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 2,
+                    elevation: 1,
                   }}
                   accessibilityLabel={`Wet detection at ${(d.confidence * 100).toFixed(1)}% confidence, ${d.wet_area_percent.toFixed(1)}% area`}
                 >
-                  <View>
-                    <Text
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <View
                       style={{
-                        fontSize: FONT_SIZE.lg - 1,
-                        fontWeight: "500",
-                        color: BRAND.danger,
+                        backgroundColor: "#FEE2E2",
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
                       }}
                     >
-                      WET · {(d.confidence * 100).toFixed(1)}%
-                    </Text>
-                    <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
-                      {d.wet_area_percent.toFixed(1)}% area
-                    </Text>
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "600",
+                          color: "#DC2626",
+                        }}
+                      >
+                        WET
+                      </Text>
+                    </View>
+                    <View>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: BRAND.textPrimary,
+                        }}
+                      >
+                        {(d.confidence * 100).toFixed(1)}%
+                      </Text>
+                      <Text style={{ fontSize: 11, color: BRAND.textSecondary }}>
+                        {d.wet_area_percent.toFixed(1)}% area
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
+                  <Text style={{ fontSize: 12, color: BRAND.textSecondary }}>
                     {new Date(d.timestamp).toLocaleTimeString()}
                   </Text>
                 </View>
@@ -263,16 +297,16 @@ export default function HomeScreen() {
   );
 }
 
-// --- Local components (use theme constants) ---
+// --- Local components ---
 
 function SectionHeader({ title }: { title: string }) {
   return (
     <Text
       style={{
-        fontSize: FONT_SIZE.xl,
-        fontWeight: "600",
+        fontSize: 16,
+        fontWeight: "700",
         color: BRAND.textPrimary,
-        marginBottom: SPACING.sm,
+        marginBottom: 12,
       }}
       accessibilityRole="header"
     >
@@ -285,16 +319,20 @@ function EmptyCard({ message }: { message: string }) {
   return (
     <View
       style={{
-        padding: SPACING.xxl,
+        paddingVertical: 32,
+        paddingHorizontal: 20,
         alignItems: "center",
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        borderColor: BRAND.border,
-        marginBottom: SPACING.lg,
+        borderRadius: 12,
+        marginBottom: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
       }}
     >
-      <Text style={{ color: BRAND.textSecondary, fontSize: FONT_SIZE.lg - 1 }}>
+      <Text style={{ color: BRAND.textSecondary, fontSize: 14 }}>
         {message}
       </Text>
     </View>
@@ -316,15 +354,31 @@ function StatCard({
         flex: 1,
         minWidth: 100,
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        borderColor: BRAND.border,
-        padding: SPACING.md,
+        borderRadius: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: color,
+        padding: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
       }}
       accessibilityLabel={`${label}: ${value}`}
     >
-      <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>{label}</Text>
-      <Text style={{ fontSize: FONT_SIZE.h2 - 2, fontWeight: "700", color }}>{value}</Text>
+      <Text
+        style={{
+          fontSize: 12,
+          textTransform: "uppercase",
+          color: "#78716C",
+          fontWeight: "500",
+          letterSpacing: 0.5,
+          marginBottom: 4,
+        }}
+      >
+        {label}
+      </Text>
+      <Text style={{ fontSize: 28, fontWeight: "700", color }}>{value}</Text>
     </View>
   );
 }
@@ -345,27 +399,31 @@ function StatusChip({
       style={{
         flex: 1,
         backgroundColor: BRAND.surface,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        borderColor: BRAND.border,
-        padding: SPACING.md,
+        borderRadius: 12,
+        height: 48,
+        paddingHorizontal: 16,
         flexDirection: "row",
         alignItems: "center",
-        gap: SPACING.sm,
+        gap: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
       }}
       accessibilityLabel={`${label}: ${count} of ${total} ${healthy ? "healthy" : "issues detected"}`}
     >
       <View
         style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
+          width: 10,
+          height: 10,
+          borderRadius: 5,
           backgroundColor: healthy ? BRAND.success : BRAND.danger,
         }}
       />
       <View>
-        <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>{label}</Text>
-        <Text style={{ fontSize: FONT_SIZE.lg, fontWeight: "600", color: BRAND.textPrimary }}>
+        <Text style={{ fontSize: 11, color: BRAND.textSecondary }}>{label}</Text>
+        <Text style={{ fontSize: 15, fontWeight: "700", color: BRAND.textPrimary }}>
           {count}/{total}
         </Text>
       </View>
@@ -380,17 +438,18 @@ function SeverityBadge({ severity }: { severity: string }) {
     <View
       style={{
         backgroundColor: bg,
-        borderRadius: RADIUS.lg,
-        paddingHorizontal: SPACING.xs + 2,
-        paddingVertical: 2,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
       }}
     >
       <Text
         style={{
-          fontSize: FONT_SIZE.xs,
-          fontWeight: "600",
+          fontSize: 11,
+          fontWeight: "700",
           color: text,
           textTransform: "uppercase",
+          letterSpacing: 0.3,
         }}
       >
         {severity}
