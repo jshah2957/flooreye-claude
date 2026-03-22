@@ -7,7 +7,9 @@ import httpx
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.org_filter import org_query
+from app.core.url_validator import is_safe_url
 from app.schemas.notification import DeviceCreate, DeviceUpdate
 
 
@@ -106,8 +108,10 @@ async def trigger_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) 
         payload = device.get("trigger_payload", {})
         if not url:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No control URL configured")
+        if not is_safe_url(url):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Control URL blocked by SSRF protection")
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
                 resp = await client.post(url, json=payload)
             triggered_status = "triggered" if resp.status_code < 400 else "error"
         except Exception as e:
@@ -117,8 +121,14 @@ async def trigger_device(db: AsyncIOMotorDatabase, device_id: str, org_id: str) 
             )
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Device trigger failed: {e}")
     elif device.get("control_method") == "mqtt":
-        # MQTT trigger would use paho-mqtt — log for now
-        triggered_status = "triggered"
+        # MQTT cloud-side triggering is not yet implemented — log clear error
+        import logging
+        _log = logging.getLogger(__name__)
+        _log.error(
+            "MQTT not implemented for cloud-side triggering: device=%s topic=%s",
+            device_id, device.get("mqtt_topic", "N/A"),
+        )
+        triggered_status = "error"
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown control method")
 

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.encryption import encrypt_string
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
@@ -39,7 +40,7 @@ async def test_camera_via_edge(
 
     org_id = current_user.get("org_id", "")
     agent = await find_store_agent(db, store_id, org_id)
-    result = await proxy_to_edge(agent, "/api/test-camera-url", {"url": url}, timeout=20.0)
+    result = await proxy_to_edge(agent, "/api/test-camera-url", {"url": url}, timeout=settings.HTTP_TIMEOUT_MEDIUM)
     return result
 
 
@@ -149,7 +150,7 @@ async def stream_frame_via_edge(
     """Get live frame from edge camera (proxied). For cameras only reachable from edge LAN."""
     org_id = current_user.get("org_id", "")
     agent = await find_store_agent(db, store_id, org_id)
-    result = await proxy_to_edge(agent, f"/api/stream/{camera_id}/frame", {}, timeout=10.0)
+    result = await proxy_to_edge(agent, f"/api/stream/{camera_id}/frame", {}, timeout=settings.HTTP_TIMEOUT_DEFAULT)
     return result
 
 
@@ -169,7 +170,7 @@ async def start_clip_via_edge(
     result = await proxy_to_edge(agent, "/api/clips/start", {
         "camera_id": camera_id,
         "duration": body.get("duration", 30),
-    }, timeout=10.0)
+    }, timeout=settings.HTTP_TIMEOUT_DEFAULT)
     return result
 
 

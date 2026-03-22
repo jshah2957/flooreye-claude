@@ -84,7 +84,7 @@ def _get_access_token() -> str | None:
     """Get a valid OAuth2 access token, refreshing if expired."""
     global _cached_token, _token_expiry
 
-    if _cached_token and time.time() < _token_expiry - 60:
+    if _cached_token and time.time() < _token_expiry - 300:
         return _cached_token
 
     sa = _load_service_account()
@@ -94,7 +94,7 @@ def _get_access_token() -> str | None:
 
     try:
         jwt_token = _create_jwt(sa)
-        with httpx.Client(timeout=10) as client:
+        with httpx.Client(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
             resp = client.post(TOKEN_URL, data={
                 "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
                 "assertion": jwt_token,
@@ -108,6 +108,14 @@ def _get_access_token() -> str | None:
     except Exception as e:
         log.error("Failed to get FCM access token: %s", e)
         return None
+
+
+def invalidate_token_cache() -> None:
+    """Clear the cached OAuth2 access token, forcing a refresh on next request."""
+    global _cached_token, _token_expiry
+    _cached_token = None
+    _token_expiry = 0
+    log.info("FCM token cache invalidated")
 
 
 def _get_project_id() -> str:
@@ -152,7 +160,7 @@ async def send_push(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
             resp = await client.post(url, json=message, headers=headers)
 
         if resp.status_code == 200:
@@ -160,9 +168,34 @@ async def send_push(
             msg_name = result.get("name", "")
             log.info("FCM push sent: token=%s... name=%s", token[:20], msg_name)
             return {"success": True, "message_id": msg_name}
-        else:
-            log.error("FCM send failed: status=%s body=%s", resp.status_code, resp.text[:300])
-            return {"success": False, "error": f"FCM HTTP {resp.status_code}: {resp.text[:200]}"}
+
+        # Invalid device token — do NOT retry
+        if resp.status_code == 404:
+            log.warning("FCM device token invalid (404): token=%s...", token[:20])
+            return {"success": False, "error": "invalid_token", "token": token[:20]}
+
+        # Auth expired — invalidate cache and retry once
+        if resp.status_code == 401:
+            log.warning("FCM auth failed (401) — invalidating token cache and retrying")
+            invalidate_token_cache()
+            retry_token = _get_access_token()
+            if retry_token:
+                headers["Authorization"] = f"Bearer {retry_token}"
+                async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
+                    resp2 = await client.post(url, json=message, headers=headers)
+                if resp2.status_code == 200:
+                    result = resp2.json()
+                    msg_name = result.get("name", "")
+                    log.info("FCM push sent (after retry): token=%s... name=%s", token[:20], msg_name)
+                    return {"success": True, "message_id": msg_name}
+                if resp2.status_code == 404:
+                    return {"success": False, "error": "invalid_token", "token": token[:20]}
+                log.error("FCM retry failed: status=%s body=%s", resp2.status_code, resp2.text[:300])
+                return {"success": False, "error": f"FCM HTTP {resp2.status_code}: {resp2.text[:200]}"}
+            return {"success": False, "error": "FCM auth retry failed — could not obtain token"}
+
+        log.error("FCM send failed: status=%s body=%s", resp.status_code, resp.text[:300])
+        return {"success": False, "error": f"FCM HTTP {resp.status_code}: {resp.text[:200]}"}
 
     except httpx.TimeoutException:
         return {"success": False, "error": "FCM request timed out"}
@@ -194,10 +227,33 @@ def send_push_sync(token: str, title: str, body: str, data: dict | None = None) 
     headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
 
     try:
-        with httpx.Client(timeout=15.0) as client:
+        with httpx.Client(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
             resp = client.post(url, json=message, headers=headers)
+
         if resp.status_code == 200:
             return {"success": True, "message_id": resp.json().get("name", "")}
+
+        # Invalid device token — do NOT retry
+        if resp.status_code == 404:
+            log.warning("FCM device token invalid (404): token=%s...", token[:20])
+            return {"success": False, "error": "invalid_token", "token": token[:20]}
+
+        # Auth expired — invalidate cache and retry once
+        if resp.status_code == 401:
+            log.warning("FCM auth failed (401) — invalidating token cache and retrying")
+            invalidate_token_cache()
+            retry_token = _get_access_token()
+            if retry_token:
+                headers["Authorization"] = f"Bearer {retry_token}"
+                with httpx.Client(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
+                    resp2 = client.post(url, json=message, headers=headers)
+                if resp2.status_code == 200:
+                    return {"success": True, "message_id": resp2.json().get("name", "")}
+                if resp2.status_code == 404:
+                    return {"success": False, "error": "invalid_token", "token": token[:20]}
+                return {"success": False, "error": f"FCM HTTP {resp2.status_code}: {resp2.text[:200]}"}
+            return {"success": False, "error": "FCM auth retry failed — could not obtain token"}
+
         return {"success": False, "error": f"FCM HTTP {resp.status_code}: {resp.text[:200]}"}
     except Exception as exc:
         return {"success": False, "error": str(exc)}
@@ -221,3 +277,39 @@ def verify_credentials() -> dict:
             "message": f"FCM authenticated for project {project_id}",
         }
     return {"success": False, "error": "Failed to obtain OAuth2 token"}
+
+
+def validate_credentials() -> tuple[bool, str]:
+    """Startup check — validate that FCM credentials are loadable and contain required fields.
+
+    Returns:
+        (ok, error): ok is True if credentials are valid, error is empty string on success.
+    """
+    sa = _load_service_account()
+    if not sa:
+        return False, "No Firebase service account found (check FIREBASE_CREDENTIALS_PATH or FIREBASE_CREDENTIALS_JSON)"
+
+    required_fields = ["project_id", "client_email", "private_key"]
+    missing = [f for f in required_fields if not sa.get(f)]
+    if missing:
+        return False, f"Service account missing required fields: {', '.join(missing)}"
+
+    project_id = sa.get("project_id", "")
+    if not project_id:
+        return False, "Service account has no project_id"
+
+    return True, ""
+
+
+def verify_fcm_setup() -> None:
+    """Load credentials and log a clear WARNING if FCM is not configured.
+
+    Intended to be called once at application startup.
+    """
+    ok, error = validate_credentials()
+    if not ok:
+        log.warning("FCM push notifications DISABLED — %s", error)
+    else:
+        sa = _load_service_account()
+        project_id = sa.get("project_id", "") if sa else ""
+        log.info("FCM credentials loaded for project '%s'", project_id)

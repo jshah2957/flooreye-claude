@@ -33,7 +33,7 @@ class MobileIncidentSummary(BaseModel):
     end_time: Optional[datetime] = None
     max_confidence: float
     severity: Literal["low", "medium", "high", "critical"]
-    status: Literal["new", "acknowledged", "resolved", "false_positive"]
+    status: Literal["new", "acknowledged", "resolved", "false_positive", "auto_resolved"]
     detection_count: int
 
 

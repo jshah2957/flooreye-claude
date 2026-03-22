@@ -10,6 +10,8 @@ import hashlib
 import json
 import logging
 import os
+import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +24,65 @@ log = logging.getLogger(__name__)
 # Module-level singleton for boto3 S3 client (connection pooling)
 _s3_client = None
 _s3_client_configured_for: str | None = None
+
+# ---------- Name cache with 5-min TTL ----------
+# Structure: { "<collection>:<id>": (name_str, expiry_timestamp) }
+_name_cache: dict[str, tuple[str, float]] = {}
+_NAME_CACHE_TTL = 300  # 5 minutes
+
+
+def _cache_get(key: str) -> str | None:
+    """Return cached name if present and not expired."""
+    entry = _name_cache.get(key)
+    if entry is None:
+        return None
+    name, expiry = entry
+    if time.monotonic() > expiry:
+        _name_cache.pop(key, None)
+        return None
+    return name
+
+
+def _cache_set(key: str, name: str) -> None:
+    """Store a name in the cache with TTL."""
+    _name_cache[key] = (name, time.monotonic() + _NAME_CACHE_TTL)
+
+
+async def resolve_store_name(db, store_id: str) -> str:
+    """Look up store name from DB with caching. Returns store_id as fallback."""
+    cache_key = f"stores:{store_id}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    doc = await db.stores.find_one({"id": store_id}, {"name": 1})
+    name = doc["name"] if doc and doc.get("name") else store_id
+    _cache_set(cache_key, name)
+    return name
+
+
+async def resolve_camera_name(db, camera_id: str) -> str:
+    """Look up camera name from DB with caching. Returns camera_id as fallback."""
+    cache_key = f"cameras:{camera_id}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+    doc = await db.cameras.find_one({"id": camera_id}, {"name": 1})
+    name = doc["name"] if doc and doc.get("name") else camera_id
+    _cache_set(cache_key, name)
+    return name
+
+
+def _sanitize_name(name: str) -> str:
+    """Sanitize a name for use as a path component.
+
+    Lowercases, replaces spaces with underscores, strips all
+    non-alphanumeric/underscore/hyphen chars. Matches the edge agent pattern.
+    """
+    if not name:
+        return "unknown"
+    name = name.strip().lower().replace(" ", "_")
+    name = re.sub(r"[^a-z0-9_\-]", "", name)
+    return name or "unknown"
 
 
 def _s3_configured() -> bool:
@@ -93,20 +154,39 @@ def build_detection_path(
     confidence: float,
     timestamp: datetime = None,
     suffix: str = "clean",
+    frame_type: str | None = None,
+    store_name: str | None = None,
+    camera_name: str | None = None,
 ) -> str:
     """Build the S3 path for a detection frame following the standard naming convention.
 
+    Args:
+        org_id: Organization ID.
+        store_id: Store ID (used as fallback if store_name is not provided).
+        camera_id: Camera ID (used as fallback if camera_name is not provided).
+        detection_class: Detection class label (e.g. "wet_floor").
+        confidence: Detection confidence score.
+        timestamp: Frame timestamp (defaults to now UTC).
+        suffix: Legacy suffix parameter — overridden by frame_type if provided.
+        frame_type: "annotated" or "clean" — controls the subfolder in the path.
+        store_name: Human-readable store name for the path (falls back to store_id).
+        camera_name: Human-readable camera name for the path (falls back to camera_id).
+
     Path structure:
-      frames/{org_id}/stores/{store_id}/cameras/{camera_id}/
-        detections/{YYYY-MM-DD}/{suffix}/{HH-MM-SS}_{class}_{conf}_{suffix}.jpg
+      frames/{org_id}/{store_name}/{camera_name}/{YYYY-MM-DD}/{frame_type}/{filename}.jpg
     """
+    # Use frame_type as the path component; fall back to suffix for backward compat
+    path_type = frame_type or suffix
     ts = timestamp or datetime.now(timezone.utc)
     date_str = ts.strftime("%Y-%m-%d")
     time_str = ts.strftime("%H-%M-%S")
     conf_str = f"{confidence:.2f}"
+    # Prefer human-readable names, fall back to IDs; always sanitize
+    s_name = _sanitize_name(store_name or store_id)
+    c_name = _sanitize_name(camera_name or camera_id)
     return (
-        f"frames/{org_id}/stores/{store_id}/cameras/{camera_id}/"
-        f"detections/{date_str}/{suffix}/{time_str}_{detection_class}_{conf_str}_{suffix}.jpg"
+        f"frames/{org_id}/{s_name}/{c_name}/"
+        f"{date_str}/{path_type}/{time_str}_{detection_class}_{conf_str}_{path_type}.jpg"
     )
 
 
@@ -153,8 +233,56 @@ def compute_frame_hash(frame_bytes: bytes) -> str:
     return hashlib.sha256(frame_bytes).hexdigest()
 
 
-async def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | None:
-    """Upload a base64-encoded JPEG frame to S3 and return the object key."""
+def build_clip_path(
+    org_id: str,
+    store_id: str,
+    camera_id: str,
+    incident_id: str,
+    timestamp: datetime = None,
+    store_name: str | None = None,
+    camera_name: str | None = None,
+) -> str:
+    """Build the S3 path for an incident clip.
+
+    Args:
+        org_id: Organization ID.
+        store_id: Store ID (fallback if store_name not provided).
+        camera_id: Camera ID (fallback if camera_name not provided).
+        incident_id: Incident/event ID.
+        timestamp: Clip timestamp (defaults to now UTC).
+        store_name: Human-readable store name for the path.
+        camera_name: Human-readable camera name for the path.
+
+    Path structure:
+      clips/{org_id}/{store_name}/{camera_name}/{YYYY-MM-DD}/{incident_id}.mp4
+    """
+    ts = timestamp or datetime.now(timezone.utc)
+    date_str = ts.strftime("%Y-%m-%d")
+    s_name = _sanitize_name(store_name or store_id)
+    c_name = _sanitize_name(camera_name or camera_id)
+    return f"clips/{org_id}/{s_name}/{c_name}/{date_str}/{incident_id}.mp4"
+
+
+async def upload_frame(
+    frame_base64: str,
+    org_id: str,
+    camera_id: str,
+    frame_type: str = "clean",
+    store_id: str = "default",
+    store_name: str | None = None,
+    camera_name: str | None = None,
+) -> str | None:
+    """Upload a base64-encoded JPEG frame to S3 and return the object key.
+
+    Args:
+        frame_base64: Base64-encoded JPEG data.
+        org_id: Organization ID.
+        camera_id: Camera ID.
+        frame_type: "annotated" or "clean" — determines S3 subfolder.
+        store_id: Store ID (fallback for path if store_name not given).
+        store_name: Human-readable store name for S3 path.
+        camera_name: Human-readable camera name for S3 path.
+    """
     if not _s3_configured():
         return None
     try:
@@ -163,8 +291,12 @@ async def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | 
             return None
         frame_bytes = base64.b64decode(frame_base64)
         now = datetime.now(timezone.utc)
-        # Use structured path: frames/{org}/{stores/{store}/cameras/{cam}/detections/{date}/clean/...
-        key = build_detection_path(org_id, "default", camera_id, "upload", 0.0, now, suffix="clean")
+        key = build_detection_path(
+            org_id, store_id, camera_id, "upload", 0.0, now,
+            frame_type=frame_type,
+            store_name=store_name,
+            camera_name=camera_name,
+        )
         await asyncio.to_thread(
             client.put_object,
             Bucket=settings.S3_BUCKET_NAME,
@@ -172,10 +304,10 @@ async def upload_frame(frame_base64: str, org_id: str, camera_id: str) -> str | 
             Body=frame_bytes,
             ContentType="image/jpeg",
         )
-        log.info("Uploaded frame to S3: %s (%d bytes)", key, len(frame_bytes))
+        log.info("Uploaded %s frame to S3: %s (%d bytes)", frame_type, key, len(frame_bytes))
         return key
     except Exception as e:
-        log.warning("S3 frame upload failed: %s", e)
+        log.warning("S3 %s frame upload failed: %s", frame_type, e)
         return None
 
 

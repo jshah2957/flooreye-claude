@@ -13,10 +13,7 @@ from app.core.security import (
     verify_password,
 )
 from app.schemas.auth import UserCreate, UserUpdate, ProfileUpdate
-
-
-MAX_FAILED_ATTEMPTS = 5
-LOCKOUT_MINUTES = 15
+from app.core.config import settings
 
 
 async def authenticate_user(db: AsyncIOMotorDatabase, email: str, password: str) -> dict:
@@ -39,8 +36,8 @@ async def authenticate_user(db: AsyncIOMotorDatabase, email: str, password: str)
         # Increment failed attempts
         attempts = user.get("failed_login_attempts", 0) + 1
         updates: dict = {"failed_login_attempts": attempts}
-        if attempts >= MAX_FAILED_ATTEMPTS:
-            updates["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+        if attempts >= settings.AUTH_MAX_FAILED_ATTEMPTS:
+            updates["locked_until"] = datetime.now(timezone.utc) + timedelta(minutes=settings.AUTH_LOCKOUT_MINUTES)
         await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
@@ -89,16 +86,9 @@ async def create_user(
     current_user_role: str = "org_admin",
 ) -> dict:
     # Privilege escalation guard: enforce role hierarchy
-    _ROLE_RANK = {
-        "viewer": 0,
-        "store_owner": 1,
-        "operator": 2,
-        "ml_engineer": 3,
-        "org_admin": 4,
-        "super_admin": 5,
-    }
-    caller_rank = _ROLE_RANK.get(current_user_role, 0)
-    requested_rank = _ROLE_RANK.get(data.role, 99)
+    from app.core.constants import ROLE_HIERARCHY
+    caller_rank = ROLE_HIERARCHY.index(current_user_role) if current_user_role in ROLE_HIERARCHY else 0
+    requested_rank = ROLE_HIERARCHY.index(data.role) if data.role in ROLE_HIERARCHY else 99
     if current_user_role != "super_admin" and requested_rank >= caller_rank:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -139,9 +129,9 @@ async def update_user(
     # Privilege escalation guard on role change
     raw = data.model_dump(exclude_unset=True)
     if "role" in raw:
-        _ROLE_RANK = {"viewer": 0, "store_owner": 1, "operator": 2, "ml_engineer": 3, "org_admin": 4, "super_admin": 5}
-        caller_rank = _ROLE_RANK.get(current_user_role, 0)
-        requested_rank = _ROLE_RANK.get(raw["role"], 99)
+        from app.core.constants import ROLE_HIERARCHY
+        caller_rank = ROLE_HIERARCHY.index(current_user_role) if current_user_role in ROLE_HIERARCHY else 0
+        requested_rank = ROLE_HIERARCHY.index(raw["role"]) if raw["role"] in ROLE_HIERARCHY else 99
         if current_user_role != "super_admin" and requested_rank >= caller_rank:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -228,6 +218,17 @@ async def register_device_token(
     app_version: str,
     device_model: str | None = None,
 ) -> None:
+    # Validate push token: non-empty, reasonable length, no whitespace
+    if not token or not token.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Push token cannot be empty")
+    if len(token) < 20 or len(token) > 300:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Push token length must be between 20 and 300 characters (got {len(token)})",
+        )
+    if any(c.isspace() for c in token):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Push token must not contain whitespace")
+
     now = datetime.now(timezone.utc)
     await db.user_devices.update_one(
         {"user_id": user_id, "push_token": token},

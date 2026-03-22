@@ -15,4 +15,4 @@ class AuditLog(BaseModel):
     details: dict[str, Any] = {}
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    created_at: datetime
+    timestamp: datetime

@@ -55,6 +55,11 @@ class CameraResponse(BaseModel):
     student_model_version: Optional[str] = None
     snapshot_base64: Optional[str] = None
     last_seen: Optional[datetime] = None
+    config_status: Optional[str] = None
+    config_version: Optional[int] = None
+    last_config_push_at: Optional[datetime] = None
+    last_config_ack_at: Optional[datetime] = None
+    config_ack_status: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

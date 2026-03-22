@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.encryption import encrypt_string
 
 log = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ async def register_edge_camera(
         if edge_url:
             try:
                 import httpx
-                async with httpx.AsyncClient(timeout=10) as client:
+                async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
                     resp = await client.get(f"{edge_url}:8091/api/stream/{edge_camera_id}/frame")
                     if resp.status_code != 200:
                         raise HTTPException(
@@ -158,7 +159,7 @@ async def assemble_camera_config(db: AsyncIOMotorDatabase, camera_id: str, org_i
     camera = await get_camera(db, camera_id, org_id)
 
     # ROI
-    roi_doc = await get_active_roi(db, camera_id)
+    roi_doc = await get_active_roi(db, camera_id, org_id)
     roi = None
     if roi_doc:
         roi = {
@@ -167,7 +168,7 @@ async def assemble_camera_config(db: AsyncIOMotorDatabase, camera_id: str, org_i
         }
 
     # Dry reference
-    dry_ref_doc = await get_active_dry_reference(db, camera_id)
+    dry_ref_doc = await get_active_dry_reference(db, camera_id, org_id)
     dry_reference = None
     if dry_ref_doc and dry_ref_doc.get("frames"):
         import base64
@@ -190,7 +191,7 @@ async def assemble_camera_config(db: AsyncIOMotorDatabase, camera_id: str, org_i
         "roi": roi,
         "dry_reference": dry_reference,
         "detection_settings": {
-            "detection_enabled": effective.get("detection_enabled", False),
+            "detection_enabled": camera.get("detection_enabled", effective.get("detection_enabled", False)),
             "layer1_confidence": effective.get("layer1_confidence", 0.70),
             "layer1_enabled": effective.get("layer1_enabled", True),
             "layer2_min_area": effective.get("layer2_min_area_percent", 0.5),
@@ -202,6 +203,22 @@ async def assemble_camera_config(db: AsyncIOMotorDatabase, camera_id: str, org_i
             "layer4_enabled": effective.get("layer4_enabled", True),
             "cooldown_after_alert_seconds": effective.get("cooldown_after_alert_seconds", 300),
             "capture_fps": effective.get("capture_fps", 2),
+        },
+        "incident_settings": {
+            "auto_create_incident": effective.get("auto_create_incident", True),
+            "incident_grouping_window_seconds": effective.get("incident_grouping_window_seconds", 300),
+            "min_severity_to_create": effective.get("min_severity_to_create", "low"),
+            "auto_close_after_minutes": effective.get("auto_close_after_minutes", 60),
+            "trigger_devices_on_create": effective.get("trigger_devices_on_create", True),
+            "auto_notify_on_create": effective.get("auto_notify_on_create", True),
+            "severity_thresholds": {
+                "critical_min_confidence": effective.get("severity_critical_min_confidence", 0.90),
+                "critical_min_area": effective.get("severity_critical_min_area", 5.0),
+                "high_min_confidence": effective.get("severity_high_min_confidence", 0.75),
+                "high_min_area": effective.get("severity_high_min_area", 2.0),
+                "medium_min_confidence": effective.get("severity_medium_min_confidence", 0.50),
+                "medium_min_count": effective.get("severity_medium_min_count", 3),
+            },
         },
         "pushed_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -229,7 +246,7 @@ async def push_config_to_edge(
     if edge_url:
         try:
             import httpx
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
                 resp = await client.post(
                     f"{edge_url}:8091/api/config/camera/{camera_id}",
                     json=config_payload,

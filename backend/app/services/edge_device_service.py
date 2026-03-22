@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
+
 log = logging.getLogger(__name__)
 
 # Normalize device types: accept both edge-native (tplink/mqtt/webhook)
@@ -62,7 +64,7 @@ async def register_edge_device(
         "edge_device_id": edge_device_id,
         "assigned_cameras": [],
         "trigger_on_any": True,
-        "auto_off_seconds": 600,
+        "auto_off_seconds": settings.DEVICE_AUTO_OFF_DEFAULT_SECONDS,
         "status": "online",
         "last_triggered": None,
         "is_active": True,

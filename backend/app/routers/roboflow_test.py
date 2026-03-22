@@ -40,7 +40,19 @@ async def test_inference(
         )
 
     model_id = body.get("model_id")
+    confidence = body.get("confidence", 0.5)
+    if not isinstance(confidence, (int, float)):
+        confidence = 0.5
+    confidence = max(0.01, min(1.0, float(confidence)))
+
     result = await run_roboflow_inference(image_base64, model_id=model_id)
+
+    # Filter predictions below the requested confidence threshold
+    result["predictions"] = [
+        p for p in result["predictions"] if p.get("confidence", 0) >= confidence
+    ]
+    result["confidence_threshold"] = confidence
+
     return {"data": result}
 
 

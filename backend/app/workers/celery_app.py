@@ -21,6 +21,12 @@ celery_app.conf.update(
     task_routes={
         "app.workers.detection_worker.*": {"queue": "detection"},
     },
+    beat_schedule={
+        "auto-close-stale-incidents": {
+            "task": "app.workers.incident_worker.auto_close_stale_incidents",
+            "schedule": settings.AUTO_CLOSE_CHECK_INTERVAL_MINUTES * 60,  # convert to seconds
+        },
+    },
 )
 
 # Auto-discover tasks in workers package

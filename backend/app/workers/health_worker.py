@@ -58,6 +58,14 @@ async def _async_health_check() -> dict:
     integration_results = await _check_integrations(db)
     results["integrations"] = integration_results
 
+    # Mark stale edge agents as offline and emit system logs
+    try:
+        from app.services.edge_service import mark_stale_agents_offline
+        stale_count = await mark_stale_agents_offline(db)
+        results["stale_agents_marked_offline"] = stale_count
+    except Exception as exc:
+        logger.error("Stale agent check failed: %s", exc)
+
     logger.info("Health check complete: %s", {k: v.get("status") for k, v in results.items() if isinstance(v, dict)})
     return results
 

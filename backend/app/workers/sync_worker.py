@@ -28,7 +28,7 @@ def _get_db():
     max_retries=2,
     default_retry_delay=60,
 )
-def sync_to_roboflow(self, org_id: str, limit: int = 50):
+def sync_to_roboflow(self, org_id: str, limit: int = settings.ROBOFLOW_SYNC_BATCH_SIZE):
     """
     Sync unsynced dataset frames to Roboflow workspace.
 
@@ -80,7 +80,7 @@ async def _async_sync(org_id: str, limit: int) -> dict:
     synced = 0
     errors = 0
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=float(settings.ROBOFLOW_API_TIMEOUT)) as client:
         for frame in frames:
             try:
                 frame_b64 = frame.get("frame_base64") or frame.get("s3_path")

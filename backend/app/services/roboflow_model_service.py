@@ -35,14 +35,32 @@ async def pull_model_from_roboflow(
 
     Returns the created model version document.
     """
+    # Try global env vars first, then fall back to per-org encrypted config
     api_key = settings.ROBOFLOW_API_KEY
     rf_project = project_id or settings.ROBOFLOW_PROJECT_ID
     rf_version = version or settings.ROBOFLOW_PROJECT_VERSION
 
     if not api_key:
+        # Fall back to org-level integration config (AES-256-GCM encrypted)
+        integration = await db.integration_configs.find_one(
+            {"org_id": org_id, "service": "roboflow"}
+        )
+        if integration and integration.get("config_encrypted"):
+            from app.core.encryption import decrypt_config
+            try:
+                rf_config = decrypt_config(integration["config_encrypted"])
+                api_key = rf_config.get("api_key", "")
+                if not rf_project:
+                    model_id = rf_config.get("model_id", "")
+                    if "/" in model_id:
+                        rf_project = model_id.split("/")[0]
+            except Exception:
+                pass
+
+    if not api_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ROBOFLOW_API_KEY not configured",
+            detail="ROBOFLOW_API_KEY not configured — set env var or integration config",
         )
     if not rf_project:
         raise HTTPException(
@@ -51,7 +69,7 @@ async def pull_model_from_roboflow(
         )
 
     # Step 1: Get project info to find latest version if not specified
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_SLOW) as client:
         if not rf_version:
             resp = await client.get(
                 f"https://api.roboflow.com/{rf_project}",
@@ -82,7 +100,7 @@ async def pull_model_from_roboflow(
             )
         version_data = resp.json()
 
-        # Extract model export info
+        # Extract model export info — check existing exports first
         exports = version_data.get("exports", [])
         onnx_export = None
         for exp in exports:
@@ -90,14 +108,32 @@ async def pull_model_from_roboflow(
                 onnx_export = exp
                 break
 
-        # If no ONNX export found, try to get the model download link directly
         download_url = None
         if onnx_export:
             download_url = onnx_export.get("link") or onnx_export.get("url")
 
         if not download_url:
-            # Try the standard Roboflow ONNX download endpoint
-            download_url = f"https://api.roboflow.com/ds/{rf_project}/{rf_version}/onnx"
+            # Use the Roboflow export/download endpoint:
+            # GET /{project}/{version}/{format}?api_key=...
+            # This triggers an export if one doesn't exist and returns the download link
+            export_resp = await client.get(
+                f"https://api.roboflow.com/{rf_project}/{rf_version}/onnx",
+                params={"api_key": api_key},
+                timeout=60,
+            )
+            if export_resp.status_code == 200:
+                export_data = export_resp.json()
+                download_url = export_data.get("onnx", {}).get("link") or export_data.get("export", {}).get("link")
+                if not download_url:
+                    # Some responses put the link at the top level
+                    download_url = export_data.get("link")
+
+        if not download_url:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Could not obtain ONNX download URL for {rf_project}/{rf_version}. "
+                       "Ensure the model has been trained and an ONNX export is available.",
+            )
 
         # Extract classes from version data
         classes_data = version_data.get("classes", {})
@@ -109,7 +145,7 @@ async def pull_model_from_roboflow(
             download_url,
             params={"api_key": api_key},
             follow_redirects=True,
-            timeout=120.0,
+            timeout=settings.HTTP_TIMEOUT_DOWNLOAD,
         )
         if resp.status_code != 200:
             raise HTTPException(
@@ -156,21 +192,44 @@ async def pull_model_from_roboflow(
         with open(classes_path, "w") as f:
             json.dump(class_list, f)
 
-    # Step 6: Create model_versions document
+    # Step 6: Create model_versions document (all fields per docs/schemas.md)
     now = datetime.now(timezone.utc)
     model_version = {
         "id": str(uuid.uuid4()),
         "org_id": org_id,
         "version_str": f"rf-{rf_project}-v{rf_version}",
         "architecture": "onnx",
+        "param_count": None,
         "status": "draft",
-        "model_source": "roboflow",
-        "onnx_path": s3_key,
-        "model_size_mb": round(len(onnx_bytes) / (1024 * 1024), 2),
-        "checksum": checksum,
+        "training_job_id": None,
         "frame_count": version_data.get("images", 0),
-        "per_class_metrics": [{"class_name": c, "ap_50": 0, "precision": 0, "recall": 0} for c in class_list],
+        # Overall metrics — unknown until validated
+        "map_50": None,
+        "map_50_95": None,
+        "precision": None,
+        "recall": None,
+        "f1": None,
+        # Per-class metrics
+        "per_class_metrics": [
+            {"class_name": c, "ap_50": 0, "precision": 0, "recall": 0}
+            for c in class_list
+        ],
+        "model_source": "roboflow",
+        "checksum": checksum,
+        # Storage paths
+        "onnx_path": s3_key,
+        "pt_path": None,
+        "trt_path": None,
+        "model_size_mb": round(len(onnx_bytes) / (1024 * 1024), 2),
+        # Promotion tracking
+        "promoted_to_staging_at": None,
+        "promoted_to_staging_by": None,
+        "promoted_to_production_at": None,
+        "promoted_to_production_by": None,
+        # Class names for edge deployment
+        "class_names": class_list,
         "created_at": now,
+        # Roboflow provenance
         "pulled_from": f"roboflow/{rf_project}/{rf_version}",
         "pulled_by": user_id,
     }
@@ -199,13 +258,30 @@ async def pull_classes_from_roboflow(
     api_key = settings.ROBOFLOW_API_KEY
     rf_project = project_id or settings.ROBOFLOW_PROJECT_ID
 
+    if not api_key:
+        # Fall back to org-level integration config
+        integration = await db.integration_configs.find_one(
+            {"org_id": org_id, "service": "roboflow"}
+        )
+        if integration and integration.get("config_encrypted"):
+            from app.core.encryption import decrypt_config
+            try:
+                rf_config = decrypt_config(integration["config_encrypted"])
+                api_key = rf_config.get("api_key", "")
+                if not rf_project:
+                    model_id = rf_config.get("model_id", "")
+                    if "/" in model_id:
+                        rf_project = model_id.split("/")[0]
+            except Exception:
+                pass
+
     if not api_key or not rf_project:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ROBOFLOW_API_KEY and ROBOFLOW_PROJECT_ID required",
+            detail="ROBOFLOW_API_KEY and ROBOFLOW_PROJECT_ID required — set env vars or integration config",
         )
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
         resp = await client.get(
             f"https://api.roboflow.com/{rf_project}",
             params={"api_key": api_key},

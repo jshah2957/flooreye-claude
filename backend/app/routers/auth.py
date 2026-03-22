@@ -23,6 +23,7 @@ from app.schemas.auth import (
     UserUpdate,
 )
 from app.services import auth_service
+from app.services.system_log_service import emit_system_log
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -49,13 +50,28 @@ async def login(
     response: Response,
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    user = await auth_service.authenticate_user(db, body.email, body.password)
+    from fastapi.exceptions import HTTPException as _HTTPException
+    try:
+        user = await auth_service.authenticate_user(db, body.email, body.password)
+    except _HTTPException:
+        # Log failed login attempt before re-raising
+        await emit_system_log(
+            db, "", "warning", "auth", "Failed login attempt",
+            {"email": body.email},
+        )
+        raise
+
     access_token, refresh_token = auth_service.generate_tokens(user)
     set_refresh_cookie(response, refresh_token)
     # Audit log
     from app.services.audit_service import log_action
     await log_action(db, user["id"], user["email"], user.get("org_id", ""),
                      "login", "user", user["id"], request=request)
+    # System log for successful login
+    await emit_system_log(
+        db, user.get("org_id", ""), "info", "auth", "User logged in",
+        {"user_id": user["id"], "email": user["email"]},
+    )
     return {"data": TokenResponse(access_token=access_token, user=_user_response(user))}
 
 
@@ -79,12 +95,14 @@ async def logout(response: Response):
 
 @router.post("/logout-all")
 async def logout_all(
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     response: Response = None,
 ):
     """Revoke all sessions for current user by blacklisting all active tokens."""
     from datetime import datetime, timezone, timedelta
+    from app.services.audit_service import log_action
     now = datetime.now(timezone.utc)
     # Blacklist all existing tokens for this user (expire in 7 days max)
     await db.token_blacklist.insert_one({
@@ -100,6 +118,8 @@ async def logout_all(
     )
     if response:
         clear_refresh_cookie(response)
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "logout_all", "user", current_user["id"], {}, request)
     return {"data": {"ok": True, "message": "All sessions revoked"}}
 
 
@@ -138,16 +158,22 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 @router.put("/me")
 async def update_me(
     body: ProfileUpdate,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     updated = await auth_service.update_profile(db, current_user["id"], body)
+    from app.services.audit_service import log_action
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "profile_updated", "user", current_user["id"],
+                     {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     return {"data": _user_response(updated)}
 
 
 @router.post("/device-token")
 async def register_device_token(
     body: DeviceTokenRequest,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -160,16 +186,24 @@ async def register_device_token(
         app_version=body.app_version,
         device_model=body.device_model,
     )
+    from app.services.audit_service import log_action
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "device_token_registered", "device_token", None,
+                     {"platform": body.platform}, request)
     return {"data": {"ok": True}}
 
 
 @router.delete("/device-token")
 async def remove_device_token(
+    request: Request,
     token: str = Query(...),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     await auth_service.remove_device_token(db, current_user["id"], token)
+    from app.services.audit_service import log_action
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "device_token_removed", "device_token", None, {}, request)
     return {"data": {"ok": True}}
 
 

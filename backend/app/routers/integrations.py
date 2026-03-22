@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.services.audit_service import log_action
 
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
@@ -75,24 +77,30 @@ async def get_integration(
 async def save_integration(
     service: str,
     body: IntegrationSaveRequest,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     result = await integration_service.save_integration(
         db, current_user.get("org_id", ""), service, body.config, current_user["id"]
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "integration_saved", "integration", service, {}, request)
     return {"data": result}
 
 
 @router.delete("/{service}")
 async def delete_integration(
     service: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     await integration_service.delete_integration(
         db, current_user.get("org_id", ""), service
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "integration_deleted", "integration", service, {}, request)
     return {"data": {"ok": True}}
 
 

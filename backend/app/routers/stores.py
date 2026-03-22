@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.services.audit_service import log_action
 
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
@@ -59,10 +61,14 @@ async def list_stores(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_store(
     body: StoreCreate,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     store = await store_service.create_store(db, body, current_user.get("org_id", ""))
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "store_created", "store", store["id"],
+                     {"name": store["name"]}, request)
     return {"data": _store_response(store)}
 
 
@@ -143,22 +149,29 @@ async def get_store(
 async def update_store(
     store_id: str,
     body: StoreUpdate,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     store = await store_service.update_store(
         db, store_id, current_user.get("org_id", ""), body
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "store_updated", "store", store_id,
+                     {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     return {"data": _store_response(store)}
 
 
 @router.delete("/{store_id}")
 async def delete_store(
     store_id: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     await store_service.delete_store(db, store_id, current_user.get("org_id", ""))
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "store_deleted", "store", store_id, {}, request)
     return {"data": {"ok": True}}
 
 

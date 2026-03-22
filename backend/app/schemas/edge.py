@@ -35,7 +35,9 @@ class HeartbeatRequest(BaseModel):
 
 class FrameUploadRequest(BaseModel):
     camera_id: str
-    frame_base64: str
+    frame_base64: str  # backward compat: treated as annotated frame
+    annotated_frame_base64: Optional[str] = None
+    clean_frame_base64: Optional[str] = None
     is_wet: bool
     confidence: float
     wet_area_percent: float

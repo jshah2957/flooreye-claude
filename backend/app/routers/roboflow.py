@@ -3,9 +3,12 @@ import uuid
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.services.audit_service import log_action
+
+from app.core.config import settings
 from app.core.encryption import decrypt_config
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
@@ -52,6 +55,7 @@ async def list_models(
 @router.post("/upload")
 async def upload_frames(
     body: dict,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
@@ -73,6 +77,10 @@ async def upload_frames(
     await db.roboflow_jobs.insert_one(job)
     job.pop("_id", None)
 
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "roboflow_upload_started", "roboflow_job", job["id"],
+                     {"frame_count": len(frame_ids), "project_id": project_id}, request)
+
     # Dispatch Celery task for the upload job
     try:
         from app.workers.sync_worker import sync_to_roboflow
@@ -86,6 +94,7 @@ async def upload_frames(
 @router.post("/sync")
 async def sync_dataset(
     body: dict,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
@@ -103,6 +112,10 @@ async def sync_dataset(
     }
     await db.roboflow_jobs.insert_one(job)
     job.pop("_id", None)
+
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "roboflow_sync_started", "roboflow_job", job["id"],
+                     {"project_id": body.get("project_id", "")}, request)
 
     # Dispatch Celery task for the sync job
     try:
@@ -160,7 +173,7 @@ async def _fetch_roboflow_classes(
     project = parts[0] if parts else model_id
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
             resp = await client.get(
                 f"https://api.roboflow.com/{project}",
                 params={"api_key": api_key},
@@ -212,6 +225,7 @@ async def get_roboflow_classes(
 
 @router.post("/pull-model")
 async def pull_model(
+    request: Request,
     body: dict | None = None,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
@@ -233,6 +247,9 @@ async def pull_model(
         project_id=body.get("project_id"),
         version=body.get("version"),
     )
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "roboflow_model_pulled", "model_version", model.get("id"),
+                     {"project_id": body.get("project_id"), "version": body.get("version")}, request)
     return {"data": model}
 
 

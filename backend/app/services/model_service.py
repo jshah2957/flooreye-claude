@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.org_filter import org_query
 from app.schemas.model_version import ModelVersionCreate, ModelVersionUpdate
+from app.services.system_log_service import emit_system_log
 
 
 async def create_model(db: AsyncIOMotorDatabase, org_id: str, data: ModelVersionCreate) -> dict:
@@ -39,7 +40,12 @@ async def list_models(
     status_filter: str | None = None, limit: int = 20, offset: int = 0,
 ) -> tuple[list[dict], int]:
     query: dict = org_query(org_id)
-    if status_filter: query["status"] = status_filter
+    if status_filter:
+        # Support comma-separated status values e.g. "production,staging"
+        if "," in status_filter:
+            query["status"] = {"$in": [s.strip() for s in status_filter.split(",")]}
+        else:
+            query["status"] = status_filter
     total = await db.model_versions.count_documents(query)
     cursor = db.model_versions.find(query).sort("created_at", -1).skip(offset).limit(limit)
     models = await cursor.to_list(length=limit)
@@ -93,6 +99,13 @@ async def promote_model(
     )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model not found")
+
+    # Emit system log for production promotion
+    if target == "production":
+        await emit_system_log(
+            db, org_id, "info", "model", "Model promoted to production",
+            {"model_id": model_id, "version": result.get("version_str", "")},
+        )
 
     # Auto-deploy to all online edge agents when promoted to production
     # but only for Roboflow models (YOLO cloud models stay server-side)

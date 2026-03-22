@@ -1,8 +1,15 @@
+import csv
+import io
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel
 
+from app.services.audit_service import log_action
+
+from app.core.config import settings
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.incident import (
@@ -14,6 +21,15 @@ from app.schemas.incident import (
 from app.services import incident_service
 
 router = APIRouter(prefix="/api/v1/events", tags=["events"])
+
+
+class BulkAcknowledgeRequest(BaseModel):
+    event_ids: list[str]
+
+
+class BulkResolveRequest(BaseModel):
+    event_ids: list[str]
+    status: str = "resolved"  # "resolved" | "false_positive"
 
 
 def _event_response(e: dict) -> EventResponse:
@@ -48,7 +64,7 @@ async def list_events(
     camera_id: Optional[str] = Query(None),
     status_filter: Optional[str] = Query(None, alias="status"),
     severity: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(settings.DETECTION_HISTORY_DEFAULT_LIMIT, ge=1, le=settings.DETECTION_HISTORY_MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
@@ -69,6 +85,115 @@ async def list_events(
     }
 
 
+@router.get("/export")
+async def export_events_csv(
+    store_id: Optional[str] = Query(None),
+    camera_id: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    severity: Optional[str] = Query(None),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Export incidents as CSV. Max 50,000 rows. Requires org_admin+."""
+    max_rows = 50_000
+    incidents, _total = await incident_service.list_incidents(
+        db,
+        current_user.get("org_id", ""),
+        store_id=store_id,
+        camera_id=camera_id,
+        status_filter=status_filter,
+        severity=severity,
+        limit=max_rows,
+        offset=0,
+    )
+
+    columns = [
+        "id", "severity", "status", "camera_id", "store_id",
+        "start_time", "end_time", "max_confidence", "max_wet_area_percent",
+        "detection_count", "resolved_by", "resolved_at",
+    ]
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    for inc in incidents:
+        row = {}
+        for col in columns:
+            val = inc.get(col)
+            if hasattr(val, "isoformat"):
+                val = val.isoformat()
+            row[col] = val if val is not None else ""
+        writer.writerow(row)
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=incidents_export.csv"},
+    )
+
+
+@router.post("/bulk-acknowledge")
+async def bulk_acknowledge_events(
+    body: BulkAcknowledgeRequest,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Acknowledge multiple incidents at once. Requires operator+."""
+    acknowledged = 0
+    errors = 0
+    for event_id in body.event_ids:
+        try:
+            await incident_service.acknowledge_incident(
+                db,
+                event_id,
+                current_user.get("org_id", ""),
+                current_user["id"],
+            )
+            await log_action(
+                db, current_user["id"], current_user["email"],
+                current_user.get("org_id", ""),
+                "event_acknowledged", "event", event_id, {}, request,
+            )
+            acknowledged += 1
+        except Exception:
+            errors += 1
+    return {"acknowledged": acknowledged, "errors": errors}
+
+
+@router.post("/bulk-resolve")
+async def bulk_resolve_events(
+    body: BulkResolveRequest,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Resolve multiple incidents at once. Requires operator+."""
+    resolved = 0
+    errors = 0
+    resolve_status = body.status if body.status in ("resolved", "false_positive") else "resolved"
+    for event_id in body.event_ids:
+        try:
+            await incident_service.resolve_incident(
+                db,
+                event_id,
+                current_user.get("org_id", ""),
+                current_user["id"],
+                resolve_status,
+            )
+            await log_action(
+                db, current_user["id"], current_user["email"],
+                current_user.get("org_id", ""),
+                "event_resolved", "event", event_id,
+                {"status": resolve_status}, request,
+            )
+            resolved += 1
+        except Exception:
+            errors += 1
+    return {"resolved": resolved, "errors": errors}
+
+
 @router.get("/{event_id}")
 async def get_event(
     event_id: str,
@@ -84,6 +209,7 @@ async def get_event(
 @router.put("/{event_id}/acknowledge")
 async def acknowledge_event(
     event_id: str,
+    request: Request,
     body: AcknowledgeRequest = AcknowledgeRequest(),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
@@ -95,12 +221,38 @@ async def acknowledge_event(
         current_user["id"],
         body.notes,
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "event_acknowledged", "event", event_id, {}, request)
+    return {"data": _event_response(incident)}
+
+
+class UpdateNotesRequest(BaseModel):
+    notes: str
+
+
+@router.put("/{event_id}/notes")
+async def update_event_notes(
+    event_id: str,
+    request: Request,
+    body: UpdateNotesRequest = Body(...),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    incident = await incident_service.update_notes(
+        db,
+        event_id,
+        current_user.get("org_id", ""),
+        body.notes,
+    )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "event_notes_updated", "event", event_id, {}, request)
     return {"data": _event_response(incident)}
 
 
 @router.put("/{event_id}/resolve")
 async def resolve_event(
     event_id: str,
+    request: Request,
     body: ResolveRequest = ResolveRequest(),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
@@ -113,4 +265,7 @@ async def resolve_event(
         body.status,
         body.notes,
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "event_resolved", "event", event_id,
+                     {"status": body.status}, request)
     return {"data": _event_response(incident)}

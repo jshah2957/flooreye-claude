@@ -37,7 +37,7 @@ async def run_roboflow_inference(
     # Roboflow's hosted Inference API expects the base64-encoded image string
     # sent as the raw POST body with Content-Type: application/x-www-form-urlencoded.
     # Do NOT decode to raw bytes — the API parses the base64 string directly.
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=float(settings.ROBOFLOW_API_TIMEOUT)) as client:
         response = await client.post(
             url,
             params=params,
@@ -88,13 +88,30 @@ async def run_roboflow_inference(
     }
 
 
-def _classify_severity(confidence: float, area_percent: float) -> str:
-    """Classify detection severity based on confidence and area."""
-    if confidence >= 0.85 and area_percent >= 5.0:
+def _classify_severity(
+    confidence: float,
+    area_percent: float,
+    settings: dict | None = None,
+) -> str:
+    """Classify detection severity based on confidence and area.
+
+    If settings dict is provided, uses configurable thresholds from detection
+    control settings. Otherwise falls back to hardcoded defaults.
+    """
+    if settings is None:
+        settings = {}
+
+    critical_conf = settings.get("prediction_severity_critical_confidence", 0.85)
+    critical_area = settings.get("prediction_severity_critical_area", 5.0)
+    high_conf = settings.get("prediction_severity_high_confidence", 0.70)
+    high_area = settings.get("prediction_severity_high_area", 2.0)
+    medium_conf = settings.get("severity_medium_min_confidence", 0.50)
+
+    if confidence >= critical_conf and area_percent >= critical_area:
         return "critical"
-    if confidence >= 0.70 and area_percent >= 2.0:
+    if confidence >= high_conf and area_percent >= high_area:
         return "high"
-    if confidence >= 0.50:
+    if confidence >= medium_conf:
         return "medium"
     return "low"
 

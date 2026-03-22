@@ -1,7 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from app.services.audit_service import log_action
 
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
@@ -44,6 +46,11 @@ def _camera_response(cam: dict) -> CameraResponse:
         student_model_version=cam.get("student_model_version"),
         snapshot_base64=cam.get("snapshot_base64"),
         last_seen=cam.get("last_seen"),
+        config_status=cam.get("config_status"),
+        config_version=cam.get("config_version"),
+        last_config_push_at=cam.get("last_config_push_at"),
+        last_config_ack_at=cam.get("last_config_ack_at"),
+        config_ack_status=cam.get("config_ack_status"),
         created_at=cam["created_at"],
         updated_at=cam["updated_at"],
     )
@@ -112,12 +119,16 @@ async def list_cameras(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_camera(
     body: CameraCreate,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     camera = await camera_service.create_camera(
         db, body, current_user.get("org_id", "")
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "camera_created", "camera", camera["id"],
+                     {"name": camera["name"], "store_id": camera["store_id"]}, request)
     return {"data": _camera_response(camera)}
 
 
@@ -137,11 +148,15 @@ async def get_camera(
 async def update_camera(
     camera_id: str,
     body: CameraUpdate,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "")
     camera = await camera_service.update_camera(db, camera_id, org_id, body)
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "camera_updated", "camera", camera_id,
+                     {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     # Push updated config to edge if camera is edge-managed
     if camera.get("edge_agent_id"):
         try:
@@ -155,12 +170,15 @@ async def update_camera(
 @router.delete("/{camera_id}")
 async def delete_camera(
     camera_id: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     await camera_service.delete_camera(
         db, camera_id, current_user.get("org_id", "")
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "camera_deleted", "camera", camera_id, {}, request)
     return {"data": {"ok": True, "status": "inactive"}}
 
 
@@ -227,12 +245,16 @@ async def change_inference_mode(
 async def save_roi(
     camera_id: str,
     body: ROICreate,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
     roi = await camera_service.save_roi(
         db, camera_id, current_user.get("org_id", ""), body, current_user["id"]
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "roi_saved", "roi", roi["id"],
+                     {"camera_id": camera_id, "version": roi["version"]}, request)
     return {"data": _roi_response(roi)}
 
 
@@ -262,9 +284,7 @@ async def get_roi_history(
     rois = await db.rois.find(
         {"camera_id": camera_id, "org_id": org_id}
     ).sort("version", -1).to_list(length=50)
-    for r in rois:
-        r.pop("_id", None)
-    return {"data": rois}
+    return {"data": [_roi_response(r) for r in rois]}
 
 
 # ── Dry Reference ──────────────────────────────────────────────
@@ -273,6 +293,7 @@ async def get_roi_history(
 @router.post("/{camera_id}/dry-reference", status_code=status.HTTP_201_CREATED)
 async def capture_dry_reference(
     camera_id: str,
+    request: Request,
     num_frames: int = Query(5, ge=3, le=10),
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
@@ -280,6 +301,9 @@ async def capture_dry_reference(
     dry_ref = await camera_service.capture_dry_reference(
         db, camera_id, current_user.get("org_id", ""), current_user["id"], num_frames
     )
+    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+                     "dry_reference_captured", "dry_reference", dry_ref["id"],
+                     {"camera_id": camera_id, "num_frames": num_frames}, request)
     return {"data": _dry_ref_response(dry_ref)}
 
 
@@ -300,6 +324,7 @@ async def get_dry_reference(
 @router.post("/{camera_id}/toggle-detection")
 async def toggle_detection(
     camera_id: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
@@ -311,6 +336,9 @@ async def toggle_detection(
         {"id": camera_id},
         {"$set": {"detection_enabled": new_enabled}},
     )
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "detection_toggled", "camera", camera_id,
+                     {"detection_enabled": new_enabled}, request)
     # Push config to edge
     try:
         from app.services.edge_camera_service import push_config_to_edge
@@ -323,6 +351,7 @@ async def toggle_detection(
 @router.post("/{camera_id}/push-config")
 async def push_config(
     camera_id: str,
+    request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
@@ -330,4 +359,7 @@ async def push_config(
     org_id = current_user.get("org_id", "")
     from app.services.edge_camera_service import push_config_to_edge
     result = await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "config_pushed", "camera", camera_id,
+                     {"result_status": result.get("status", "unknown")}, request)
     return {"data": result}
