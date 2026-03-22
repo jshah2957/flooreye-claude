@@ -5,6 +5,7 @@ import AnnotatedFrame from "@/components/shared/AnnotatedFrame";
 
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { VALIDATION_DEFAULTS, WET_CLASS_NAMES } from "@/constants";
 
 interface Prediction {
   class_name: string;
@@ -27,6 +28,7 @@ export default function RoboflowTestPage() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [result, setResult] = useState<InferenceResult | null>(null);
   const [modelIdOverride, setModelIdOverride] = useState("");
+  const [confidence, setConfidence] = useState(VALIDATION_DEFAULTS.CONFIDENCE);
 
   const inferMutation = useMutation({
     mutationFn: async () => {
@@ -34,6 +36,7 @@ export default function RoboflowTestPage() {
       const res = await api.post("/roboflow/test-inference", {
         image_base64: imageBase64,
         model_id: modelIdOverride || undefined,
+        confidence,
       });
       return res.data.data as InferenceResult;
     },
@@ -71,7 +74,7 @@ export default function RoboflowTestPage() {
   }
 
   const isWet = result?.predictions?.some((p) =>
-    ["wet_floor", "spill", "puddle", "water", "wet"].includes(p.class_name?.toLowerCase())
+    (WET_CLASS_NAMES as readonly string[]).includes(p.class_name?.toLowerCase())
   );
 
   return (
@@ -114,6 +117,26 @@ export default function RoboflowTestPage() {
               placeholder="e.g. wet-floor-detection/3"
               className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
             />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[#78716C]">
+              Confidence Threshold: {confidence.toFixed(2)}
+            </label>
+            <input
+              type="range"
+              min={0.1}
+              max={1.0}
+              step={0.05}
+              value={confidence}
+              onChange={(e) => setConfidence(parseFloat(e.target.value))}
+              className="w-full accent-[#0D9488]"
+            />
+            <div className="flex justify-between text-[10px] text-[#A8A29E]">
+              <span>0.10</span>
+              <span>0.50</span>
+              <span>1.00</span>
+            </div>
           </div>
 
           <button

@@ -4,6 +4,7 @@ import { Play, Loader2, CheckCircle, XCircle, Save, Camera, Image as ImageIcon }
 
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { VALIDATION_DEFAULTS } from "@/constants";
 
 interface Prediction {
   class_name: string;
@@ -39,16 +40,16 @@ export default function TestInferencePage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [modelSource, setModelSource] = useState("local_onnx");
-  const [confidence, setConfidence] = useState(0.5);
+  const [confidence, setConfidence] = useState(VALIDATION_DEFAULTS.CONFIDENCE);
   const [runValidation, setRunValidation] = useState(false);
-  const [l1Conf, setL1Conf] = useState(0.7);
+  const [l1Conf, setL1Conf] = useState(VALIDATION_DEFAULTS.LAYER1_CONFIDENCE);
   const [l1On, setL1On] = useState(true);
-  const [l2Area, setL2Area] = useState(0.5);
+  const [l2Area, setL2Area] = useState(VALIDATION_DEFAULTS.LAYER2_MIN_AREA);
   const [l2On, setL2On] = useState(true);
-  const [l3K, setL3K] = useState(3);
-  const [l3M, setL3M] = useState(5);
+  const [l3K, setL3K] = useState(VALIDATION_DEFAULTS.LAYER3_K);
+  const [l3M, setL3M] = useState(VALIDATION_DEFAULTS.LAYER3_M);
   const [l3On, setL3On] = useState(true);
-  const [l4Delta, setL4Delta] = useState(0.15);
+  const [l4Delta, setL4Delta] = useState(VALIDATION_DEFAULTS.LAYER4_DELTA);
   const [l4On, setL4On] = useState(true);
   const [result, setResult] = useState<TestResult | null>(null);
 

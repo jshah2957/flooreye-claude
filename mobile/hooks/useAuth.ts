@@ -7,6 +7,10 @@ import api, {
   setAccessToken,
   setRefreshToken,
 } from "@/services/api";
+import {
+  registerPushTokenWithBackend,
+  unregisterPushTokenFromBackend,
+} from "@/hooks/usePushNotifications";
 
 interface User {
   id: string;
@@ -51,6 +55,10 @@ export function useAuth() {
         isLoading: false,
         isAuthenticated: true,
       });
+
+      // Re-register push token on app relaunch (token may have rotated)
+      registerPushTokenWithBackend().catch(() => {});
+
     } catch {
       await setAccessToken(null);
       await setRefreshToken(null);
@@ -71,11 +79,22 @@ export function useAuth() {
       // The httpOnly cookie won't work on mobile, so we store it in SecureStore
       setState({ user, isLoading: false, isAuthenticated: true });
       router.replace("/(tabs)");
+
+      // Register push token in the background after login completes.
+      // This runs fire-and-forget: permission denied or registration failure
+      // will NOT block login or show errors to the user.
+      registerPushTokenWithBackend().catch(() => {
+        // Swallowed — registerPushTokenWithBackend already retries internally
+      });
     },
     [router],
   );
 
   const logout = useCallback(async () => {
+    // Unregister push token before clearing auth state.
+    // Must happen before token removal so the API call is authenticated.
+    await unregisterPushTokenFromBackend();
+
     try {
       await api.post("/auth/logout");
     } catch {

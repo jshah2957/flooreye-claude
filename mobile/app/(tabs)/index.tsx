@@ -9,51 +9,48 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import api from "@/services/api";
-
-interface DashboardData {
-  stats: {
-    total_stores: number;
-    total_cameras: number;
-    online_cameras: number;
-    active_incidents: number;
-  };
-  recent_detections: Array<{
-    id: string;
-    confidence: number;
-    wet_area_percent: number;
-    timestamp: string;
-    camera_id: string;
-    severity?: string;
-  }>;
-  active_incidents: Array<{
-    id: string;
-    severity: string;
-    status: string;
-    max_confidence: number;
-    detection_count: number;
-    start_time: string;
-    camera_id: string;
-  }>;
-  camera_chips: Array<{
-    id: string;
-    name: string;
-    status: string;
-    inference_mode: string;
-  }>;
-}
+import {
+  BRAND,
+  SEVERITY_COLORS,
+  SEVERITY_BG_COLORS,
+  STAT_COLORS,
+  SPACING,
+  RADIUS,
+  FONT_SIZE,
+} from "@/constants/theme";
+import { API_LIMITS } from "@/constants/config";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import ErrorBanner from "@/components/shared/ErrorBanner";
+import ConnectionStatusBar from "@/components/shared/ConnectionStatusBar";
+import type { DashboardData, WSMessage } from "@/types";
 
 export default function HomeScreen() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // WebSocket for real-time incident updates
+  const { state: wsState } = useWebSocket({
+    channel: "/ws/incidents",
+    onMessage: (msg: WSMessage) => {
+      if (msg.type === "incident_created" || msg.type === "incident_updated") {
+        // Refresh dashboard on new/updated incidents
+        fetchDashboard();
+      }
+    },
+  });
 
   const fetchDashboard = useCallback(async () => {
     try {
+      setError(null);
       const res = await api.get("/mobile/dashboard");
       setData(res.data.data);
-    } catch {
-      // Silent fail — show empty state
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.detail ?? err?.message ?? "Failed to load dashboard";
+      setError(msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -71,8 +68,15 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8F7F4" }}>
-        <ActivityIndicator size="large" color="#0D9488" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: BRAND.background,
+        }}
+      >
+        <ActivityIndicator size="large" color={BRAND.primary} />
       </View>
     );
   }
@@ -80,116 +84,317 @@ export default function HomeScreen() {
   const stats = data?.stats;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: "#F8F7F4" }}
-      contentContainerStyle={{ padding: 16 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0D9488" />}
-    >
-      {/* Stats Row */}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-        <StatCard label="Stores" value={stats?.total_stores ?? 0} color="#2563EB" />
-        <StatCard label="Cameras" value={`${stats?.online_cameras ?? 0}/${stats?.total_cameras ?? 0}`} color="#16A34A" />
-        <StatCard label="Incidents" value={stats?.active_incidents ?? 0} color="#DC2626" />
-      </View>
+    <View style={{ flex: 1, backgroundColor: BRAND.background }}>
+      <ConnectionStatusBar state={wsState} />
+      <ScrollView
+        contentContainerStyle={{ padding: SPACING.lg }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={BRAND.primary}
+          />
+        }
+      >
+        {error && (
+          <ErrorBanner
+            message={error}
+            onRetry={() => {
+              setLoading(true);
+              fetchDashboard();
+            }}
+          />
+        )}
 
-      {/* Active Incidents */}
-      <Text style={{ fontSize: 16, fontWeight: "600", color: "#1C1917", marginBottom: 8 }}>
-        Active Incidents
-      </Text>
-      {(data?.active_incidents ?? []).length === 0 ? (
-        <View style={{ padding: 24, alignItems: "center", backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#E7E5E0", marginBottom: 16 }}>
-          <Text style={{ color: "#78716C", fontSize: 13 }}>No active incidents</Text>
+        {/* Stats Row */}
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: SPACING.sm,
+            marginBottom: SPACING.lg,
+          }}
+        >
+          <StatCard
+            label="Stores"
+            value={stats?.total_stores ?? 0}
+            color={STAT_COLORS.stores}
+          />
+          <StatCard
+            label="Cameras"
+            value={`${stats?.online_cameras ?? 0}/${stats?.total_cameras ?? 0}`}
+            color={STAT_COLORS.cameras}
+          />
+          <StatCard
+            label="Incidents"
+            value={stats?.active_incidents ?? 0}
+            color={STAT_COLORS.incidents}
+          />
         </View>
-      ) : (
-        <View style={{ gap: 8, marginBottom: 16 }}>
-          {data!.active_incidents.map((inc) => (
-            <TouchableOpacity
-              key={inc.id}
-              onPress={() => router.push(`/incident/${inc.id}`)}
-              style={{ flexDirection: "row", backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#E7E5E0", overflow: "hidden" }}
-            >
-              <View style={{ width: 4, backgroundColor: inc.severity === "critical" ? "#991B1B" : inc.severity === "high" ? "#DC2626" : "#D97706" }} />
-              <View style={{ flex: 1, padding: 12 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <SeverityBadge severity={inc.severity} />
-                  <Text style={{ fontSize: 12, color: "#78716C" }}>{inc.detection_count} detections</Text>
+
+        {/* System Status */}
+        <SectionHeader title="System Status" />
+        <View
+          style={{
+            flexDirection: "row",
+            gap: SPACING.sm,
+            marginBottom: SPACING.lg,
+          }}
+        >
+          <StatusChip
+            label="Edge Agents"
+            count={data?.camera_chips?.filter(
+              (c) => c.status === "online" || c.status === "active"
+            ).length ?? 0}
+            total={data?.camera_chips?.length ?? 0}
+            healthy
+          />
+          <StatusChip
+            label="Detection"
+            count={stats?.online_cameras ?? 0}
+            total={stats?.total_cameras ?? 0}
+            healthy={(stats?.online_cameras ?? 0) > 0}
+          />
+        </View>
+
+        {/* Active Incidents */}
+        <SectionHeader title="Active Incidents" />
+        {(data?.active_incidents ?? []).length === 0 ? (
+          <EmptyCard message="No active incidents" />
+        ) : (
+          <View style={{ gap: SPACING.sm, marginBottom: SPACING.lg }}>
+            {data!.active_incidents.map((inc) => (
+              <TouchableOpacity
+                key={inc.id}
+                onPress={() => router.push(`/incident/${inc.id}`)}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: "row",
+                  backgroundColor: BRAND.surface,
+                  borderRadius: RADIUS.md,
+                  borderWidth: 1,
+                  borderColor: BRAND.border,
+                  overflow: "hidden",
+                }}
+                accessibilityLabel={`${inc.severity} severity incident, ${inc.detection_count} detections, ${(inc.max_confidence * 100).toFixed(0)}% confidence`}
+                accessibilityRole="button"
+              >
+                <View
+                  style={{
+                    width: 4,
+                    backgroundColor:
+                      SEVERITY_COLORS[inc.severity] ?? SEVERITY_COLORS.medium,
+                  }}
+                />
+                <View style={{ flex: 1, padding: SPACING.md }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: SPACING.xs + 2,
+                    }}
+                  >
+                    <SeverityBadge severity={inc.severity} />
+                    <Text style={{ fontSize: FONT_SIZE.md, color: BRAND.textSecondary }}>
+                      {inc.detection_count} detections
+                    </Text>
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: FONT_SIZE.sm,
+                      color: BRAND.textSecondary,
+                      marginTop: SPACING.xs,
+                    }}
+                  >
+                    {new Date(inc.start_time).toLocaleTimeString()} ·{" "}
+                    {(inc.max_confidence * 100).toFixed(1)}% confidence
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 11, color: "#78716C", marginTop: 4 }}>
-                  {new Date(inc.start_time).toLocaleTimeString()} · {(inc.max_confidence * 100).toFixed(0)}% confidence
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-      {/* Camera Status */}
-      <Text style={{ fontSize: 16, fontWeight: "600", color: "#1C1917", marginBottom: 8 }}>
-        Cameras
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-        {(data?.camera_chips ?? []).map((cam) => (
-          <TouchableOpacity
-            key={cam.id}
-            onPress={() => router.push(`/live` as any)}
-            style={{ backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#E7E5E0", padding: 10, marginRight: 8, minWidth: 120 }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: cam.status === "online" || cam.status === "active" ? "#16A34A" : "#DC2626" }} />
-              <Text style={{ fontSize: 12, fontWeight: "500", color: "#1C1917" }} numberOfLines={1}>{cam.name}</Text>
-            </View>
-            <Text style={{ fontSize: 10, color: "#78716C" }}>{cam.inference_mode.toUpperCase()}</Text>
-          </TouchableOpacity>
-        ))}
+        {/* Recent Wet Detections */}
+        <SectionHeader title="Recent Wet Detections" />
+        {(data?.recent_detections ?? []).length === 0 ? (
+          <EmptyCard message="No recent detections" />
+        ) : (
+          <View style={{ gap: SPACING.xs + 2 }}>
+            {data!.recent_detections
+              .slice(0, API_LIMITS.MAX_DASHBOARD_DETECTIONS)
+              .map((d) => (
+                <View
+                  key={d.id}
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    backgroundColor: BRAND.surface,
+                    borderRadius: RADIUS.md,
+                    borderWidth: 1,
+                    borderColor: BRAND.border,
+                    padding: SPACING.md - 2,
+                  }}
+                  accessibilityLabel={`Wet detection at ${(d.confidence * 100).toFixed(1)}% confidence, ${d.wet_area_percent.toFixed(1)}% area`}
+                >
+                  <View>
+                    <Text
+                      style={{
+                        fontSize: FONT_SIZE.lg - 1,
+                        fontWeight: "500",
+                        color: BRAND.danger,
+                      }}
+                    >
+                      WET · {(d.confidence * 100).toFixed(1)}%
+                    </Text>
+                    <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
+                      {d.wet_area_percent.toFixed(1)}% area
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>
+                    {new Date(d.timestamp).toLocaleTimeString()}
+                  </Text>
+                </View>
+              ))}
+          </View>
+        )}
       </ScrollView>
-
-      {/* Recent Detections */}
-      <Text style={{ fontSize: 16, fontWeight: "600", color: "#1C1917", marginBottom: 8 }}>
-        Recent Wet Detections
-      </Text>
-      {(data?.recent_detections ?? []).length === 0 ? (
-        <View style={{ padding: 24, alignItems: "center", backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#E7E5E0" }}>
-          <Text style={{ color: "#78716C", fontSize: 13 }}>No recent detections</Text>
-        </View>
-      ) : (
-        <View style={{ gap: 6 }}>
-          {data!.recent_detections.slice(0, 10).map((d) => (
-            <View key={d.id} style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#E7E5E0", padding: 10 }}>
-              <View>
-                <Text style={{ fontSize: 13, fontWeight: "500", color: "#DC2626" }}>
-                  WET · {(d.confidence * 100).toFixed(0)}%
-                </Text>
-                <Text style={{ fontSize: 11, color: "#78716C" }}>{d.wet_area_percent.toFixed(1)}% area</Text>
-              </View>
-              <Text style={{ fontSize: 11, color: "#78716C" }}>{new Date(d.timestamp).toLocaleTimeString()}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+    </View>
   );
 }
 
-function StatCard({ label, value, color }: { label: string; value: string | number; color: string }) {
+// --- Local components (use theme constants) ---
+
+function SectionHeader({ title }: { title: string }) {
   return (
-    <View style={{ flex: 1, minWidth: 100, backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#E7E5E0", padding: 12 }}>
-      <Text style={{ fontSize: 11, color: "#78716C" }}>{label}</Text>
-      <Text style={{ fontSize: 20, fontWeight: "700", color }}>{value}</Text>
+    <Text
+      style={{
+        fontSize: FONT_SIZE.xl,
+        fontWeight: "600",
+        color: BRAND.textPrimary,
+        marginBottom: SPACING.sm,
+      }}
+      accessibilityRole="header"
+    >
+      {title}
+    </Text>
+  );
+}
+
+function EmptyCard({ message }: { message: string }) {
+  return (
+    <View
+      style={{
+        padding: SPACING.xxl,
+        alignItems: "center",
+        backgroundColor: BRAND.surface,
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: BRAND.border,
+        marginBottom: SPACING.lg,
+      }}
+    >
+      <Text style={{ color: BRAND.textSecondary, fontSize: FONT_SIZE.lg - 1 }}>
+        {message}
+      </Text>
+    </View>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color: string;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        minWidth: 100,
+        backgroundColor: BRAND.surface,
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: BRAND.border,
+        padding: SPACING.md,
+      }}
+      accessibilityLabel={`${label}: ${value}`}
+    >
+      <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>{label}</Text>
+      <Text style={{ fontSize: FONT_SIZE.h2 - 2, fontWeight: "700", color }}>{value}</Text>
+    </View>
+  );
+}
+
+function StatusChip({
+  label,
+  count,
+  total,
+  healthy,
+}: {
+  label: string;
+  count: number;
+  total: number;
+  healthy: boolean;
+}) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: BRAND.surface,
+        borderRadius: RADIUS.md,
+        borderWidth: 1,
+        borderColor: BRAND.border,
+        padding: SPACING.md,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: SPACING.sm,
+      }}
+      accessibilityLabel={`${label}: ${count} of ${total} ${healthy ? "healthy" : "issues detected"}`}
+    >
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: healthy ? BRAND.success : BRAND.danger,
+        }}
+      />
+      <View>
+        <Text style={{ fontSize: FONT_SIZE.sm, color: BRAND.textSecondary }}>{label}</Text>
+        <Text style={{ fontSize: FONT_SIZE.lg, fontWeight: "600", color: BRAND.textPrimary }}>
+          {count}/{total}
+        </Text>
+      </View>
     </View>
   );
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
-  const colors: Record<string, { bg: string; text: string }> = {
-    critical: { bg: "#FEE2E2", text: "#991B1B" },
-    high: { bg: "#FEE2E2", text: "#DC2626" },
-    medium: { bg: "#FEF3C7", text: "#D97706" },
-    low: { bg: "#FEF3C7", text: "#D97706" },
-  };
-  const c = colors[severity] ?? colors.low;
+  const bg = SEVERITY_BG_COLORS[severity] ?? SEVERITY_BG_COLORS.low;
+  const text = SEVERITY_COLORS[severity] ?? SEVERITY_COLORS.low;
   return (
-    <View style={{ backgroundColor: c.bg, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 }}>
-      <Text style={{ fontSize: 10, fontWeight: "600", color: c.text, textTransform: "uppercase" }}>{severity}</Text>
+    <View
+      style={{
+        backgroundColor: bg,
+        borderRadius: RADIUS.lg,
+        paddingHorizontal: SPACING.xs + 2,
+        paddingVertical: 2,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: FONT_SIZE.xs,
+          fontWeight: "600",
+          color: text,
+          textTransform: "uppercase",
+        }}
+      >
+        {severity}
+      </Text>
     </View>
   );
 }

@@ -1,16 +1,25 @@
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import * as SecureStore from "expo-secure-store";
+import { TIMEOUTS } from "@/constants/config";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+// --- Backend URL ---
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+if (!BACKEND_URL) {
+  throw new Error(
+    "EXPO_PUBLIC_BACKEND_URL is required. Set it in .env or app.config."
+  );
+}
+
+// Enforce HTTPS in production builds
+if (!__DEV__ && !BACKEND_URL.startsWith("https://")) {
+  throw new Error("EXPO_PUBLIC_BACKEND_URL must use HTTPS in production.");
+}
+
+// --- Token storage keys ---
 const ACCESS_TOKEN_KEY = "flooreye_access_token";
 const REFRESH_TOKEN_KEY = "flooreye_refresh_token";
 
-const api = axios.create({
-  baseURL: `${BACKEND_URL}/api/v1`,
-  headers: { "Content-Type": "application/json" },
-});
-
-// Token helpers
+// --- Token helpers ---
 export async function getAccessToken(): Promise<string | null> {
   return SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
 }
@@ -35,8 +44,15 @@ export async function setRefreshToken(token: string | null): Promise<void> {
   }
 }
 
-// Request interceptor: attach access token
-api.interceptors.request.use(async (config) => {
+// --- Axios instance ---
+const api = axios.create({
+  baseURL: `${BACKEND_URL}/api/v1`,
+  headers: { "Content-Type": "application/json" },
+  timeout: TIMEOUTS.API_REQUEST_MS,
+});
+
+// --- Request interceptor: attach Bearer token ---
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -44,7 +60,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Response interceptor: silent refresh on 401
+// --- Response interceptor: silent refresh on 401 ---
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -61,8 +77,10 @@ function processQueue(error: unknown, token: string | null) {
 
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -84,9 +102,11 @@ api.interceptors.response.use(
         const refreshToken = await getRefreshToken();
         if (!refreshToken) throw new Error("No refresh token");
 
-        const { data } = await axios.post(`${BACKEND_URL}/api/v1/auth/refresh`, null, {
-          headers: { Cookie: `flooreye_refresh=${refreshToken}` },
-        });
+        // Send refresh token in request body (not Cookie header)
+        const { data } = await axios.post(
+          `${BACKEND_URL}/api/v1/auth/refresh`,
+          { refresh_token: refreshToken }
+        );
         const newToken = data.data.access_token;
         await setAccessToken(newToken);
         processQueue(null, newToken);
@@ -103,7 +123,7 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
 export default api;

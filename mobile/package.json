@@ -28,10 +28,8 @@
     "nativewind": "^4.1.23",
     "tailwindcss": "^3.4.17",
     "@tanstack/react-query": "^5.62.8",
-    "zustand": "^4.5.5",
     "axios": "^1.7.9",
-    "victory-native": "^41.12.0",
-    "date-fns": "^4.1.0"
+    "victory-native": "^41.12.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

@@ -5,6 +5,7 @@ import React from "react";
 
 import api, { setAccessToken } from "@/lib/api";
 import type { User } from "@/types";
+import { AUTH } from "@/constants/config";
 
 interface AuthState {
   user: User | null;
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.isAuthenticated) return;
     let timeout: ReturnType<typeof setTimeout>;
-    const IDLE_MS = 30 * 60 * 1000; // 30 minutes
+    const IDLE_MS = AUTH.IDLE_TIMEOUT_MS;
     const resetTimer = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {

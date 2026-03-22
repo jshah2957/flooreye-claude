@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { CLASS_COLORS } from "@/constants/detection";
 
 interface Prediction {
   class_name?: string;
@@ -24,14 +25,6 @@ interface Props {
   /** Max height CSS class */
   maxHeight?: string;
 }
-
-const CLASS_COLORS: Record<string, string> = {
-  wet_floor: "#DC2626",
-  puddle: "#DC2626",
-  spill: "#D97706",
-  water: "#3B82F6",
-  dry_floor: "#16A34A",
-};
 
 export default function AnnotatedFrame({ annotatedBase64, rawBase64, predictions, maxHeight }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

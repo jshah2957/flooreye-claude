@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -12,6 +12,8 @@ import {
   Send,
   X,
   Download,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -20,6 +22,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
+import { INTERVALS } from "@/constants";
 
 interface EdgeAgent {
   id: string;
@@ -54,8 +57,14 @@ export default function EdgeManagementPage() {
   const [devName, setDevName] = useState("");
   const [devIp, setDevIp] = useState("");
   const [devType, setDevType] = useState("tplink");
+  const [devProtocol, setDevProtocol] = useState("tcp");
   const [devTestResult, setDevTestResult] = useState<boolean | null>(null);
+  const [devTestLatency, setDevTestLatency] = useState<number | null>(null);
   const [devTestError, setDevTestError] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [deploymentStatus, setDeploymentStatus] = useState<Record<string, string>>({});
 
   // Provision form
   const [provStoreId, setProvStoreId] = useState("");
@@ -119,10 +128,10 @@ export default function EdgeManagementPage() {
   });
 
   const { data: modelsData } = useQuery({
-    queryKey: ["production-models"],
+    queryKey: ["deployable-models"],
     queryFn: async () => {
-      const res = await api.get("/models", { params: { status: "production", limit: 10 } });
-      return res.data.data as { id: string; version_str: string; model_size_mb: number; status: string }[];
+      const res = await api.get("/models", { params: { status: "production,staging", limit: 20 } });
+      return res.data.data as { id: string; version_str: string; model_size_mb: number; status: string; architecture: string | null; map_50: number | null; created_at: string | null }[];
     },
   });
 
@@ -131,10 +140,12 @@ export default function EdgeManagementPage() {
       const res = await api.post(`/edge/agents/${agentId}/push-model`, { model_version_id: modelVersionId });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
+      setDeploymentStatus((prev) => ({ ...prev, [variables.agentId]: "pending" }));
       setModelUpdateTarget(null);
-      success("Model update command sent");
+      setSelectedModelId("");
+      success("Model deployment initiated — tracking status");
     },
     onError: (err: any) => {
       showError(err?.response?.data?.detail || "Failed to push model");
@@ -146,43 +157,131 @@ export default function EdgeManagementPage() {
       if (!selectedAgent) throw new Error("No agent");
       const storeId = selectedAgent.store_id;
       const res = await api.post("/edge/proxy/test-device", { store_id: storeId, ip: devIp, type: devType });
-      return res.data.data as { reachable: boolean };
+      return res.data as { reachable: boolean; latency_ms: number | null; error: string | null };
     },
     onSuccess: (data) => {
       setDevTestResult(data.reachable);
-      if (!data.reachable) setDevTestError("Device unreachable on edge network");
+      setDevTestLatency(data.latency_ms ?? null);
+      if (!data.reachable) setDevTestError(data.error || "Device unreachable on edge network");
     },
-    onError: (err: any) => { setDevTestError(err?.response?.data?.detail || "Test failed"); setDevTestResult(null); },
+    onError: (err: any) => { setDevTestError(err?.response?.data?.detail || "Test failed"); setDevTestResult(null); setDevTestLatency(null); },
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: async ({ agentId, name }: { agentId: string; name: string }) => {
+      const res = await api.put(`/edge/agents/${agentId}`, { name });
+      return res.data.data as EdgeAgent;
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
+      setSelectedAgent(updated);
+      setEditingName(false);
+      success("Agent renamed");
+    },
+    onError: (err: any) => {
+      showError(err?.response?.data?.detail || "Failed to rename agent");
+    },
   });
 
   const addDeviceMutation = useMutation({
     mutationFn: async () => {
       if (!selectedAgent) throw new Error("No agent");
       return api.post("/edge/proxy/add-device", {
-        store_id: selectedAgent.store_id, name: devName, ip: devIp, type: devType,
+        store_id: selectedAgent.store_id, name: devName, ip: devIp, type: devType, protocol: devProtocol,
       });
     },
     onSuccess: () => {
       setAddDeviceOpen(false);
-      setDevName(""); setDevIp(""); setDevTestResult(null); setDevTestError("");
+      setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError("");
+      queryClient.invalidateQueries({ queryKey: ["devices"] });
       success("Device added to edge");
     },
     onError: (err: any) => showError(err?.response?.data?.detail || "Failed to add device"),
   });
 
-  const productionModels = modelsData ?? [];
+  const deployableModels = modelsData ?? [];
+  const productionModels = deployableModels.filter((m) => m.status === "production");
+  const stagingModels = deployableModels.filter((m) => m.status === "staging");
 
-  const { data: agentCamerasData } = useQuery({
-    queryKey: ["agent-cameras", selectedAgent?.id],
+  // Poll agent status when deployments are pending to track progress
+  const hasActiveDeployments = Object.values(deploymentStatus).some(
+    (s) => s === "pending" || s === "downloading"
+  );
+
+  useQuery({
+    queryKey: ["edge-agents-poll"],
     queryFn: async () => {
-      if (!selectedAgent) return [];
-      const res = await api.get("/cameras", { params: { limit: 20 } });
-      const all = res.data.data as { id: string; name: string; edge_agent_id: string; config_status: string; detection_enabled: boolean }[];
-      return all.filter((c: any) => c.edge_agent_id === selectedAgent.id);
+      const res = await api.get("/edge/agents", { params: { limit: 100 } });
+      const freshAgents = res.data.data as EdgeAgent[];
+      // Check deployment status by comparing model versions
+      setDeploymentStatus((prev) => {
+        const updated = { ...prev };
+        for (const agentId of Object.keys(updated)) {
+          const agent = freshAgents.find((a) => a.id === agentId);
+          if (!agent) continue;
+          // If agent has a model version now and status was pending/downloading, mark complete
+          if (agent.current_model_version && (updated[agentId] === "pending" || updated[agentId] === "downloading")) {
+            updated[agentId] = "complete";
+          }
+        }
+        return updated;
+      });
+      queryClient.setQueryData(["edge-agents"], { data: freshAgents, meta: { total: freshAgents.length } });
+      return freshAgents;
     },
-    enabled: !!selectedAgent,
+    enabled: hasActiveDeployments,
+    refetchInterval: hasActiveDeployments ? INTERVALS.EDGE_DEPLOYMENT_POLL_MS : false,
   });
-  const agentCameras = agentCamerasData ?? [];
+
+  // Clear completed deployment statuses after 8 seconds
+  useEffect(() => {
+    const completed = Object.entries(deploymentStatus).filter(([, s]) => s === "complete");
+    if (completed.length === 0) return;
+    const timer = setTimeout(() => {
+      setDeploymentStatus((prev) => {
+        const updated = { ...prev };
+        for (const [id, s] of Object.entries(updated)) {
+          if (s === "complete") delete updated[id];
+        }
+        return updated;
+      });
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [deploymentStatus]);
+
+  // Fetch all cameras to build per-agent camera lists and breakdowns
+  const { data: allCamerasData } = useQuery({
+    queryKey: ["all-cameras-for-agents"],
+    queryFn: async () => {
+      const res = await api.get("/cameras", { params: { limit: 200 } });
+      return res.data.data as { id: string; name: string; edge_agent_id: string | null; config_status: string | null; detection_enabled: boolean; status: string }[];
+    },
+  });
+  const allCameras = allCamerasData ?? [];
+
+  // Per-agent camera lists
+  const agentCamerasMap = useMemo(() => {
+    const map = new Map<string, typeof allCameras>();
+    for (const cam of allCameras) {
+      if (!cam.edge_agent_id) continue;
+      if (!map.has(cam.edge_agent_id)) map.set(cam.edge_agent_id, []);
+      map.get(cam.edge_agent_id)!.push(cam);
+    }
+    return map;
+  }, [allCameras]);
+
+  function cameraBreakdown(agentId: string) {
+    const cams = agentCamerasMap.get(agentId) ?? [];
+    let configured = 0, waiting = 0, paused = 0;
+    for (const c of cams) {
+      if (!c.detection_enabled) { paused++; continue; }
+      if (c.config_status === "received") { configured++; }
+      else { waiting++; }
+    }
+    return { configured, waiting, paused, total: cams.length };
+  }
+
+  const agentCameras = selectedAgent ? (agentCamerasMap.get(selectedAgent.id) ?? []) : [];
 
   const agents = agentsData?.data ?? [];
   const storeMap = new Map((stores ?? []).map((s) => [s.id, s.name]));
@@ -237,6 +336,15 @@ export default function EdgeManagementPage() {
                     <div className="flex items-center gap-2">
                       <Server size={16} className="text-[#78716C]" />
                       <span className="font-medium text-[#1C1917]">{agent.name}</span>
+                      {agent.current_model_version ? (
+                        <span className="rounded-full bg-[#F0FDFA] px-2 py-0.5 text-[10px] font-medium text-[#0D9488]">
+                          {agent.current_model_version}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-[#FEF9C3] px-2 py-0.5 text-[10px] font-medium text-[#CA8A04]">
+                          No model
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={agent.status} />
@@ -250,13 +358,51 @@ export default function EdgeManagementPage() {
                     {storeMap.get(agent.store_id) ?? "Unknown Store"} &middot; {agent.camera_count} cameras
                     {agent.agent_version && ` · v${agent.agent_version}`}
                   </p>
+                  {(() => {
+                    const bd = cameraBreakdown(agent.id);
+                    if (bd.total === 0) return null;
+                    return (
+                      <div className="mt-1 flex items-center gap-3 text-[10px]">
+                        {bd.configured > 0 && (
+                          <span className="flex items-center gap-1 text-[#16A34A]">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#16A34A]" />
+                            {bd.configured} configured
+                          </span>
+                        )}
+                        {bd.waiting > 0 && (
+                          <span className="flex items-center gap-1 text-[#CA8A04]">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#CA8A04]" />
+                            {bd.waiting} waiting
+                          </span>
+                        )}
+                        {bd.paused > 0 && (
+                          <span className="flex items-center gap-1 text-[#78716C]">
+                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#78716C]" />
+                            {bd.paused} paused
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="mt-1 flex items-center justify-between">
-                    <span className="text-[10px] text-[#78716C]">
-                      Model: {agent.current_model_version ?? "None"}
-                    </span>
+                    {deploymentStatus[agent.id] ? (
+                      <span className={`flex items-center gap-1 text-[10px] font-medium ${
+                        deploymentStatus[agent.id] === "complete" ? "text-[#16A34A]" :
+                        deploymentStatus[agent.id] === "pending" ? "text-[#D97706]" :
+                        "text-[#0D9488]"
+                      }`}>
+                        {deploymentStatus[agent.id] === "pending" && <><Loader2 size={10} className="animate-spin" /> Deployment pending...</>}
+                        {deploymentStatus[agent.id] === "downloading" && <><Loader2 size={10} className="animate-spin" /> Downloading model...</>}
+                        {deploymentStatus[agent.id] === "complete" && <><Check size={10} /> Model deployed</>}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-[#78716C]">
+                        Model: {agent.current_model_version ?? "None"}
+                      </span>
+                    )}
                     {agent.status === "online" && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); setModelUpdateTarget(agent); }}
+                        onClick={(e) => { e.stopPropagation(); setModelUpdateTarget(agent); setSelectedModelId(""); }}
                         className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-[#0D9488] hover:bg-[#F0FDFA]"
                       >
                         <Download size={10} /> Update Model
@@ -284,7 +430,52 @@ export default function EdgeManagementPage() {
         <div className="rounded-lg border border-[#E7E5E0] bg-white p-4">
           {selectedAgent ? (
             <>
-              <h3 className="mb-3 text-sm font-semibold text-[#1C1917]">{selectedAgent.name}</h3>
+              <div className="mb-3 flex items-center gap-2">
+                {editingName ? (
+                  <>
+                    <input
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editNameValue.trim()) {
+                          renameMutation.mutate({ agentId: selectedAgent.id, name: editNameValue.trim() });
+                        }
+                        if (e.key === "Escape") setEditingName(false);
+                      }}
+                      autoFocus
+                      className="flex-1 rounded-md border border-[#0D9488] px-2 py-1 text-sm font-semibold text-[#1C1917] outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        if (editNameValue.trim()) {
+                          renameMutation.mutate({ agentId: selectedAgent.id, name: editNameValue.trim() });
+                        }
+                      }}
+                      disabled={!editNameValue.trim() || renameMutation.isPending}
+                      className="rounded p-1 text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
+                    >
+                      {renameMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    </button>
+                    <button
+                      onClick={() => setEditingName(false)}
+                      className="rounded p-1 text-[#78716C] hover:bg-[#F5F5F4]"
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="flex-1 text-sm font-semibold text-[#1C1917]">{selectedAgent.name}</h3>
+                    <button
+                      onClick={() => { setEditNameValue(selectedAgent.name); setEditingName(true); }}
+                      className="rounded p-1 text-[#78716C] hover:bg-[#F5F5F4] hover:text-[#0D9488]"
+                      title="Edit agent name"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
               <dl className="space-y-2 text-xs">
                 <div className="flex justify-between"><dt className="text-[#78716C]">Status</dt><dd><StatusBadge status={selectedAgent.status} /></dd></div>
                 <div className="flex justify-between"><dt className="text-[#78716C]">Store</dt><dd className="text-[#1C1917]">{storeMap.get(selectedAgent.store_id) ?? "—"}</dd></div>
@@ -308,16 +499,30 @@ export default function EdgeManagementPage() {
 
               {agentCameras.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="mb-2 text-xs font-semibold text-[#78716C]">
+                  <h4 className="mb-1 text-xs font-semibold text-[#78716C]">
                     Cameras ({agentCameras.length})
                   </h4>
+                  {(() => {
+                    const bd = cameraBreakdown(selectedAgent.id);
+                    return (
+                      <div className="mb-2 flex items-center gap-3 text-[10px]">
+                        {bd.configured > 0 && <span className="text-[#16A34A]">{bd.configured} configured</span>}
+                        {bd.waiting > 0 && <span className="text-[#CA8A04]">{bd.waiting} waiting</span>}
+                        {bd.paused > 0 && <span className="text-[#78716C]">{bd.paused} paused</span>}
+                      </div>
+                    );
+                  })()}
                   <div className="space-y-1">
                     {agentCameras.map((cam: any) => (
-                      <div key={cam.id} className="flex items-center justify-between rounded border border-[#F5F5F4] px-2 py-1">
-                        <span className="text-[11px] text-[#1C1917]">{cam.name}</span>
+                      <div key={cam.id} className="flex items-center justify-between rounded border border-[#F5F5F4] px-2 py-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-block h-1.5 w-1.5 rounded-full ${cam.detection_enabled ? "bg-[#16A34A]" : "bg-[#D6D3D1]"}`} />
+                          <span className="text-[11px] text-[#1C1917]">{cam.name}</span>
+                        </div>
                         <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
                           cam.config_status === "received" ? "bg-[#DCFCE7] text-[#16A34A]" :
                           cam.config_status === "failed" ? "bg-[#FEE2E2] text-[#DC2626]" :
+                          !cam.edge_agent_id ? "bg-[#F1F0ED] text-[#78716C]" :
                           "bg-[#FEF9C3] text-[#CA8A04]"
                         }`}>
                           {cam.config_status || "waiting"}
@@ -369,12 +574,19 @@ export default function EdgeManagementPage() {
       {/* Add IoT Device Modal */}
       {addDeviceOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[400px] rounded-lg bg-white shadow-lg">
+          <div className="w-[420px] rounded-lg bg-white shadow-lg">
             <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
               <h2 className="text-sm font-semibold text-[#1C1917]">Add IoT Device via Edge</h2>
-              <button onClick={() => { setAddDeviceOpen(false); setDevTestResult(null); setDevTestError(""); }} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+              <button onClick={() => { setAddDeviceOpen(false); setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
             </div>
             <div className="space-y-3 p-4">
+              {/* Auto-selected store from agent */}
+              <div>
+                <label className="mb-1 block text-xs text-[#78716C]">Store</label>
+                <div className="rounded-md border border-[#E7E5E0] bg-[#F8F7F4] px-3 py-2 text-sm text-[#1C1917]">
+                  {storeMap.get(selectedAgent?.store_id ?? "") ?? "Unknown Store"}
+                </div>
+              </div>
               <div>
                 <label className="mb-1 block text-xs text-[#78716C]">Device Name *</label>
                 <input value={devName} onChange={(e) => setDevName(e.target.value)}
@@ -383,32 +595,56 @@ export default function EdgeManagementPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-[#78716C]">IP Address *</label>
-                <input value={devIp} onChange={(e) => { setDevIp(e.target.value); setDevTestResult(null); setDevTestError(""); }}
+                <input value={devIp} onChange={(e) => { setDevIp(e.target.value); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }}
                   placeholder="192.168.1.50"
                   className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]" />
               </div>
-              <div>
-                <label className="mb-1 block text-xs text-[#78716C]">Type</label>
-                <select value={devType} onChange={(e) => setDevType(e.target.value)}
-                  className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
-                  <option value="tplink">TP-Link Kasa</option>
-                  <option value="mqtt">MQTT</option>
-                  <option value="webhook">HTTP Webhook</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-[#78716C]">Device Type</label>
+                  <select value={devType} onChange={(e) => setDevType(e.target.value)}
+                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                    <option value="tplink">TP-Link Kasa</option>
+                    <option value="mqtt">MQTT</option>
+                    <option value="http_webhook">HTTP Webhook</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-[#78716C]">Protocol</label>
+                  <select value={devProtocol} onChange={(e) => setDevProtocol(e.target.value)}
+                    className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]">
+                    <option value="tcp">TCP</option>
+                    <option value="mqtt">MQTT</option>
+                    <option value="http">HTTP</option>
+                  </select>
+                </div>
               </div>
               <button
                 onClick={() => testDeviceMutation.mutate()}
                 disabled={!devIp.trim() || testDeviceMutation.isPending}
                 className="flex items-center gap-1 rounded-md border border-[#0D9488] px-3 py-1.5 text-xs text-[#0D9488] hover:bg-[#F0FDFA] disabled:opacity-50"
               >
-                {testDeviceMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : null}
+                {testDeviceMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Wifi size={10} />}
                 Validate via Edge
               </button>
-              {devTestResult === true && <p className="text-xs text-[#16A34A]">Device reachable on edge network</p>}
+              {devTestResult === true && (
+                <div className="flex items-center gap-2 rounded-md bg-[#DCFCE7] px-3 py-2">
+                  <Activity size={12} className="text-[#16A34A]" />
+                  <span className="text-xs font-medium text-[#16A34A]">
+                    Reachable{devTestLatency != null && ` — ${devTestLatency} ms latency`}
+                  </span>
+                </div>
+              )}
+              {devTestResult === false && (
+                <div className="flex items-center gap-2 rounded-md bg-[#FEE2E2] px-3 py-2">
+                  <X size={12} className="text-[#DC2626]" />
+                  <span className="text-xs font-medium text-[#DC2626]">Unreachable</span>
+                </div>
+              )}
               {devTestError && <p className="text-xs text-[#DC2626]">{devTestError}</p>}
             </div>
             <div className="flex justify-end gap-2 border-t border-[#E7E5E0] p-4">
-              <button onClick={() => setAddDeviceOpen(false)} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
+              <button onClick={() => { setAddDeviceOpen(false); setDevName(""); setDevIp(""); setDevType("tplink"); setDevProtocol("tcp"); setDevTestResult(null); setDevTestLatency(null); setDevTestError(""); }} className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs">Cancel</button>
               <button
                 onClick={() => addDeviceMutation.mutate()}
                 disabled={!devName.trim() || !devIp.trim() || devTestResult !== true || addDeviceMutation.isPending}
@@ -424,37 +660,99 @@ export default function EdgeManagementPage() {
       {/* Update Model Modal */}
       {modelUpdateTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-[400px] rounded-lg bg-white shadow-lg">
+          <div className="w-[440px] rounded-lg bg-white shadow-lg">
             <div className="flex items-center justify-between border-b border-[#E7E5E0] p-4">
               <h2 className="text-sm font-semibold text-[#1C1917]">Update Model — {modelUpdateTarget.name}</h2>
-              <button onClick={() => setModelUpdateTarget(null)} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
+              <button onClick={() => { setModelUpdateTarget(null); setSelectedModelId(""); }} className="text-[#78716C] hover:text-[#1C1917]"><X size={16} /></button>
             </div>
             <div className="p-4">
-              <p className="mb-2 text-xs text-[#78716C]">
-                Current: {modelUpdateTarget.current_model_version ?? "None"}
-              </p>
-              {productionModels.length === 0 ? (
-                <p className="py-4 text-center text-xs text-[#78716C]">No production models available. Pull a model from Roboflow first.</p>
+              {/* Current model display */}
+              <div className="mb-4 rounded-md bg-[#F8F7F4] p-3">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-[#78716C]">Current Model</p>
+                <p className="mt-1 text-sm font-semibold text-[#1C1917]">
+                  {modelUpdateTarget.current_model_version ?? "No model deployed"}
+                </p>
+              </div>
+
+              {deployableModels.length === 0 ? (
+                <p className="py-4 text-center text-xs text-[#78716C]">No production or staging models available. Train or import a model first.</p>
               ) : (
-                <div className="space-y-2">
-                  {productionModels.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between rounded-md border border-[#E7E5E0] p-3">
-                      <div>
-                        <p className="text-sm font-medium text-[#1C1917]">{m.version_str}</p>
-                        <p className="text-[10px] text-[#78716C]">{m.model_size_mb} MB</p>
+                <>
+                  {/* Model selector dropdown */}
+                  <div className="mb-3">
+                    <label className="mb-1 block text-xs font-medium text-[#78716C]">Select Model to Deploy</label>
+                    <select
+                      value={selectedModelId}
+                      onChange={(e) => setSelectedModelId(e.target.value)}
+                      className="w-full rounded-md border border-[#E7E5E0] px-3 py-2 text-sm outline-none focus:border-[#0D9488]"
+                    >
+                      <option value="">Choose a model...</option>
+                      {productionModels.length > 0 && (
+                        <optgroup label="Production">
+                          {productionModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.version_str} — {m.architecture ?? "onnx"} ({m.model_size_mb ? `${m.model_size_mb} MB` : "size unknown"})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {stagingModels.length > 0 && (
+                        <optgroup label="Staging">
+                          {stagingModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.version_str} — {m.architecture ?? "onnx"} ({m.model_size_mb ? `${m.model_size_mb} MB` : "size unknown"})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Selected model detail */}
+                  {selectedModelId && (() => {
+                    const selected = deployableModels.find((m) => m.id === selectedModelId);
+                    if (!selected) return null;
+                    return (
+                      <div className="mb-3 rounded-md border border-[#E7E5E0] p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-[#1C1917]">{selected.version_str}</p>
+                            <p className="text-[10px] text-[#78716C]">
+                              {selected.architecture ?? "onnx"} &middot; {selected.model_size_mb ? `${selected.model_size_mb} MB` : "size unknown"}
+                              {selected.map_50 != null && ` · mAP@50: ${(selected.map_50 * 100).toFixed(1)}%`}
+                            </p>
+                          </div>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            selected.status === "production" ? "bg-[#DCFCE7] text-[#16A34A]" : "bg-[#FEF9C3] text-[#CA8A04]"
+                          }`}>
+                            {selected.status}
+                          </span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => pushModelMutation.mutate({ agentId: modelUpdateTarget.id, modelVersionId: m.id })}
-                        disabled={pushModelMutation.isPending}
-                        className="flex items-center gap-1 rounded-md bg-[#0D9488] px-3 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
-                      >
-                        {pushModelMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
-                        Deploy
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                    );
+                  })()}
+                </>
               )}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-[#E7E5E0] p-4">
+              <button
+                onClick={() => { setModelUpdateTarget(null); setSelectedModelId(""); }}
+                className="rounded-md border border-[#E7E5E0] px-3 py-1.5 text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedModelId && modelUpdateTarget) {
+                    pushModelMutation.mutate({ agentId: modelUpdateTarget.id, modelVersionId: selectedModelId });
+                  }
+                }}
+                disabled={!selectedModelId || pushModelMutation.isPending}
+                className="flex items-center gap-1 rounded-md bg-[#0D9488] px-4 py-1.5 text-xs text-white hover:bg-[#0F766E] disabled:opacity-50"
+              >
+                {pushModelMutation.isPending ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
+                Deploy to Agent
+              </button>
             </div>
           </div>
         </div>
@@ -523,7 +821,7 @@ export default function EdgeManagementPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         title="Remove Edge Agent"
-        description={`Remove "${deleteTarget?.name}"? This will delete the agent and all pending commands.`}
+        description={`Remove "${deleteTarget?.name}"? Cameras linked to this agent will be unlinked.`}
         confirmLabel="Remove"
         confirmText={deleteTarget?.name}
         destructive
