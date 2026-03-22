@@ -23,12 +23,16 @@ def _get_key() -> bytes:
             raise ValueError(f"Encryption key must be 32 bytes, got {len(key)}")
         return key
     except Exception:
-        # Fallback: use SHA-256 hash of the key string — DEV ONLY
+        # Only allow fallback in development
+        if getattr(settings, 'ENVIRONMENT', 'development') == 'production':
+            raise ValueError(
+                "ENCRYPTION_KEY must be a valid base64-encoded 32-byte key in production. "
+                "Generate one with: python -c \"import os,base64; print(base64.b64encode(os.urandom(32)).decode())\""
+            )
         import hashlib
         import logging
         logging.getLogger(__name__).warning(
-            "ENCRYPTION_KEY is not a valid 32-byte base64 key. "
-            "Using SHA-256 fallback. Set a proper key for production!"
+            "ENCRYPTION_KEY is not valid base64. Using SHA-256 fallback (development only)."
         )
         return hashlib.sha256(key_b64.encode()).digest()
 

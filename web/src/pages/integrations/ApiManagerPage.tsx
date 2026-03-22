@@ -534,6 +534,25 @@ export default function ApiManagerPage() {
 
   function handleSave() {
     if (!drawerService) return;
+
+    // Validate required fields from SERVICE_META
+    const serviceMeta = SERVICE_META[drawerService];
+    if (serviceMeta) {
+      const emptyFields: string[] = [];
+      for (const field of serviceMeta.fields) {
+        if (field.readOnly) continue;
+        const value = formData[field.key];
+        if (!value || (typeof value === "string" && value.trim() === "")) {
+          emptyFields.push(field.label);
+        }
+      }
+      if (emptyFields.length > 0) {
+        setFormError(`Please fill in all fields: ${emptyFields.join(", ")}`);
+        return;
+      }
+    }
+
+    setFormError("");
     saveMutation.mutate({ service: drawerService, config: formData });
   }
 
@@ -712,8 +731,9 @@ export default function ApiManagerPage() {
           <div className="flex justify-end gap-3 border-t border-gray-100 px-6 py-4">
             <button
               onClick={() => {
+                const svc = infoService;
                 setInfoService(null);
-                openDrawer(infoService);
+                if (svc) openDrawer(svc);
               }}
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
@@ -810,7 +830,7 @@ export default function ApiManagerPage() {
             ))}
 
             {formError && (
-              <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</div>
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
             )}
 
             {/* Action buttons */}

@@ -39,6 +39,15 @@ def _decrypt_camera(camera: dict) -> dict:
             if not camera.get("stream_url"):
                 camera["stream_url"] = None
     # If no encrypted value, keep whatever stream_url is already there (legacy migration path)
+
+    if camera.get("credentials_encrypted"):
+        try:
+            camera["credentials"] = decrypt_string(camera["credentials_encrypted"])
+        except Exception:
+            log.warning("Failed to decrypt credentials for camera %s", camera.get("id"))
+            if not camera.get("credentials"):
+                camera["credentials"] = None
+
     return camera
 
 
@@ -64,7 +73,8 @@ async def create_camera(
         "stream_type": data.stream_type,
         "stream_url": None,
         "stream_url_encrypted": _encrypt_stream_url(data.stream_url),
-        "credentials": data.credentials,
+        "credentials_encrypted": encrypt_string(data.credentials) if data.credentials else None,
+        "credentials": None,  # Don't store plaintext
         "status": "offline",
         "fps_config": data.fps_config,
         "resolution": data.resolution,
@@ -125,6 +135,11 @@ async def update_camera(
     if "stream_url" in updates and updates["stream_url"] is not None:
         updates["stream_url_encrypted"] = _encrypt_stream_url(updates["stream_url"])
         updates["stream_url"] = None  # Clear plaintext
+
+    # If credentials is being updated, encrypt it
+    if "credentials" in updates and updates["credentials"] is not None:
+        updates["credentials_encrypted"] = encrypt_string(updates["credentials"])
+        updates["credentials"] = None  # Clear plaintext
 
     updates["updated_at"] = datetime.now(timezone.utc)
 

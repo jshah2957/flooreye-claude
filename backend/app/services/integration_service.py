@@ -97,7 +97,7 @@ async def save_integration(
     if existing:
         updates = {
             "config_encrypted": encrypted,
-            "status": "configured",
+            "status": "connected",
             "updated_by": user_id,
             "updated_at": now,
         }
@@ -111,7 +111,7 @@ async def save_integration(
             "org_id": org_id,
             "service": service,
             "config_encrypted": encrypted,
-            "status": "configured",
+            "status": "connected",
             "last_tested": None,
             "last_test_result": None,
             "last_test_response_ms": None,
@@ -226,6 +226,20 @@ async def _record_test_result(
         {**org_query(org_id), "service": service},
         {"$set": updates},
     )
+
+    # Record test in history collection
+    history_doc = {
+        "id": str(uuid.uuid4()),
+        "org_id": org_id,
+        "service": service,
+        "tested_at": now,
+        "result": "success" if success else "failure",
+        "response_ms": round(response_ms, 2),
+        "error": error if not success else None,
+        "tested_by": "system",
+    }
+    await db.integration_test_history.insert_one(history_doc)
+
     return {
         "service": service,
         "success": success,
@@ -244,9 +258,9 @@ async def _run_test_handler(service: str, config: dict) -> dict:
     elif service == "roboflow":
         return await _test_roboflow(config)
     elif service in ("s3", "minio", "r2"):
-        return await _test_s3(config)
+        return await _test_s3_compatible(config)
     elif service == "smtp":
-        return {"message": "SMTP test: config validated (send test requires recipient)"}
+        return await _test_smtp(config)
     elif service == "fcm":
         from app.services.fcm_service import verify_credentials
         return verify_credentials()
@@ -288,13 +302,57 @@ async def _test_roboflow(config: dict) -> dict:
     # Just validate the API key by hitting the model endpoint
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(f"{api_url}/{model_id}", params={"api_key": api_key})
-    return {"status_code": resp.status_code, "message": "Roboflow API reachable"}
+    if resp.status_code >= 400:
+        raise Exception(f"Roboflow API returned {resp.status_code}: {resp.text[:200]}")
+    return {"status_code": resp.status_code, "message": "Roboflow API connected"}
 
 
-async def _test_s3(config: dict) -> dict:
+async def _test_smtp(config: dict) -> dict:
+    import smtplib
+    import ssl
+    host = config.get("host", "")
+    port = int(config.get("port", 587))
+    if not host:
+        raise Exception("SMTP host is required")
+    # Test TCP connection + EHLO
+    try:
+        if port == 465:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP_SSL(host, port, timeout=10, context=ctx) as server:
+                server.ehlo()
+        else:
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.ehlo()
+                if port == 587:
+                    server.starttls()
+                    server.ehlo()
+    except Exception as e:
+        raise Exception(f"SMTP connection failed: {e}")
+    return {"message": f"SMTP server {host}:{port} responding"}
+
+
+async def _test_s3_compatible(config: dict) -> dict:
     import httpx
-    endpoint = config.get("endpoint_url", "")
-    return {"message": f"S3-compatible endpoint configured: {endpoint}"}
+    endpoint = config.get("endpoint", "")
+    bucket = config.get("bucket", "")
+    access_key = config.get("access_key", "")
+    if not endpoint:
+        raise Exception("S3 endpoint URL is required")
+    # Test endpoint reachability
+    url = endpoint.rstrip("/")
+    if bucket:
+        url = f"{url}/{bucket}"
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.head(url)
+    # 200 = bucket exists and accessible
+    # 403 = bucket exists but credentials wrong (still reachable)
+    # 404 = bucket doesn't exist
+    if resp.status_code in (200, 301, 307, 403):
+        return {"message": f"S3 endpoint reachable (HTTP {resp.status_code})", "status_code": resp.status_code}
+    elif resp.status_code == 404:
+        raise Exception(f"Bucket '{bucket}' not found at {endpoint}")
+    else:
+        raise Exception(f"S3 endpoint returned HTTP {resp.status_code}")
 
 
 async def _test_webhook(config: dict) -> dict:
