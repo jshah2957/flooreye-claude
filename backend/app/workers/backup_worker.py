@@ -6,12 +6,13 @@ import tarfile
 import tempfile
 from datetime import datetime, timezone
 from app.workers.celery_app import celery_app
+from app.workers.dead_letter import DeadLetterTask
 from app.core.config import settings
 
 log = logging.getLogger(__name__)
 
 
-@celery_app.task(name="app.workers.backup_worker.run_backup", bind=True, max_retries=1)
+@celery_app.task(name="app.workers.backup_worker.run_backup", bind=True, max_retries=1, base=DeadLetterTask)
 def run_backup(self):
     """Dump MongoDB database, compress, and upload to S3."""
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

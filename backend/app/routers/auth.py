@@ -220,6 +220,15 @@ async def reset_password(
         {"$set": {"password_hash": new_hash, "updated_at": datetime.now(timezone.utc)}}
     )
 
+    # Invalidate all existing sessions for this user
+    from datetime import timedelta
+    await db.token_blacklist.insert_one({
+        "jti": "__all__",
+        "user_id": token_doc["user_id"],
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+        "created_at": datetime.now(timezone.utc),
+    })
+
     # Mark token as used
     await db.password_reset_tokens.update_one(
         {"token": body.token},

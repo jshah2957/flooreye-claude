@@ -13,6 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.workers.celery_app import celery_app
+from app.workers.dead_letter import DeadLetterTask
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ def _get_db():
     bind=True,
     max_retries=2,
     default_retry_delay=60,
+    base=DeadLetterTask,
 )
 def sync_to_roboflow(self, org_id: str, limit: int = settings.ROBOFLOW_SYNC_BATCH_SIZE):
     """

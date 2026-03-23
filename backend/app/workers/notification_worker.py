@@ -16,6 +16,7 @@ import time
 import httpx
 
 from app.workers.celery_app import celery_app
+from app.workers.dead_letter import DeadLetterTask
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,7 @@ def _send_smtp_email(config: dict, to_email: str, subject: str, body_html: str) 
     max_retries=3,
     retry_backoff=True,
     retry_backoff_max=300,
+    base=DeadLetterTask,
 )
 def send_email_notification(self, recipient: str, incident_id: str, severity: str, org_id: str = "", delivery_id: str | None = None):
     """Send email notification via configured SMTP integration."""
@@ -276,6 +278,7 @@ def send_email_notification(self, recipient: str, incident_id: str, severity: st
     max_retries=5,
     retry_backoff=True,
     retry_backoff_max=120,
+    base=DeadLetterTask,
 )
 def send_webhook_notification(self, url: str, incident: dict, rule_id: str | None = None, delivery_id: str | None = None):
     """Send webhook POST with incident data and HMAC signature.
@@ -360,6 +363,7 @@ def send_webhook_notification(self, url: str, incident: dict, rule_id: str | Non
     max_retries=3,
     retry_backoff=True,
     retry_backoff_max=300,
+    base=DeadLetterTask,
 )
 def send_sms_notification(self, phone: str, incident_id: str, severity: str, org_id: str = "", delivery_id: str | None = None):
     """Send SMS via Twilio integration."""
@@ -427,6 +431,7 @@ def send_sms_notification(self, phone: str, incident_id: str, severity: str, org
     max_retries=3,
     retry_backoff=True,
     retry_backoff_max=60,
+    base=DeadLetterTask,
 )
 def send_push_notification(self, token: str, title: str, body: str, incident_id: str | None = None, delivery_id: str | None = None):
     """Send FCM push notification using the real FCM service."""

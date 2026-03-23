@@ -316,9 +316,10 @@ async def upload_frame(
         except Exception:
             pass
 
-    # Compute idempotency key from camera + confidence + area + inference time
-    idem_key = f"{body.camera_id}:{body.confidence:.4f}:{body.wet_area_percent:.4f}:{body.inference_time_ms:.1f}"
-    idem_hash = hashlib.md5(idem_key.encode()).hexdigest()[:16]
+    # Compute idempotency key from camera + confidence + area + current second
+    import time
+    idem_input = f"{body.camera_id}:{body.confidence:.4f}:{body.wet_area_percent:.4f}:{int(time.time())}"
+    idem_hash = hashlib.sha256(idem_input.encode()).hexdigest()[:24]
 
     # Check idempotency
     existing = await db.detection_logs.find_one({"idempotency_key": idem_hash})
@@ -386,9 +387,10 @@ async def upload_detection(
 
     now = datetime.now(timezone.utc)
 
-    # Compute idempotency key from camera + confidence + area + inference time
-    idem_key = f"{body.camera_id}:{body.confidence:.4f}:{body.wet_area_percent:.4f}:{body.inference_time_ms:.1f}"
-    idem_hash = hashlib.md5(idem_key.encode()).hexdigest()[:16]
+    # Compute idempotency key from camera + confidence + area + current second
+    import time
+    idem_input = f"{body.camera_id}:{body.confidence:.4f}:{body.wet_area_percent:.4f}:{int(time.time())}"
+    idem_hash = hashlib.sha256(idem_input.encode()).hexdigest()[:24]
 
     # Check idempotency
     existing = await db.detection_logs.find_one({"idempotency_key": idem_hash})

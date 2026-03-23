@@ -32,6 +32,10 @@ celery_app.conf.update(
             "task": "app.workers.backup_worker.run_backup",
             "schedule": crontab(hour=3, minute=0),
         },
+        "health-check": {
+            "task": "app.workers.health_worker.run_health_check",
+            "schedule": 60.0,  # every 60 seconds
+        },
     },
 )
 
