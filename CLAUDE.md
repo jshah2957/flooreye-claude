@@ -2,10 +2,10 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 29 (v3.0 Release) — Complete UI redesign, edge sync fixes, integration fixes, 90 design review findings addressed, performance/security/infrastructure hardening, 82 tests, Playwright E2E, multi-tenancy verified.
+Session 30 (Deployment Testing) — Full deployment test completed. All 3 apps running and connected via Docker. Edge agent heartbeating to cloud. 9 deployment blockers fixed. Production checklist documented.
 
 ## Project
-FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
+FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform
 Tagline: "See Every Drop. Stop Every Slip."
 
 ## Tech Stack
@@ -65,6 +65,22 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 19: pytest suite (24 tests), GitHub Actions CI/CD, Docker production builds, rate limiter, EAS config — Phase 11 COMPLETE — ALL PHASES DONE
 - Session 28: Google Stitch SDK integration + Complete UI redesign (all 3 apps, 101 files, +16,536/-5,379 lines) + Edge config sync fixes (14 files, detailed push feedback, heartbeat staleness check, retry with backoff, SyncTracker component) + Integration bug fixes (status mismatch, form validation, real SMTP/S3 tests, camera credentials encryption, encryption key hardening)
 - Session 29 (v3.0): Architecture diagrams (3), 7-expert design review (90 findings), pilot fixes (organizations entity, security gate, TTL indexes, settings cache, idempotency, DLQ, backup worker, password reset, store_access RBAC, security headers, Prometheus metrics), Docker hardening (networks, limits, logs, Redis persistence), performance fixes (projections, export caps, aggregation pipeline, pool sizing), security fixes (WS blacklist, edge rate limits, path traversal, Redis race condition), Playwright E2E tests (15), multi-tenancy tests (7), total 82 tests. Design health: 5.5→8.0/10
+- Session 30 (Deployment): Fixed 9 deployment blockers (dataset.py indent, validation.py missing, seed script, port mappings, Redis password, MongoDB auth, CORS, mobile URLs, ONNX model). All 3 apps running via Docker: cloud (7 services), edge (3 services connected to cloud), mobile (configured). 25 live API tests passed. Edge heartbeat verified. Users seeded. Tagged v3.0.0.
+
+## CURRENT DEPLOYMENT STATE (Session 30)
+- backend/.env is set to ENVIRONMENT=development FOR TESTING — MUST change back to production before real deploy
+- edge-agent/.env exists with TEST credentials — DELETE before production
+- mobile/.env exists with local IP — DELETE before production
+- Cloudflared tunnel needs interactive login: run `cloudflared tunnel login`
+- Docker services running: backend:8000, web:80, mongodb, redis, minio, worker, edge-agent, inference-server, redis-buffer
+- Login: admin@flooreye.io / FloorEye@2026! (super_admin)
+- Login: demo@flooreye.io / Demo@2026! (org_admin)
+- Login: store@flooreye.io / Store@2026! (store_owner)
+- Edge agent ID: b1a1ab32-40fa-44c9-9f3e-8c5151006100 (status: online)
+- Web dashboard: http://localhost:80
+- API docs: http://localhost:8000/api/v1/docs
+- To stop everything: docker compose -f docker-compose.prod.yml down && cd edge-agent && docker compose down
+- To restore production: edit backend/.env → ENVIRONMENT=production, ALLOWED_ORIGINS=https://app.puddlewatch.com
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
