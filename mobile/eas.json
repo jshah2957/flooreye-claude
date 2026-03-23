@@ -19,13 +19,13 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://api-staging.flooreye.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://app.puddlewatch.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://api.flooreye.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://app.puddlewatch.com"
       }
     }
   },

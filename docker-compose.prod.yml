@@ -9,6 +9,8 @@ services:
     volumes:
       - backend_data:/app/data
       - ./backend/secrets:/app/secrets:ro
+    ports:
+      - "8000:8000"
     depends_on:
       mongodb:
         condition: service_healthy
@@ -59,6 +61,8 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+    ports:
+      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
