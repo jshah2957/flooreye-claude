@@ -21,7 +21,7 @@ async def _create_org_user(test_db, org_id, email, role="org_admin"):
         "updated_at": datetime.now(timezone.utc),
     }
     await test_db.users.insert_one(user)
-    token = create_access_token({"sub": user_id, "role": role, "org_id": org_id})
+    token = create_access_token(user_id, role, org_id)
     return user, token
 
 
