@@ -85,9 +85,9 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     application = FastAPI(
-        title="FloorEye v2.0 API",
+        title="FloorEye v3.0 API",
         description="Enterprise AI Wet Floor & Spill Detection Platform",
-        version="3.1.0",
+        version="3.0.0",
         docs_url="/api/v1/docs",
         openapi_url="/api/v1/openapi.json",
         lifespan=lifespan,

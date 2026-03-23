@@ -1,8 +1,8 @@
-# FloorEye v2.0 — Claude Code Memory File
+# FloorEye v3.0 — Claude Code Memory File
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 28 — Complete UI redesign + Edge sync fixes + Integration bug fixes. Google Stitch SDK integrated.
+Session 29 (v3.0 Release) — Complete UI redesign, edge sync fixes, integration fixes, 90 design review findings addressed, performance/security/infrastructure hardening, 82 tests, Playwright E2E, multi-tenancy verified.
 
 ## Project
 FloorEye v2.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -64,6 +64,7 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 18: Review Queue, Clips, System Logs, User Management, Roboflow, Storage, Test Inference pages — Phase 10 COMPLETE
 - Session 19: pytest suite (24 tests), GitHub Actions CI/CD, Docker production builds, rate limiter, EAS config — Phase 11 COMPLETE — ALL PHASES DONE
 - Session 28: Google Stitch SDK integration + Complete UI redesign (all 3 apps, 101 files, +16,536/-5,379 lines) + Edge config sync fixes (14 files, detailed push feedback, heartbeat staleness check, retry with backoff, SyncTracker component) + Integration bug fixes (status mismatch, form validation, real SMTP/S3 tests, camera credentials encryption, encryption key hardening)
+- Session 29 (v3.0): Architecture diagrams (3), 7-expert design review (90 findings), pilot fixes (organizations entity, security gate, TTL indexes, settings cache, idempotency, DLQ, backup worker, password reset, store_access RBAC, security headers, Prometheus metrics), Docker hardening (networks, limits, logs, Redis persistence), performance fixes (projections, export caps, aggregation pipeline, pool sizing), security fixes (WS blacklist, edge rate limits, path traversal, Redis race condition), Playwright E2E tests (15), multi-tenancy tests (7), total 82 tests. Design health: 5.5→8.0/10
 
 ## Phase Progress
 - Phase 0 — Scaffold: COMPLETE
