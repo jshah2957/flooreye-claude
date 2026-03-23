@@ -1,6 +1,9 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+
+log = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
@@ -46,12 +49,32 @@ from app.routers import (
 async def lifespan(app: FastAPI):
     # Startup
     await connect_db()
+
+    # Verify MongoDB connectivity
+    try:
+        db = get_db()
+        await db.command("ping")
+        log.info("MongoDB connection verified")
+    except Exception as e:
+        log.critical("MongoDB connection failed: %s", e)
+        raise
+
+    # Verify Redis connectivity
+    try:
+        import redis as _redis
+        r = _redis.from_url(settings.REDIS_URL, socket_timeout=3)
+        r.ping()
+        log.info("Redis connection verified")
+        r.close()
+    except Exception as e:
+        log.warning("Redis connection failed: %s — rate limiting and caching degraded", e)
+
     await ensure_indexes(get_db())
     from app.utils.s3_utils import ensure_bucket
     try:
         await ensure_bucket()
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("S3/MinIO bucket initialization failed: %s — frame uploads may fail", e)
     from app.routers.websockets import start_redis_subscriber, stop_redis_subscriber
     await start_redis_subscriber()
     yield

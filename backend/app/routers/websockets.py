@@ -22,6 +22,7 @@ import json
 import logging
 
 import redis.asyncio as aioredis
+
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from app.core.constants import ROLE_HIERARCHY, UserRole
@@ -39,27 +40,34 @@ _REDIS_WS_PREFIX = "ws:"
 _redis_pub: aioredis.Redis | None = None
 _redis_sub: aioredis.Redis | None = None
 _subscriber_task: asyncio.Task | None = None
+_redis_init_lock = asyncio.Lock()
 
 
 async def _get_redis_pub() -> aioredis.Redis:
     """Get or create the Redis client used for publishing."""
     global _redis_pub
-    if _redis_pub is None:
-        from app.core.config import settings
-        _redis_pub = aioredis.from_url(
-            settings.REDIS_URL, decode_responses=True
-        )
+    if _redis_pub is not None:
+        return _redis_pub
+    async with _redis_init_lock:
+        if _redis_pub is None:  # Double-check after acquiring lock
+            from app.core.config import settings
+            _redis_pub = aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            )
     return _redis_pub
 
 
 async def _get_redis_sub() -> aioredis.Redis:
     """Get or create the Redis client used for subscribing (separate connection)."""
     global _redis_sub
-    if _redis_sub is None:
-        from app.core.config import settings
-        _redis_sub = aioredis.from_url(
-            settings.REDIS_URL, decode_responses=True
-        )
+    if _redis_sub is not None:
+        return _redis_sub
+    async with _redis_init_lock:
+        if _redis_sub is None:  # Double-check after acquiring lock
+            from app.core.config import settings
+            _redis_sub = aioredis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            )
     return _redis_sub
 
 
@@ -207,6 +215,21 @@ async def _validate_ws_token(websocket: WebSocket, token: str | None) -> dict | 
         if payload.get("type") != "access":
             await websocket.close(code=4001, reason="Invalid token type")
             return None
+        # Check token blacklist (revoked tokens / logged-out sessions)
+        try:
+            db = get_db()
+            jti = payload.get("jti")
+            user_id = payload.get("sub")
+            if jti:
+                blacklisted = await db.token_blacklist.find_one({"$or": [
+                    {"jti": jti},
+                    {"jti": "__all__", "user_id": user_id},
+                ]})
+                if blacklisted:
+                    await websocket.close(code=4001, reason="Token revoked")
+                    return None
+        except Exception:
+            pass  # If blacklist check fails, allow connection (fail open for WS)
         return payload
     except Exception:
         await websocket.close(code=4001, reason="Invalid token")

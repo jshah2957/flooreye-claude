@@ -29,7 +29,7 @@ async def get_dashboard(db: AsyncIOMotorDatabase, org_id: str, store_ids: list[s
     store_id_list = [s["id"] for s in stores]
 
     cam_query = {**org_query(org_id), "store_id": {"$in": store_id_list}}
-    cameras = await db.cameras.find(cam_query).to_list(length=500)
+    cameras = await db.cameras.find(cam_query, {"snapshot_base64": 0, "_id": 0}).to_list(length=500)
     online = sum(1 for c in cameras if c.get("status") in ("online", "active"))
 
     active_incidents = await db.events.find(
@@ -37,12 +37,9 @@ async def get_dashboard(db: AsyncIOMotorDatabase, org_id: str, store_ids: list[s
     ).sort("start_time", -1).to_list(length=10)
 
     recent_detections = await db.detection_logs.find(
-        {**org_query(org_id), "store_id": {"$in": store_id_list}, "is_wet": True}
+        {**org_query(org_id), "store_id": {"$in": store_id_list}, "is_wet": True},
+        {"frame_base64": 0, "_id": 0},
     ).sort("timestamp", -1).to_list(length=10)
-
-    for d in recent_detections:
-        d.pop("frame_base64", None)
-        d.pop("_id", None)
 
     for i in active_incidents:
         i.pop("_id", None)
@@ -124,7 +121,7 @@ async def get_store_status(
     if not store:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
 
-    cameras = await db.cameras.find({"store_id": store_id}).to_list(length=100)
+    cameras = await db.cameras.find({"store_id": store_id}, {"snapshot_base64": 0, "_id": 0}).to_list(length=100)
     online = sum(1 for c in cameras if c.get("status") in ("online", "active"))
     incidents = await db.events.count_documents(
         {"store_id": store_id, "status": {"$in": ["new", "acknowledged"]}}

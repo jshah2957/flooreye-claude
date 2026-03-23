@@ -65,18 +65,24 @@ async def update_split(db: AsyncIOMotorDatabase, frame_id: str, org_id: str, spl
 
 
 async def get_stats(db: AsyncIOMotorDatabase, org_id: str) -> dict:
-    total = await db.dataset_frames.count_documents(org_query(org_id))
-    included = await db.dataset_frames.count_documents({**org_query(org_id), "included": True})
+    pipeline = [
+        {"$match": {**org_query(org_id)}},
+        {"$facet": {
+            "total": [{"$count": "count"}],
+            "included": [{"$match": {"included": True}}, {"$count": "count"}],
+            "by_split": [{"$group": {"_id": "$split", "count": {"$sum": 1}}}],
+            "by_source": [{"$group": {"_id": "$label_source", "count": {"$sum": 1}}}],
+        }}
+    ]
+    result = await db.dataset_frames.aggregate(pipeline).to_list(1)
+    if not result:
+        return {"total_frames": 0, "by_split": {}, "by_source": {}, "included": 0, "excluded": 0}
 
-    by_split = {}
-    for s in ["train", "val", "test", "unassigned"]:
-        by_split[s] = await db.dataset_frames.count_documents({**org_query(org_id), "split": s})
-
-    by_source = {}
-    for src in ["teacher_roboflow", "human_validated", "human_corrected", "student_pseudolabel", "manual_upload", "unknown"]:
-        count = await db.dataset_frames.count_documents({**org_query(org_id), "label_source": src})
-        if count > 0:
-            by_source[src] = count
+    data = result[0]
+    total = data["total"][0]["count"] if data["total"] else 0
+    included = data["included"][0]["count"] if data["included"] else 0
+    by_split = {r["_id"]: r["count"] for r in data["by_split"]}
+    by_source = {r["_id"]: r["count"] for r in data["by_source"] if r["count"] > 0}
 
     return {"total_frames": total, "by_split": by_split, "by_source": by_source, "included": included, "excluded": total - included}
 

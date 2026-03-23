@@ -22,6 +22,9 @@ RATE_LIMITS = {
     "/api/v1/auth/forgot": (5, 60),
     "/api/v1/auth/reset": (5, 60),
     "/api/v1/detection/run": (60, 60),
+    "/api/v1/edge/frame": (120, 60),      # 120 frames per minute per IP (2 FPS)
+    "/api/v1/edge/detection": (120, 60),   # Same for detections
+    "/api/v1/edge/heartbeat": (10, 60),    # 10 heartbeats per minute
 }
 
 # Default: 1000 req/min for standard endpoints

@@ -71,3 +71,37 @@ jobs:
         run: docker build -t flooreye-backend:test -f backend/Dockerfile backend/
       - name: Build web image
         run: docker build -t flooreye-web:test -f web/Dockerfile web/
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt pip-audit
+      - name: Audit Python dependencies
+        run: pip-audit --strict
+      - name: Check for secrets
+        run: |
+          # Simple grep-based secret check
+          if grep -rn "CHANGE_ME\|minioadmin\|flooreye_secret\|flooreye_redis" backend/app/ --include="*.py" | grep -v "config.py" | grep -v "_INSECURE_DEFAULTS"; then
+            echo "ERROR: Hardcoded secrets found outside config.py"
+            exit 1
+          fi
+          echo "No hardcoded secrets found"
+
+  frontend-audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high || true

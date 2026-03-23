@@ -331,9 +331,12 @@ async def get_signed_url(key: str, expires: int = 3600) -> str | None:
 
 
 def _local_path(key: str) -> Path:
-    """Resolve local filesystem path for a storage key."""
-    base = Path(settings.LOCAL_STORAGE_PATH)
-    return base / key
+    """Resolve local filesystem path for a storage key with traversal protection."""
+    base = Path(settings.LOCAL_STORAGE_PATH).resolve()
+    resolved = (base / key).resolve()
+    if not str(resolved).startswith(str(base)):
+        raise ValueError(f"Path traversal detected in key: {key}")
+    return resolved
 
 
 async def upload_to_s3(key: str, data: bytes, content_type: str = "image/jpeg") -> str:

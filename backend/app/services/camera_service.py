@@ -119,7 +119,7 @@ async def list_cameras(
         query["status"] = status_filter
 
     total = await db.cameras.count_documents(query)
-    cursor = db.cameras.find(query).skip(offset).limit(limit).sort("created_at", -1)
+    cursor = db.cameras.find(query, {"snapshot_base64": 0, "_id": 0}).skip(offset).limit(limit).sort("created_at", -1)
     cameras = await cursor.to_list(length=limit)
     return [_decrypt_camera(c) for c in cameras], total
 

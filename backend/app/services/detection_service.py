@@ -271,4 +271,4 @@ async def export_flagged(db: AsyncIOMotorDatabase, org_id: str) -> list[dict]:
     cursor = db.detection_logs.find(
         {**org_query(org_id), "is_flagged": True}, _LIST_PROJECTION
     ).sort("timestamp", -1)
-    return await cursor.to_list(length=settings.QUERY_LIMIT_LARGE)
+    return await cursor.to_list(length=min(settings.QUERY_LIMIT_LARGE, 1000))
