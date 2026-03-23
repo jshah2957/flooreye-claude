@@ -104,7 +104,7 @@ async def save_integration(
         await db.integration_configs.update_one(query, {"$set": updates})
         existing.update(updates)
         existing["config"] = mask_secrets(config)
-        return _strip_oid(existing)
+        result = _strip_oid(existing)
     else:
         doc = {
             "id": str(uuid.uuid4()),
@@ -122,7 +122,61 @@ async def save_integration(
         }
         await db.integration_configs.insert_one(doc)
         doc["config"] = mask_secrets(config)
-        return _strip_oid(doc)
+        result = _strip_oid(doc)
+
+    # Auto-sync when Roboflow integration is saved/updated
+    if service == "roboflow":
+        await _auto_sync_roboflow(db, org_id, config, user_id)
+
+    return result
+
+
+async def _auto_sync_roboflow(
+    db: AsyncIOMotorDatabase, org_id: str, config: dict, user_id: str
+) -> None:
+    """Automatically pull classes and model from Roboflow when integration is configured.
+    Runs as best-effort — failures are logged but don't block the save.
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    api_key = config.get("api_key", "")
+    model_id = config.get("model_id", "")
+    if not api_key or not model_id:
+        return
+
+    # Parse project/version from model_id (format: "project-slug/version")
+    parts = model_id.split("/")
+    project_slug = parts[0] if parts else ""
+    version = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+
+    # Step 1: Pull classes from Roboflow
+    try:
+        from app.services.roboflow_model_service import pull_classes_from_roboflow
+        classes = await pull_classes_from_roboflow(db, org_id, user_id, project_slug)
+        log.info("Roboflow auto-sync: pulled %d classes from %s", len(classes) if isinstance(classes, list) else 0, project_slug)
+    except Exception as e:
+        log.warning("Roboflow auto-sync classes failed: %s", e)
+
+    # Step 2: Pull model from Roboflow and register in model registry
+    try:
+        from app.services.roboflow_model_service import pull_model_from_roboflow
+        model = await pull_model_from_roboflow(
+            db, org_id, user_id, project_id=project_slug, version=version
+        )
+        if model:
+            model_id_str = model.get("id", "")
+            log.info("Roboflow auto-sync: model %s registered in registry", model_id_str)
+
+            # Step 3: Auto-deploy to all online edge agents
+            try:
+                from app.services.model_service import promote_model
+                await promote_model(db, org_id, model_id_str, "production", user_id)
+                log.info("Roboflow auto-sync: model promoted to production → deploying to edge agents")
+            except Exception as e:
+                log.warning("Roboflow auto-sync deploy failed: %s", e)
+    except Exception as e:
+        log.warning("Roboflow auto-sync model pull failed: %s", e)
 
 
 async def delete_integration(
