@@ -79,7 +79,7 @@ async def add_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
 ):
-frame = await dataset_service.create_frame(db, current_user.get("org_id", ""), body)
+    frame = await dataset_service.create_frame(db, current_user.get("org_id", ""), body)
     return {"data": _frame_response(frame)}
 
 
@@ -89,7 +89,7 @@ async def delete_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-await dataset_service.delete_frame(db, frame_id, current_user.get("org_id", ""))
+    await dataset_service.delete_frame(db, frame_id, current_user.get("org_id", ""))
     return {"data": {"ok": True}}
 
 
@@ -99,7 +99,7 @@ async def bulk_delete_frames(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-org_id = current_user.get("org_id", "")
+    org_id = current_user.get("org_id", "")
     frame_ids = body.get("frame_ids", [])
     if not frame_ids:
         return {"data": {"deleted": 0}}
@@ -116,7 +116,7 @@ async def assign_split(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-frame = await dataset_service.update_split(
+    frame = await dataset_service.update_split(
         db, frame_id, current_user.get("org_id", ""), body.get("split", "unassigned")
     )
     return {"data": _frame_response(frame)}
