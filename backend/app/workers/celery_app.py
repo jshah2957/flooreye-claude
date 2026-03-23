@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import settings
 
@@ -20,11 +21,16 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
     task_routes={
         "app.workers.detection_worker.*": {"queue": "detection"},
+        "app.workers.notification_worker.*": {"queue": "notifications"},
     },
     beat_schedule={
         "auto-close-stale-incidents": {
             "task": "app.workers.incident_worker.auto_close_stale_incidents",
             "schedule": settings.AUTO_CLOSE_CHECK_INTERVAL_MINUTES * 60,  # convert to seconds
+        },
+        "daily-backup": {
+            "task": "app.workers.backup_worker.run_backup",
+            "schedule": crontab(hour=3, minute=0),
         },
     },
 )

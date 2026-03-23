@@ -8,3 +8,29 @@ def org_query(org_id: str | None, **extra: object) -> dict:
         q["org_id"] = org_id
     q.update(extra)
     return q
+
+
+def store_access_query(user: dict, base_query: dict | None = None) -> dict:
+    """Build query that respects both org_id and store_access restrictions.
+
+    For org_admin/super_admin: uses org_query only.
+    For other roles: adds store_id filter from user.store_access.
+    """
+    query = base_query.copy() if base_query else {}
+    org_id = user.get("org_id")
+
+    # Apply org filter
+    if org_id:
+        query["org_id"] = org_id
+
+    # Apply store_access filter for non-admin roles
+    role = user.get("role", "")
+    if role not in ("super_admin", "org_admin"):
+        store_access = user.get("store_access", [])
+        if store_access:
+            query["store_id"] = {"$in": store_access}
+        # If store_access is empty and role is restricted, return impossible query
+        elif role in ("store_owner", "viewer", "operator"):
+            query["store_id"] = {"$in": []}  # matches nothing
+
+    return query

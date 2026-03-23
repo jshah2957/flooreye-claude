@@ -10,6 +10,9 @@ _INSECURE_DEFAULTS = {
     "CHANGE_ME_EDGE_SECRET",
     "CHANGE_ME_BASE64_32_BYTE_KEY",
     "minioadmin",
+    "flooreye_redis_2026",
+    "flooreye:flooreye_secret_2026",
+    "flooreye_secret_2026",
 }
 
 
@@ -138,6 +141,12 @@ class Settings(BaseSettings):
     QUERY_LIMIT_LARGE: int = 10000
     QUERY_LIMIT_XLARGE: int = 50000
 
+    # Detection / DB / Pipeline
+    DETECTION_LOG_RETENTION_DAYS: int = 90
+    MONGODB_MAX_POOL_SIZE: int = 25
+    PIPELINE_LATENCY_ALERT_MS: int = 5000
+    MAX_REQUEST_BODY_MB: int = 50
+
     # Sentry (optional)
     SENTRY_DSN: str = ""
 
@@ -150,10 +159,22 @@ settings = Settings()
 
 # SEC-1 + SEC-2: Block production startup with insecure default secrets
 if settings.ENVIRONMENT == "production":
-    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY"):
+    for attr in ("SECRET_KEY", "EDGE_SECRET_KEY", "ENCRYPTION_KEY",
+                 "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"):
         if getattr(settings, attr) in _INSECURE_DEFAULTS:
             log.critical(
-                f"FATAL: {attr} is set to an insecure default. "
-                f"Set a strong value in .env before running in production."
+                "FATAL: %s is set to an insecure default. "
+                "Set a strong value in .env before running in production.",
+                attr
             )
             sys.exit(1)
+    for url_attr in ("REDIS_URL", "MONGODB_URI"):
+        url_val = getattr(settings, url_attr, "")
+        for insecure in _INSECURE_DEFAULTS:
+            if insecure in url_val:
+                log.critical(
+                    "FATAL: %s contains insecure default '%s'. "
+                    "Set strong credentials in .env before running in production.",
+                    url_attr, insecure
+                )
+                sys.exit(1)

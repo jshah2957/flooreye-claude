@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import settings
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 from app.db.database import connect_db, close_db
 from app.db.indexes import ensure_indexes
@@ -12,6 +13,7 @@ from app.db.database import get_db
 from app.routers import (
     audit_logs,
     auth,
+    organizations,
     cameras,
     clips,
     dataset,
@@ -81,12 +83,23 @@ def create_app() -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
 
+    # Security headers
+    application.add_middleware(SecurityHeadersMiddleware)
+
     # Trusted hosts (production)
     if settings.ENVIRONMENT == "production":
         application.add_middleware(
             TrustedHostMiddleware,
             allowed_hosts=[settings.SUBDOMAIN, settings.DOMAIN, f"*.{settings.DOMAIN}", "localhost", "backend"],
         )
+
+    # Prometheus instrumentation
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator(
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+        excluded_handlers=["/health", "/metrics"],
+    ).instrument(application).expose(application, include_in_schema=False)
 
     @application.get("/api/v1/health", tags=["health"])
     async def health_check():
@@ -141,6 +154,7 @@ def create_app() -> FastAPI:
     application.include_router(reports.router)
     application.include_router(validation.router)
     application.include_router(websockets.router)
+    application.include_router(organizations.router)
 
     return application
 

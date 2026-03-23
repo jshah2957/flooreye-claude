@@ -1,8 +1,11 @@
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, Query, Request, Response, status
+import logging
+
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.config import settings
 from app.core.permissions import require_role
 from app.core.security import (
     REFRESH_COOKIE_NAME,
@@ -24,6 +27,8 @@ from app.schemas.auth import (
 )
 from app.services import auth_service
 from app.services.system_log_service import emit_system_log
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -135,19 +140,93 @@ async def register(
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest):
-    """Request password reset. Always returns 200 to prevent email enumeration."""
-    # In production: generate reset token, send email via SMTP
-    # For pilot: log the request and return success (no email sent)
-    import logging
-    logging.getLogger(__name__).info(f"Password reset requested for: {body.email}")
-    return {"data": {"message": "If this email exists, a reset link has been sent."}}
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Generate password reset token and send via email (if SMTP configured)."""
+    import uuid
+    from datetime import datetime, timezone, timedelta
+
+    user = await db.users.find_one({"email": body.email, "is_active": True})
+    # Always return success (don't reveal if email exists)
+    if not user:
+        return {"data": {"message": "If that email is registered, a reset link has been sent."}}
+
+    # Generate secure token
+    token = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+
+    # Store token
+    await db.password_reset_tokens.insert_one({
+        "token": token,
+        "user_id": user["id"],
+        "email": body.email,
+        "expires_at": expires_at,
+        "used": False,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    # Try to send email via SMTP integration
+    try:
+        from app.services.integration_service import get_integration
+        smtp_config = await get_integration(db, user.get("org_id", ""), "smtp")
+        if smtp_config and smtp_config.get("status") == "connected":
+            import smtplib
+            from email.mime.text import MIMEText
+            config = smtp_config.get("config", {})
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+            msg = MIMEText(f"Click to reset your password: {reset_url}\n\nThis link expires in 1 hour.")
+            msg["Subject"] = "FloorEye Password Reset"
+            msg["From"] = config.get("from_email", f"noreply@{settings.DOMAIN}")
+            msg["To"] = body.email
+            host = config.get("host", "")
+            port = int(config.get("port", 587))
+            with smtplib.SMTP(host, port, timeout=10) as server:
+                server.starttls()
+                server.login(config.get("username", ""), config.get("password", ""))
+                server.send_message(msg)
+    except Exception as e:
+        log.warning("Failed to send reset email: %s", e)
+        # Still return success — token is stored for manual recovery
+
+    return {"data": {"message": "If that email is registered, a reset link has been sent."}}
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetPasswordRequest):
-    """Reset password with token. Returns error since SMTP not configured."""
-    return {"data": {"message": "Password reset is not available. Contact your administrator."}}
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Validate reset token and update password."""
+    from datetime import datetime, timezone
+
+    token_doc = await db.password_reset_tokens.find_one({
+        "token": body.token,
+        "used": False,
+    })
+
+    if not token_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if token_doc.get("expires_at") and token_doc["expires_at"] < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+
+    # Update password
+    from app.core.security import hash_password
+    new_hash = hash_password(body.new_password)
+    await db.users.update_one(
+        {"id": token_doc["user_id"]},
+        {"$set": {"password_hash": new_hash, "updated_at": datetime.now(timezone.utc)}}
+    )
+
+    # Mark token as used
+    await db.password_reset_tokens.update_one(
+        {"token": body.token},
+        {"$set": {"used": True}}
+    )
+
+    return {"data": {"message": "Password has been reset successfully"}}
 
 
 @router.get("/me")

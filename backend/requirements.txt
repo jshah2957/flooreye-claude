@@ -41,6 +41,7 @@ firebase-admin==6.6.0
 
 # Monitoring
 sentry-sdk[fastapi]==2.19.2
+prometheus-fastapi-instrumentator>=7.0.0
 
 # MQTT
 paho-mqtt==2.1.0

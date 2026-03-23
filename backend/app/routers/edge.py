@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -315,8 +316,19 @@ async def upload_frame(
         except Exception:
             pass
 
+    # Compute idempotency key from camera + confidence + area + inference time
+    idem_key = f"{body.camera_id}:{body.confidence:.4f}:{body.wet_area_percent:.4f}:{body.inference_time_ms:.1f}"
+    idem_hash = hashlib.md5(idem_key.encode()).hexdigest()[:16]
+
+    # Check idempotency
+    existing = await db.detection_logs.find_one({"idempotency_key": idem_hash})
+    if existing:
+        existing.pop("_id", None)
+        return {"data": {"detection_id": existing["id"], "duplicate": True}}
+
     detection_doc = {
         "id": str(uuid.uuid4()),
+        "idempotency_key": idem_hash,
         "camera_id": resolved_camera_id,
         "store_id": store_id,
         "org_id": org_id,
@@ -373,8 +385,20 @@ async def upload_detection(
     resolved_camera_id = cam["id"] if cam else body.camera_id
 
     now = datetime.now(timezone.utc)
+
+    # Compute idempotency key from camera + confidence + area + inference time
+    idem_key = f"{body.camera_id}:{body.confidence:.4f}:{body.wet_area_percent:.4f}:{body.inference_time_ms:.1f}"
+    idem_hash = hashlib.md5(idem_key.encode()).hexdigest()[:16]
+
+    # Check idempotency
+    existing = await db.detection_logs.find_one({"idempotency_key": idem_hash})
+    if existing:
+        existing.pop("_id", None)
+        return {"data": {"detection_id": existing["id"], "duplicate": True}}
+
     detection_doc = {
         "id": str(uuid.uuid4()),
+        "idempotency_key": idem_hash,
         "camera_id": resolved_camera_id,
         "store_id": agent["store_id"],
         "org_id": agent["org_id"],

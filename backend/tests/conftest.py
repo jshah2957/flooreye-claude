@@ -12,6 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password
+from app.db.indexes import ensure_indexes
 from app.main import app
 
 TEST_DB_NAME = "flooreye_test"
@@ -22,6 +23,7 @@ async def test_db():
     """Create a test database connection per test."""
     client = AsyncIOMotorClient(settings.MONGODB_URI)
     db = client[TEST_DB_NAME]
+    await ensure_indexes(db)
     yield db
     # Clean up test data after each test
     for name in await db.list_collection_names():
@@ -116,6 +118,25 @@ async def test_store(test_db, admin_user):
     }
     await test_db.stores.insert_one(store)
     return store
+
+
+@pytest_asyncio.fixture
+async def test_org(test_db):
+    """Create a test organization."""
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": "Test Organization",
+        "slug": "test-org",
+        "plan": "pilot",
+        "max_stores": 10,
+        "max_cameras": 50,
+        "max_edge_agents": 5,
+        "is_active": True,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
+    await test_db.organizations.insert_one(doc)
+    return doc
 
 
 def auth_headers(token: str) -> dict:

@@ -122,7 +122,7 @@ async def upsert_settings(
     if existing:
         await db.detection_control_settings.update_one(query, {"$set": updates})
         existing.update(updates)
-        return existing
+        result = existing
     else:
         doc = {
             "id": str(uuid.uuid4()),
@@ -134,7 +134,32 @@ async def upsert_settings(
             "created_at": now,
         }
         await db.detection_control_settings.insert_one(doc)
-        return doc
+        result = doc
+
+    # Invalidate affected camera caches
+    try:
+        from redis import Redis
+        from app.core.config import settings as _settings
+        r = Redis.from_url(_settings.REDIS_URL, socket_timeout=1)
+        if data.scope == "camera" and data.scope_id:
+            r.delete(f"dc:effective:{data.scope_id}")
+        elif data.scope == "store" and data.scope_id:
+            # Invalidate all cameras in this store
+            cameras = await db.cameras.find({"store_id": data.scope_id}, {"id": 1}).to_list(500)
+            keys = [f"dc:effective:{c['id']}" for c in cameras]
+            if keys:
+                r.delete(*keys)
+        elif data.scope in ("org", "global"):
+            # Invalidate all cameras in org
+            query = {"org_id": org_id} if org_id else {}
+            cameras = await db.cameras.find(query, {"id": 1}).to_list(5000)
+            keys = [f"dc:effective:{c['id']}" for c in cameras]
+            if keys:
+                r.delete(*keys)
+    except Exception:
+        pass  # Cache invalidation failed — will expire in 60s
+
+    return result
 
 
 async def delete_settings(
@@ -162,6 +187,20 @@ async def resolve_effective_settings(
     Returns (effective_settings, provenance_map).
     provenance_map: { field_name: "global" | "org" | "store" | "camera" }
     """
+    import json
+    from redis import Redis
+
+    cache_key = f"dc:effective:{camera_id}"
+    try:
+        from app.core.config import settings as _settings
+        r = Redis.from_url(_settings.REDIS_URL, socket_timeout=1)
+        cached = r.get(cache_key)
+        if cached:
+            data = json.loads(cached)
+            return data["effective"], data["provenance"]
+    except Exception:
+        pass  # Cache miss or Redis unavailable — fall through to DB
+
     camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
@@ -196,6 +235,12 @@ async def resolve_effective_settings(
 
         effective[field] = value
         provenance[field] = source
+
+    try:
+        r = Redis.from_url(_settings.REDIS_URL, socket_timeout=1)
+        r.setex(cache_key, 60, json.dumps({"effective": effective, "provenance": provenance}, default=str))
+    except Exception:
+        pass  # Cache write failed — not critical
 
     return effective, provenance
 

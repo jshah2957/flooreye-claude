@@ -57,6 +57,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     ])
 
     # detection_logs
+    from app.core.config import settings as _dl_settings
     await db.detection_logs.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
         IndexModel([("camera_id", ASCENDING), ("timestamp", DESCENDING)]),
@@ -66,6 +67,10 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("is_flagged", ASCENDING)]),
         IndexModel([("org_id", ASCENDING), ("is_flagged", ASCENDING), ("timestamp", DESCENDING)]),
         IndexModel([("org_id", ASCENDING), ("is_wet", ASCENDING), ("timestamp", DESCENDING)]),
+        IndexModel([("timestamp", ASCENDING)], expireAfterSeconds=_dl_settings.DETECTION_LOG_RETENTION_DAYS * 86400, name="ttl_timestamp"),
+        IndexModel([("incident_id", ASCENDING)], sparse=True, name="idx_incident_id"),
+        IndexModel([("org_id", ASCENDING), ("model_source", ASCENDING), ("timestamp", DESCENDING)], name="idx_org_model_ts"),
+        IndexModel([("idempotency_key", ASCENDING)], sparse=True, unique=True, name="idx_idempotency"),
     ])
 
     # events (incidents)
@@ -78,6 +83,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("severity", ASCENDING)]),
         IndexModel([("org_id", ASCENDING), ("camera_id", ASCENDING), ("status", ASCENDING), ("start_time", DESCENDING)]),
         IndexModel([("edge_incident_id", ASCENDING)], sparse=True),
+        IndexModel([("org_id", ASCENDING), ("store_id", ASCENDING), ("status", ASCENDING), ("start_time", DESCENDING)], name="idx_org_store_status_ts"),
     ])
 
     # clips
@@ -192,4 +198,18 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("jti", ASCENDING)]),
         IndexModel([("user_id", ASCENDING)]),
         IndexModel([("expires_at", ASCENDING)], expireAfterSeconds=0),
+    ])
+
+    # organizations
+    await db.organizations.create_indexes([
+        IndexModel([("id", ASCENDING)], unique=True),
+        IndexModel([("slug", ASCENDING)], unique=True),
+        IndexModel([("is_active", ASCENDING)]),
+    ])
+
+    # password_reset_tokens
+    await db.password_reset_tokens.create_indexes([
+        IndexModel([("token", ASCENDING)], unique=True),
+        IndexModel([("user_id", ASCENDING)]),
+        IndexModel([("expires_at", ASCENDING)], expireAfterSeconds=0, name="ttl_expires"),
     ])

@@ -6,6 +6,7 @@ Falls back to in-memory if Redis unavailable.
 """
 
 import logging
+import re
 import time
 from collections import defaultdict
 
@@ -64,7 +65,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 limit, window = lim, win
                 break
 
-        key = f"rl:{client_ip}:{path.split('/')[4] if len(path.split('/')) > 4 else 'default'}"
+        # Normalize path: replace UUID-like segments with {id}
+        normalized = re.sub(r'/[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}', '/{id}', path)
+        # Also normalize MongoDB ObjectId-like segments
+        normalized = re.sub(r'/[0-9a-f]{24}', '/{id}', normalized)
+        key = f"rl:{client_ip}:{request.method}:{normalized}"
 
         # Try Redis first (shared across all workers)
         r = _get_redis()
