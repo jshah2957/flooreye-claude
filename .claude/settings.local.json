@@ -120,7 +120,11 @@
       "Bash(cp /c/Users/jshah/.cloudflared/cert.pem /c/Users/jshah/flooreye/.cloudflared/cert.pem)",
       "Bash(cp /c/Users/jshah/.cloudflared/98e5f448-d1ac-47c7-9696-d9227f70e40c.json /c/Users/jshah/flooreye/.cloudflared/credentials.json)",
       "Bash(cloudflared tunnel:*)",
-      "Bash(python3 -c \"import sys,json; print\\(json.load\\(sys.stdin\\)[''''status'''']\\)\")"
+      "Bash(python3 -c \"import sys,json; print\\(json.load\\(sys.stdin\\)[''''status'''']\\)\")",
+      "WebFetch(domain:store1.puddlewatch.com)",
+      "WebFetch(domain:go2rtc.org)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(/c/Users/jshah/flooreye/PROGRESS.md:*)"
     ]
   }
 }
