@@ -1,0 +1,11 @@
+# go2rtc configuration — auto-managed by edge agent
+# Streams are added/removed when cameras are registered
+# DO NOT edit manually — changes will be overwritten
+
+api:
+  listen: ":1984"
+
+rtsp:
+  listen: ":8554"
+
+streams: {}

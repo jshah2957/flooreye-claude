@@ -1,0 +1,8 @@
+tunnel: 98e5f448-d1ac-47c7-9696-d9227f70e40c
+credentials-file: /etc/cloudflared/credentials.json
+origincert: /etc/cloudflared/cert.pem
+
+ingress:
+  - hostname: app.puddlewatch.com
+    service: http://web:80
+  - service: http_status:404

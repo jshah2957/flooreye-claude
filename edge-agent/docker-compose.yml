@@ -66,6 +66,29 @@ services:
           memory: 4G
           cpus: '4'
 
+  # ── go2rtc (real-time RTSP → MSE/WebRTC re-streaming) ────────
+  go2rtc:
+    image: alexxit/go2rtc
+    container_name: flooreye-go2rtc
+    restart: unless-stopped
+    volumes:
+      - ./data/config/go2rtc.yaml:/config/go2rtc.yaml
+    ports:
+      - "${GO2RTC_PORT:-1984}:1984"
+    networks:
+      - flooreye-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:1984/api"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: ${GO2RTC_MEMORY_LIMIT:-512M}
+          cpus: '1'
+
   # ── Cloudflare Tunnel (secure ingress) ───────────────────────
   cloudflared:
     image: cloudflare/cloudflared:latest

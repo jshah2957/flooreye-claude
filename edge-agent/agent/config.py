@@ -7,7 +7,7 @@ class EdgeConfig:
     """All edge agent settings loaded from environment."""
 
     # Identity
-    AGENT_VERSION: str = os.getenv("AGENT_VERSION", "3.0.0")
+    AGENT_VERSION: str = os.getenv("AGENT_VERSION", "4.4.0")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "https://app.puddlewatch.com")
     EDGE_TOKEN: str = os.getenv("EDGE_TOKEN", "")
     AGENT_ID: str = os.getenv("AGENT_ID", "")
@@ -163,6 +163,13 @@ class EdgeConfig:
     CLIP_RECORDING_FPS: int = int(os.getenv("CLIP_RECORDING_FPS", "2"))
     CLIP_THUMBNAIL_WIDTH: int = int(os.getenv("CLIP_THUMBNAIL_WIDTH", "280"))
     CLIP_THUMBNAIL_HEIGHT: int = int(os.getenv("CLIP_THUMBNAIL_HEIGHT", "175"))
+    CLIP_CODEC: str = os.getenv("CLIP_CODEC", "MJPG")
+    CLIP_FORMAT: str = os.getenv("CLIP_FORMAT", "avi")
+
+    # go2rtc live streaming
+    GO2RTC_ENABLED: bool = os.getenv("GO2RTC_ENABLED", "true").lower() in ("true", "1", "yes")
+    GO2RTC_API_URL: str = os.getenv("GO2RTC_API_URL", "http://go2rtc:1984")
+    GO2RTC_CONFIG_PATH: str = os.getenv("GO2RTC_CONFIG_PATH", "/data/config/go2rtc.yaml")
 
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")

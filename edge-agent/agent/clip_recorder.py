@@ -39,7 +39,8 @@ class ClipRecorder:
         cam_dir = os.path.join(self.clips_dir, camera_name, date_str)
         os.makedirs(cam_dir, exist_ok=True)
 
-        filename = f"{time_str}_{duration}s.avi"
+        clip_ext = config.CLIP_FORMAT if hasattr(config, 'CLIP_FORMAT') else "avi"
+        filename = f"{time_str}_{duration}s.{clip_ext}"
         filepath = os.path.join(cam_dir, filename)
         thumb_path = os.path.join(cam_dir, f"{time_str}_{duration}s_thumb.jpg")
 
@@ -83,7 +84,8 @@ class ClipRecorder:
 
                 if writer is None:
                     h, w = frame.shape[:2]
-                    fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+                    codec = config.CLIP_CODEC if hasattr(config, 'CLIP_CODEC') else "MJPG"
+                    fourcc = cv2.VideoWriter_fourcc(*codec)
                     writer = cv2.VideoWriter(filepath, fourcc, fps, (w, h))
                     # Save thumbnail (first frame)
                     thumb = cv2.resize(frame, (config.CLIP_THUMBNAIL_WIDTH, config.CLIP_THUMBNAIL_HEIGHT))

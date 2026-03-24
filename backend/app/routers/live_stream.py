@@ -7,6 +7,7 @@ WebSocket streams frames through Cloudflare Tunnel to the dashboard.
 import asyncio
 import base64
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 
@@ -34,7 +35,8 @@ async def _capture_single_frame(stream_url: str) -> str | None:
         cap.release()
         if not ret or frame is None:
             return None
-        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        jpeg_quality = int(os.getenv("CAPTURE_JPEG_QUALITY", "85"))
+        _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
         return base64.b64encode(buf).decode("utf-8")
     return await asyncio.to_thread(_blocking)
 
@@ -144,21 +146,29 @@ async def start_recording(
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
+    # Use clip service for actual recording
+    from app.services.clip_service import start_cloud_recording
+    clip = await start_cloud_recording(
+        db, camera_id, org_id, duration, current_user["id"]
+    )
+
+    # Also create a recordings doc for backward compat
     rec_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     await db.recordings.insert_one({
         "id": rec_id,
         "camera_id": camera_id,
-        "org_id": current_user.get("org_id"),
+        "org_id": org_id,
         "store_id": camera.get("store_id"),
         "status": "recording",
         "duration_requested": duration,
         "started_at": now,
         "stopped_at": None,
         "file_path": None,
+        "clip_id": clip["id"],
     })
 
-    return {"data": {"rec_id": rec_id, "camera_id": camera_id, "status": "recording"}}
+    return {"data": {"rec_id": rec_id, "clip_id": clip["id"], "camera_id": camera_id, "status": "recording"}}
 
 
 @router.post("/record/stop/{rec_id}")

@@ -89,3 +89,40 @@ class CameraManager:
                 cloud_id = await self.register_camera(cam)
                 if cloud_id:
                     self.local_config.update_camera(cam["id"], cloud_camera_id=cloud_id)
+        # Sync go2rtc streams after all cameras registered
+        await self.sync_go2rtc_streams()
+
+    async def sync_go2rtc_streams(self):
+        """Update go2rtc config with all camera RTSP URLs."""
+        if not config.GO2RTC_ENABLED:
+            return
+        cameras = self.local_config.list_cameras()
+        if not cameras:
+            return
+        try:
+            import yaml
+            streams = {}
+            for cam in cameras:
+                stream_id = cam.get("cloud_camera_id") or cam["id"]
+                url = cam.get("url", "")
+                if url:
+                    streams[stream_id] = url
+            go2rtc_config = {
+                "api": {"listen": ":1984"},
+                "rtsp": {"listen": ":8554"},
+                "streams": streams,
+            }
+            config_path = config.GO2RTC_CONFIG_PATH
+            with open(config_path, "w") as f:
+                yaml.dump(go2rtc_config, f, default_flow_style=False)
+            log.info("go2rtc config updated: %d streams", len(streams))
+            # Notify go2rtc to reload (restart streams)
+            try:
+                async with httpx.AsyncClient(timeout=5) as client:
+                    await client.post(f"{config.GO2RTC_API_URL}/api/restart")
+            except Exception:
+                log.debug("go2rtc restart signal failed (may not be running yet)")
+        except ImportError:
+            log.warning("PyYAML not installed — go2rtc config sync disabled")
+        except Exception as e:
+            log.warning("go2rtc config sync failed: %s", e)
