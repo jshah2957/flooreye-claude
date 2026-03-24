@@ -1057,3 +1057,33 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 ## 31 sessions | 150+ tasks | 50+ fixes this session
 ## Tests: 200+ | All services healthy | 0 bugs
 ## ═══════════════════════════════════════════════════════
+
+---
+
+## Session 32 — Live Streaming + Clips + UI Fixes + Dataset Plan
+### Date: 2026-03-24
+### Goal: Real-time streaming, clip system, thumbnail fixes, dataset planning
+
+### Tasks Completed
+- Task 1: go2rtc integration on edge (docker-compose, camera_manager auto-sync)
+- Task 2: LiveStreamPlayer component (MSE iframe + polling fallback)
+- Task 3: useLiveFrame hook implemented (was // TODO)
+- Task 4: Cloud clip recording via clip_service.py (cv2 → S3 → presigned URLs)
+- Task 5: Frame extraction from clips (S3 download → cv2 → extract → S3 upload)
+- Task 6: ClipsPage complete rewrite (video player, download, extract, thumbnails)
+- Task 7: GZip response compression (detection/history: -80%)
+- Task 8: Mobile camera frame routes through edge proxy
+- Task 9: Presigned URLs use public S3 endpoint (MinIO port exposed, thumbnails visible)
+- Task 10: 6 UI fixes (class deletion by name, blank name validation, org_query, stale time, refresh intervals)
+- Task 11: Data transfer research report (all flows mapped)
+- Task 12: Dataset system complete research (16 issues found)
+- Task 13: Dataset system fix plan (v4.6 — folders, thumbnails, annotations, Roboflow sync)
+- Task 14: E2E test with real Dahua camera (ONNX 126ms, clip recording, frame extraction)
+
+### Files Changed: 20+ files, +2,500 lines
+### Tests: 65+ passed (some blocked by rate limiter, need browser verification)
+### GitHub: v4.5.0 tagged, all commits pushed
+
+### Next Session Plan
+- Implement Dataset System rewrite (docs/DATASET_SYSTEM_FIX_PLAN.md)
+- 6 sessions: folders CRUD, annotations, frontend rewrite, auto-collection, Roboflow sync, testing
