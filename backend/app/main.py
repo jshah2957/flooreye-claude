@@ -105,6 +105,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # GZip compression for responses (lossless — no quality impact on frames)
+    from starlette.middleware.gzip import GZipMiddleware
+    application.add_middleware(GZipMiddleware, minimum_size=1000)
+
     # Rate limiting
     from app.middleware.rate_limiter import RateLimitMiddleware
     application.add_middleware(RateLimitMiddleware)

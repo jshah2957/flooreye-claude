@@ -6,6 +6,7 @@ Optimized for mobile data efficiency with aggregation pipelines.
 import asyncio
 import base64
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 import cv2
@@ -136,32 +137,64 @@ async def get_store_status(
 
 
 async def get_camera_frame(db: AsyncIOMotorDatabase, camera_id: str, org_id: str) -> dict:
-    """Get latest live frame, compressed for mobile."""
+    """Get latest live frame, compressed for mobile.
+
+    For edge cameras: proxies through the edge agent (correct architecture).
+    For cloud cameras: captures directly from stream URL.
+    """
     camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
-    if camera.get("stream_url_encrypted"):
+    frame_b64 = None
+
+    # Try edge proxy first for edge-managed cameras
+    if camera.get("edge_agent_id"):
         try:
-            stream_url = decrypt_string(camera["stream_url_encrypted"])
+            agent = await db.edge_agents.find_one({"id": camera["edge_agent_id"]})
+            if agent:
+                import httpx
+                tunnel_url = agent.get("tunnel_url") or agent.get("direct_url")
+                if tunnel_url:
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        resp = await client.get(
+                            f"{tunnel_url}/api/stream/{camera_id}/frame",
+                            headers={"X-Edge-Api-Key": agent.get("edge_api_key", "")},
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            frame_b64 = data.get("frame_base64") or data.get("base64")
         except Exception:
+            pass  # Fall through to direct capture
+
+    # Fallback: direct RTSP capture (for cloud cameras or if edge proxy fails)
+    if not frame_b64:
+        if camera.get("stream_url_encrypted"):
+            try:
+                stream_url = decrypt_string(camera["stream_url_encrypted"])
+            except Exception:
+                stream_url = camera.get("stream_url", "")
+        else:
             stream_url = camera.get("stream_url", "")
-    else:
-        stream_url = camera.get("stream_url", "")
-    cap = cv2.VideoCapture(stream_url)
-    if not cap.isOpened():
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot connect to camera")
 
-    ret, frame = cap.read()
-    cap.release()
+        if stream_url:
+            import asyncio
+            def _capture():
+                cap = cv2.VideoCapture(stream_url)
+                if not cap.isOpened():
+                    return None
+                ret, frame = cap.read()
+                cap.release()
+                if not ret or frame is None:
+                    return None
+                mobile_quality = int(os.getenv("MOBILE_JPEG_QUALITY", "60"))
+                _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, mobile_quality])
+                return base64.b64encode(buffer).decode("utf-8")
+            frame_b64 = await asyncio.to_thread(_capture)
 
-    if not ret or frame is None:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to capture frame")
+    if not frame_b64:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Cannot capture frame from camera")
 
-    _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
-    frame_b64 = base64.b64encode(buffer).decode("utf-8")
-
-    # B1 fix: return frame_base64 (not base64)
     return {
         "camera_id": camera_id,
         "frame_base64": frame_b64,
