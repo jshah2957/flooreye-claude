@@ -332,15 +332,18 @@ async def save_frames_to_dataset(
             "camera_id": clip.get("camera_id", ""),
             "store_id": clip.get("store_id", ""),
             "frame_path": s3_path,
-            "thumbnail_path": s3_path,  # Same as frame for extracted frames
-            "source": "clip_extraction",
-            "source_clip_id": clip_id,
-            "split": split,
+            "thumbnail_path": s3_path,
             "label_class": None,
-            "label_source": None,
+            "label_source": "clip_extraction",
             "floor_type": camera.get("floor_type", "tile") if camera else "tile",
+            "split": split,
+            "folder_id": None,
+            "teacher_logits": None,
+            "teacher_confidence": None,
+            "annotations_id": None,
+            "roboflow_sync_status": "not_sent",
+            "included": True,
             "created_at": now,
-            "created_by": user_id,
         }
         await db.dataset_frames.insert_one(doc)
         count += 1

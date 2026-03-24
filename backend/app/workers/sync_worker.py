@@ -85,9 +85,22 @@ async def _async_sync(org_id: str, limit: int) -> dict:
     async with httpx.AsyncClient(timeout=float(settings.ROBOFLOW_API_TIMEOUT)) as client:
         for frame in frames:
             try:
-                frame_b64 = frame.get("frame_base64") or frame.get("s3_path")
-                if not frame_b64:
-                    logger.warning("Frame %s has no image data, skipping", frame["id"])
+                frame_path = frame.get("frame_path")
+                if not frame_path:
+                    logger.warning("Frame %s has no frame_path, skipping", frame["id"])
+                    await db.dataset_frames.update_one(
+                        {"id": frame["id"]},
+                        {"$set": {"roboflow_sync_status": "error"}},
+                    )
+                    errors += 1
+                    continue
+
+                # Download frame from S3
+                try:
+                    from app.utils.s3_utils import download_from_s3
+                    frame_bytes = await download_from_s3(frame_path)
+                except Exception as dl_err:
+                    logger.error("Failed to download frame %s from S3: %s", frame["id"], dl_err)
                     await db.dataset_frames.update_one(
                         {"id": frame["id"]},
                         {"$set": {"roboflow_sync_status": "error"}},
@@ -96,6 +109,8 @@ async def _async_sync(org_id: str, limit: int) -> dict:
                     continue
 
                 # Upload to Roboflow
+                import base64 as _b64
+                frame_b64 = _b64.b64encode(frame_bytes).decode("utf-8")
                 resp = await client.post(
                     upload_url,
                     params={
@@ -103,7 +118,7 @@ async def _async_sync(org_id: str, limit: int) -> dict:
                         "name": f"{frame['id']}.jpg",
                         "split": frame.get("split", "train"),
                     },
-                    content=frame_b64.encode("utf-8") if isinstance(frame_b64, str) else frame_b64,
+                    content=frame_b64,
                     headers={"Content-Type": "text/plain"},
                 )
 

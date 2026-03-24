@@ -103,6 +103,16 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("split", ASCENDING)]),
         IndexModel([("included", ASCENDING)]),
         IndexModel([("label_source", ASCENDING)]),
+        IndexModel([("folder_id", ASCENDING)]),
+        IndexModel([("roboflow_sync_status", ASCENDING)]),
+    ])
+
+    # dataset_folders
+    await db.dataset_folders.create_indexes([
+        IndexModel([("id", ASCENDING)], unique=True),
+        IndexModel([("org_id", ASCENDING)]),
+        IndexModel([("parent_folder_id", ASCENDING)]),
+        IndexModel([("name", ASCENDING)]),
     ])
 
     # annotations
