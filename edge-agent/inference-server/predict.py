@@ -230,8 +230,8 @@ def postprocess_custom_export(output: np.ndarray, conf_thresh: float, session=No
     # DETR style: [1, N, 5-7] where last dim is small
     if len(shape) == 3 and 5 <= shape[2] <= 7:
         return _postprocess_detr(output, conf_thresh)
-    # YOLOv8-based custom export: [1, 4+C, N] where second dim > third dim
-    if len(shape) == 3 and shape[1] > shape[2]:
+    # YOLOv8-based custom export: [1, 4+C, N] where channels (dim1) < detections (dim2)
+    if len(shape) == 3 and shape[1] < shape[2]:
         return postprocess_yolov8(output, conf_thresh)
     # Fallback: try YOLOv8 postprocessing
     return postprocess_yolov8(output, conf_thresh)

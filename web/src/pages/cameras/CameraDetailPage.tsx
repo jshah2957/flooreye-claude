@@ -751,6 +751,30 @@ export default function CameraDetailPage() {
             {pushStatus === "unreachable" && (
               <p className="mt-2 text-xs font-medium text-amber-600">Edge unreachable -- retry later</p>
             )}
+
+            {/* Run Detection button — for cloud and hybrid cameras */}
+            {camera.inference_mode !== "edge" && (
+              <button
+                onClick={() => {
+                  api.post(`/detection/run/${camera.id}`)
+                    .then((res) => {
+                      const det = res.data;
+                      queryClient.invalidateQueries({ queryKey: ["camera", id] });
+                      success(
+                        det.is_wet
+                          ? `Wet floor detected! Confidence: ${(det.confidence * 100).toFixed(0)}%`
+                          : "Detection complete — no wet floor detected"
+                      );
+                    })
+                    .catch((err) => {
+                      showError(err?.response?.data?.detail || "Detection failed");
+                    });
+                }}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#0D9488] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0F766E]"
+              >
+                Run Detection
+              </button>
+            )}
           </div>
 
           {/* Config Sync Status */}

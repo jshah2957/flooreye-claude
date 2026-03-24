@@ -366,9 +366,9 @@ export default function DetectionHistoryPage() {
               <div onClick={() => setSelectedDetection(d)}>
                 {/* Thumbnail */}
                 <div className="relative aspect-video bg-gray-100">
-                  {d.frame_base64 ? (
+                  {(d.annotated_frame_url || d.frame_url || d.frame_base64) ? (
                     <img
-                      src={`data:image/jpeg;base64,${d.frame_base64}`}
+                      src={d.annotated_frame_url || d.frame_url || `data:image/jpeg;base64,${d.frame_base64}`}
                       alt="Detection"
                       className="h-full w-full object-cover"
                     />
@@ -472,8 +472,8 @@ export default function DetectionHistoryPage() {
                     </button>
                   </td>
                   <td className="px-3 py-3">
-                    {d.frame_base64 ? (
-                      <img src={`data:image/jpeg;base64,${d.frame_base64}`} className="h-[50px] w-[80px] rounded-lg object-cover" alt="" />
+                    {(d.annotated_frame_url || d.frame_url || d.frame_base64) ? (
+                      <img src={d.annotated_frame_url || d.frame_url || `data:image/jpeg;base64,${d.frame_base64}`} className="h-[50px] w-[80px] rounded-lg object-cover" alt="" />
                     ) : <div className="h-[50px] w-[80px] rounded-lg bg-gray-100" />}
                   </td>
                   <td className="px-3 py-3"><StatusBadge status={d.is_wet ? "critical" : "online"} /></td>
@@ -606,8 +606,8 @@ function DetectionModal({
         <div className="grid gap-6 p-6 lg:grid-cols-5">
           {/* Frame */}
           <div className="lg:col-span-3">
-            {d.frame_base64 ? (
-              <img src={`data:image/jpeg;base64,${d.frame_base64}`} alt="Detection frame" className="w-full rounded-xl" />
+            {(d.annotated_frame_url || d.frame_url || d.frame_base64) ? (
+              <img src={d.annotated_frame_url || d.frame_url || `data:image/jpeg;base64,${d.frame_base64}`} alt="Detection frame" className="w-full rounded-xl" />
             ) : (
               <div className="flex h-[300px] items-center justify-center rounded-xl bg-gray-100 text-sm text-gray-400">No frame</div>
             )}

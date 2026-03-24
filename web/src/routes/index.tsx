@@ -25,6 +25,7 @@ import ClipsPage from "@/pages/clips/ClipsPage";
 import LogsPage from "@/pages/admin/LogsPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import RoboflowPage from "@/pages/integrations/RoboflowPage";
+import RoboflowBrowserPage from "@/pages/integrations/RoboflowBrowserPage";
 import StoragePage from "@/pages/config/StoragePage";
 import TestInferencePage from "@/pages/ml/TestInferencePage";
 import RoboflowTestPage from "@/pages/ml/RoboflowTestPage";
@@ -147,6 +148,7 @@ export default function AppRoutes() {
         <Route path="/integrations/api-manager" element={<ApiManagerPage />} />
         <Route path="/integrations/api-tester" element={<ApiTesterPage />} />
         <Route path="/integrations/roboflow" element={<RoboflowPage />} />
+        <Route path="/integrations/roboflow/browse" element={<RoboflowBrowserPage />} />
 
         {/* Edge */}
         <Route path="/edge" element={<EdgeManagementPage />} />

@@ -7,6 +7,7 @@ import logging
 import os
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from model_loader import ModelLoader
@@ -56,7 +57,7 @@ def health():
 @app.post("/infer")
 def infer(req: InferRequest):
     if not loader.is_loaded:
-        return {"error": "No model loaded"}, 503
+        return JSONResponse({"error": "No model loaded"}, status_code=503)
 
     result = run_inference(
         loader.session, req.image_base64, req.confidence,
@@ -87,7 +88,7 @@ def download_and_load(req: DownloadModelRequest):
     """Download an ONNX model from URL, verify checksum, and hot-swap it in."""
     dest_path = os.path.join(loader.models_dir, req.filename)
     if not loader.download_model(req.url, dest_path, req.checksum):
-        return {"error": "Download or checksum verification failed"}, 500
+        return JSONResponse({"error": "Download or checksum verification failed"}, status_code=500)
     success = loader.swap_model(dest_path)
     return {
         "loaded": success,
@@ -112,7 +113,7 @@ class BatchInferRequest(BaseModel):
 def infer_batch(req: BatchInferRequest):
     """Batch inference: process multiple camera frames in a single call."""
     if not loader.is_loaded:
-        return {"error": "No model loaded"}, 503
+        return JSONResponse({"error": "No model loaded"}, status_code=503)
 
     frames_data = [f.model_dump() for f in req.frames]
     results = run_batch_inference(
@@ -133,7 +134,7 @@ def infer_batch(req: BatchInferRequest):
 def model_info():
     """Return full metadata about the currently loaded model."""
     if not loader.is_loaded:
-        return {"error": "No model loaded"}, 503
+        return JSONResponse({"error": "No model loaded"}, status_code=503)
     return {
         "version": loader.model_version,
         "model_type": loader.model_type,

@@ -608,9 +608,9 @@ export default function DashboardPage() {
                       onClick={() => setDetailDetection(d)}
                       className="min-w-[140px] flex-shrink-0 rounded-lg overflow-hidden border border-[#E7E5E0] cursor-pointer hover:ring-2 ring-[#0D9488] transition-all"
                     >
-                      {d.frame_base64 ? (
+                      {(d.annotated_frame_url || d.frame_url || d.frame_base64) ? (
                         <img
-                          src={`data:image/jpeg;base64,${d.frame_base64}`}
+                          src={d.annotated_frame_url || d.frame_url || `data:image/jpeg;base64,${d.frame_base64}`}
                           alt="Detection"
                           className="h-20 w-full object-cover bg-gray-100"
                         />
@@ -790,9 +790,9 @@ export default function DashboardPage() {
                 <X size={18} />
               </button>
             </div>
-            {detailDetection.frame_base64 && (
+            {(detailDetection.annotated_frame_url || detailDetection.frame_url || detailDetection.frame_base64) && (
               <img
-                src={`data:image/jpeg;base64,${detailDetection.frame_base64}`}
+                src={detailDetection.annotated_frame_url || detailDetection.frame_url || `data:image/jpeg;base64,${detailDetection.frame_base64}`}
                 alt="Detection"
                 className="mb-4 w-full rounded-lg"
               />

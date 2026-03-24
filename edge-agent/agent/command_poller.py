@@ -38,7 +38,7 @@ class CommandPoller:
     async def _execute(self, client: httpx.AsyncClient, cmd: dict):
         """Execute a single command and ACK it."""
         cmd_id = cmd.get("id", "")
-        cmd_type = cmd.get("type", "")
+        cmd_type = cmd.get("command_type") or cmd.get("type", "")
         payload = cmd.get("payload", {})
 
         log.info(f"Executing command: {cmd_type} (id={cmd_id})")
@@ -67,12 +67,27 @@ class CommandPoller:
                     log.warning("deploy_model missing download_url in payload")
                     result = {"error": "No download_url provided"}
             elif cmd_type == "push_config":
+                _SAFE_CONFIG_FIELDS = {
+                    "CAPTURE_FPS", "CONFIDENCE_THRESHOLD", "MIN_DETECTION_AREA",
+                    "TEMPORAL_K", "TEMPORAL_M", "DRY_REF_DELTA_THRESHOLD",
+                    "COOLDOWN_AFTER_ALERT_SECONDS", "UPLOAD_INTERVAL_SECONDS",
+                    "MAX_UPLOADS_PER_MIN", "DETECTION_ENABLED", "ENABLE_PREVIEW",
+                    "RESOLUTION_WIDTH", "RESOLUTION_HEIGHT", "INFERENCE_MODE",
+                    "UPLOAD_BOTH_FRAMES", "SHARE_CLEAN_FRAMES", "AUTO_CLIP_ON_DETECTION",
+                    "AUTO_CLIP_DURATION_SECONDS", "FRAME_SAMPLE_RATE",
+                }
+                applied = []
+                rejected = []
                 for key, value in payload.items():
                     upper_key = key.upper()
-                    if hasattr(config, upper_key):
+                    if upper_key in _SAFE_CONFIG_FIELDS and hasattr(config, upper_key):
                         setattr(config, upper_key, value)
+                        applied.append(upper_key)
                         log.info(f"Config updated: {upper_key} = {value}")
-                result = {"applied": True, "keys": list(payload.keys())}
+                    else:
+                        rejected.append(upper_key)
+                        log.warning("push_config rejected unsafe/unknown key: %s", upper_key)
+                result = {"applied": applied, "rejected": rejected}
             elif cmd_type == "update_classes":
                 classes = payload.get("classes", [])
                 if classes:
@@ -109,8 +124,11 @@ class CommandPoller:
                 result = {"updated": True, "rules_count": len(rules)}
                 log.info("Notification rules updated: %d rules stored", len(rules))
             elif cmd_type == "restart_agent":
-                log.warning("Restart command received — agent will restart")
+                log.warning("Restart command received — agent will restart in 2 seconds")
                 result = {"restarting": True}
+                # ACK happens below, then schedule exit — Docker restart policy restarts the container
+                import os as _os
+                asyncio.get_event_loop().call_later(2.0, lambda: _os._exit(1))
             else:
                 log.warning(f"Unknown command type: {cmd_type}")
                 result = {"error": f"Unknown command: {cmd_type}"}

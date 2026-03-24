@@ -176,6 +176,7 @@ async def create_or_update_incident(
                 set_fields.get("max_confidence", existing.get("max_confidence", 0)),
                 set_fields.get("max_wet_area_percent", existing.get("max_wet_area_percent", 0)),
                 new_count,
+                settings=settings,
             )
             # Apply per-class severity override if set
             severity_override = (
@@ -210,7 +211,7 @@ async def create_or_update_incident(
     # Create new incident
     confidence = detection.get("confidence", 0)
     wet_area = detection.get("wet_area_percent", 0)
-    severity = _classify_incident_severity(confidence, wet_area, 1)
+    severity = _classify_incident_severity(confidence, wet_area, 1, settings=settings)
 
     # Apply per-class severity override if set
     severity_override = (
@@ -440,6 +441,7 @@ async def get_incident(db: AsyncIOMotorDatabase, event_id: str, org_id: str) -> 
     incident = await db.events.find_one({**org_query(org_id), "id": event_id})
     if not incident:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
+    incident.pop("_id", None)
     return incident
 
 
@@ -471,6 +473,8 @@ async def list_incidents(
         .limit(limit)
     )
     incidents = await cursor.to_list(length=limit)
+    for inc in incidents:
+        inc.pop("_id", None)
     return incidents, total
 
 

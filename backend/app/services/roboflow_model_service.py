@@ -17,6 +17,203 @@ from app.core.config import settings
 
 log = logging.getLogger(__name__)
 
+ROBOFLOW_API_BASE = "https://api.roboflow.com"
+
+
+async def _get_roboflow_credentials(db, org_id: str) -> tuple[str, str]:
+    """Get Roboflow API key and workspace from env vars or integration config.
+
+    Returns (api_key, workspace). Raises HTTPException if not configured.
+    """
+    api_key = settings.ROBOFLOW_API_KEY
+    workspace = settings.ROBOFLOW_WORKSPACE if hasattr(settings, "ROBOFLOW_WORKSPACE") else ""
+
+    if not api_key:
+        integration = await db.integration_configs.find_one(
+            {"org_id": org_id, "service": "roboflow"}
+        )
+        if integration and integration.get("config_encrypted"):
+            from app.core.encryption import decrypt_config
+            try:
+                rf_config = decrypt_config(integration["config_encrypted"])
+                api_key = rf_config.get("api_key", "")
+                workspace = rf_config.get("workspace", workspace)
+            except Exception:
+                pass
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Roboflow API key not configured — set env var or integration config",
+        )
+
+    # If workspace not known, discover it from the API key
+    if not workspace:
+        async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
+            resp = await client.get(
+                f"{ROBOFLOW_API_BASE}/",
+                params={"api_key": api_key},
+            )
+            if resp.status_code == 200:
+                workspace = resp.json().get("workspace", "")
+
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not determine Roboflow workspace from API key",
+        )
+
+    return api_key, workspace
+
+
+async def fetch_workspace_projects(db, org_id: str) -> dict:
+    """Fetch all projects in the Roboflow workspace.
+
+    Returns workspace info + project list with metadata.
+    """
+    api_key, workspace = await _get_roboflow_credentials(db, org_id)
+
+    async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
+        resp = await client.get(
+            f"{ROBOFLOW_API_BASE}/{workspace}",
+            params={"api_key": api_key},
+        )
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Roboflow API error: {resp.status_code}",
+            )
+        data = resp.json()
+
+    projects = []
+    for p in data.get("projects", []):
+        projects.append({
+            "id": p.get("id", "").split("/")[-1] if "/" in p.get("id", "") else p.get("id", ""),
+            "full_id": p.get("id", ""),
+            "name": p.get("name", ""),
+            "type": p.get("type", ""),
+            "images": p.get("images", 0),
+            "classes": p.get("classes", {}),
+            "class_count": len(p.get("classes", {})),
+            "versions": p.get("versions", 0),
+            "created": p.get("created", ""),
+            "updated": p.get("updated", ""),
+        })
+
+    return {
+        "workspace": workspace,
+        "project_count": len(projects),
+        "projects": projects,
+    }
+
+
+async def fetch_project_versions(db, org_id: str, project_id: str) -> dict:
+    """Fetch all versions of a Roboflow project with training metrics.
+
+    Returns project info + version list with model metrics and export formats.
+    """
+    api_key, workspace = await _get_roboflow_credentials(db, org_id)
+
+    async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_DEFAULT) as client:
+        resp = await client.get(
+            f"{ROBOFLOW_API_BASE}/{workspace}/{project_id}",
+            params={"api_key": api_key},
+        )
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Roboflow API error for project '{project_id}': {resp.status_code}",
+            )
+        data = resp.json()
+
+    versions = []
+    for v in data.get("versions", []):
+        version_num = v.get("id", "").split("/")[-1] if "/" in v.get("id", "") else v.get("id", "")
+        model_info = v.get("model", {})
+        exports = v.get("exports", [])
+        export_names = [e if isinstance(e, str) else e.get("name", "") for e in exports]
+        has_onnx = "onnx" in export_names
+
+        versions.append({
+            "version": int(version_num) if str(version_num).isdigit() else version_num,
+            "id": v.get("id", ""),
+            "images": v.get("images", 0),
+            "splits": v.get("splits", {}),
+            "model": {
+                "map": model_info.get("map"),
+                "precision": model_info.get("precision"),
+                "recall": model_info.get("recall"),
+                "type": v.get("modelType", model_info.get("type", "")),
+                "status": model_info.get("status", ""),
+            } if model_info else None,
+            "exports": export_names,
+            "has_onnx": has_onnx,
+            "created": v.get("created", ""),
+        })
+
+    # Sort by version number descending (latest first)
+    versions.sort(key=lambda x: x.get("version", 0) if isinstance(x.get("version"), int) else 0, reverse=True)
+
+    return {
+        "project_id": project_id,
+        "project_name": data.get("name", project_id),
+        "type": data.get("type", ""),
+        "classes": data.get("classes", {}),
+        "version_count": len(versions),
+        "versions": versions,
+    }
+
+
+async def select_and_deploy_model(
+    db, org_id: str, user_id: str, project_id: str, version: int,
+) -> dict:
+    """Select a specific Roboflow model version: pull ONNX, register, promote, deploy.
+
+    This is the one-click "Use This Model" flow:
+    1. Pull ONNX model from Roboflow
+    2. Pull classes from the project
+    3. Promote model to production (retires old)
+    4. Auto-deploy to all edge agents
+    5. Push classes to all edge agents
+
+    Returns summary of what was done.
+    """
+    # Step 1: Pull model
+    model_version = await pull_model_from_roboflow(
+        db, org_id, user_id, project_id=project_id, version=version,
+    )
+    model_id = model_version["id"]
+
+    # Step 2: Pull classes
+    classes_result = await pull_classes_from_roboflow(
+        db, org_id, user_id, project_id=project_id,
+    )
+
+    # Step 3: Promote to production (this auto-deploys to all edge agents)
+    from app.services.model_service import promote_model
+    promoted = await promote_model(db, model_id, org_id, "production", user_id)
+
+    # Step 4: Push classes to all edge agents
+    agents_pushed = 0
+    try:
+        from app.services.edge_service import push_classes_to_edge
+        commands = await push_classes_to_edge(db, org_id, user_id=user_id)
+        agents_pushed = len(commands)
+    except Exception:
+        pass
+
+    return {
+        "model_version_id": model_id,
+        "version_str": model_version.get("version_str", ""),
+        "status": promoted.get("status", "production"),
+        "model_size_mb": model_version.get("model_size_mb", 0),
+        "checksum": model_version.get("checksum", ""),
+        "classes_synced": len(classes_result.get("classes", [])),
+        "deployed_to_agents": agents_pushed,
+        "project": project_id,
+        "version": version,
+    }
+
 
 async def pull_model_from_roboflow(
     db,

@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 30 (Deployment Testing) — Full deployment test completed. All 3 apps running and connected via Docker. Edge agent heartbeating to cloud. 9 deployment blockers fixed. Production checklist documented.
+Session 31 (Testing + Fixes + Features) — Massive testing session: 200+ tests across 3 runs, 50+ fixes applied, Roboflow Browser feature built, cloud detection pipeline completed, thumbnail system fixed, API testing console rebuilt. All services running, 0 application bugs. Live camera tested (store1.puddlewatch.com) with ONNX inference at 126ms.
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -67,7 +67,9 @@ Tagline: "See Every Drop. Stop Every Slip."
 - Session 29 (v3.0): Architecture diagrams (3), 7-expert design review (90 findings), pilot fixes (organizations entity, security gate, TTL indexes, settings cache, idempotency, DLQ, backup worker, password reset, store_access RBAC, security headers, Prometheus metrics), Docker hardening (networks, limits, logs, Redis persistence), performance fixes (projections, export caps, aggregation pipeline, pool sizing), security fixes (WS blacklist, edge rate limits, path traversal, Redis race condition), Playwright E2E tests (15), multi-tenancy tests (7), total 82 tests. Design health: 5.5→8.0/10
 - Session 30 (Deployment): Fixed 9 deployment blockers (dataset.py indent, validation.py missing, seed script, port mappings, Redis password, MongoDB auth, CORS, mobile URLs, ONNX model). All 3 apps running via Docker: cloud (7 services), edge (3 services connected to cloud), mobile (configured). 25 live API tests passed. Edge heartbeat verified. Users seeded. Tagged v3.0.0.
 
-## CURRENT DEPLOYMENT STATE (Session 30)
+- Session 31 (Testing + Production Readiness): 200+ tests in 3 independent runs. Fixed 50+ bugs: 6 pipeline (command_type, presigned URLs, deploy payload, OTA worker, ObjectId, tunnel), 18 edge system (push_config allowlist, hardware detect, JSONResponse, camera config ID, restart, model sort, swap rollback, config threads, _id leaks, model version ACK), 42 cloud detection gaps (ROI masking, annotated frames, inference_mode, continuous detection wiring, frame voting fix, ONNX pre-load, dynamic alert classes). New features: Roboflow Browser (browse workspace → select version → one-click deploy), camera wizard dual-mode (cloud/edge), Run Detection button, detection control history logging. Fixed API Testing Console (10 wrong paths, 14 missing categories). Added presigned URL thumbnails for all detection images. Live camera tested at store1.puddlewatch.com with ONNX inference (126ms). All services running, 0 bugs.
+
+## CURRENT DEPLOYMENT STATE (Session 31)
 - backend/.env is set to ENVIRONMENT=development FOR TESTING — MUST change back to production before real deploy
 - edge-agent/.env exists with TEST credentials — DELETE before production
 - mobile/.env exists with local IP — DELETE before production

@@ -66,6 +66,10 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     if not camera:
         return {"error": "Camera not found", "camera_id": camera_id}
 
+    # Skip edge-only cameras — they handle detection locally
+    if camera.get("inference_mode") == "edge":
+        return {"skipped": True, "reason": "edge inference mode", "camera_id": camera_id}
+
     # Decrypt stream_url (supports both encrypted and legacy plaintext)
     from app.core.encryption import decrypt_string
     if camera.get("stream_url_encrypted"):
@@ -84,6 +88,15 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
 
     if not ret or frame is None:
         return {"error": "Failed to capture frame", "camera_id": camera_id}
+
+    # Apply ROI mask if configured
+    roi = await db.rois.find_one({"camera_id": camera_id, "is_active": True})
+    if roi and roi.get("polygon_points") and camera.get("mask_outside_roi", True):
+        try:
+            from app.utils.roi_utils import apply_roi_mask
+            frame = apply_roi_mask(frame, roi["polygon_points"])
+        except Exception:
+            pass
 
     _, buffer = cv2.imencode(".jpg", frame)
     frame_base64 = base64.b64encode(buffer).decode("utf-8")
@@ -172,8 +185,27 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     }
     await db.detection_logs.insert_one(detection_doc)
 
-    # Incident creation
+    # Broadcast via WebSocket
+    try:
+        from app.routers.websockets import publish_detection
+        det_clean = {k: v for k, v in detection_doc.items() if k != "_id"}
+        for key, val in det_clean.items():
+            if isinstance(val, datetime):
+                det_clean[key] = val.isoformat()
+        await publish_detection(org_id, det_clean)
+    except Exception:
+        pass
+
+    # Incident creation + system log
     if validation.is_wet:
+        try:
+            from app.services.system_log_service import emit_system_log
+            await emit_system_log(
+                db, org_id, "info", "detection", "Wet floor detected (continuous)",
+                {"camera_id": camera_id, "confidence": summary["confidence"]},
+            )
+        except Exception:
+            pass
         incident = await create_or_update_incident(db, detection_doc)
         if incident:
             detection_doc["incident_id"] = incident["id"]

@@ -57,6 +57,8 @@ class OnnxInferenceService:
                     cls._instance._model_path = None
                     cls._instance._model_type = None
                     cls._instance._class_names: dict[int, str] = {}
+                    cls._instance._model_version_id: str | None = None
+                    cls._instance._alert_classes: set[str] = set()
         return cls._instance
 
     @property
@@ -69,12 +71,17 @@ class OnnxInferenceService:
             import onnxruntime as ort
 
             opts = ort.SessionOptions()
-            opts.intra_op_num_threads = 4
-            opts.inter_op_num_threads = 2
+            opts.intra_op_num_threads = int(os.getenv("ONNX_INTRA_THREADS", "4"))
+            opts.inter_op_num_threads = int(os.getenv("ONNX_INTER_THREADS", "2"))
             opts.execution_mode = ort.ExecutionMode.ORT_PARALLEL
 
+            # Support GPU inference if configured and available
+            providers = ["CPUExecutionProvider"]
+            if settings.ONNX_USE_GPU if hasattr(settings, "ONNX_USE_GPU") else False:
+                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+
             session = ort.InferenceSession(
-                model_path, opts, providers=["CPUExecutionProvider"]
+                model_path, opts, providers=providers
             )
 
             # Detect model type
@@ -177,6 +184,15 @@ class OnnxInferenceService:
 
         loaded = self.load_model(local_path)
         if loaded:
+            self._model_version_id = model.get("id")
+            # Load dynamic alert classes from DB
+            try:
+                alert_set = await _get_alert_classes(db)
+                if alert_set:
+                    self._alert_classes = alert_set
+                    log.info("Loaded %d alert classes from DB", len(alert_set))
+            except Exception:
+                pass
             # Sync extracted classes to DB
             try:
                 org_id = model.get("org_id", "")
@@ -215,8 +231,11 @@ class OnnxInferenceService:
 
         inference_ms = round((time.time() - t0) * 1000, 1)
 
+        # Use dynamically loaded alert classes if available, otherwise defaults
+        alert_classes = self._alert_classes if self._alert_classes else _DEFAULT_WET_CLASSES
+
         is_wet = any(
-            d.get("class_name", "").lower() in _DEFAULT_WET_CLASSES
+            d.get("class_name", "").lower() in alert_classes
             or (not d.get("class_name") and d["class_id"] == 0)
             for d in detections
         )
@@ -227,8 +246,9 @@ class OnnxInferenceService:
         for det in detections:
             bbox = det["bbox"]
             area_pct = bbox["w"] * bbox["h"] * 100  # normalized coords, so multiply by 100
+            class_name = det.get("class_name", "unknown")
             predictions.append({
-                "class_name": det.get("class_name", "unknown"),
+                "class_name": class_name,
                 "confidence": det["confidence"],
                 "area_percent": round(area_pct, 2),
                 "bbox": {
@@ -238,17 +258,18 @@ class OnnxInferenceService:
                     "h": round(bbox["h"] * INPUT_SIZE, 1),
                 },
                 "severity": self._classify_severity(det["confidence"], area_pct),
-                "should_alert": True,
+                "should_alert": class_name.lower() in alert_classes,
             })
 
         return {
             "predictions": predictions,
             "inference_time_ms": inference_ms,
             "model_source": "local_onnx",
+            "model_version_id": self._model_version_id,
             "is_wet": is_wet,
             "confidence": round(max_conf, 4),
             "wet_area_percent": round(
-                sum(p["area_percent"] for p in predictions if p["class_name"].lower() in _DEFAULT_WET_CLASSES),
+                sum(p["area_percent"] for p in predictions if p["class_name"].lower() in alert_classes),
                 2,
             ),
         }

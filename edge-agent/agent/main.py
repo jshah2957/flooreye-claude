@@ -120,18 +120,29 @@ def _load_class_overrides_for_validation() -> dict[str, dict] | None:
 async def register_with_backend(cameras: dict[str, str]) -> dict | None:
     """Register this edge agent with the backend."""
     log.info(f"Registering with backend: {config.BACKEND_URL}")
+    # Detect actual hardware
+    ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 1)
+    has_gpu = False
+    try:
+        import pynvml
+        pynvml.nvmlInit()
+        has_gpu = pynvml.nvmlDeviceGetCount() > 0
+        pynvml.nvmlShutdown()
+    except Exception:
+        pass
+
     body = {
         "store_id": config.STORE_ID,
         "org_id": config.ORG_ID,
-        "agent_version": "2.0.0",
+        "agent_version": config.AGENT_VERSION,
         "cameras": [
             {"name": n, "url": u, "current_mode": "local"}
             for n, u in cameras.items()
         ],
         "hardware": {
             "arch": platform.machine(),
-            "ram_gb": 8,
-            "has_gpu": False,
+            "ram_gb": ram_gb,
+            "has_gpu": has_gpu,
         },
     }
     async with httpx.AsyncClient() as client:
@@ -690,10 +701,11 @@ async def threaded_camera_loop(
                 _edge_incident = None
                 try:
                     import incident_manager
-                    cam_cfg = _lc.get_camera_config(cam.name) if _lc else {}
+                    inc_cam_id = cam_id if cam_local else cam.name
+                    cam_cfg = _lc.get_camera_config(inc_cam_id) if _lc else {}
                     _edge_incident = incident_manager.create_or_update_incident(
                         detection=result,
-                        camera_id=cam.name,
+                        camera_id=inc_cam_id,
                         camera_config=cam_cfg,
                     )
                     if _edge_incident:
@@ -1512,7 +1524,7 @@ async def _incident_cleanup_loop():
 
 async def main():
     log.info("=" * 60)
-    log.info("FloorEye Edge Agent v2.0.0")
+    log.info(f"FloorEye Edge Agent v{config.AGENT_VERSION}")
     log.info(f"Backend: {config.BACKEND_URL}")
     log.info(f"Agent ID: {config.AGENT_ID}")
     log.info(f"Store ID: {config.STORE_ID}")

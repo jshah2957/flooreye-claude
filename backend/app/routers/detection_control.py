@@ -230,6 +230,8 @@ async def list_classes(
     org_id = current_user.get("org_id", "")
     cursor = db.detection_classes.find({"org_id": org_id})
     classes = await cursor.to_list(length=1000)
+    for c in classes:
+        c.pop("_id", None)
     return {"data": classes}
 
 
@@ -278,6 +280,7 @@ async def create_class(
         "updated_at": now,
     }
     await db.detection_classes.insert_one(doc)
+    doc.pop("_id", None)
     return {"data": doc}
 
 
@@ -300,6 +303,7 @@ async def update_class(
     if not result:
         from fastapi import HTTPException
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+    result.pop("_id", None)
     return {"data": result}
 
 

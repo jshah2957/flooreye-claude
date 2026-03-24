@@ -59,10 +59,14 @@ const ENDPOINT_LIBRARY: EndpointCategory[] = [
     name: "Auth",
     endpoints: [
       { method: "POST", path: "/api/v1/auth/login", label: "Login" },
-      { method: "POST", path: "/api/v1/auth/register", label: "Register" },
       { method: "GET", path: "/api/v1/auth/me", label: "Get Current User" },
+      { method: "PUT", path: "/api/v1/auth/me", label: "Update Profile" },
       { method: "POST", path: "/api/v1/auth/refresh", label: "Refresh Token" },
       { method: "POST", path: "/api/v1/auth/logout", label: "Logout" },
+      { method: "POST", path: "/api/v1/auth/register", label: "Register User" },
+      { method: "GET", path: "/api/v1/auth/users", label: "List Users" },
+      { method: "POST", path: "/api/v1/auth/forgot-password", label: "Forgot Password" },
+      { method: "POST", path: "/api/v1/auth/reset-password", label: "Reset Password" },
     ],
   },
   {
@@ -73,6 +77,7 @@ const ENDPOINT_LIBRARY: EndpointCategory[] = [
       { method: "GET", path: "/api/v1/stores/{id}", label: "Get Store" },
       { method: "PUT", path: "/api/v1/stores/{id}", label: "Update Store" },
       { method: "DELETE", path: "/api/v1/stores/{id}", label: "Delete Store" },
+      { method: "GET", path: "/api/v1/stores/stats", label: "Dashboard Stats" },
     ],
   },
   {
@@ -83,14 +88,25 @@ const ENDPOINT_LIBRARY: EndpointCategory[] = [
       { method: "GET", path: "/api/v1/cameras/{id}", label: "Get Camera" },
       { method: "PUT", path: "/api/v1/cameras/{id}", label: "Update Camera" },
       { method: "DELETE", path: "/api/v1/cameras/{id}", label: "Delete Camera" },
+      { method: "POST", path: "/api/v1/cameras/{id}/test", label: "Test Connection" },
+      { method: "POST", path: "/api/v1/cameras/{id}/roi", label: "Set ROI" },
+      { method: "GET", path: "/api/v1/cameras/{id}/roi", label: "Get ROI" },
+      { method: "POST", path: "/api/v1/cameras/{id}/dry-reference", label: "Capture Dry Reference" },
+      { method: "PUT", path: "/api/v1/cameras/{id}/inference-mode", label: "Set Inference Mode" },
     ],
   },
   {
     name: "Detection",
     endpoints: [
-      { method: "POST", path: "/api/v1/detection/infer", label: "Run Inference" },
-      { method: "GET", path: "/api/v1/detection/logs", label: "List Logs" },
-      { method: "GET", path: "/api/v1/detection/logs/{id}", label: "Get Log" },
+      { method: "POST", path: "/api/v1/detection/run/{camera_id}", label: "Run Detection" },
+      { method: "GET", path: "/api/v1/detection/history", label: "Detection History" },
+      { method: "GET", path: "/api/v1/detection/history/{id}", label: "Get Detection" },
+      { method: "POST", path: "/api/v1/detection/history/{id}/flag", label: "Flag Detection" },
+      { method: "GET", path: "/api/v1/detection/flagged", label: "List Flagged" },
+      { method: "GET", path: "/api/v1/detection/flagged/export", label: "Export Flagged" },
+      { method: "GET", path: "/api/v1/continuous/status", label: "Continuous Status" },
+      { method: "POST", path: "/api/v1/continuous/start", label: "Start Continuous" },
+      { method: "POST", path: "/api/v1/continuous/stop", label: "Stop Continuous" },
     ],
   },
   {
@@ -98,33 +114,76 @@ const ENDPOINT_LIBRARY: EndpointCategory[] = [
     endpoints: [
       { method: "GET", path: "/api/v1/events", label: "List Events" },
       { method: "GET", path: "/api/v1/events/{id}", label: "Get Event" },
-      { method: "PUT", path: "/api/v1/events/{id}", label: "Update Event" },
+      { method: "PUT", path: "/api/v1/events/{id}/acknowledge", label: "Acknowledge" },
+      { method: "PUT", path: "/api/v1/events/{id}/resolve", label: "Resolve" },
+      { method: "PUT", path: "/api/v1/events/{id}/notes", label: "Update Notes" },
+      { method: "GET", path: "/api/v1/events/export", label: "Export Events" },
     ],
   },
   {
     name: "Detection Control",
     endpoints: [
-      { method: "GET", path: "/api/v1/detection-control/settings", label: "Get Settings" },
+      { method: "GET", path: "/api/v1/detection-control/settings?scope=global", label: "Get Global Settings" },
       { method: "PUT", path: "/api/v1/detection-control/settings", label: "Update Settings" },
+      { method: "DELETE", path: "/api/v1/detection-control/settings?scope=camera&scope_id={id}", label: "Reset Settings" },
+      { method: "GET", path: "/api/v1/detection-control/effective/{camera_id}", label: "Effective Settings" },
+      { method: "GET", path: "/api/v1/detection-control/inheritance/{camera_id}", label: "Inheritance Chain" },
       { method: "GET", path: "/api/v1/detection-control/classes", label: "List Classes" },
       { method: "POST", path: "/api/v1/detection-control/classes", label: "Create Class" },
+      { method: "GET", path: "/api/v1/detection-control/history", label: "Change History" },
+      { method: "GET", path: "/api/v1/detection-control/export?scope=global", label: "Export Config" },
+    ],
+  },
+  {
+    name: "Roboflow",
+    endpoints: [
+      { method: "GET", path: "/api/v1/roboflow/workspace", label: "Browse Workspace" },
+      { method: "GET", path: "/api/v1/roboflow/projects/{project_id}/versions", label: "Project Versions" },
+      { method: "POST", path: "/api/v1/roboflow/select-model", label: "Select & Deploy Model" },
+      { method: "GET", path: "/api/v1/roboflow/classes", label: "Get Classes" },
+      { method: "POST", path: "/api/v1/roboflow/pull-model", label: "Pull Model" },
+      { method: "POST", path: "/api/v1/roboflow/pull-classes", label: "Pull Classes" },
+    ],
+  },
+  {
+    name: "Models",
+    endpoints: [
+      { method: "GET", path: "/api/v1/models", label: "List Models" },
+      { method: "POST", path: "/api/v1/models", label: "Create Model" },
+      { method: "GET", path: "/api/v1/models/{id}", label: "Get Model" },
+      { method: "POST", path: "/api/v1/models/{id}/promote", label: "Promote Model" },
+      { method: "DELETE", path: "/api/v1/models/{id}", label: "Delete Model" },
+    ],
+  },
+  {
+    name: "Dataset",
+    endpoints: [
+      { method: "GET", path: "/api/v1/dataset/frames", label: "List Frames" },
+      { method: "GET", path: "/api/v1/dataset/stats", label: "Dataset Stats" },
+      { method: "GET", path: "/api/v1/dataset/export/coco", label: "Export COCO" },
+      { method: "GET", path: "/api/v1/dataset/sync-settings", label: "Sync Settings" },
+    ],
+  },
+  {
+    name: "Edge Agents",
+    endpoints: [
+      { method: "GET", path: "/api/v1/edge/agents", label: "List Agents" },
+      { method: "POST", path: "/api/v1/edge/provision", label: "Provision Agent" },
+      { method: "GET", path: "/api/v1/edge/agents/{id}", label: "Get Agent" },
+      { method: "DELETE", path: "/api/v1/edge/agents/{id}", label: "Delete Agent" },
+      { method: "POST", path: "/api/v1/edge/agents/{id}/command", label: "Send Command" },
+      { method: "POST", path: "/api/v1/edge/agents/{id}/push-model", label: "Push Model" },
+      { method: "POST", path: "/api/v1/edge/agents/push-classes", label: "Push Classes" },
     ],
   },
   {
     name: "Integrations",
     endpoints: [
       { method: "GET", path: "/api/v1/integrations", label: "List Integrations" },
+      { method: "GET", path: "/api/v1/integrations/status", label: "Integration Status" },
       { method: "PUT", path: "/api/v1/integrations/{service}", label: "Update Integration" },
       { method: "POST", path: "/api/v1/integrations/{service}/test", label: "Test Integration" },
       { method: "POST", path: "/api/v1/integrations/test-all", label: "Test All" },
-    ],
-  },
-  {
-    name: "Edge Agents",
-    endpoints: [
-      { method: "GET", path: "/api/v1/edge-agents", label: "List Agents" },
-      { method: "POST", path: "/api/v1/edge-agents", label: "Create Agent" },
-      { method: "GET", path: "/api/v1/edge-agents/{id}", label: "Get Agent" },
     ],
   },
   {
@@ -132,16 +191,61 @@ const ENDPOINT_LIBRARY: EndpointCategory[] = [
     endpoints: [
       { method: "GET", path: "/api/v1/notifications/rules", label: "List Rules" },
       { method: "POST", path: "/api/v1/notifications/rules", label: "Create Rule" },
-      { method: "GET", path: "/api/v1/devices", label: "List Devices" },
+      { method: "GET", path: "/api/v1/notifications/deliveries", label: "List Deliveries" },
     ],
   },
   {
-    name: "ML Pipeline",
+    name: "Devices",
     endpoints: [
-      { method: "GET", path: "/api/v1/ml/datasets", label: "List Datasets" },
-      { method: "GET", path: "/api/v1/ml/models", label: "List Models" },
-      { method: "GET", path: "/api/v1/ml/training-runs", label: "List Training Runs" },
-      { method: "POST", path: "/api/v1/ml/training-runs", label: "Start Training" },
+      { method: "GET", path: "/api/v1/devices", label: "List Devices" },
+      { method: "POST", path: "/api/v1/devices", label: "Create Device" },
+      { method: "GET", path: "/api/v1/devices/{id}", label: "Get Device" },
+      { method: "POST", path: "/api/v1/devices/{id}/trigger", label: "Trigger Device" },
+    ],
+  },
+  {
+    name: "Mobile",
+    endpoints: [
+      { method: "GET", path: "/api/v1/mobile/dashboard", label: "Dashboard" },
+      { method: "GET", path: "/api/v1/mobile/stores", label: "Stores" },
+      { method: "GET", path: "/api/v1/mobile/alerts", label: "Alerts" },
+      { method: "GET", path: "/api/v1/mobile/analytics", label: "Analytics" },
+      { method: "GET", path: "/api/v1/mobile/analytics/heatmap", label: "Heatmap" },
+    ],
+  },
+  {
+    name: "Clips & Live",
+    endpoints: [
+      { method: "GET", path: "/api/v1/clips", label: "List Clips" },
+      { method: "GET", path: "/api/v1/live/stream/{camera_id}/frame", label: "Live Frame" },
+    ],
+  },
+  {
+    name: "Organizations",
+    endpoints: [
+      { method: "GET", path: "/api/v1/organizations", label: "List Organizations" },
+      { method: "POST", path: "/api/v1/organizations", label: "Create Organization" },
+      { method: "GET", path: "/api/v1/organizations/{id}", label: "Get Organization" },
+    ],
+  },
+  {
+    name: "System",
+    endpoints: [
+      { method: "GET", path: "/api/v1/logs", label: "System Logs" },
+      { method: "GET", path: "/api/v1/audit-logs", label: "Audit Logs" },
+      { method: "GET", path: "/api/v1/storage/settings", label: "Storage Settings" },
+      { method: "POST", path: "/api/v1/storage/test", label: "Test Storage" },
+      { method: "GET", path: "/api/v1/validation/health", label: "Validation Health" },
+      { method: "GET", path: "/api/v1/reports/compliance", label: "Compliance Report" },
+      { method: "GET", path: "/api/v1/health", label: "API Health" },
+    ],
+  },
+  {
+    name: "Inference Test",
+    endpoints: [
+      { method: "POST", path: "/api/v1/inference/test", label: "Test ONNX Inference" },
+      { method: "POST", path: "/api/v1/inference/test-upload", label: "Test with Upload" },
+      { method: "POST", path: "/api/v1/roboflow/test-inference", label: "Test Roboflow" },
     ],
   },
 ];
@@ -467,7 +571,7 @@ export default function ApiTesterPage() {
     <div className="min-h-[calc(100vh-8rem)]">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">API Testing Console</h1>
-        <p className="mt-1 text-sm text-gray-500">Send requests to any API endpoint and inspect responses</p>
+        <p className="mt-1 text-sm text-gray-500">Send requests to any FloorEye API endpoint. Your auth token is automatically included.</p>
       </div>
 
       {/* Mobile Tabs */}

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cloud, Loader2, Play, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Cloud, Loader2, Play, CheckCircle2, XCircle, Eye, EyeOff, Layers } from "lucide-react";
 
 import api from "@/lib/api";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 
 export default function RoboflowPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
   const [apiKey, setApiKey] = useState("");
@@ -58,9 +60,20 @@ export default function RoboflowPage() {
 
   return (
     <div className="min-h-[calc(100vh-8rem)]">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Roboflow Integration</h1>
-        <p className="mt-1 text-sm text-gray-500">Configure the Roboflow inference API connection</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Roboflow Integration</h1>
+          <p className="mt-1 text-sm text-gray-500">Configure the Roboflow inference API connection</p>
+        </div>
+        {integration && (
+          <button
+            onClick={() => navigate("/integrations/roboflow/browse")}
+            className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700"
+          >
+            <Layers size={16} />
+            Browse Models
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -75,7 +88,7 @@ export default function RoboflowPage() {
                   type={showKey ? "text" : "password"}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder={integration?.config?.api_key ?? "Enter API key"}
+                  placeholder={integration?.config?.api_key ? "********" : "Enter API key"}
                   className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 pr-10 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
                 />
                 <button

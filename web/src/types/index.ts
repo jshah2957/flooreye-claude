@@ -78,6 +78,9 @@ export interface Detection {
   inference_time_ms: number;
   frame_base64: string | null;
   frame_s3_path: string | null;
+  annotated_frame_s3_path: string | null;
+  frame_url: string | null;
+  annotated_frame_url: string | null;
   predictions: Prediction[];
   model_source: "roboflow" | "student" | "hybrid_escalated";
   model_version_id: string | null;

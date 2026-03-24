@@ -74,15 +74,25 @@ async def _async_push_update(
             model_version_id, model_status,
         )
 
-    # Build command payload
+    # Generate presigned download URL from S3 key
+    onnx_key = model.get("onnx_path") or ""
+    download_url = ""
+    if onnx_key:
+        from app.services.storage_service import generate_url
+        download_url = await generate_url(onnx_key, expires=7200)
+
+    if not download_url:
+        logger.error("OTA push failed: model %s has no onnx_path", model_version_id)
+        return {"status": "failed", "error": "Model has no downloadable artifact"}
+
+    # Build command payload matching edge agent expectations
     command_payload = {
         "model_version_id": model_version_id,
+        "version_id": model_version_id,
         "version_str": model.get("version_str"),
-        "architecture": model.get("architecture"),
-        "onnx_path": model.get("onnx_path"),
-        "pt_path": model.get("pt_path"),
-        "trt_path": model.get("trt_path"),
-        "model_size_mb": model.get("model_size_mb"),
+        "download_url": download_url,
+        "checksum": model.get("checksum", ""),
+        "format": "onnx",
     }
 
     dispatched = 0

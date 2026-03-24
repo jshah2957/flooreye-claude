@@ -33,6 +33,9 @@ class DetectionResponse(BaseModel):
     inference_time_ms: float
     frame_base64: Optional[str] = None
     frame_s3_path: Optional[str] = None
+    annotated_frame_s3_path: Optional[str] = None
+    frame_url: Optional[str] = None
+    annotated_frame_url: Optional[str] = None
     predictions: list[dict] = []
     model_source: str
     model_version_id: Optional[str] = None

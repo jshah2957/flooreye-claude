@@ -296,6 +296,14 @@ async def get_detection_detail(db: AsyncIOMotorDatabase, detection_id: str, org_
 
     detection.pop("_id", None)
     detection.pop("frame_base64", None)  # Don't send frame inline
+
+    # Generate presigned URLs for frame images so mobile can display them
+    from app.services.storage_service import generate_url
+    if detection.get("frame_s3_path"):
+        detection["frame_url"] = await generate_url(detection["frame_s3_path"], expires=3600)
+    if detection.get("annotated_frame_s3_path"):
+        detection["annotated_frame_url"] = await generate_url(detection["annotated_frame_s3_path"], expires=3600)
+
     return detection
 
 

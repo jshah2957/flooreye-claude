@@ -73,9 +73,10 @@ const SERVICE_META: Record<string, ServiceMeta> = {
     color: "text-violet-600",
     category: "required",
     fields: [
-      { key: "api_key", label: "API Key", type: "password", helper: "Your Roboflow private API key" },
-      { key: "model_id", label: "Model ID", type: "text", helper: "e.g. wet-floor-detection/3" },
-      { key: "api_url", label: "API URL", type: "text", helper: "Inference endpoint", defaultValue: "https://detect.roboflow.com" },
+      { key: "api_key", label: "API Key", type: "password", helper: "Your Roboflow private API key (Settings > Roboflow API)" },
+      { key: "workspace", label: "Workspace", type: "text", helper: "Auto-detected from API key. Override only if needed." },
+      { key: "model_id", label: "Model ID (optional)", type: "text", helper: "Use the Roboflow Browser to select models interactively" },
+      { key: "api_url", label: "Inference API URL", type: "text", helper: "Only change for dedicated inference servers", defaultValue: "https://detect.roboflow.com" },
     ],
   },
   smtp: {
@@ -210,10 +211,10 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
     steps: [
       "Go to app.roboflow.com and sign in or create an account.",
       "Click your profile icon (top-right) -> Settings -> Roboflow API.",
-      "Copy your Private API Key and paste it in the API Key field.",
-      "Note your workspace slug from the URL (app.roboflow.com/<workspace>).",
-      "Find your model under Deployments -> copy the Model ID (e.g. wet-floor-detection/3).",
-      "The default API URL is https://detect.roboflow.com -- change only if using a dedicated server.",
+      "Copy your Private API Key and paste it in the API Key field below.",
+      "Save the config. The workspace will be auto-detected from your API key.",
+      "Use Integrations > Roboflow > Browse Models to select and deploy models to your edge agents.",
+      "Model ID is optional -- the Roboflow Browser handles model selection interactively.",
     ],
   },
   smtp: {
@@ -271,7 +272,7 @@ const SETUP_INSTRUCTIONS: Record<string, { title: string; steps: string[] }> = {
     title: "MinIO Setup",
     steps: [
       "Start MinIO with Docker: docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address ':9001'",
-      "Open the MinIO Console at http://localhost:9001 (default credentials: minioadmin/minioadmin).",
+      "Open the MinIO Console at your-host:9001. Change default credentials immediately for production.",
       "Create a bucket via Buckets -> Create Bucket.",
       "Create an access key via Access Keys -> Create Access Key. Copy both keys.",
       "Set Endpoint URL to http://localhost:9000 (or your MinIO host).",

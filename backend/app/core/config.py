@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     # Model Pipeline
     LOCAL_INFERENCE_ENABLED: bool = True
     ONNX_MODEL_CACHE_DIR: str = "/app/models"
+    ONNX_USE_GPU: bool = False
+
+    # Continuous Detection
+    CONTINUOUS_DETECTION_ENABLED: bool = True
+    DETECTION_INTERVAL_SECONDS: int = 10
 
     # Detection
     DETECTION_HISTORY_DEFAULT_LIMIT: int = 20

@@ -1,7 +1,10 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
+
+log = logging.getLogger(__name__)
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
@@ -21,7 +24,22 @@ router = APIRouter(prefix="/api/v1", tags=["detection"])
 
 
 
-def _detection_response(d: dict) -> DetectionResponse:
+async def _detection_response(d: dict) -> DetectionResponse:
+    # Generate presigned URLs for S3-stored frames
+    frame_url = None
+    annotated_frame_url = None
+    frame_key = d.get("frame_s3_path")
+    annotated_key = d.get("annotated_frame_s3_path")
+    if frame_key or annotated_key:
+        try:
+            from app.services.storage_service import generate_url
+            if frame_key:
+                frame_url = await generate_url(frame_key, expires=3600)
+            if annotated_key:
+                annotated_frame_url = await generate_url(annotated_key, expires=3600)
+        except Exception:
+            pass
+
     return DetectionResponse(
         id=d["id"],
         camera_id=d["camera_id"],
@@ -33,7 +51,10 @@ def _detection_response(d: dict) -> DetectionResponse:
         wet_area_percent=d.get("wet_area_percent", 0),
         inference_time_ms=d.get("inference_time_ms", 0),
         frame_base64=d.get("frame_base64"),
-        frame_s3_path=d.get("frame_s3_path"),
+        frame_s3_path=frame_key,
+        annotated_frame_s3_path=annotated_key,
+        frame_url=frame_url,
+        annotated_frame_url=annotated_frame_url,
         predictions=d.get("predictions", []),
         model_source=d.get("model_source", "roboflow"),
         model_version_id=d.get("model_version_id"),
@@ -58,7 +79,7 @@ async def run_detection(
     result = await detection_service.run_manual_detection(
         db, camera_id, current_user.get("org_id", ""), body.model_source
     )
-    return {"data": _detection_response(result)}
+    return {"data": await _detection_response(result)}
 
 
 @router.get("/detection/history")
@@ -91,7 +112,7 @@ async def detection_history(
         offset=offset,
     )
     return {
-        "data": [_detection_response(d) for d in detections],
+        "data": [await _detection_response(d) for d in detections],
         "meta": {"total": total, "offset": offset, "limit": limit},
     }
 
@@ -105,7 +126,7 @@ async def get_detection(
     detection = await detection_service.get_detection(
         db, detection_id, current_user.get("org_id", "")
     )
-    return {"data": _detection_response(detection)}
+    return {"data": await _detection_response(detection)}
 
 
 @router.post("/detection/history/{detection_id}/flag")
@@ -157,7 +178,7 @@ async def list_flagged(
         db, current_user.get("org_id", ""), limit, offset
     )
     return {
-        "data": [_detection_response(d) for d in detections],
+        "data": [await _detection_response(d) for d in detections],
         "meta": {"total": total, "offset": offset, "limit": limit},
     }
 
@@ -170,7 +191,7 @@ async def export_flagged(
     detections = await detection_service.export_flagged(
         db, current_user.get("org_id", "")
     )
-    return {"data": [_detection_response(d) for d in detections]}
+    return {"data": [await _detection_response(d) for d in detections]}
 
 
 @router.post("/detection/flagged/upload-to-roboflow")
@@ -223,7 +244,6 @@ async def upload_flagged_to_roboflow(
 
 
 # ── Continuous Detection Endpoints ──────────────────────────────
-# These will be fully wired when the Celery worker is integrated.
 
 
 @router.get("/continuous/status")
@@ -266,6 +286,15 @@ async def continuous_start(
         }}},
         upsert=True,
     )
+
+    # Dispatch Celery detection tasks for each camera
+    try:
+        from app.workers.detection_worker import run_single_camera_detection
+        for cam in cameras:
+            if cam.get("inference_mode") != "edge":
+                run_single_camera_detection.delay(cam["id"], org_id)
+    except Exception as exc:
+        log.warning("Failed to dispatch continuous detection tasks: %s", exc)
 
     return {"data": {"running": True, "active_cameras": len(cameras), "started_at": now.isoformat()}}
 

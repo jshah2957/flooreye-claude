@@ -69,7 +69,7 @@ class InferenceClient:
         resp = await client.post(
             f"{self.url}/infer-batch",
             json={"frames": frames},
-            timeout=60,  # batch may take longer
+            timeout=config.BATCH_INFERENCE_TIMEOUT,
         )
         return resp.json()
 
@@ -96,7 +96,7 @@ class InferenceClient:
         resp = await client.post(
             f"{self.url}/model/download",
             json={"url": url, "checksum": checksum, "filename": filename},
-            timeout=120,  # model downloads can be slow
+            timeout=config.MODEL_DOWNLOAD_TIMEOUT,
         )
         return resp.json()
 

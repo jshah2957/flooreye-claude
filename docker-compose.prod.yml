@@ -159,7 +159,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel run flooreye
+    command: tunnel --no-autoupdate run
     volumes:
       - ${CLOUDFLARED_CONFIG_DIR:-./.cloudflared}:/etc/cloudflared:ro
     environment:

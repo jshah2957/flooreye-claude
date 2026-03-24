@@ -18,6 +18,64 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/roboflow", tags=["roboflow"])
 
 
+@router.get("/workspace")
+async def get_workspace(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Fetch workspace info + all projects from Roboflow API live."""
+    from app.services.roboflow_model_service import fetch_workspace_projects
+    org_id = current_user.get("org_id", "")
+    result = await fetch_workspace_projects(db, org_id)
+    return {"data": result}
+
+
+@router.get("/projects/{project_id}/versions")
+async def get_project_versions(
+    project_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Fetch all versions of a Roboflow project with training metrics."""
+    from app.services.roboflow_model_service import fetch_project_versions
+    org_id = current_user.get("org_id", "")
+    result = await fetch_project_versions(db, org_id, project_id)
+    return {"data": result}
+
+
+@router.post("/select-model")
+async def select_model(
+    body: dict,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Select a specific Roboflow model: pull ONNX, register, promote, deploy to edge.
+
+    Body: { "project_id": "my-project", "version": 9 }
+    """
+    from app.services.roboflow_model_service import select_and_deploy_model
+
+    project_id = body.get("project_id")
+    version = body.get("version")
+    if not project_id or not version:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="project_id and version are required",
+        )
+
+    org_id = current_user.get("org_id", "")
+    result = await select_and_deploy_model(
+        db, org_id, current_user["id"], project_id, int(version),
+    )
+
+    await log_action(db, current_user["id"], current_user["email"], org_id,
+                     "roboflow_model_selected", "model_version", result.get("model_version_id"),
+                     {"project": project_id, "version": version}, request)
+
+    return {"data": result}
+
+
 @router.get("/projects")
 async def list_projects(
     db: AsyncIOMotorDatabase = Depends(get_db),

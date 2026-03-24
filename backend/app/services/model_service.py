@@ -120,20 +120,35 @@ async def _deploy_model_to_agents(
 ) -> None:
     """Create deploy_model commands for all online edge agents in the org."""
     try:
+        # Deploy to ALL agents (not just online) — commands persist in queue
+        # and will be picked up when offline agents reconnect
         agents = await db.edge_agents.find(
-            {**org_query(org_id), "status": "online"}
+            org_query(org_id)
         ).to_list(length=1000)
 
-        # Fetch model doc to include class names in the deploy payload
+        # Fetch model doc to include class names + download info in the payload
         model_doc = await db.model_versions.find_one(
             {**org_query(org_id), "id": model_version_id}
         )
+        if not model_doc:
+            return
+
         class_names = []
-        if model_doc:
-            class_names = model_doc.get("class_names") or model_doc.get("per_class_metrics", [])
-            # Extract class names from per_class_metrics if it's a list of dicts
-            if class_names and isinstance(class_names[0], dict):
-                class_names = [m.get("class_name", m.get("name", "")) for m in class_names]
+        raw_classes = model_doc.get("class_names") or model_doc.get("per_class_metrics", [])
+        if raw_classes and isinstance(raw_classes[0], dict):
+            class_names = [m.get("class_name", m.get("name", "")) for m in raw_classes]
+        elif raw_classes:
+            class_names = list(raw_classes)
+
+        # Generate presigned download URL from S3 key
+        onnx_key = model_doc.get("onnx_path") or ""
+        download_url = ""
+        if onnx_key:
+            from app.services.storage_service import generate_url
+            download_url = await generate_url(onnx_key, expires=7200)
+
+        if not download_url:
+            return  # Can't deploy without a downloadable artifact
 
         now = datetime.now(timezone.utc)
         for agent in agents:
@@ -144,7 +159,12 @@ async def _deploy_model_to_agents(
                 "command_type": "deploy_model",
                 "payload": {
                     "model_version_id": model_version_id,
+                    "version_id": model_version_id,
+                    "version_str": model_doc.get("version_str", ""),
+                    "download_url": download_url,
+                    "checksum": model_doc.get("checksum", ""),
                     "class_names": class_names,
+                    "format": "onnx",
                 },
                 "status": "pending",
                 "sent_by": user_id,

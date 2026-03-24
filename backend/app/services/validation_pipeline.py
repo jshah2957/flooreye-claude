@@ -149,7 +149,13 @@ async def _check_frame_voting(
     k: int,
     m: int,
 ) -> bool:
-    """Check if at least K of the last M detections were wet."""
+    """Check if at least K of the last M detections were wet (excluding current frame).
+
+    The current frame is NOT counted here — it hasn't been stored yet and its
+    wet/dry status is what we're trying to determine. We only look at the M most
+    recent *stored* detections. If K of those were wet, the temporal pattern is
+    confirmed and this layer passes.
+    """
     cursor = (
         db.detection_logs
         .find({"camera_id": camera_id})
@@ -158,11 +164,7 @@ async def _check_frame_voting(
     )
     recent = await cursor.to_list(length=m)
 
-    # Count the current frame as wet (not yet stored)
-    wet_count = 1
-    for log in recent:
-        if log.get("is_wet", False):
-            wet_count += 1
+    wet_count = sum(1 for log in recent if log.get("is_wet", False))
 
     return wet_count >= k
 

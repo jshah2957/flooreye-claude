@@ -528,11 +528,19 @@ async def current_model(
     )
     if not model:
         return {"data": {"model_version_id": None}}
+
+    # Generate a presigned download URL from the S3 key
+    onnx_key = model.get("onnx_path") or ""
+    download_url = ""
+    if onnx_key:
+        from app.services.storage_service import generate_url
+        download_url = await generate_url(onnx_key, expires=7200)
+
     return {"data": {
         "model_version_id": model["id"],
         "version_str": model.get("version_str"),
         "checksum": model.get("checksum"),
-        "download_url": model.get("onnx_path") or model.get("onnx_s3_path", ""),
+        "download_url": download_url,
         "format": "onnx",
         "model_source": model.get("model_source", "local_onnx"),
     }}
@@ -549,7 +557,20 @@ async def download_model(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model version not found")
     if model.get("model_source") == "yolo_cloud":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This model is cloud-only")
-    download_url = model.get("onnx_s3_path") or model.get("artifact_path", "")
+
+    # Generate a presigned download URL from the S3 key
+    onnx_key = model.get("onnx_path") or ""
+    download_url = ""
+    if onnx_key:
+        from app.services.storage_service import generate_url
+        download_url = await generate_url(onnx_key, expires=7200)
+
+    if not download_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Model has no downloadable artifact (onnx_path not set)",
+        )
+
     return {"data": {
         "version_id": version_id,
         "download_url": download_url,

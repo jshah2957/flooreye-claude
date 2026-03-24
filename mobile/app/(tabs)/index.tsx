@@ -146,7 +146,7 @@ export default function HomeScreen() {
           }}
         >
           <StatusChip
-            label="Edge Agents"
+            label="Online Cameras"
             count={data?.camera_chips?.filter(
               (c) => c.status === "online" || c.status === "active"
             ).length ?? 0}

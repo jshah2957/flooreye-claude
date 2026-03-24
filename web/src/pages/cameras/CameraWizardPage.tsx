@@ -41,6 +41,9 @@ export default function CameraWizardPage() {
   // Step state (0 = Select Store, 1 = Details + Validate, 2 = Complete)
   const [step, setStep] = useState(0);
 
+  // Inference mode: cloud (direct RTSP) or edge (via edge agent)
+  const [inferenceMode, setInferenceMode] = useState<"cloud" | "edge">("cloud");
+
   // Step 1: Store selection
   const [storeId, setStoreId] = useState("");
 
@@ -84,22 +87,44 @@ export default function CameraWizardPage() {
     return agent.status === "online" ? "online" : "offline";
   }
 
-  // Test camera via edge
+  // Test camera — cloud mode uses direct API, edge mode uses edge proxy
   const testMutation = useMutation({
     mutationFn: async () => {
       setTestResult(null);
       setTestError("");
-      const res = await api.post("/edge/proxy/test-camera", {
-        store_id: storeId,
-        url: camUrl,
-        stream_type: streamType,
-      });
-      return res.data as TestCameraResult;
+      if (inferenceMode === "cloud") {
+        // Cloud mode: create a temp camera, test directly, then delete
+        // Or just test the URL via the backend test endpoint
+        const createRes = await api.post("/cameras", {
+          store_id: storeId,
+          name: `_test_${Date.now()}`,
+          stream_url: camUrl,
+          stream_type: streamType,
+          floor_type: "tile",
+          inference_mode: "cloud",
+        });
+        const tempCamId = createRes.data.data.id;
+        try {
+          const testRes = await api.post(`/cameras/${tempCamId}/test`);
+          return testRes.data.data as TestCameraResult;
+        } finally {
+          // Clean up temp camera
+          try { await api.delete(`/cameras/${tempCamId}`); } catch {}
+        }
+      } else {
+        // Edge mode: test via edge proxy
+        const res = await api.post("/edge/proxy/test-camera", {
+          store_id: storeId,
+          url: camUrl,
+          stream_type: streamType,
+        });
+        return res.data as TestCameraResult;
+      }
     },
     onSuccess: (data) => {
       setTestResult(data);
       if (!data.connected) {
-        setTestError(data.error || "Camera not reachable on edge network");
+        setTestError(data.error || "Camera not reachable");
       }
     },
     onError: (err: any) => {
@@ -108,17 +133,31 @@ export default function CameraWizardPage() {
     },
   });
 
-  // Add camera via edge proxy
+  // Add camera — cloud mode uses direct API, edge mode uses edge proxy
   const addMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post("/edge/proxy/add-camera", {
-        store_id: storeId,
-        name: camName,
-        url: camUrl,
-        stream_type: streamType,
-        location,
-      });
-      return res.data.data as { cloud_camera_id: string };
+      if (inferenceMode === "cloud") {
+        // Cloud mode: create camera directly via backend API
+        const res = await api.post("/cameras", {
+          store_id: storeId,
+          name: camName,
+          stream_url: camUrl,
+          stream_type: streamType,
+          floor_type: "tile",
+          inference_mode: "cloud",
+        });
+        return { cloud_camera_id: res.data.data.id };
+      } else {
+        // Edge mode: create via edge proxy
+        const res = await api.post("/edge/proxy/add-camera", {
+          store_id: storeId,
+          name: camName,
+          url: camUrl,
+          stream_type: streamType,
+          location,
+        });
+        return res.data.data as { cloud_camera_id: string };
+      }
     },
     onSuccess: (data) => {
       setCreatedCameraId(data.cloud_camera_id);
@@ -147,6 +186,7 @@ export default function CameraWizardPage() {
   function resetWizard() {
     setStep(0);
     setStoreId("");
+    setInferenceMode("cloud");
     setCamName("");
     setCamUrl("");
     setStreamType("rtsp");
@@ -156,7 +196,8 @@ export default function CameraWizardPage() {
     setCreatedCameraId(null);
   }
 
-  const canProceedStep0 = storeId && storeEdgeStatus(storeId) === "online";
+  // Cloud mode: any store works. Edge mode: requires online edge agent.
+  const canProceedStep0 = storeId && (inferenceMode === "cloud" || storeEdgeStatus(storeId) === "online");
   const canProceedStep1 = camName.trim() && camUrl.trim() && testResult?.connected;
 
   return (
@@ -171,8 +212,36 @@ export default function CameraWizardPage() {
         </button>
         <h1 className="text-2xl font-bold text-gray-900">Add Camera</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Camera connectivity is validated through the edge device on the store's local network.
+          {inferenceMode === "cloud"
+            ? "Camera must be accessible via a public RTSP URL. Detection runs on the cloud server."
+            : "Camera connectivity is validated through the edge device on the store's local network."}
         </p>
+
+        {/* Inference Mode Selector */}
+        <div className="mt-4 flex gap-3">
+          <button
+            onClick={() => setInferenceMode("cloud")}
+            className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all ${
+              inferenceMode === "cloud"
+                ? "border-[#0D9488] bg-[#F0FDFA] text-[#0D9488]"
+                : "border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" /></svg>
+            Cloud (Public RTSP)
+          </button>
+          <button
+            onClick={() => setInferenceMode("edge")}
+            className={`flex items-center gap-2 rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all ${
+              inferenceMode === "edge"
+                ? "border-[#0D9488] bg-[#F0FDFA] text-[#0D9488]"
+                : "border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            Edge (Local Network)
+          </button>
+        </div>
       </div>
 
       {/* Step indicators */}
@@ -221,13 +290,15 @@ export default function CameraWizardPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-2 text-lg font-bold text-gray-900">Select Store</h2>
           <p className="mb-5 text-sm text-gray-500">
-            Choose the store where this camera is located. Only stores with an online edge agent can be selected.
+            {inferenceMode === "cloud"
+              ? "Choose the store where this camera is located."
+              : "Choose the store where this camera is located. Only stores with an online edge agent can be selected."}
           </p>
           <div className="space-y-3">
             {stores.map((s) => {
               const edgeStatus = storeEdgeStatus(s.id);
               const agent = agentByStore.get(s.id);
-              const isOnline = edgeStatus === "online";
+              const isOnline = inferenceMode === "cloud" ? true : edgeStatus === "online";
               const isSelected = storeId === s.id;
               return (
                 <label

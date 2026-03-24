@@ -77,16 +77,18 @@ class ModelLoader:
         self._prev_class_names: list[str] = []
 
     def find_latest_model(self) -> str | None:
-        """Find the most recent .onnx file in the models directory."""
-        candidates = sorted(glob.glob(os.path.join(self.models_dir, "*.onnx")))
-        return candidates[-1] if candidates else None
+        """Find the most recent .onnx file in the models directory (by modification time)."""
+        candidates = glob.glob(os.path.join(self.models_dir, "*.onnx"))
+        if not candidates:
+            return None
+        return max(candidates, key=os.path.getmtime)
 
     @staticmethod
     def _build_session_options() -> ort.SessionOptions:
         """Build optimized ONNX Runtime session options for parallel execution."""
         sess_options = ort.SessionOptions()
-        sess_options.intra_op_num_threads = 4
-        sess_options.inter_op_num_threads = 2
+        sess_options.intra_op_num_threads = int(os.getenv("ONNX_INTRA_THREADS", "4"))
+        sess_options.inter_op_num_threads = int(os.getenv("ONNX_INTER_THREADS", "2"))
         sess_options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
         return sess_options
 
@@ -268,6 +270,7 @@ class ModelLoader:
             return False
 
         log.info(f"Hot-swapping model to {new_path}")
+        self._save_current_as_fallback()
         try:
             sess_options = self._build_session_options()
             new_session = ort.InferenceSession(
@@ -305,5 +308,6 @@ class ModelLoader:
             log.info(f"Model swapped successfully: {self.model_version} ({self.model_type}, source={self.model_source})")
             return True
         except Exception as e:
-            log.error(f"Model swap failed, keeping old model: {e}")
+            log.error(f"Model swap failed, restoring previous model: {e}")
+            self._restore_fallback()
             return False

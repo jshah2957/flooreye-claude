@@ -7,6 +7,7 @@ class EdgeConfig:
     """All edge agent settings loaded from environment."""
 
     # Identity
+    AGENT_VERSION: str = os.getenv("AGENT_VERSION", "3.0.0")
     BACKEND_URL: str = os.getenv("BACKEND_URL", "https://app.puddlewatch.com")
     EDGE_TOKEN: str = os.getenv("EDGE_TOKEN", "")
     AGENT_ID: str = os.getenv("AGENT_ID", "")
@@ -23,6 +24,8 @@ class EdgeConfig:
     MODEL_SOURCE: str = os.getenv("MODEL_SOURCE", "local_onnx")
     MODEL_CHECK_INTERVAL: int = int(os.getenv("MODEL_CHECK_INTERVAL", "3600"))  # Check for model updates every hour
     MODEL_CACHE_DIR: str = os.getenv("MODEL_CACHE_DIR", "/data/models")
+    BATCH_INFERENCE_TIMEOUT: int = int(os.getenv("BATCH_INFERENCE_TIMEOUT", "60"))
+    MODEL_DOWNLOAD_TIMEOUT: int = int(os.getenv("MODEL_DOWNLOAD_TIMEOUT", "120"))
     MAX_ESCALATIONS_PER_MIN: int = int(os.getenv("MAX_ESCALATIONS_PER_MIN", "10"))
 
     # Upload

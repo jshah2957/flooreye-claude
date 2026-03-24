@@ -50,6 +50,14 @@ async def run_manual_detection(
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
 
+    # Check per-camera inference mode — skip cloud detection for edge-only cameras
+    camera_mode = camera.get("inference_mode", "cloud")
+    if camera_mode == "edge":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Camera is configured for edge inference — detection handled by edge agent",
+        )
+
     # Decrypt stream_url (supports both encrypted and legacy plaintext)
     if camera.get("stream_url_encrypted"):
         try:
@@ -65,13 +73,41 @@ async def run_manual_detection(
             detail="Cannot connect to camera stream or failed to capture frame",
         )
 
-    # Run inference — prefer local ONNX, fallback to Roboflow API
+    # Apply ROI mask if configured — black out areas outside the ROI polygon
+    roi = await db.rois.find_one({"camera_id": camera_id, "is_active": True})
+    if roi and roi.get("polygon_points") and camera.get("mask_outside_roi", True):
+        try:
+            from app.utils.roi_utils import apply_roi_mask
+            import numpy as np
+            frame_bytes = base64.b64decode(frame_base64)
+            nparr = np.frombuffer(frame_bytes, np.uint8)
+            frame_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if frame_cv is not None:
+                masked = apply_roi_mask(frame_cv, roi["polygon_points"])
+                _, buf = cv2.imencode(".jpg", masked)
+                frame_base64 = base64.b64encode(buf).decode("utf-8")
+        except Exception as e:
+            log.warning("ROI mask failed for camera %s (continuing without mask): %s", camera_id, e)
+
+    # Resolve effective detection control settings for this camera
+    try:
+        effective, _ = await resolve_effective_settings(db, org_id, camera_id)
+    except Exception as e:
+        log.warning(f"Failed to resolve detection control settings for camera {camera_id}: {e}")
+        effective = {}
+
+    # Run inference — use per-camera confidence, prefer local ONNX, fallback to Roboflow
+    inference_confidence = effective.get("layer1_confidence", 0.5)
     source = model_source or ("local_onnx" if settings.LOCAL_INFERENCE_ENABLED else "roboflow")
+    model_version_id = None
     if source == "local_onnx":
         try:
-            inference_result = await run_local_inference(frame_base64, db=db)
+            inference_result = await run_local_inference(
+                frame_base64, confidence=inference_confidence, db=db,
+            )
             predictions = inference_result["predictions"]
             inference_time_ms = inference_result["inference_time_ms"]
+            model_version_id = inference_result.get("model_version_id")
             summary = {
                 "is_wet": inference_result.get("is_wet", False),
                 "confidence": inference_result.get("confidence", 0.0),
@@ -90,13 +126,6 @@ async def run_manual_detection(
         inference_time_ms = inference_result["inference_time_ms"]
         summary = compute_detection_summary(predictions)
 
-    # Resolve effective detection control settings for this camera
-    try:
-        effective, _ = await resolve_effective_settings(db, org_id, camera_id)
-    except Exception as e:
-        log.warning(f"Failed to resolve detection control settings for camera {camera_id}: {e}")
-        effective = {}
-
     # Run validation pipeline with effective settings
     validation = await run_validation_pipeline(
         db,
@@ -114,8 +143,20 @@ async def run_manual_detection(
         layer4_enabled=effective.get("layer4_enabled", True),
     )
 
-    # Upload frame to S3 (non-blocking — boto3 calls wrapped in asyncio.to_thread internally)
-    s3_path = await upload_frame(frame_base64, org_id, camera_id)
+    # Upload clean frame to S3
+    clean_s3_path = await upload_frame(frame_base64, org_id, camera_id, frame_type="clean")
+
+    # Draw annotations and upload annotated frame
+    annotated_s3_path = None
+    try:
+        from app.utils.annotation_utils import draw_annotations
+        annotated_b64 = draw_annotations(frame_base64, predictions)
+        if annotated_b64:
+            annotated_s3_path = await upload_frame(
+                annotated_b64, org_id, camera_id, frame_type="annotated",
+            )
+    except Exception as e:
+        log.warning("Annotated frame upload failed for camera %s: %s", camera_id, e)
 
     # Create detection log
     now = datetime.now(timezone.utc)
@@ -129,11 +170,12 @@ async def run_manual_detection(
         "confidence": summary["confidence"],
         "wet_area_percent": summary["wet_area_percent"],
         "inference_time_ms": inference_time_ms,
-        "frame_base64": None,  # frames not stored inline; uploaded to S3
-        "frame_s3_path": s3_path,
+        "frame_base64": None,
+        "frame_s3_path": clean_s3_path,
+        "annotated_frame_s3_path": annotated_s3_path,
         "predictions": predictions,
         "model_source": source,
-        "model_version_id": None,
+        "model_version_id": model_version_id,
         "is_flagged": False,
         "incident_id": None,
     }
@@ -172,6 +214,7 @@ async def get_detection(db: AsyncIOMotorDatabase, detection_id: str, org_id: str
     detection = await db.detection_logs.find_one({**org_query(org_id), "id": detection_id})
     if not detection:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Detection not found")
+    detection.pop("_id", None)
     return detection
 
 

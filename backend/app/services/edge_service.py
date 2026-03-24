@@ -443,6 +443,7 @@ async def send_command(
         "retry_count": retry_count,
     }
     await db.edge_commands.insert_one(cmd)
+    cmd.pop("_id", None)
     return cmd
 
 
@@ -452,7 +453,10 @@ async def get_pending_commands(
     cursor = db.edge_commands.find(
         {"agent_id": agent_id, "status": "pending"}
     ).sort("sent_at", 1)
-    return await cursor.to_list(length=100)
+    commands = await cursor.to_list(length=100)
+    for cmd in commands:
+        cmd.pop("_id", None)
+    return commands
 
 
 async def ack_command(
@@ -476,6 +480,16 @@ async def ack_command(
     )
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Command not found")
+    doc.pop("_id", None)
+
+    # Update model version on successful deploy_model ACK
+    if ack_status in ("completed", "success") and doc.get("command_type") == "deploy_model":
+        model_version_id = doc.get("payload", {}).get("model_version_id")
+        if model_version_id:
+            await db.edge_agents.update_one(
+                {"id": doc["agent_id"]},
+                {"$set": {"current_model_version": model_version_id, "updated_at": now}},
+            )
 
     # On failure, retry up to 3 times or mark camera as sync_failed
     if ack_status == "failure":
@@ -600,20 +614,25 @@ async def push_model_to_edge(
             detail="Cloud-only models cannot be deployed to edge agents",
         )
 
-    download_url = model.get("onnx_s3_path") or model.get("artifact_path", "")
-    if not download_url:
+    # Generate presigned download URL from S3 key
+    onnx_key = model.get("onnx_path") or ""
+    if not onnx_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Model version has no downloadable artifact",
+            detail="Model version has no downloadable artifact (onnx_path not set)",
         )
+
+    from app.services.storage_service import generate_url
+    download_url = await generate_url(onnx_key, expires=7200)
 
     cmd = await send_command(
         db,
         agent_id,
         org_id,
-        command_type="update_model",
+        command_type="deploy_model",
         payload={
             "model_version_id": model["id"],
+            "version_id": model["id"],
             "version_str": model.get("version_str", ""),
             "download_url": download_url,
             "checksum": model.get("checksum", ""),
@@ -623,12 +642,8 @@ async def push_model_to_edge(
         user_id=user_id,
     )
 
-    # Update the agent's current_model_version
-    now = datetime.now(timezone.utc)
-    await db.edge_agents.update_one(
-        {"id": agent_id},
-        {"$set": {"current_model_version": model_version_id, "updated_at": now}},
-    )
+    # Model version is updated when the edge agent ACKs the deploy_model command
+    # (see ack_command()) — NOT optimistically here before actual deployment
 
     return cmd
 
@@ -738,6 +753,7 @@ async def push_config_to_edge(
             "error": None,
         }
         await db.edge_commands.insert_one(cmd)
+        cmd.pop("_id", None)
     else:
         # Fallback: queue as pending command for agent to poll
         log.info("Direct push failed for agent %s — queuing command", agent_id)

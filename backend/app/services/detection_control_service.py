@@ -159,6 +159,23 @@ async def upsert_settings(
     except Exception:
         pass  # Cache invalidation failed — will expire in 60s
 
+    # Log change to detection_control_history for audit trail
+    try:
+        history_doc = {
+            "id": str(uuid.uuid4()),
+            "org_id": org_id,
+            "scope": data.scope,
+            "scope_id": data.scope_id,
+            "action": "update" if existing else "create",
+            "changes": {k: v for k, v in updates.items() if k not in ("updated_by", "updated_at")},
+            "changed_by": user_id,
+            "created_at": now,
+        }
+        await db.detection_control_history.insert_one(history_doc)
+    except Exception:
+        pass  # History logging is non-critical
+
+    result.pop("_id", None)
     return result
 
 
@@ -173,6 +190,43 @@ async def delete_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No settings found for this scope",
         )
+
+    # Invalidate affected camera caches (same logic as upsert)
+    try:
+        from redis import Redis
+        from app.core.config import settings as _settings
+        r = Redis.from_url(_settings.REDIS_URL, socket_timeout=1)
+        if scope == "camera" and scope_id:
+            r.delete(f"dc:effective:{scope_id}")
+        elif scope == "store" and scope_id:
+            cameras = await db.cameras.find({"store_id": scope_id}, {"id": 1}).to_list(500)
+            keys = [f"dc:effective:{c['id']}" for c in cameras]
+            if keys:
+                r.delete(*keys)
+        elif scope in ("org", "global"):
+            query = {"org_id": org_id} if org_id else {}
+            cameras = await db.cameras.find(query, {"id": 1}).to_list(5000)
+            keys = [f"dc:effective:{c['id']}" for c in cameras]
+            if keys:
+                r.delete(*keys)
+    except Exception:
+        pass  # Cache invalidation failed — will expire in 60s
+
+    # Log deletion to history
+    try:
+        now = datetime.now(timezone.utc)
+        await db.detection_control_history.insert_one({
+            "id": str(uuid.uuid4()),
+            "org_id": org_id,
+            "scope": scope,
+            "scope_id": scope_id,
+            "action": "delete",
+            "changes": {},
+            "changed_by": "system",
+            "created_at": now,
+        })
+    except Exception:
+        pass
 
 
 # ── Inheritance Resolution ──────────────────────────────────────

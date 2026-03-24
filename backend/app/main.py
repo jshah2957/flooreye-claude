@@ -75,6 +75,18 @@ async def lifespan(app: FastAPI):
         await ensure_bucket()
     except Exception as e:
         log.warning("S3/MinIO bucket initialization failed: %s — frame uploads may fail", e)
+    # Pre-load production ONNX model for cloud inference
+    if settings.LOCAL_INFERENCE_ENABLED:
+        try:
+            from app.services.onnx_inference_service import onnx_service
+            loaded = await onnx_service.load_production_model(get_db())
+            if loaded:
+                log.info("Production ONNX model pre-loaded for cloud inference")
+            else:
+                log.info("No production ONNX model available — will load on first detection")
+        except Exception as e:
+            log.warning("ONNX model pre-load failed (non-critical): %s", e)
+
     from app.routers.websockets import start_redis_subscriber, stop_redis_subscriber
     await start_redis_subscriber()
     yield
