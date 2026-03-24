@@ -1,55 +1,44 @@
 # FloorEye Session State
-# Last session: 31 (Testing + Production Readiness)
-# Status: All services running, 0 bugs, production ready
+# Last session: 32 (Live Streaming + Clips + UI Fixes)
+# Status: All services running, code pushed
 # Date: 2026-03-24
 
 ## NEXT SESSION TASK
-- Post-installation work: real-time streaming via go2rtc, cloud clip recording, edge-to-cloud clip sync
-- Roboflow: create wet floor project, train model, use Browser to deploy
-- Consider: training data pipeline automation
+Implement Dataset System rewrite (docs/DATASET_SYSTEM_FIX_PLAN.md)
+- Session 1: Folders CRUD + core data model fixes
+- 6 sessions total, 16 issues to fix
 
-## What Was Done This Session (Session 31)
-- 200+ tests across 3 independent test runs
-- 50+ bug fixes (pipeline, edge, cloud detection, frontend)
-- New feature: Roboflow Browser (browse → select → deploy)
-- New feature: Camera wizard dual-mode (cloud/edge)
-- Cloud detection pipeline: ROI, annotated frames, inference_mode, continuous, ONNX pre-load
-- Fixed all thumbnails: presigned URL generation for detection images
-- Fixed API Testing Console: 19 categories, 95+ correct endpoints
-- Live camera test with ONNX inference (126ms)
-- Detection control: history logging, cache invalidation, severity settings
+## PENDING TESTS (from this session — rate limited)
+Fix 2 (blank name 422), Fix 3 (org_query), Fix 4 (stale time) need browser verification.
+Fix 1 (class delete by name) and Fix 5 (thumbnails) are verified.
+All code committed and pushed. Test from browser at app.puddlewatch.com.
+
+## What Was Done Session 32
+- go2rtc integration on edge (docker-compose, camera_manager auto-sync)
+- LiveStreamPlayer component (MSE via iframe + polling fallback)
+- useLiveFrame hook (was // TODO, now implemented)
+- Cloud clip recording via clip_service.py (cv2 → S3 → presigned URLs)
+- Frame extraction from clips (download S3 → cv2 → extract → upload)
+- Save frames to dataset (proper fields)
+- ClipsPage complete rewrite (video player, download, extract, thumbnails)
+- GZip response compression (-80% on detection/history)
+- Mobile camera frame routes through edge proxy
+- Presigned URLs use public S3 endpoint (thumbnails visible in browser)
+- 6 UI fixes: class deletion, blank names, org_query, stale data, refresh intervals
+- Data transfer research report
+- Dataset system research + fix plan
 
 ## Current Docker State
-- Cloud: backend:8000, web:80, mongodb, redis, minio, worker (ALL RUNNING)
-- Edge: edge-agent, inference-server, redis-buffer (ALL HEALTHY)
-- Cloudflared: RUNNING (4 QUIC connections to Cloudflare)
-- Public URL: https://app.puddlewatch.com (200 OK)
+- Cloud: backend:8000, web:80, mongodb, redis, minio:9000, worker, cloudflared
+- Edge: edge-agent, inference-server, redis-buffer (all healthy)
+- go2rtc: running at store1.puddlewatch.com
 
 ## Credentials
 - admin@flooreye.io / FloorEye@2026! (super_admin)
 - demo@flooreye.io / Demo@2026! (org_admin)
 - store@flooreye.io / Store@2026! (store_owner)
-- Edge JWT: in edge-agent/.env
 
-## IMPORTANT: Environment State
-- backend/.env: ENVIRONMENT=development (MUST change to production before real deploy)
-- YOLOv8n ONNX model loaded (COCO 80 classes — NOT wet floor model)
-- Roboflow workspace: wetfloordetection (0 projects — need to create wet floor project)
-
-## Deferred to Post-Installation
-1. Real-time streaming (go2rtc → WebRTC/HLS → browser)
-2. Cloud clip recording (POST /live/record/start needs actual implementation)
-3. Cloud frame extraction from clips (worker needed)
-4. Edge-to-cloud clip sync (no upload mechanism yet)
-5. Clip UI: download handler, video player, thumbnail display
-6. Training data pipeline automation (save_training_frame, should_sample)
-7. Dataset page frame thumbnails
-8. Incidents page detection frame column
-
-## Reports Created
-- docs/SESSION_31_REPORT.md — this session's complete report
-- docs/EDGE_SYSTEM_AUDIT_REPORT.md — 18 edge bugs found + fixed
-- docs/TESTING_PLAN.md — 6-session testing methodology
-- docs/TEST_RESULTS_FINAL.md — 3-run comparative report
-- docs/CLOUD_DETECTION_FIX_PLAN.md — 42 gaps + fix plan
-- docs/DETECTION_CONTROL_TEST_REPORT.md — live camera test
+## GitHub
+- Latest commit: 20fc3fd (Dataset plan)
+- Tag: v4.5.0
+- All code pushed to origin/main
