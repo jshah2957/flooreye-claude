@@ -118,6 +118,7 @@ class OnnxInferenceService:
         if not classes:
             return 0
 
+        import uuid as _uuid
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
         count = 0
@@ -131,11 +132,11 @@ class OnnxInferenceService:
                     "source": "model",
                     "synced_at": now,
                 }, "$setOnInsert": {
+                    "id": str(_uuid.uuid4()),
                     "display_label": class_name.replace("_", " ").title(),
                     "color": "#00FFFF",
                     "enabled": True,
-                    "alert_on_detect": class_name in self._class_names.values() and
-                        class_name.lower() in {"wet_floor", "spill", "puddle", "water", "wet"},
+                    "alert_on_detect": class_name.lower() in {"wet_floor", "spill", "puddle", "water", "wet"},
                     "min_confidence": 0.5,
                     "min_area_percent": 0.5,
                     "created_at": now,

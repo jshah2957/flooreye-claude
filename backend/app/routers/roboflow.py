@@ -251,10 +251,10 @@ async def _fetch_roboflow_classes(
                         "project": project,
                         "synced_at": now,
                     }
-                    # Upsert each class into detection_classes collection
+                    # Upsert each class into detection_classes collection (ensure UUID id)
                     await db.detection_classes.update_one(
                         {"org_id": org_id, "name": name},
-                        {"$set": class_doc},
+                        {"$set": class_doc, "$setOnInsert": {"id": str(uuid.uuid4())}},
                         upsert=True,
                     )
                     class_list.append({"name": name, "count": class_doc["count"]})

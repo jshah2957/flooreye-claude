@@ -228,7 +228,9 @@ async def list_classes(
     current_user: dict = Depends(require_role("viewer")),
 ):
     org_id = current_user.get("org_id", "")
-    cursor = db.detection_classes.find({"org_id": org_id})
+    # Use org_query for proper super_admin (org_id=None) handling
+    from app.core.org_filter import org_query
+    cursor = db.detection_classes.find(org_query(org_id))
     classes = await cursor.to_list(length=1000)
     for c in classes:
         c.pop("_id", None)
@@ -266,6 +268,10 @@ async def create_class(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "")
+    class_name = (body.get("name") or "").strip()
+    if not class_name:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Class name is required")
+    body["name"] = class_name
     now = datetime.now(timezone.utc)
     doc = {
         "id": str(uuid.uuid4()),
@@ -314,7 +320,12 @@ async def delete_class(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "")
-    result = await db.detection_classes.delete_one({"id": class_id, "org_id": org_id})
+    # Try delete by UUID id first, then fallback to name (model-synced classes may lack id)
+    query = {"org_id": org_id} if org_id else {}
+    result = await db.detection_classes.delete_one({**query, "id": class_id})
+    if result.deleted_count == 0:
+        # Fallback: try by name (for classes synced from model/Roboflow without UUID)
+        result = await db.detection_classes.delete_one({**query, "name": class_id})
     if result.deleted_count == 0:
         from fastapi import HTTPException
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
