@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 import {
   AlertTriangle,
   Loader2,
@@ -287,6 +289,9 @@ export default function IncidentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Incident Management</h1>
           <p className="mt-1 text-sm text-gray-500">{total} incidents · Lifecycle: NEW → ACKNOWLEDGED → RESOLVED · Auto-refreshes</p>
+          <HelpSection title={PAGE_HELP.incidents.title}>
+            {PAGE_HELP.incidents.content.map((line, i) => <p key={i}>{line}</p>)}
+          </HelpSection>
         </div>
         <div className="flex items-center gap-3">
           {/* WebSocket status */}

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 import {
   Film,
   Loader2,
@@ -149,8 +151,10 @@ export default function ClipsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Recorded Clips</h1>
         <p className="mt-1 text-sm text-gray-500">
-          {clips.length} clip{clips.length !== 1 ? "s" : ""} available
-        </p>
+          {clips.length} clip{clips.length !== 1 ? "s" : ""} available · Play, extract frames, save to dataset</p>
+        <HelpSection title={PAGE_HELP.clips.title}>
+          {PAGE_HELP.clips.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
       </div>
 
       {isLoading ? (

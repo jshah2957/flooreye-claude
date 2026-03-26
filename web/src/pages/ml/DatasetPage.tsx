@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 import {
   Database,
   Trash2,
@@ -226,6 +228,9 @@ export default function DatasetPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dataset Manager</h1>
+          <HelpSection title={PAGE_HELP.dataset.title}>
+            {PAGE_HELP.dataset.content.map((line, i) => <p key={i}>{line}</p>)}
+          </HelpSection>
           <p className="mt-1 text-sm text-gray-500">
             {total} frame{total !== 1 ? "s" : ""} · {Object.entries(splitStats).map(([k, v]) => `${k}: ${v}`).join(" · ")}
           </p>

@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 import {
   Search,
   Grid3X3,
@@ -189,6 +191,9 @@ export default function DetectionHistoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Detection History</h1>
           <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} detections total · Auto-refreshes every 10s</p>
+          <HelpSection title={PAGE_HELP.detectionHistory.title}>
+            {PAGE_HELP.detectionHistory.content.map((line, i) => <p key={i}>{line}</p>)}
+          </HelpSection>
         </div>
         <button
           onClick={() => downloadCSV(filtered, cameraMap, storeMap)}
