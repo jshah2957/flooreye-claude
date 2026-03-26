@@ -188,7 +188,7 @@ export default function DetectionHistoryPage() {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Detection History</h1>
-          <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} detections total</p>
+          <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} detections total · Auto-refreshes every 10s</p>
         </div>
         <button
           onClick={() => downloadCSV(filtered, cameraMap, storeMap)}

@@ -298,7 +298,10 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[#1C1917]">Dashboard</h1>
+        <div>
+          <h1 className="text-xl font-semibold text-[#1C1917]">Dashboard</h1>
+          <p className="mt-0.5 text-xs text-gray-500">Real-time overview of stores, cameras, detections, and system health. Data refreshes every 15 seconds.</p>
+        </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => queryClient.invalidateQueries()}
