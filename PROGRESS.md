@@ -1087,3 +1087,29 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 ### Next Session Plan
 - Implement Dataset System rewrite (docs/DATASET_SYSTEM_FIX_PLAN.md)
 - 6 sessions: folders CRUD, annotations, frontend rewrite, auto-collection, Roboflow sync, testing
+
+---
+
+## Session 33 — Dataset System + Cloud Detection Fixes + UI Audit
+### Date: 2026-03-25
+### Goal: Complete dataset rewrite, fix cloud detection gaps, audit all UI
+
+### Tasks Completed
+- Task 1: Dataset v4.6 — folders CRUD, presigned URLs, annotations, sync worker fix, COCO export fix, clip_service alignment
+- Task 2: DatasetPage rewrite — folder sidebar, image grid, thumbnails, bulk ops, file upload
+- Task 3: Cloud detection v4.7 — removed Roboflow fallback (503 on ONNX fail), incident timeline, IoT edge proxy routing, private IP warning
+- Task 4: Detection worker fix — both annotated+clean frames to S3, model_version_id, idempotency
+- Task 5: Full 42-endpoint test — all 18 phases pass
+- Task 6: Complete detection flow report (cloud + edge, step by step)
+- Task 7: Data transfer research report
+- Task 8: 33-page UI deep audit with Stitch SDK regeneration
+- Task 9: UI improvement report with priority action plan
+
+### Files Changed: 20+ files
+### Tests: 42/42 pass (18 phases)
+### GitHub: v4.5.0, v4.6.0, v4.7.0 tagged, all pushed
+
+### Next Session Plan
+- Full UI redesign based on docs/UI_IMPROVEMENT_REPORT.md
+- Fix broken: dark mode, compliance exports, version string
+- Add instructions to 17 pages, onboarding flow, shared components
