@@ -1,0 +1,10 @@
+{
+  "screenName": "camera-wizard",
+  "screenId": "4bf5268489e4481eba824b1724050c14",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:35:50.809Z",
+  "prompt": "3-step camera onboarding wizard for FloorEye. Progress indicator at top showing 3 steps. Step 1 — Select Store: radio button list of stores with edge agent status indicators (online green/offline red), disabled if no agent online. Step 2 — Camera Details: form with camera name, RTSP URL, stream type dropdown (RTSP/HLS/MJPEG/HTTP), location description, \"Test Connection\" button showing success/failure with preview snapshot. Step 3 — Confirmation: success checkmark animation, camera summary, action buttons (View Camera, Add Another, Go to Cameras). Show step 2 active."
+}

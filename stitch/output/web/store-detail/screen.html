@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Store Details | FloorEye Enterprise</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #faf9f6;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#8a4cfc",
+                        "on-secondary-fixed": "#131b2e",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "inverse-on-surface": "#f2f1ee",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-primary-container": "#f4fffc",
+                        "tertiary": "#712ae2",
+                        "on-secondary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-surface": "#2f312f",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#5c647a",
+                        "on-surface-variant": "#3d4947",
+                        "surface-container-highest": "#e3e2df",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1a",
+                        "primary-fixed": "#89f5e7",
+                        "primary-container": "#008378",
+                        "on-primary-fixed-variant": "#005049",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "on-primary-fixed": "#00201d",
+                        "surface-bright": "#faf9f6",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e9e8e5",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "primary": "#00685f",
+                        "surface-container": "#efeeeb",
+                        "background": "#faf9f6",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#dbdad7",
+                        "outline-variant": "#bcc9c6",
+                        "on-background": "#1a1c1a",
+                        "secondary": "#565e74",
+                        "surface-tint": "#006a61",
+                        "outline": "#6d7a77",
+                        "inverse-primary": "#6bd8cb",
+                        "surface-variant": "#e3e2df",
+                        "tertiary-fixed": "#eaddff",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "surface-container-low": "#f4f3f0",
+                        "secondary-container": "#dae2fd",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface": "#faf9f6",
+                        "on-tertiary-container": "#fffbff",
+                        "secondary-fixed": "#dae2fd"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="text-on-surface antialiased overflow-x-hidden">
+<!-- SideNavBar (Authority: Shared Components JSON) -->
+<aside class="h-full w-64 fixed left-0 top-0 bg-slate-900 dark:bg-slate-950 flex flex-col h-screen shadow-2xl z-50">
+<div class="text-teal-500 font-bold text-xl px-4 py-6">FloorEye</div>
+<div class="px-4 mb-4 text-[11px] font-medium tracking-wide uppercase text-slate-500">See Every Drop.</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">dashboard</span>
+<span class="font-inter text-sm">Dashboard</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">videocam</span>
+<span class="font-inter text-sm">Live Monitoring</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">history</span>
+<span class="font-inter text-sm">Detection History</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">warning</span>
+<span class="font-inter text-sm">Incidents</span>
+</a>
+<!-- ACTIVE TAB: Stores -->
+<a class="flex items-center px-4 py-3 text-white border-l-4 border-teal-600 bg-slate-800/50" href="#">
+<span class="material-symbols-outlined mr-3">storefront</span>
+<span class="font-inter text-sm">Stores</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">photo_camera</span>
+<span class="font-inter text-sm">Cameras</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">settings</span>
+<span class="font-inter text-sm">Settings</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-800">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs font-bold">FE</div>
+<div>
+<div class="text-xs text-white font-medium">Enterprise Admin</div>
+<div class="text-[10px] text-slate-500">Live Status: Online</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar (Authority: Shared Components JSON) -->
+<header class="sticky top-0 w-full h-16 glass-panel flex items-center justify-between px-8 ml-64 max-w-[calc(100%-16rem)] border-b border-slate-100 dark:border-slate-800 shadow-sm z-40">
+<div class="flex items-center space-x-6">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low rounded-md border-none focus:ring-1 focus:ring-primary text-sm w-64 transition-all" placeholder="Search enterprise..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center space-x-3">
+<span class="text-sm font-semibold text-on-surface">Administrator</span>
+<img alt="Administrator" class="w-8 h-8 rounded-full" data-alt="Professional corporate headshot of a middle-aged male administrator in a grey suit, clean white background, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiip3sR4z0rcpp5xwLukswoNrhDHTRJr0LZaK-uw2xyyUHbqwLz7IyBpRUu-ahRBDiBajWj9Tz2m0RAF49H_B8nDpNwybSAesnHhJOFORPem2teP7ZHE6ELnVJgBVFs9-BBzV8deJgz7WaoLdHF0wHwwuokweFLlNuDnkPVF9J6KGfqI_5jtw-riHn5-gh9vO-RhDSDY3ZtmJ8WEt0EMaU2cjRBqyr4zzbpQPEl5heqQWUE3V_m6zsDOa6zT03e6fuZ6Ijbct0uzpo"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-8 max-w-[1440px]">
+<!-- Breadcrumbs & Header -->
+<nav class="mb-6 flex items-center text-xs font-medium tracking-wide text-on-surface-variant space-x-2">
+<span class="hover:text-primary cursor-pointer transition-colors">Stores</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span class="text-on-surface font-bold">Main Street Location</span>
+</nav>
+<div class="flex justify-between items-end mb-8">
+<div>
+<div class="flex items-center space-x-3 mb-1">
+<h1 class="text-3xl font-bold tracking-tight text-on-surface">Main Street Location</h1>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-widest border border-green-200">ACTIVE</span>
+</div>
+<p class="text-on-surface-variant text-sm flex items-center">
+<span class="material-symbols-outlined text-sm mr-1">location_on</span>
+                    742 Evergreen Terrace, Springfield, OR
+                </p>
+</div>
+<div class="flex space-x-3">
+<button class="px-4 py-2 bg-surface-container-highest text-on-surface text-sm font-semibold rounded-lg flex items-center hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-lg mr-2">edit</span>
+                    Edit Store
+                </button>
+<button class="px-6 py-2 bg-gradient-to-br from-primary to-primary-container text-white text-sm font-semibold rounded-lg shadow-md hover:opacity-90 transition-all">
+                    Force Scan
+                </button>
+</div>
+</div>
+<!-- Tab System -->
+<div class="mb-8 border-b border-surface-container">
+<div class="flex space-x-8">
+<a class="pb-4 text-sm font-bold border-b-2 border-primary text-primary transition-all" href="#">Overview</a>
+<a class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-all" href="#">Cameras</a>
+<a class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-all" href="#">Incidents</a>
+<a class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-all" href="#">Edge Agent</a>
+<a class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-all" href="#">Detection Overrides</a>
+<a class="pb-4 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-all" href="#">Audit Log</a>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Main Store Details Card -->
+<div class="col-span-12 lg:col-span-4 bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">store</span>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<h3 class="text-xl font-bold mb-4">Store Configuration</h3>
+<div class="space-y-4">
+<div class="flex justify-between py-3 border-b border-surface-container-low">
+<span class="text-xs font-medium uppercase text-on-surface-variant tracking-wider">Name</span>
+<span class="text-sm font-semibold">Main Street Location</span>
+</div>
+<div class="flex justify-between py-3 border-b border-surface-container-low">
+<span class="text-xs font-medium uppercase text-on-surface-variant tracking-wider">Timezone</span>
+<span class="text-sm font-semibold">Pacific Standard Time (PST)</span>
+</div>
+<div class="flex justify-between py-3">
+<span class="text-xs font-medium uppercase text-on-surface-variant tracking-wider">Address</span>
+<span class="text-sm font-semibold text-right">742 Evergreen Terrace,<br/>Springfield, OR</span>
+</div>
+</div>
+</div>
+<div class="mt-8">
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[85%] rounded-full"></div>
+</div>
+<p class="text-[10px] mt-2 text-on-surface-variant font-medium">Compliance Score: 85% — Very Good</p>
+</div>
+</div>
+<!-- Stats Grid Section -->
+<div class="col-span-12 lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+<!-- Stat Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border-l-4 border-teal-500">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold uppercase text-on-surface-variant tracking-widest">Active Cameras</span>
+<span class="material-symbols-outlined text-primary" data-weight="fill">videocam</span>
+</div>
+<div class="text-3xl font-bold text-on-surface">12</div>
+<div class="mt-2 flex items-center text-xs text-green-600 font-bold">
+<span class="material-symbols-outlined text-sm mr-1">trending_up</span>
+                        100% Online
+                    </div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold uppercase text-on-surface-variant tracking-widest">Total Incidents</span>
+<span class="material-symbols-outlined text-error" data-weight="fill">warning</span>
+</div>
+<div class="text-3xl font-bold text-on-surface">42</div>
+<div class="mt-2 flex items-center text-xs text-on-surface-variant">
+                        Last 30 days
+                    </div>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold uppercase text-on-surface-variant tracking-widest">Detection Confidence</span>
+<span class="material-symbols-outlined text-tertiary" data-weight="fill">psychology</span>
+</div>
+<div class="text-3xl font-bold text-on-surface">98.2%</div>
+<div class="mt-2 flex items-center text-xs text-on-surface-variant">
+                        AI Model: v4.2.1 Stable
+                    </div>
+</div>
+<!-- Stat Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm border-l-4 border-primary">
+<div class="flex items-center justify-between mb-2">
+<span class="text-xs font-bold uppercase text-on-surface-variant tracking-widest">Edge Status</span>
+<span class="material-symbols-outlined text-primary" data-weight="fill">memory</span>
+</div>
+<div class="text-3xl font-bold text-on-surface">Healthy</div>
+<div class="mt-2 flex items-center text-xs text-on-surface-variant">
+                        Latency: 14ms
+                    </div>
+</div>
+</div>
+<!-- Visual Insight / Map Placeholder Section -->
+<div class="col-span-12 lg:col-span-7 bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm h-[320px] relative group">
+<img alt="Operational Center Dashboard" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="High-resolution overhead photograph of a modern retail grocery store aisle, clean white floors reflecting bright overhead LED lights, symmetrical shelving units" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBpO8tMETKIGjmYq4H_LJO4GeQmBvF0g53rm6Zh9YpWt3evIdLFUA-TitAXT_kZBNiGgqaI5ANRfH-rZLjqvFtWF444XJlu382n9UUMvz1PLmfDu-jN7-6TYs6eCD3e1rfI6cS6P28RliTi6sUXawl_E18QvA8FJf0wW_djodTgaKuDZzZ4Um6HPwm9V58c-fuSCNuU94neobJDWI0mIHqrnSjavINd2X7Qt_BQTtsAru5vH-YCNN3pg8c5RN0di7xbBogSYOV_IR4m"/>
+<div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent flex items-end p-8">
+<div>
+<h4 class="text-white font-bold text-lg mb-1">Store Floor Plan Heatmap</h4>
+<p class="text-white/70 text-sm">Visualizing high-traffic areas and slip-risk zones in real-time.</p>
+</div>
+</div>
+</div>
+<!-- Recent Activity Skeleton/List -->
+<div class="col-span-12 lg:col-span-5 bg-surface-container-lowest rounded-xl p-6 shadow-sm overflow-hidden">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-on-surface">Recent Alerts</h3>
+<a class="text-xs font-bold text-primary hover:underline" href="#">View All</a>
+</div>
+<div class="space-y-6">
+<div class="flex items-start space-x-4">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container shrink-0">
+<span class="material-symbols-outlined text-xl">water_drop</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<p class="text-sm font-bold text-on-surface">Liquid detected in Aisle 4</p>
+<span class="text-[10px] text-on-surface-variant font-medium">14m ago</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">System triggered warning. Clean-up crew dispatched. Confidence: 99%.</p>
+</div>
+</div>
+<!-- Skeleton Loader Implication -->
+<div class="flex items-start space-x-4 animate-pulse">
+<div class="w-10 h-10 rounded-full bg-surface-container shrink-0"></div>
+<div class="flex-1 space-y-2">
+<div class="h-4 bg-surface-container rounded w-3/4"></div>
+<div class="h-3 bg-surface-container-low rounded w-1/2"></div>
+</div>
+</div>
+<div class="flex items-start space-x-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-xl">check_circle</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start">
+<p class="text-sm font-bold text-on-surface">System Health Check</p>
+<span class="text-[10px] text-on-surface-variant font-medium">1h ago</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1">Edge agent auto-updated to v4.2.1 without disruption.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer (Authority: Shared Components JSON) -->
+<footer class="w-full py-6 mt-12 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center px-4">
+<div class="text-slate-400 font-semibold text-[11px] tracking-wide uppercase">© 2024 FloorEye AI. Stop Every Slip.</div>
+<div class="flex space-x-6">
+<a class="text-[11px] font-medium tracking-wide uppercase text-slate-400 hover:text-slate-600 underline-offset-4 hover:underline transition-all" href="#">Privacy Policy</a>
+<a class="text-[11px] font-medium tracking-wide uppercase text-slate-400 hover:text-slate-600 underline-offset-4 hover:underline transition-all" href="#">Terms of Service</a>
+<a class="text-[11px] font-medium tracking-wide uppercase text-slate-400 hover:text-slate-600 underline-offset-4 hover:underline transition-all" href="#">Support</a>
+</div>
+</footer>
+</main>
+</body></html>

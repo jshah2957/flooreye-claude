@@ -1,0 +1,10 @@
+{
+  "screenName": "api-manager",
+  "screenId": "4048897421d54036b0589fb78a1e2381",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:42:27.312Z",
+  "prompt": "API Integration Manager for FloorEye. \"API Integration Manager\" title + \"Add Integration\" button. Integration cards grid: each card shows provider name, type (webhook/REST/MQTT), status badge (active/inactive), last tested timestamp, test button, edit/delete actions. Right drawer for create/edit: provider name, integration type dropdown, endpoint URL, auth type (API Key, Bearer Token, Basic Auth, OAuth2), credentials inputs (masked with AES-256 encryption note), headers key-value pairs editor, test connection button with result, enable/disable toggle."
+}

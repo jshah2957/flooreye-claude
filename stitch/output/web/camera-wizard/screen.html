@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye - Camera Setup Wizard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface": "#faf9f6",
+              "primary-fixed": "#89f5e7",
+              "tertiary-fixed-dim": "#d2bbff",
+              "primary-fixed-dim": "#6bd8cb",
+              "inverse-surface": "#2f312f",
+              "surface-container-highest": "#e3e2df",
+              "on-tertiary-fixed-variant": "#5a00c6",
+              "tertiary": "#712ae2",
+              "background": "#faf9f6",
+              "on-background": "#1a1c1a",
+              "on-tertiary-container": "#fffbff",
+              "on-tertiary": "#ffffff",
+              "on-secondary-container": "#5c647a",
+              "on-secondary": "#ffffff",
+              "on-tertiary-fixed": "#25005a",
+              "surface-tint": "#006a61",
+              "surface-container": "#efeeeb",
+              "outline": "#6d7a77",
+              "outline-variant": "#bcc9c6",
+              "surface-variant": "#e3e2df",
+              "tertiary-fixed": "#eaddff",
+              "on-error": "#ffffff",
+              "secondary-fixed-dim": "#bec6e0",
+              "error-container": "#ffdad6",
+              "on-primary-fixed-variant": "#005049",
+              "secondary-fixed": "#dae2fd",
+              "tertiary-container": "#8a4cfc",
+              "inverse-on-surface": "#f2f1ee",
+              "on-error-container": "#93000a",
+              "on-surface-variant": "#3d4947",
+              "on-primary-fixed": "#00201d",
+              "on-primary": "#ffffff",
+              "primary": "#00685f",
+              "on-secondary-fixed-variant": "#3f465c",
+              "secondary-container": "#dae2fd",
+              "secondary": "#565e74",
+              "on-primary-container": "#f4fffc",
+              "surface-container-high": "#e9e8e5",
+              "surface-container-low": "#f4f3f0",
+              "surface-container-lowest": "#ffffff",
+              "inverse-primary": "#6bd8cb",
+              "primary-container": "#008378",
+              "surface-bright": "#faf9f6",
+              "error": "#ba1a1a",
+              "on-secondary-fixed": "#131b2e",
+              "on-surface": "#1a1c1a",
+              "surface-dim": "#dbdad7"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      body { font-family: 'Inter', sans-serif; }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex">
+<!-- SideNavBar (Suppressed check: Active/Task-focused but let's include as it's a "standard" part of the app layout defined in JSON) -->
+<aside class="w-64 h-screen fixed left-0 top-0 bg-[#0F172A] dark:bg-[#0F172A] flex flex-col py-6">
+<div class="px-6 mb-10 flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</div>
+<div>
+<h1 class="text-xl font-bold text-white">FloorEye</h1>
+<p class="text-[11px] font-medium uppercase text-slate-400 tracking-wider">Enterprise AI</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#CBD5E1] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-base font-semibold">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-white border-l-4 border-[#00685f] bg-slate-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+<span class="text-base font-semibold">Camera Setup</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#CBD5E1] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span class="text-base font-semibold">Alert Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#CBD5E1] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-base font-semibold">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#CBD5E1] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="text-base font-semibold">Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#CBD5E1] hover:bg-slate-800 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="text-base font-semibold">Logout</span>
+</a>
+</div>
+</aside>
+<main class="ml-64 flex-1 flex flex-col">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-8 w-full h-16 sticky top-0 bg-white/80 backdrop-blur-md z-10">
+<h2 class="text-2xl font-semibold text-on-surface">Camera Onboarding</h2>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container">
+<img alt="User Profile" data-alt="professional corporate headshot of a man in a business suit with a neutral background, high-end photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuANfadZ9N0dtAo8hmw_JEmv1doNiB56AEJs9Ubjd0rrDIs_IPJ87LXcbZK_ThAHUI1SuUsfX4paCnNHaFuMV9pdtOC9ciE9NT_ONvtlxXQiuWMYv-aOuo_72DuSNtCaWrPRDOEu9oFBoDiPCCVuCSspYmERSlceKyV8_nVrjcVSCa0uwTg0c2BStBAMfA3PgXA0Eo3iCQva2IpCHlw4NJu2sUdOdAFQqcZvb7J2nuW9a2sa3E1EFYFvLgviR1aB_IBF0fqCSh5I8xfr"/>
+</div>
+</div>
+</header>
+<section class="p-12 max-w-5xl mx-auto w-full">
+<!-- Progress Indicator -->
+<div class="mb-12">
+<div class="flex justify-between items-center max-w-2xl mx-auto relative">
+<!-- Progress Line Background -->
+<div class="absolute top-1/2 left-0 w-full h-0.5 bg-surface-container-highest -translate-y-1/2 z-0"></div>
+<!-- Progress Line Active -->
+<div class="absolute top-1/2 left-0 w-1/2 h-0.5 bg-primary -translate-y-1/2 z-0"></div>
+<!-- Step 1 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-sm" data-icon="check" style="font-variation-settings: 'FILL' 0, 'wght' 700;">check</span>
+</div>
+<span class="text-[11px] font-medium uppercase text-on-surface-variant">Step 1: Select Store</span>
+</div>
+<!-- Step 2 (Active) -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary-container text-white flex items-center justify-center font-bold ring-4 ring-primary-container/20">
+                            2
+                        </div>
+<span class="text-[11px] font-bold uppercase text-primary">Step 2: Camera Details</span>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 flex flex-col items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-outline flex items-center justify-center font-bold">
+                            3
+                        </div>
+<span class="text-[11px] font-medium uppercase text-outline">Step 3: Confirmation</span>
+</div>
+</div>
+</div>
+<!-- Content Area: Tonal Layering (Card on surface-container-low) -->
+<div class="bg-surface-container-low p-1 rounded-xl shadow-sm">
+<div class="bg-surface-container-lowest p-10 rounded-lg">
+<div class="mb-8">
+<h3 class="text-2xl font-semibold mb-2">Technical Configuration</h3>
+<p class="text-on-surface-variant text-sm">Specify the network parameters and identification for the new floor sensor.</p>
+</div>
+<form class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Left Column -->
+<div class="space-y-6">
+<div>
+<label class="block text-[11px] font-medium uppercase text-on-surface-variant mb-1 ml-1">Camera Name</label>
+<input class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary transition-all outline-none" placeholder="e.g. South Entrance A1" type="text"/>
+</div>
+<div>
+<label class="block text-[11px] font-medium uppercase text-on-surface-variant mb-1 ml-1">Stream Type</label>
+<select class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary transition-all outline-none appearance-none">
+<option>RTSP</option>
+<option>HLS</option>
+<option>MJPEG</option>
+<option>HTTP</option>
+</select>
+</div>
+<div>
+<label class="block text-[11px] font-medium uppercase text-on-surface-variant mb-1 ml-1">RTSP URL</label>
+<input class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary transition-all outline-none" placeholder="rtsp://admin:password@192.168.1.100:554/stream1" type="text"/>
+</div>
+<div>
+<label class="block text-[11px] font-medium uppercase text-on-surface-variant mb-1 ml-1">Location Description</label>
+<textarea class="w-full bg-surface-container-highest border-none rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary transition-all outline-none resize-none" placeholder="Describe the physical installation point..." rows="3"></textarea>
+</div>
+</div>
+<!-- Right Column: Preview & Status -->
+<div class="space-y-6">
+<div class="relative aspect-video rounded-lg bg-surface-container-low flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 overflow-hidden group">
+<img alt="Camera Preview" class="absolute inset-0 w-full h-full object-cover opacity-60 grayscale-[50%]" data-alt="Security camera view of a modern clean restaurant interior with wooden tables and warm atmospheric lighting, high quality surveillance snapshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5kDJOQKvvBPmYESwjPpp0iMIUXjHKZ5KMm5F5EFBDdOk0Un5VhHLT9trb1DGp9JdshWJQ5UoghFBwh5FfcrnT_uLiNQp0FVSMR8D3UFIyM2vAX2YqlvSy8n_sus968t-BsT4uMUSnR5ZyuzdcA03R7EOjkzAHO6ooBjEXxOruE7uYDsKKNekKRhQ3Kjg6vtAqbVYZlLeKkhit5SVuWiUj5K2ziS64BFFapxYUnQkF8u1NI2V8qebvnO6K8LAW7zZGF7NFOo9rhcuS"/>
+<div class="z-10 text-center p-6 bg-white/90 backdrop-blur shadow-xl rounded-xl">
+<div class="flex items-center justify-center gap-2 text-primary mb-2">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+<span class="font-bold text-sm">Connection Successful</span>
+</div>
+<p class="text-[11px] text-on-surface-variant font-medium">LATEST SNAPSHOT: 12:42:01 PM</p>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-lg border-2 border-primary text-primary font-semibold hover:bg-primary/5 transition-all" type="button">
+<span class="material-symbols-outlined text-xl" data-icon="refresh">refresh</span>
+                                Test Connection
+                            </button>
+<div class="p-4 rounded-lg bg-surface-container-low border-l-4 border-edge-purple/60 flex gap-4">
+<span class="material-symbols-outlined text-[#7C3AED]" data-icon="auto_awesome">auto_awesome</span>
+<div>
+<p class="text-[11px] font-bold uppercase text-[#7C3AED] mb-1">AI Recommendation</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Ensure the camera is tilted 15° downward for optimal slip-and-fall detection accuracy in this floor layout.</p>
+</div>
+</div>
+</div>
+</form>
+<div class="mt-12 pt-8 border-t border-surface-container flex justify-between items-center">
+<button class="px-8 py-3 text-primary font-semibold hover:text-on-primary-fixed-variant flex items-center gap-2 transition-all">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+                            Back to Store Selection
+                        </button>
+<button class="px-10 py-3 bg-primary text-white font-bold rounded-lg shadow-lg hover:bg-on-primary-fixed-variant transition-all transform active:scale-95 flex items-center gap-2">
+                            Review &amp; Save
+                            <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="mt-auto w-full py-6 bg-[#faf9f6] border-t border-surface-container-low flex flex-col md:flex-row justify-between items-center px-8">
+<span class="text-sm text-on-surface-variant">© 2024 FloorEye AI. All rights reserved.</span>
+<div class="flex gap-6 mt-4 md:mt-0">
+<a class="text-[11px] font-medium uppercase text-on-surface-variant hover:text-[#00685f] transition-colors" href="#">Privacy Policy</a>
+<a class="text-[11px] font-medium uppercase text-on-surface-variant hover:text-[#00685f] transition-colors" href="#">Terms of Service</a>
+<a class="text-[11px] font-medium uppercase text-on-surface-variant hover:text-[#00685f] transition-colors" href="#">Safety Standards</a>
+</div>
+</footer>
+</main>
+</body></html>

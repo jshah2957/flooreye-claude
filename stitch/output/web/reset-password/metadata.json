@@ -1,0 +1,10 @@
+{
+  "screenName": "reset-password",
+  "screenId": "9b9f7fb0ec514e3fad3563a64c69f584",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:25:53.594Z",
+  "prompt": "Reset password page for FloorEye. Centered card. Header: \"Reset your password\" title. New password + confirm password inputs with visibility toggles. Password strength meter: color-coded bar (red to orange to teal to green) with label. Inline validation requirements checklist. Error/success alert banners. Invalid token warning state. Success state with redirect message."
+}

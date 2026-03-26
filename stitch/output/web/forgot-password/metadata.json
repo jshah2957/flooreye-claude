@@ -1,0 +1,10 @@
+{
+  "screenName": "forgot-password",
+  "screenId": "09d0fdb2be31474081556c37ddcca132",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:23:46.505Z",
+  "prompt": "Forgot password page for FloorEye. Centered card on cream background, same style as login. Header: \"Forgot your password?\" title + description text. Email input + teal submit button. Success state: green mail icon (#16A34A), \"Check your email\" confirmation. \"Back to sign in\" link at bottom."
+}

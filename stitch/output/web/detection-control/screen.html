@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye | Detection Control Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-fixed": "#131b2e",
+                        "surface-tint": "#006a61",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface-container-high": "#e9e8e5",
+                        "primary": "#00685f",
+                        "secondary": "#565e74",
+                        "outline": "#6d7a77",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#6bd8cb",
+                        "inverse-on-surface": "#f2f1ee",
+                        "background": "#faf9f6",
+                        "tertiary": "#712ae2",
+                        "secondary-fixed": "#dae2fd",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#bcc9c6",
+                        "primary-fixed": "#89f5e7",
+                        "on-primary-fixed": "#00201d",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "surface-variant": "#e3e2df",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#dae2fd",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-surface": "#2f312f",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#faf9f6",
+                        "surface": "#faf9f6",
+                        "primary-container": "#008378",
+                        "surface-dim": "#dbdad7",
+                        "on-background": "#1a1c1a",
+                        "on-surface": "#1a1c1a",
+                        "tertiary-container": "#8a4cfc",
+                        "on-secondary-container": "#5c647a",
+                        "on-surface-variant": "#3d4947",
+                        "on-primary-fixed-variant": "#005049",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-primary-container": "#f4fffc",
+                        "surface-container": "#efeeeb",
+                        "tertiary-fixed": "#eaddff",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "surface-container-highest": "#e3e2df",
+                        "surface-container-low": "#f4f3f0",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#93000a"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-header { backdrop-filter: blur(12px); }
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #E9E8E5;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            background: #00685f;
+            border-radius: 50%;
+            margin-top: -6px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed-dim selection:text-on-primary-fixed overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- SideNavBar (Shared Component) -->
+<aside class="w-[256px] h-screen sticky left-0 top-0 bg-[#0F172A] flex flex-col py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-bold text-white tracking-tight">FloorEye</h1>
+<p class="text-xs text-slate-400 font-medium">Enterprise AI Safety</p>
+</div>
+<nav class="flex-1 space-y-1 overflow-y-auto no-scrollbar">
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Monitoring</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Detection History</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="emergency">emergency</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="store">store</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Stores</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Cameras</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 border-l-[3px] border-[#0D9488] bg-[#1E293B] text-white font-semibold" href="#">
+<span class="material-symbols-outlined" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Detection Control</span>
+</a>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Inter'] font-medium text-sm leading-relaxed">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto pt-6 border-t border-slate-800 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="minimalist user avatar illustration with a professional and clean aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFghRzC0yuALNu9kPQX2RM2up2uma0HqBQIgEPeggIbBLIF0sIF5w1Tx9aEtPdwJUyHFQfVRImlIfPN5VoMjeHqlswP85yNdaixLM69Pabc1DOm1_Roan8mwniQ3E7rP0wH9sk1F6d8cBYLfZKEQAMv-PVzPcQWnjDwquJ53o1vgQWYQKDnvIeZnws4P1sfSNMR7qZ8djETu10kMIIMyEvD7yYJ_58uw5puT5CMUZ0S6JygrgqcJkO3II6zh82hwwJhxuARrGIvFnZ"/>
+</div>
+<div>
+<p class="text-xs font-bold text-white">Admin Console</p>
+<p class="text-[10px] text-slate-500">v2.4.0-stable</p>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- TopNavBar (Shared Component) -->
+<header class="h-16 sticky top-0 w-full bg-white/80 backdrop-blur-md flex justify-between items-center px-8 z-40 shadow-sm">
+<div class="flex items-center gap-4">
+<h2 class="font-['Inter'] text-sm font-semibold uppercase tracking-wider text-[#0D9488]">Detection Control</h2>
+<span class="text-outline-variant opacity-30">/</span>
+<span class="text-xs font-medium text-on-surface-variant bg-surface-container px-2 py-1 rounded">London Flagship #042</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline text-sm" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border-none rounded-full text-xs w-64 focus:ring-1 focus:ring-primary transition-all" placeholder="Search parameters..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-slate-600">
+<button class="hover:text-[#0D9488] transition-colors"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="hover:text-[#0D9488] transition-colors"><span class="material-symbols-outlined" data-icon="help_outline">help_outline</span></button>
+</div>
+</div>
+</header>
+<!-- 3-Column Content Layout -->
+<div class="flex-1 overflow-hidden grid grid-cols-12 gap-0">
+<!-- Left: Scope Tree (Col 3) -->
+<section class="col-span-3 bg-surface-container-low border-r border-outline-variant/10 flex flex-col overflow-hidden">
+<div class="p-6 pb-2">
+<p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">Network Hierarchy</p>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-sm" data-icon="filter_list">filter_list</span>
+<input class="w-full pl-9 pr-4 py-2 bg-surface-container-lowest border border-outline-variant/20 rounded-lg text-xs focus:ring-primary focus:border-primary" placeholder="Filter scope..." type="text"/>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-1">
+<!-- Hierarchy Item -->
+<div class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-sm" data-icon="public">public</span>
+<span class="text-sm font-medium">Global Network</span>
+</div>
+<div class="ml-4 space-y-1 border-l border-outline-variant/30 pl-2">
+<div class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-sm" data-icon="corporate_fare">corporate_fare</span>
+<span class="text-sm font-medium">EMEA Region</span>
+</div>
+<div class="ml-4 space-y-1 border-l border-outline-variant/30 pl-2">
+<div class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-sm" data-icon="store">store</span>
+<span class="text-sm font-medium">London Flagship</span>
+</div>
+<div class="ml-4 space-y-1 border-l border-outline-variant/30 pl-2">
+<div class="flex items-center justify-between p-2 rounded-lg bg-primary/10 text-primary border-l-2 border-primary cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="videocam" style="font-variation-settings: 'FILL' 1;">videocam</span>
+<span class="text-sm font-bold">Entrance Cam A1</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer opacity-70">
+<span class="material-symbols-outlined text-sm" data-icon="videocam">videocam</span>
+<span class="text-sm font-medium">Cashier South</span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer opacity-70">
+<span class="material-symbols-outlined text-sm" data-icon="videocam">videocam</span>
+<span class="text-sm font-medium">Produce Aisle 4</span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer opacity-60">
+<span class="material-symbols-outlined text-sm" data-icon="corporate_fare">corporate_fare</span>
+<span class="text-sm font-medium">North America</span>
+</div>
+</div>
+</section>
+<!-- Center: Settings Form (Col 6) -->
+<section class="col-span-6 flex flex-col overflow-hidden bg-background">
+<div class="p-8 pb-4 flex items-end justify-between">
+<div>
+<h3 class="text-2xl font-extrabold text-on-surface tracking-tight mb-1">Configuration Profile</h3>
+<p class="text-sm text-on-surface-variant">Overriding Global defaults for Entrance Cam A1.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 rounded-full text-xs font-bold bg-surface-container-high text-on-surface hover:bg-surface-dim transition-all">Reset to Parent</button>
+<button class="px-6 py-2.5 rounded-full text-xs font-bold bg-gradient-to-br from-primary to-primary-container text-white shadow-lg hover:opacity-90 transition-all">Save Changes</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar">
+<!-- 1. Frame Preprocessing -->
+<div class="p-6 bg-surface-container-lowest rounded-xl shadow-none border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="architecture">architecture</span>
+<h4 class="font-bold text-on-surface">Frame Preprocessing</h4>
+</div>
+<div class="grid grid-cols-3 gap-8">
+<label class="flex flex-col gap-2 cursor-pointer group">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Resize Frame</span>
+<div class="flex items-center justify-between bg-surface-container-low p-3 rounded-lg border border-transparent group-hover:border-primary-fixed transition-colors">
+<span class="text-xs font-medium">Auto-Scale</span>
+<input checked="" class="form-checkbox h-4 w-4 text-primary rounded border-outline-variant focus:ring-primary" type="checkbox"/>
+</div>
+</label>
+<label class="flex flex-col gap-2 cursor-pointer group">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Denoise</span>
+<div class="flex items-center justify-between bg-surface-container-low p-3 rounded-lg border border-transparent group-hover:border-primary-fixed transition-colors">
+<span class="text-xs font-medium">Neural Denoiser</span>
+<input checked="" class="form-checkbox h-4 w-4 text-primary rounded border-outline-variant focus:ring-primary" type="checkbox"/>
+</div>
+</label>
+<label class="flex flex-col gap-2 cursor-pointer group">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Enhance</span>
+<div class="flex items-center justify-between bg-surface-container-low p-3 rounded-lg border border-transparent group-hover:border-primary-fixed transition-colors">
+<span class="text-xs font-medium">Low Light</span>
+<input class="form-checkbox h-4 w-4 text-primary rounded border-outline-variant focus:ring-primary" type="checkbox"/>
+</div>
+</label>
+</div>
+</div>
+<!-- 2. Motion Detection -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="waves">waves</span>
+<h4 class="font-bold text-on-surface">Motion Detection</h4>
+</div>
+<div class="space-y-8">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Sensitivity</span>
+<span class="text-xs font-bold text-primary">78%</span>
+</div>
+<input class="w-full" max="100" min="0" type="range" value="78"/>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Minimum Activation Area</span>
+<div class="relative">
+<input class="w-full p-3 bg-surface-container-low border-none rounded-lg text-xs font-bold focus:ring-1 focus:ring-primary" type="number" value="1200"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-on-surface-variant font-bold">PX²</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. ROI Filtering -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="focal_point">filter_center_focus</span>
+<h4 class="font-bold text-on-surface">ROI Filtering</h4>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-lg bg-primary-container text-on-primary-container text-xs font-bold border border-primary/20">Aisle 1 - Active</button>
+<button class="px-4 py-2 rounded-lg bg-surface-container text-on-surface-variant text-xs font-bold border border-transparent hover:border-outline-variant">Produce - Idle</button>
+<button class="px-4 py-2 rounded-lg bg-surface-container text-on-surface-variant text-xs font-bold border border-transparent hover:border-outline-variant">Checkout - Idle</button>
+<button class="px-4 py-2 rounded-lg bg-surface-container text-on-surface-variant text-xs font-bold border border-transparent hover:border-outline-variant">Queue - Idle</button>
+<button class="px-4 py-2 rounded-lg border-2 border-dashed border-outline-variant/30 text-outline-variant text-xs font-bold flex items-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span> New Zone
+                                </button>
+</div>
+</div>
+<!-- 4. AI Classification -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="psychology">psychology</span>
+<h4 class="font-bold text-on-surface">AI Classification</h4>
+</div>
+<div class="grid grid-cols-2 gap-10">
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase text-xs">Confidence Threshold</span>
+<span class="text-xs font-bold text-primary">0.85</span>
+</div>
+<input class="w-full" max="1" min="0" step="0.01" type="range" value="0.85"/>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase text-xs">NMS Threshold</span>
+<span class="text-xs font-bold text-primary">0.45</span>
+</div>
+<input class="w-full" max="1" min="0" step="0.01" type="range" value="0.45"/>
+</div>
+</div>
+</div>
+<!-- 5. Detection Settings -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="timer">timer</span>
+<h4 class="font-bold text-on-surface">Detection Settings</h4>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="flex flex-col gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Detection Cooldown</span>
+<input class="w-full p-3 bg-surface-container-low border-none rounded-lg text-xs font-bold focus:ring-primary" type="number" value="5"/>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Min Consecutive Frames</span>
+<input class="w-full p-3 bg-surface-container-low border-none rounded-lg text-xs font-bold focus:ring-primary" type="number" value="3"/>
+</div>
+</div>
+</div>
+<!-- 6. Incident Settings -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="emergency_home">emergency_home</span>
+<h4 class="font-bold text-on-surface">Incident Settings</h4>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="flex flex-col gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Merge Window (Sec)</span>
+<input class="w-full p-3 bg-surface-container-low border-none rounded-lg text-xs font-bold focus:ring-primary" type="number" value="30"/>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-[11px] font-bold text-on-surface-variant uppercase">Auto-Resolve Timeout (Min)</span>
+<input class="w-full p-3 bg-surface-container-low border-none rounded-lg text-xs font-bold focus:ring-primary" type="number" value="15"/>
+</div>
+</div>
+</div>
+<!-- 7. Severity Rules -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="rule">rule</span>
+<h4 class="font-bold text-on-surface">Severity Rules</h4>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-3 bg-error-container/20 rounded-lg">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-xs font-bold text-on-error-container uppercase">Critical</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-bold">Trigger &gt;</span>
+<input class="w-16 p-1 text-center bg-white border-none rounded text-xs font-bold" type="number" value="95"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-amber-100/50 rounded-lg">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-xs font-bold text-amber-900 uppercase">High</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-bold">Trigger &gt;</span>
+<input class="w-16 p-1 text-center bg-white border-none rounded text-xs font-bold" type="number" value="80"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-secondary-container/30 rounded-lg">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs font-bold text-on-secondary-container uppercase">Medium</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-bold">Trigger &gt;</span>
+<input class="w-16 p-1 text-center bg-white border-none rounded text-xs font-bold" type="number" value="50"/>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-green-100/50 rounded-lg">
+<div class="flex items-center gap-3">
+<span class="w-2 h-2 rounded-full bg-green-600"></span>
+<span class="text-xs font-bold text-green-900 uppercase">Low</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-bold">Trigger &gt;</span>
+<input class="w-16 p-1 text-center bg-white border-none rounded text-xs font-bold" type="number" value="20"/>
+</div>
+</div>
+</div>
+</div>
+<!-- 8. Hybrid Mode -->
+<div class="p-6 bg-surface-container-lowest rounded-xl border border-outline-variant/10 mb-8">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="cloud_sync">cloud_sync</span>
+<h4 class="font-bold text-on-surface">Hybrid Mode Distribution</h4>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between text-[11px] font-bold uppercase">
+<span class="text-primary-container">Edge Processing</span>
+<span class="text-tertiary">Cloud Inference</span>
+</div>
+<input class="w-full accent-primary-container" max="100" min="0" type="range" value="40"/>
+<div class="flex justify-between text-xs font-extrabold">
+<span>40%</span>
+<span>60%</span>
+</div>
+<p class="text-[10px] text-on-surface-variant leading-relaxed">
+                                    Dynamic ratio based on available local compute. High traffic periods will automatically shift load to Cloud Inference.
+                                </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Right: Inheritance Viewer (Col 3) -->
+<section class="col-span-3 bg-surface-container border-l border-outline-variant/10 flex flex-col overflow-hidden">
+<div class="p-6">
+<p class="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-6">Property Provenance</p>
+<div class="space-y-4">
+<!-- Provenance Item -->
+<div class="p-4 bg-white rounded-xl shadow-sm space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-on-surface-variant">Frame Preprocessing</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 font-bold uppercase tracking-tight">Global</span>
+</div>
+<div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="w-full h-full bg-slate-400"></div>
+</div>
+</div>
+<div class="p-4 bg-white rounded-xl shadow-sm space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-on-surface-variant">Sensitivity</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold uppercase tracking-tight">Organization</span>
+</div>
+<div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="w-4/5 h-full bg-blue-500"></div>
+</div>
+</div>
+<div class="p-4 bg-white rounded-xl shadow-sm space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-on-surface-variant">ROI Zone Toggles</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold uppercase tracking-tight">Store</span>
+</div>
+<div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="w-1/2 h-full bg-purple-500"></div>
+</div>
+</div>
+<div class="p-4 bg-white rounded-xl shadow-sm space-y-3 border-l-4 border-primary">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-on-surface-variant">Confidence Threshold</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-primary-fixed text-primary font-bold uppercase tracking-tight">Camera</span>
+</div>
+<div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="w-full h-full bg-primary"></div>
+</div>
+</div>
+<div class="p-4 bg-white rounded-xl shadow-sm space-y-3">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold text-on-surface-variant">Severity Rules</span>
+<span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 font-bold uppercase tracking-tight">Global</span>
+</div>
+<div class="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="w-full h-full bg-slate-400"></div>
+</div>
+</div>
+</div>
+<!-- Legend -->
+<div class="mt-8 p-6 bg-surface-container-low rounded-xl border border-outline-variant/10">
+<p class="text-[10px] font-bold text-on-surface-variant mb-4">INHERITANCE LEGEND</p>
+<div class="grid grid-cols-2 gap-3">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-slate-400"></span>
+<span class="text-[10px] font-medium">Global</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-blue-500"></span>
+<span class="text-[10px] font-medium">Org</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-purple-500"></span>
+<span class="text-[10px] font-medium">Store</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-medium">Camera</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto p-6 bg-primary/5">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="info">info</span>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">
+                                Specific camera overrides always take precedence over store and organizational settings. 
+                                <a class="text-primary font-bold underline" href="#">Learn about cascading.</a>
+</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,10 @@
+{
+  "screenName": "api-tester",
+  "screenId": "e22a7e888cbb45b681de33e5ffa72675",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:44:20.739Z",
+  "prompt": "3-pane API testing console for FloorEye. Left pane: endpoint library with collapsible categories (Auth, Stores, Cameras, Detection, Events, Detection Control, Integrations, Edge, Notifications, ML), each endpoint shows color-coded method pill (GET=green, POST=blue, PUT=orange, DELETE=red) + path. Center pane: request builder with method dropdown + URL input + \"Send\" button, headers section (key-value rows), JSON body textarea, response display with status code (color-coded), response time, JSON with syntax highlighting. Right pane: saved tests list with load/delete actions. Show a sample GET request to /api/v1/stores."
+}

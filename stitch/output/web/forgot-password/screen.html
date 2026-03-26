@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Forgot Password | FloorEye AI Precision</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed-dim": "#bec6e0",
+              "surface-container-highest": "#e3e2df",
+              "on-primary": "#ffffff",
+              "inverse-primary": "#6bd8cb",
+              "error-container": "#ffdad6",
+              "primary": "#00685f",
+              "tertiary-container": "#8a4cfc",
+              "surface-dim": "#dbdad7",
+              "tertiary-fixed": "#eaddff",
+              "tertiary": "#712ae2",
+              "on-secondary-container": "#5c647a",
+              "primary-fixed-dim": "#6bd8cb",
+              "on-tertiary-fixed-variant": "#5a00c6",
+              "on-tertiary": "#ffffff",
+              "secondary-container": "#dae2fd",
+              "on-secondary-fixed-variant": "#3f465c",
+              "tertiary-fixed-dim": "#d2bbff",
+              "on-tertiary-container": "#fffbff",
+              "on-surface": "#1a1c1a",
+              "surface-container-high": "#e9e8e5",
+              "surface": "#faf9f6",
+              "primary-container": "#008378",
+              "surface-bright": "#faf9f6",
+              "on-secondary-fixed": "#131b2e",
+              "on-error": "#ffffff",
+              "secondary": "#565e74",
+              "inverse-surface": "#2f312f",
+              "on-error-container": "#93000a",
+              "on-primary-fixed": "#00201d",
+              "on-primary-fixed-variant": "#005049",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary": "#ffffff",
+              "background": "#faf9f6",
+              "on-primary-container": "#f4fffc",
+              "inverse-on-surface": "#f2f1ee",
+              "surface-tint": "#006a61",
+              "outline-variant": "#bcc9c6",
+              "surface-container": "#efeeeb",
+              "on-background": "#1a1c1a",
+              "surface-variant": "#e3e2df",
+              "surface-container-low": "#f4f3f0",
+              "on-tertiary-fixed": "#25005a",
+              "secondary-fixed": "#dae2fd",
+              "primary-fixed": "#89f5e7",
+              "outline": "#6d7a77",
+              "on-surface-variant": "#3d4947",
+              "error": "#ba1a1a"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAF9F6;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-primary-fixed selection:text-on-primary-fixed">
+<header class="fixed top-0 w-full z-50 bg-stone-50/80 dark:bg-stone-950/80 backdrop-blur-md shadow-[0_20px_50px_rgba(28,25,23,0.05)]">
+<div class="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+<div class="text-xl font-bold tracking-tight text-teal-700 dark:text-teal-400">FloorEye</div>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-stone-600 dark:text-stone-400 hover:text-teal-500 transition-colors duration-300 font-medium text-sm" href="#">Support</a>
+</div>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-6 pt-24 pb-12">
+<div class="w-full max-w-md relative">
+<div class="absolute -top-20 -left-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-20 -right-20 w-64 h-64 bg-tertiary/5 rounded-full blur-3xl"></div>
+<div class="relative surface-container-lowest bg-white rounded-xl shadow-[0_20px_50px_rgba(28,25,23,0.05)] overflow-hidden">
+<div class="h-1.5 w-full bg-gradient-to-r from-primary via-primary-container to-tertiary-container"></div>
+<div class="p-10">
+<div class="mb-8 text-center">
+<div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-surface-container-low mb-6">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'opsz' 32;">lock_reset</span>
+</div>
+<h1 class="text-[1.75rem] font-bold text-on-surface leading-tight mb-3">Forgot your password?</h1>
+<p class="text-on-surface-variant text-sm leading-relaxed">
+                            Enter your email address and we'll send you a link to reset your password.
+                        </p>
+</div>
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant" for="email">
+                                EMAIL ADDRESS
+                            </label>
+<div class="relative">
+<input class="w-full px-0 py-3 bg-surface-container-low border-b-2 border-outline-variant/20 focus:border-primary focus:ring-0 transition-all duration-300 text-on-surface placeholder:text-stone-400" id="email" name="email" placeholder="you@company.com" required="" type="email"/>
+</div>
+</div>
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold py-3.5 px-6 rounded-lg shadow-md hover:shadow-lg hover:brightness-110 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 group" type="submit">
+<span>Send reset link</span>
+<span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</form>
+<div class="mt-10 pt-8 border-t border-outline-variant/10 text-center">
+<a class="inline-flex items-center text-sm font-medium text-stone-600 hover:text-primary transition-colors duration-300" href="/login">
+<span class="material-symbols-outlined text-base mr-2">arrow_back</span>
+                            Back to sign in
+                        </a>
+</div>
+</div>
+</div>
+<div class="mt-8 text-center">
+<p class="text-[11px] uppercase tracking-[0.2em] font-bold text-teal-700/60 dark:text-teal-400/60">
+                    See Every Drop. Stop Every Slip.
+                </p>
+</div>
+</div>
+</main>
+<div class="hidden fixed inset-0 z-[60] flex items-center justify-center px-6 pointer-events-none">
+<div class="w-full max-w-md bg-white rounded-xl shadow-[0_30px_60px_rgba(0,0,0,0.12)] p-10 transform translate-y-4 opacity-0 transition-all duration-500 pointer-events-auto">
+<div class="text-center">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 mb-6">
+<span class="material-symbols-outlined text-emerald-600 text-4xl" style="font-variation-settings: 'FILL' 1;">mail</span>
+</div>
+<h2 class="text-2xl font-bold text-on-surface mb-3">Check your email</h2>
+<p class="text-on-surface-variant text-sm leading-relaxed mb-8">
+                    We've sent a password reset link to your email address. Please follow the instructions in the email to regain access.
+                </p>
+<div class="bg-surface-container-low rounded-lg p-4 mb-8">
+<p class="text-[11px] text-on-surface-variant font-medium uppercase tracking-tight">Did not receive it?</p>
+<button class="text-primary font-bold text-sm mt-1 hover:underline">Resend the link</button>
+</div>
+<a class="block w-full text-center py-3 px-6 border-2 border-outline-variant/30 rounded-lg text-sm font-bold text-on-surface hover:bg-surface-container-low transition-colors duration-300" href="/login">
+                    Return to Login
+                </a>
+</div>
+</div>
+</div>
+<footer class="w-full py-8 mt-auto bg-stone-100 dark:bg-stone-900">
+<div class="flex flex-col md:flex-row justify-between items-center px-12 gap-4 max-w-7xl mx-auto">
+<div class="text-teal-700 dark:text-teal-400 font-bold">FloorEye</div>
+<div class="flex gap-8">
+<a class="text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400 hover:text-teal-700 dark:hover:text-teal-300 transition-all" href="#">Privacy Policy</a>
+<a class="text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400 hover:text-teal-700 dark:hover:text-teal-300 transition-all" href="#">Terms of Service</a>
+<a class="text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400 hover:text-teal-700 dark:hover:text-teal-300 transition-all" href="#">Security</a>
+</div>
+<div class="text-[11px] uppercase tracking-wider font-medium text-stone-500 dark:text-stone-400">
+                © 2024 FloorEye AI Precision. All rights reserved.
+            </div>
+</div>
+</footer>
+</body></html>

@@ -1,0 +1,10 @@
+{
+  "screenName": "live-monitoring",
+  "screenId": "e319c6677a7f444d82628b97b1cdab0b",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:27:25.057Z",
+  "prompt": "Multi-camera live surveillance grid for FloorEye. Store filter dropdown at top (\"All Stores\"). Responsive camera grid (1-3 columns). Each camera cell: live frame thumbnail (auto-refreshes), camera name header, store name subtitle, online/offline status dot, inference mode pill badge (Cloud=blue, Edge=purple, Hybrid=teal), detection active/paused indicator. Click cell navigates to camera detail. Collapsible \"Offline Cameras\" section at bottom with gray styling. Loading skeleton states."
+}

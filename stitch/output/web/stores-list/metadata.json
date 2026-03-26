@@ -1,0 +1,10 @@
+{
+  "screenName": "stores-list",
+  "screenId": "db729a502dab41f4bc485d31a26d5c1c",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:29:30.217Z",
+  "prompt": "Store management page for FloorEye. \"Stores\" title + total count badge + teal \"Add Store\" button. Search input (by name/address) + status dropdown filter (active/inactive). Paginated data table with columns: Name (teal link), Address, City/State, Timezone, Status badge, Cameras count, Created Date, Actions (edit/delete icons). Page numbers + prev/next pagination. Empty state: illustration + \"No stores yet\" + \"Add your first store\" CTA. Right drawer slides in for create/edit store form."
+}

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye | API Integration Manager</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e3e2df",
+                        "secondary-container": "#dae2fd",
+                        "primary-container": "#008378",
+                        "primary": "#00685f",
+                        "surface-tint": "#006a61",
+                        "inverse-primary": "#6bd8cb",
+                        "surface-container-high": "#e9e8e5",
+                        "surface": "#faf9f6",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e3e2df",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "primary-fixed": "#89f5e7",
+                        "on-background": "#1a1c1a",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#3d4947",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#eaddff",
+                        "on-surface": "#1a1c1a",
+                        "on-primary": "#ffffff",
+                        "outline": "#6d7a77",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#565e74",
+                        "surface-dim": "#dbdad7",
+                        "on-secondary-container": "#5c647a",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface-container": "#efeeeb",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-primary-fixed": "#00201d",
+                        "surface-bright": "#faf9f6",
+                        "tertiary": "#712ae2",
+                        "background": "#faf9f6",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "on-primary-fixed-variant": "#005049",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2f312f",
+                        "on-primary-container": "#f4fffc",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-container-low": "#f4f3f0",
+                        "on-tertiary-container": "#fffbff",
+                        "on-secondary-fixed": "#131b2e",
+                        "tertiary-container": "#8a4cfc",
+                        "secondary-fixed": "#dae2fd",
+                        "outline-variant": "#bcc9c6"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#0F172A] dark:bg-slate-950 bg-opacity-90 backdrop-blur-md shadow-2xl flex flex-col h-full z-40">
+<div class="p-8">
+<h1 class="text-xl font-bold text-white tracking-tighter">FloorEye</h1>
+<p class="text-xs text-slate-400 font-bold tracking-tight Inter">Vigilant Curator</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="text-slate-400 hover:text-white px-4 py-3 flex items-center gap-3 transition-colors hover:bg-slate-800/50 transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-bold tracking-tight Inter text-sm">Dashboard</span>
+</a>
+<a class="text-slate-400 hover:text-white px-4 py-3 flex items-center gap-3 transition-colors hover:bg-slate-800/50 transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="monitoring">monitoring</span>
+<span class="font-bold tracking-tight Inter text-sm">Monitoring</span>
+</a>
+<a class="bg-teal-800/50 text-white border-l-4 border-teal-500 px-4 py-3 flex items-center gap-3 active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="api">api</span>
+<span class="font-bold tracking-tight Inter text-sm">API Manager</span>
+</a>
+<a class="text-slate-400 hover:text-white px-4 py-3 flex items-center gap-3 transition-colors hover:bg-slate-800/50 transition-all active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-bold tracking-tight Inter text-sm">Settings</span>
+</a>
+</nav>
+<div class="p-6 mt-auto">
+<div class="flex items-center gap-3 p-3 rounded-xl bg-slate-800/30">
+<img alt="User Profile Avatar" class="w-8 h-8 rounded-full" data-alt="professional profile photo of a security administrator in a high-tech office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQZoGTj_7QLI_iXWnJ2qVxPUkRHQ8wdq-DH8mTO7PaEQaTURN0dnKWMPON0D_cwiRUUJP1bdB91AUmvwmTEGsnPWZffva5Z9x-NLCp2aKRGlk0lkZZlOjNfFt0k5Pigo3t6LSXqkvCrAot1N7Lw3houjrN9YY5msVtxZ9LSkOEKvEmFu1ymu1bzcB5-ZHh6tsnm0wrbuaOEpHk7Nc3SGaOENt_X3qDgv5dqpkk-TCupmagoxPvF0bGNyz737uCyF_xvTyeRF6z2JEJ"/>
+<div class="overflow-hidden">
+<p class="text-white text-sm font-bold truncate">Admin User</p>
+<p class="text-slate-500 text-xs truncate">System Architect</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 flex justify-between items-center px-8 w-full bg-[#f4f3f0] dark:bg-slate-800 flat no-shadows z-30">
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary" data-icon="search">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full pl-10 pr-4 py-1.5 text-sm focus:ring-2 focus:ring-primary w-64 transition-all" placeholder="Search integrations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<h2 class="headline-md bold Inter -tracking-[0.02em] text-[#1a1c1a] dark:text-slate-100 mr-8">API Integration Manager</h2>
+<div class="flex items-center gap-2">
+<button class="p-2 text-[#565e74] dark:text-slate-400 hover:text-[#00685f] transition-colors hover:opacity-80 duration-200">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-[#565e74] dark:text-slate-400 hover:text-[#00685f] transition-colors hover:opacity-80 duration-200">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="p-2 text-[#565e74] dark:text-slate-400 hover:text-[#00685f] transition-colors hover:opacity-80 duration-200">
+<span class="material-symbols-outlined" data-icon="apps">apps</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-16 min-h-screen p-8 bg-surface">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-10">
+<div>
+<h1 class="text-3xl font-extrabold tracking-tighter text-on-surface">External Connectivity</h1>
+<p class="text-secondary body-md mt-1">Sync your hazard detection data with enterprise communication channels.</p>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                Add Integration
+            </button>
+</div>
+<!-- Integration Grid (Asymmetric Layout) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card: Slack -->
+<div class="bg-surface-container-lowest p-6 rounded-xl transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
+<img alt="Slack Icon" class="w-8 h-8" data-alt="minimalist slack logo with brand colors on a white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCf-j2BXFXFpe8Vh4HO3a_yDecqpvLU3k1MXhgLzAg4zQ2X0SlPk7Yt-fFVwBiMNJuDPk_gEYiStFjaIghAGrVRGq3Nk362v0mNj2IDaVUUBt6ODiYQ_440VRBtV17IqP6LunRN_MeH68FjMMxI2ceUt1cvOVuFyIR5JO4ZvjH7N2RlLFGVtuiTQxtA68QG1zk3xbDLrmG71i4-fhus-Y73JuQ4oUJ_6ss6zuMAnnnE_n9odgSX3AM_L95GjjGIVgRR0SY0nRPeJ1Vn"/>
+</div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary-container/10 text-primary">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        Active
+                    </span>
+</div>
+<h3 class="text-lg font-bold text-on-surface group-hover:text-primary transition-colors">Slack Notifications</h3>
+<p class="text-secondary text-sm mb-4">Real-time alerts for the #safety-floor-eye channel.</p>
+<div class="space-y-3 pt-4 border-t border-surface-container-low">
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Type</span>
+<span class="font-semibold text-on-surface">Webhook</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Last Tested</span>
+<span class="font-semibold text-on-surface">2 mins ago</span>
+</div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 bg-surface-container-high py-2 text-xs font-bold rounded-lg hover:bg-surface-container-highest transition-colors">Test</button>
+<button class="p-2 text-secondary hover:text-primary"><span class="material-symbols-outlined text-lg" data-icon="edit">edit</span></button>
+<button class="p-2 text-secondary hover:text-error"><span class="material-symbols-outlined text-lg" data-icon="delete">delete</span></button>
+</div>
+</div>
+<!-- Card: MS Teams -->
+<div class="bg-surface-container-lowest p-6 rounded-xl transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
+<img alt="Teams Icon" class="w-8 h-8" data-alt="minimalist microsoft teams logo in blue and purple on white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6CLEZHKWKCx52FX1ftonxsY4NVIPLyWzKFIdMkO2pbI9A5NDL5YlWCrGJL3FA3wv9mMPk5GwQWr1yMmItwcv7WDza86P8MRyJd6Qsh39cjDHQoNWaDjPqD4ojQPlQ_oruANQ8DKQwBbZxjhJCYoF-qbCopf80doSmGm8ZOKFG5tvUWSbmKseogwvQJMYNhIg5a_07Z06Q3NveJoTVH7VhFuSZRbLS3n35uEWIkoxf5UAce7ArYLNEOH3G4xWesTTDG-LCi3qDEOmT"/>
+</div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-secondary-container text-on-secondary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                        Inactive
+                    </span>
+</div>
+<h3 class="text-lg font-bold text-on-surface group-hover:text-primary transition-colors">Microsoft Teams</h3>
+<p class="text-secondary text-sm mb-4">Direct dispatch to Facility Operations team.</p>
+<div class="space-y-3 pt-4 border-t border-surface-container-low">
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Type</span>
+<span class="font-semibold text-on-surface">REST API</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Last Tested</span>
+<span class="font-semibold text-on-surface">3 days ago</span>
+</div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 bg-surface-container-high py-2 text-xs font-bold rounded-lg hover:bg-surface-container-highest transition-colors">Test</button>
+<button class="p-2 text-secondary hover:text-primary"><span class="material-symbols-outlined text-lg" data-icon="edit">edit</span></button>
+<button class="p-2 text-secondary hover:text-error"><span class="material-symbols-outlined text-lg" data-icon="delete">delete</span></button>
+</div>
+</div>
+<!-- Card: AWS SNS (High priority / AI) -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-tertiary transition-all hover:translate-y-[-4px] group relative overflow-hidden">
+<div class="absolute top-0 right-0 w-16 h-16 bg-tertiary/5 rounded-bl-full pointer-events-none"></div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary" data-icon="cloud">cloud</span>
+</div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-tertiary/10 text-tertiary">
+                        AI Edge
+                    </span>
+</div>
+<h3 class="text-lg font-bold text-on-surface group-hover:text-tertiary transition-colors">AWS SNS Pub/Sub</h3>
+<p class="text-secondary text-sm mb-4">High-throughput messaging for serverless responses.</p>
+<div class="space-y-3 pt-4 border-t border-surface-container-low">
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Type</span>
+<span class="font-semibold text-on-surface">MQTT</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Last Tested</span>
+<span class="font-semibold text-on-surface">Just now</span>
+</div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 bg-surface-container-high py-2 text-xs font-bold rounded-lg hover:bg-surface-container-highest transition-colors">Test</button>
+<button class="p-2 text-secondary hover:text-primary"><span class="material-symbols-outlined text-lg" data-icon="edit">edit</span></button>
+<button class="p-2 text-secondary hover:text-error"><span class="material-symbols-outlined text-lg" data-icon="delete">delete</span></button>
+</div>
+</div>
+<!-- Skeleton Loading Card -->
+<div class="bg-surface-container-low/40 p-6 rounded-xl animate-pulse">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high"></div>
+<div class="w-16 h-6 rounded-full bg-surface-container-high"></div>
+</div>
+<div class="h-6 w-3/4 bg-surface-container-high rounded mb-4"></div>
+<div class="h-4 w-full bg-surface-container-high rounded mb-4"></div>
+<div class="space-y-3 pt-4 border-t border-surface-container-high/50">
+<div class="h-3 w-1/2 bg-surface-container-high rounded"></div>
+<div class="h-3 w-1/3 bg-surface-container-high rounded"></div>
+</div>
+</div>
+<!-- Card: Custom Webhook -->
+<div class="bg-surface-container-lowest p-6 rounded-xl transition-all hover:translate-y-[-4px] group">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 rounded-lg bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="webhook">webhook</span>
+</div>
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-error-container text-on-error-container">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                        Error
+                    </span>
+</div>
+<h3 class="text-lg font-bold text-on-surface group-hover:text-primary transition-colors">Legacy ERP Hook</h3>
+<p class="text-secondary text-sm mb-4">Post hazard data to on-premise inventory system.</p>
+<div class="space-y-3 pt-4 border-t border-surface-container-low">
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Type</span>
+<span class="font-semibold text-on-surface">Webhook</span>
+</div>
+<div class="flex justify-between items-center text-xs">
+<span class="text-secondary">Last Tested</span>
+<span class="font-semibold text-error">Timeout 504</span>
+</div>
+</div>
+<div class="mt-6 flex gap-2">
+<button class="flex-1 bg-surface-container-high py-2 text-xs font-bold rounded-lg hover:bg-surface-container-highest transition-colors">Retry</button>
+<button class="p-2 text-secondary hover:text-primary"><span class="material-symbols-outlined text-lg" data-icon="edit">edit</span></button>
+<button class="p-2 text-secondary hover:text-error"><span class="material-symbols-outlined text-lg" data-icon="delete">delete</span></button>
+</div>
+</div>
+</div>
+</main>
+<!-- NavigationDrawer: Create New Integration -->
+<div class="fixed right-0 top-0 h-full w-[420px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-col p-8 z-50 overflow-y-auto shadow-[-24px_0_48px_-12px_rgba(26,28,26,0.08)] transition-transform duration-300 ease-in-out">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h2 class="text-2xl font-bold tracking-tight text-[#00685f]">Manage Integration</h2>
+<p class="text-secondary text-sm">Configure API endpoints and authentication</p>
+</div>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<div class="space-y-8">
+<!-- Basic Config -->
+<div class="space-y-4">
+<label class="block">
+<span class="text-xs font-bold uppercase tracking-widest text-secondary block mb-2">Provider Identity</span>
+<input class="w-full bg-transparent border-none border-b border-surface-variant focus:ring-0 focus:border-primary px-0 py-2 text-on-surface font-semibold placeholder:text-surface-variant" type="text" value="New Enterprise Webhook"/>
+</label>
+<label class="block">
+<span class="text-xs font-bold uppercase tracking-widest text-secondary block mb-2">Integration Type</span>
+<select class="w-full bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary px-4 py-3 text-sm font-medium">
+<option>Webhook (POST)</option>
+<option>REST API (JSON)</option>
+<option>MQTT (IoT Bridge)</option>
+<option>gRPC (Streaming)</option>
+</select>
+</label>
+</div>
+<!-- Endpoint & Security -->
+<div class="space-y-4">
+<label class="block">
+<span class="text-xs font-bold uppercase tracking-widest text-secondary block mb-2">Endpoint URL</span>
+<div class="flex items-center gap-2 bg-surface-container-low rounded-xl px-4 py-3">
+<span class="material-symbols-outlined text-secondary text-sm" data-icon="link">link</span>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-sm font-mono text-primary" type="url" value="https://api.internal-ops.floor/v1/alert"/>
+</div>
+</label>
+<div class="p-4 bg-primary/5 rounded-xl border border-primary/10">
+<div class="flex justify-between items-center mb-4">
+<span class="text-xs font-bold uppercase tracking-widest text-primary">Security Protocol</span>
+<div class="flex items-center gap-1.5 text-[10px] font-bold text-primary-container">
+<span class="material-symbols-outlined text-xs" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+                            AES-256
+                        </div>
+</div>
+<div class="space-y-4">
+<select class="w-full bg-white border-none rounded-lg focus:ring-2 focus:ring-primary text-xs py-2 px-3">
+<option>Bearer Token</option>
+<option>API Key (Header)</option>
+<option>Basic Auth</option>
+<option>OAuth 2.0 Client Credentials</option>
+</select>
+<input class="w-full bg-white border-none rounded-lg focus:ring-2 focus:ring-primary text-xs py-2 px-3 font-mono" type="password" value="••••••••••••••••••••"/>
+<p class="text-[10px] text-secondary italic">Credentials are encrypted before persistence in our Vault.</p>
+</div>
+</div>
+</div>
+<!-- Headers Editor -->
+<div>
+<div class="flex justify-between items-center mb-3">
+<span class="text-xs font-bold uppercase tracking-widest text-secondary">Headers</span>
+<button class="text-primary text-[10px] font-bold">+ ADD HEADER</button>
+</div>
+<div class="space-y-2">
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-low border-none rounded-lg text-[11px] px-3 py-2" type="text" value="Content-Type"/>
+<input class="flex-1 bg-surface-container-low border-none rounded-lg text-[11px] px-3 py-2" type="text" value="application/json"/>
+<button class="text-secondary"><span class="material-symbols-outlined text-sm" data-icon="remove_circle">remove_circle</span></button>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-low border-none rounded-lg text-[11px] px-3 py-2" type="text" value="X-Agent-ID"/>
+<input class="flex-1 bg-surface-container-low border-none rounded-lg text-[11px] px-3 py-2" type="text" value="FE-992-CURATOR"/>
+<button class="text-secondary"><span class="material-symbols-outlined text-sm" data-icon="remove_circle">remove_circle</span></button>
+</div>
+</div>
+</div>
+<!-- Testing & Toggles -->
+<div class="pt-4 border-t border-surface-container-low">
+<div class="flex items-center justify-between mb-6">
+<div>
+<span class="text-sm font-bold block">Integration Status</span>
+<span class="text-xs text-secondary">Toggle to begin forwarding data.</span>
+</div>
+<div class="w-12 h-6 bg-primary rounded-full relative p-1 cursor-pointer">
+<div class="w-4 h-4 bg-white rounded-full ml-auto"></div>
+</div>
+</div>
+<div class="flex gap-4">
+<button class="flex-1 border-2 border-primary text-primary font-bold py-3 rounded-xl hover:bg-primary/5 transition-all text-sm flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+                        Test Connection
+                    </button>
+<button class="flex-[1.5] bg-primary text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-primary/20 transition-all text-sm">
+                        Save Changes
+                    </button>
+</div>
+<!-- Connection Result -->
+<div class="mt-4 p-3 bg-primary-container/5 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-[11px] text-primary-container font-semibold tracking-tight">Success: Destination reachable via SSL handshake (200 OK)</span>
+</div>
+</div>
+</div>
+</div>
+</body></html>

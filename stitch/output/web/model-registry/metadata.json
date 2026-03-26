@@ -1,0 +1,10 @@
+{
+  "screenName": "model-registry",
+  "screenId": "94c70d4298c9427fa191e5b2ab66dabb",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:52:43.957Z",
+  "prompt": "Model Registry page for FloorEye. \"Model Registry\" title + filter by status (training/ready/production/retired). Model cards showing: name, version, architecture (YOLOv8n/s/m), status badge (color-coded), mAP score, precision, recall, training date, model size, action buttons (deploy/retire/download). Detail panel when selected: training config, epoch chart placeholder, confusion matrix placeholder, class performance breakdown, deployment history table. Show 4 model versions."
+}

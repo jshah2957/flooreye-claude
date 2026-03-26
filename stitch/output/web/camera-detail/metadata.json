@@ -1,0 +1,10 @@
+{
+  "screenName": "camera-detail",
+  "screenId": "cc93430cfa9241779ad1c738fbbad16b",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:33:21.268Z",
+  "prompt": "Camera detail page for FloorEye. Breadcrumb (Cameras > \"Lobby Cam 1\"), store name, status badge, edit button. 6-tab content: Overview (camera details: name, RTSP URL, stream type, location, store, edge agent, config version), Live Feed (full frame viewer with play/pause, fullscreen, detection overlay toggle, snapshot button), ROI Tool (interactive canvas for drawing polygon regions with saved ROI zones list with enable/disable toggles), Dry Reference (frame capture tool for baseline \"dry\" images, shows current reference + capture button), Detection Control (camera-specific settings with inheritance from store/org/global), Detection Log (table: timestamp, result, confidence, wet area, model source). Show the Live Feed tab active."
+}

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Detection History | FloorEye</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant": "#005049",
+                        "secondary-container": "#dae2fd",
+                        "on-primary-fixed": "#00201d",
+                        "surface-variant": "#e3e2df",
+                        "on-surface-variant": "#3d4947",
+                        "on-secondary-container": "#5c647a",
+                        "secondary-fixed": "#dae2fd",
+                        "surface-dim": "#dbdad7",
+                        "error": "#ba1a1a",
+                        "secondary": "#565e74",
+                        "primary-container": "#008378",
+                        "surface-bright": "#faf9f6",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#1a1c1a",
+                        "surface-container-highest": "#e3e2df",
+                        "tertiary-fixed": "#eaddff",
+                        "on-tertiary-fixed": "#25005a",
+                        "tertiary-container": "#8a4cfc",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "outline": "#6d7a77",
+                        "on-background": "#1a1c1a",
+                        "surface-container": "#efeeeb",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "surface-tint": "#006a61",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#f2f1ee",
+                        "primary-fixed": "#89f5e7",
+                        "on-tertiary-container": "#fffbff",
+                        "surface": "#faf9f6",
+                        "on-error": "#ffffff",
+                        "on-primary-container": "#f4fffc",
+                        "surface-container-low": "#f4f3f0",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#6bd8cb",
+                        "background": "#faf9f6",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-secondary-fixed": "#131b2e",
+                        "inverse-surface": "#2f312f",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "outline-variant": "#bcc9c6",
+                        "on-primary": "#ffffff",
+                        "primary": "#00685f",
+                        "surface-container-high": "#e9e8e5",
+                        "tertiary": "#712ae2"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- Side Navigation Shell -->
+<aside class="fixed left-0 top-0 h-screen w-[256px] bg-[#0F172A] flex flex-col overflow-y-auto shadow-2xl z-50">
+<div class="p-6">
+<h1 class="text-2xl font-bold text-white tracking-tight">FloorEye</h1>
+<p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Safety Control Center</p>
+</div>
+<nav class="flex-1 px-2 py-4 space-y-1">
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-medium text-sm tracking-wide">Dashboard</span>
+</a>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-medium text-sm tracking-wide">Live Monitoring</span>
+</a>
+<!-- Active Tab -->
+<a class="bg-teal-700/20 text-teal-400 border-l-4 border-teal-500 py-3 px-4 flex items-center gap-3 translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-medium text-sm tracking-wide">Detection History</span>
+</a>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+<span class="font-medium text-sm tracking-wide">Incidents</span>
+</a>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-medium text-sm tracking-wide">Review Queue</span>
+</a>
+<div class="pt-4 pb-2 px-4">
+<span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Resources</span>
+</div>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-medium text-sm tracking-wide">Dataset</span>
+</a>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<span class="font-medium text-sm tracking-wide">Stores</span>
+</a>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">videocam</span>
+<span class="font-medium text-sm tracking-wide">Cameras</span>
+</a>
+<a class="text-slate-400 hover:text-white py-3 px-4 flex items-center gap-3 transition-colors hover:bg-slate-800/50" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-medium text-sm tracking-wide">Settings</span>
+</a>
+</nav>
+<div class="mt-auto p-4 border-t border-slate-800">
+<div class="flex items-center gap-3 px-2">
+<img class="w-8 h-8 rounded-full" data-alt="professional headshot of a male administrator in a clean office environment with soft natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaATzTv_Rs0DslnM2MexhKVcVs8RMRvMfVAiGXiJZHGY6Ty_SFDRPkbWMZuLmkBnvnIi-LickVQYkGr7SgmJti3Uxb2hHNiJvLuTPlpreQXuphu1Qcse32xP74c94ToSr-69h-Zm0gCDO1-sXoi8DCsXaftYHSYLKQP_-0sSC5nzwE-zXtpK8IFpWHXQ2TdtuICLS6cJplb53G7Ue__cJ266IKIozYXvzRqn_S9N0Pm5IVZkzN9GLr5wWyJ1GW1MRiNoEzxwBt8YxV"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold text-white truncate">Admin Account</p>
+<p class="text-[10px] text-slate-500 truncate">System Overseer</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 right-0 h-16 w-full z-40 bg-white/85 backdrop-blur-md flex justify-between items-center px-8 ml-[256px] shadow-sm shadow-slate-200/50">
+<div class="flex items-center gap-4">
+<h2 class="text-xl font-bold text-teal-700 tracking-tight">Detection History</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 mr-4">
+<button class="text-slate-500 hover:text-teal-600 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-teal-600 transition-colors">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+<button class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-medium text-sm shadow-sm hover:bg-primary-container transition-all">
+<span class="material-symbols-outlined text-sm">download</span>
+                Export CSV
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-[256px] p-8 max-w-[1440px] mx-auto min-h-screen">
+<!-- Filter Bar -->
+<section class="bg-surface-container-low rounded-xl p-6 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
+<!-- Store Dropdown -->
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Store Location</label>
+<select class="w-full bg-surface-container-lowest border-none rounded-lg text-sm focus:ring-2 focus:ring-primary shadow-sm">
+<option>All Locations</option>
+<option>Downtown Flagship</option>
+<option>North Plaza Mall</option>
+<option>Eastside Hub</option>
+</select>
+</div>
+<!-- Camera Dropdown -->
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Camera Unit</label>
+<select class="w-full bg-surface-container-lowest border-none rounded-lg text-sm focus:ring-2 focus:ring-primary shadow-sm">
+<option>All Cameras</option>
+<option>Entrance A1</option>
+<option>Produce Aisle 4</option>
+<option>Checkout 2</option>
+</select>
+</div>
+<!-- Wet/Dry Toggle -->
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Condition State</label>
+<div class="flex p-1 bg-surface-container-highest rounded-lg">
+<button class="flex-1 py-1 text-xs font-medium rounded-md bg-white shadow-sm">All</button>
+<button class="flex-1 py-1 text-xs font-medium text-slate-500">Wet</button>
+<button class="flex-1 py-1 text-xs font-medium text-slate-500">Dry</button>
+</div>
+</div>
+<!-- Confidence Slider -->
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Confidence Threshold</label>
+<span class="text-xs font-bold text-primary">85%</span>
+</div>
+<input class="w-full accent-primary h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" max="100" min="0" type="range" value="85"/>
+</div>
+<!-- Date Picker -->
+<div class="space-y-2">
+<label class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Date Range</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-none rounded-lg text-sm focus:ring-2 focus:ring-primary shadow-sm pl-10" placeholder="Oct 24 - Oct 31, 2023" type="text"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">calendar_today</span>
+</div>
+</div>
+<!-- View Toggle & More -->
+<div class="flex items-end justify-end gap-3">
+<div class="flex bg-surface-container-highest p-1 rounded-lg">
+<button class="p-1.5 rounded-md bg-white shadow-sm text-primary">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+</button>
+<button class="p-1.5 rounded-md text-slate-500">
+<span class="material-symbols-outlined text-sm">view_list</span>
+</button>
+</div>
+<button class="p-2 bg-surface-container-highest rounded-lg text-slate-600 hover:bg-slate-200 transition-colors">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Gallery Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+<!-- Card 1 (Wet Detection) -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
+<div class="absolute top-3 left-3 z-10">
+<input class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="security camera footage of a modern supermarket floor with a small water spill highlighted by a red digital overlay box" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCb4VttxQQkdad2OvdUikeawDSqleTmDK191r19lLTBd7xMXUjpAIACKD3fNz_zix9NyaOApfNjiymHnWNNTt8gLbLuPVzJProYgSLC5fJPLaJ1na8QLD97XZ0d_nBsD8JU1EGpMV2TkvLhqzr7CIlz8Q-d4O2Z6iFU94wODN56HjYQFDEpX1btahUMKOW4nzrgjgCVh8V15LAaw_Wiyybsr6EKXkRChDEqcomi6xlGFGRLh6Sa_8FHe1Gfwo7XwA2LV7k6cG_BtNpG"/>
+<div class="absolute top-3 right-3 flex gap-2">
+<span class="px-2 py-1 bg-error/90 text-white text-[10px] font-bold rounded uppercase">WET SURFACE</span>
+<button class="w-6 h-6 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">flag</span>
+</button>
+</div>
+<div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+<div class="text-white">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Confidence</p>
+<p class="text-lg font-extrabold leading-none">98.4%</p>
+</div>
+<div class="text-white text-right">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Area Index</p>
+<p class="text-lg font-extrabold leading-none">12.5%</p>
+</div>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-sm font-bold text-on-surface">Produce Aisle 4</h4>
+<p class="text-xs text-on-surface-variant">Downtown Flagship</p>
+</div>
+<span class="text-[11px] font-medium text-slate-400">2m ago</span>
+</div>
+<div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+<span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
+<span class="text-[11px] font-medium text-slate-500">Oct 31, 2023 • 14:24:02</span>
+</div>
+</div>
+</div>
+<!-- Card 2 (Dry Clearance) -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
+<div class="absolute top-3 left-3 z-10">
+<input class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="clean dry supermarket floor in high resolution captured from an overhead wide angle security lens" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWkQICKTszQZKkQVK-RFIPcWxzwxpZ30zM5k8FdfuoMebJxg1CiBNDhBDN9cCl9hB2-odEyCz4UoCn811D1lQBed49myrWhaUMzRlsMmLMxA8P3ErhwaH8na7I2v8r7MaWFh8Vh9qRckDOu1H4L-kiKMs48a0SoqsU8S2STdIDzFlRuqk5Lxy4oENKx1jU-LBQRp_ikVyaEudoSpT6bdD4FgRnCuSwQBAodFMpJFbN6WNfGYRep7z0TW9fID6letGgvNkA-R_6nhwu"/>
+<div class="absolute top-3 right-3 flex gap-2">
+<span class="px-2 py-1 bg-primary/90 text-white text-[10px] font-bold rounded uppercase">DRY SURFACE</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+<div class="text-white">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Confidence</p>
+<p class="text-lg font-extrabold leading-none">99.1%</p>
+</div>
+<div class="text-white text-right">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Area Index</p>
+<p class="text-lg font-extrabold leading-none">0.0%</p>
+</div>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-sm font-bold text-on-surface">Main Entrance A</h4>
+<p class="text-xs text-on-surface-variant">North Plaza Mall</p>
+</div>
+<span class="text-[11px] font-medium text-slate-400">15m ago</span>
+</div>
+<div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+<span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
+<span class="text-[11px] font-medium text-slate-500">Oct 31, 2023 • 14:11:45</span>
+</div>
+</div>
+</div>
+<!-- Card 3 (Wet Detection - Flagged) -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
+<div class="absolute top-3 left-3 z-10">
+<input checked="" class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="commercial floor with a large hazardous liquid spill near a shelving unit, sharp focus on the reflective surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjDuXs7I7rp0pT_uIadywzdUB5mbC69DYu9EQWUSKkRkGdd8zPU48aOvMjiViZu4ded4BWpu5wknxRAMkYXQ5lTBlqkuOUDihSf7ImJXZWhTdi4clrBrIJFGjtO-f1og6ZlapVMdQsMUqDYBFlLw_msjXK8t71KS21pj9klTlNdj3mmnmAiVs4DuqqhrO3eHjwKpv3TmrVisocq259Fk2ltZ6DvCP5VJxKEQaLQP6wbip_6lbQHMLhl65iZphSovyP_rUJ89Xj8Htd"/>
+<div class="absolute top-3 right-3 flex gap-2">
+<span class="px-2 py-1 bg-error/90 text-white text-[10px] font-bold rounded uppercase">WET SURFACE</span>
+<button class="w-6 h-6 bg-error text-white rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">flag</span>
+</button>
+</div>
+<div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+<div class="text-white">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Confidence</p>
+<p class="text-lg font-extrabold leading-none">88.2%</p>
+</div>
+<div class="text-white text-right">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Area Index</p>
+<p class="text-lg font-extrabold leading-none">34.1%</p>
+</div>
+</div>
+</div>
+<div class="p-4 space-y-3 border-l-4 border-error">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-sm font-bold text-on-surface">Frozen Foods</h4>
+<p class="text-xs text-on-surface-variant">Eastside Hub</p>
+</div>
+<span class="text-[11px] font-medium text-slate-400">1h ago</span>
+</div>
+<div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+<span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
+<span class="text-[11px] font-medium text-slate-500">Oct 31, 2023 • 13:05:12</span>
+</div>
+</div>
+</div>
+<!-- Card 4 (Dry Clearance) -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
+<div class="absolute top-3 left-3 z-10">
+<input class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="clean tiled office lobby floor reflecting ceiling lights, high safety score detection" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAN9ldAistPqu4n6Nrgy1DzmRDaBGdkLp4JKfYcr03nB5A0kd7qNQ9NV7qjO90Dl0qntYn2emI-onzjA7PiV73Gu5fIJo2J9g6sQQhgqmiiZgBpMYUjEcXmckhfZVSILnFz4_Kzx9sOhWrQkypIwcF719KKTBN1-LxbtoI83YeAZ8rgGNwVUGPBpV7-OksZrU88QfsTHipgUk3EJcfZyvDwXarS_zq7xOet70zIdJNb03CQNZutqt9ujXlIu3SDhJYcQReYwP6BMPQc"/>
+<div class="absolute top-3 right-3 flex gap-2">
+<span class="px-2 py-1 bg-primary/90 text-white text-[10px] font-bold rounded uppercase">DRY SURFACE</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+<div class="text-white">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Confidence</p>
+<p class="text-lg font-extrabold leading-none">99.9%</p>
+</div>
+<div class="text-white text-right">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Area Index</p>
+<p class="text-lg font-extrabold leading-none">0.0%</p>
+</div>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-sm font-bold text-on-surface">Main Lobby</h4>
+<p class="text-xs text-on-surface-variant">Corporate HQ</p>
+</div>
+<span class="text-[11px] font-medium text-slate-400">2h ago</span>
+</div>
+<div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+<span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
+<span class="text-[11px] font-medium text-slate-500">Oct 31, 2023 • 12:15:30</span>
+</div>
+</div>
+</div>
+<!-- Card 5 (Wet Detection) -->
+<div class="group bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow relative">
+<div class="absolute top-3 left-3 z-10">
+<input class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" type="checkbox"/>
+</div>
+<div class="relative aspect-video overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="security feed of server room floor with liquid cooling leak forming a puddle under a rack" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkkhVaf9lx7uhKz17n8GKLF8hm6KCvIhLTbB_2ksCncza3mgfot40SMIIr8K6wC_87J-NzgjM0eiF1PEzzmvme3K5g6hrpEUlVWKxixh2_MtT4t1ZHW0ZSPgrg-Ky4aJD0zZ_aXR0zZ488vXcTdyshPlYxF68VzhytgnlOLN9VKF2d6BB6ZMedVMFivEdNW_6yJrJRqHCe1IRs472Lkxo61wvpYbHy0vINK8OI4eQyx1ANre2VmJk7LC1-Qv11fDES7ejictTkxnFD"/>
+<div class="absolute top-3 right-3 flex gap-2">
+<span class="px-2 py-1 bg-error/90 text-white text-[10px] font-bold rounded uppercase">WET SURFACE</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+<div class="text-white">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Confidence</p>
+<p class="text-lg font-extrabold leading-none">92.7%</p>
+</div>
+<div class="text-white text-right">
+<p class="text-[10px] font-bold opacity-80 uppercase tracking-tighter">Area Index</p>
+<p class="text-lg font-extrabold leading-none">5.2%</p>
+</div>
+</div>
+</div>
+<div class="p-4 space-y-3">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="text-sm font-bold text-on-surface">Data Center 2</h4>
+<p class="text-xs text-on-surface-variant">North Plaza Mall</p>
+</div>
+<span class="text-[11px] font-medium text-slate-400">3h ago</span>
+</div>
+<div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+<span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
+<span class="text-[11px] font-medium text-slate-500">Oct 31, 2023 • 11:22:11</span>
+</div>
+</div>
+</div>
+<!-- (Repeat logic for total of 8-12 cards) -->
+<div class="bg-surface-container p-4 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant opacity-60">
+<span class="material-symbols-outlined text-4xl mb-2 text-slate-400">history</span>
+<p class="text-xs font-bold uppercase tracking-wider text-slate-500">End of Recent Stream</p>
+</div>
+</div>
+<!-- Bulk Action Bar (Contextual) -->
+<div class="fixed bottom-10 left-[256px] right-0 flex justify-center pointer-events-none z-30 px-8">
+<div class="bg-[#0F172A] text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 pointer-events-auto transform translate-y-0 transition-transform">
+<div class="flex items-center gap-3 pr-6 border-r border-slate-700">
+<span class="w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
+<span class="text-sm font-medium">Detection selected</span>
+</div>
+<div class="flex gap-4">
+<button class="flex items-center gap-2 text-sm font-bold hover:text-teal-400 transition-colors">
+<span class="material-symbols-outlined text-lg">flag</span>
+                        Flag for Review
+                    </button>
+<button class="flex items-center gap-2 text-sm font-bold hover:text-teal-400 transition-colors">
+<span class="material-symbols-outlined text-lg">delete</span>
+                        Dismiss
+                    </button>
+<button class="flex items-center gap-2 text-sm font-bold bg-white text-slate-900 px-4 py-1.5 rounded-lg hover:bg-slate-100 transition-colors ml-4">
+<span class="material-symbols-outlined text-lg">download</span>
+                        Export
+                    </button>
+</div>
+<button class="ml-4 text-slate-500 hover:text-white">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Pagination -->
+<footer class="flex items-center justify-between py-6 border-t border-surface-variant">
+<p class="text-xs text-on-surface-variant font-medium">Showing <span class="text-on-surface font-bold">1-12</span> of <span class="text-on-surface font-bold">1,248</span> detections</p>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-low text-slate-400 cursor-not-allowed">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-primary text-white text-xs font-bold">1</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-lowest text-slate-600 hover:bg-surface-container text-xs font-bold transition-colors">2</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-lowest text-slate-600 hover:bg-surface-container text-xs font-bold transition-colors">3</button>
+<span class="text-slate-400 px-1">...</span>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-lowest text-slate-600 hover:bg-surface-container text-xs font-bold transition-colors">104</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-container-lowest text-slate-600 hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</footer>
+</main>
+</body></html>

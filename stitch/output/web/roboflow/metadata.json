@@ -1,0 +1,10 @@
+{
+  "screenName": "roboflow",
+  "screenId": "ec7e61ef3bed48de830ad8fd89bcb2db",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:45:58.989Z",
+  "prompt": "Roboflow integration settings page for FloorEye. 2-column split. Left: connection settings form with API Key (password input, masked), Model ID input, API URL input, Save button + Test Connection button. Right: status panel with connection status badge (Connected=green, Error=red, Not configured=gray), last tested timestamp, test result (checkmark/X) with latency, model info (classes, version) when connected."
+}

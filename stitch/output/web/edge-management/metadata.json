@@ -1,0 +1,10 @@
+{
+  "screenName": "edge-management",
+  "screenId": "f0606aceb67f4d458d54d3e0cba976da",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:48:08.997Z",
+  "prompt": "Edge Agent management page for FloorEye. \"Edge Agents\" title + count + teal \"Provision New Agent\" button. Agent cards grid: each card shows agent ID + friendly name, assigned store name, online/offline status with last heartbeat timestamp, system metrics bars (CPU, RAM, Disk usage — teal normal, orange >60%, red >80%), model version deployed, camera count (detecting/total), device count, action buttons (View Details, Send Command, Restart, Deprovision). Provision modal: store selector + agent name input + generate token. Show 3 agent cards with varying statuses."
+}

@@ -1,0 +1,10 @@
+{
+  "screenName": "store-detail",
+  "screenId": "10a19f06f72e409e880069e77fc249a3",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:31:25.381Z",
+  "prompt": "Store detail page for FloorEye. Breadcrumb (Stores > \"Main Street Location\"), edit button, status badge. 6-tab navigation: Overview, Cameras, Incidents, Edge Agent, Detection Overrides, Audit Log. Overview tab shown: store details card (name, address, timezone, settings) + summary stats cards. Cameras tab: grid of camera cards. Incidents tab: incident table. Edge Agent tab: connected agent cards with heartbeat. Detection Overrides tab: store-level detection settings. Audit Log tab: changes table. Professional tabbed detail page."
+}

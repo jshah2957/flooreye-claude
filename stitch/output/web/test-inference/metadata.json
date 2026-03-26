@@ -1,0 +1,10 @@
+{
+  "screenName": "test-inference",
+  "screenId": "334234e79b3d4da3ab93f1e247a618f6",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:54:41.916Z",
+  "prompt": "Test inference page for FloorEye. 2-panel layout. Input panel: image upload dropzone (drag & drop area) OR camera frame capture button, model selector dropdown. Results panel: annotated frame display with bounding boxes overlay, prediction list (class name, confidence %, area %), inference time display, model comparison side-by-side view. Show a sample result with wet floor detection at 94% confidence."
+}

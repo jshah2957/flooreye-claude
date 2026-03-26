@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>API Tester | FloorEye Enterprise AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface": "#faf9f6",
+              "primary-container": "#008378",
+              "surface-dim": "#dbdad7",
+              "on-primary": "#ffffff",
+              "on-tertiary-container": "#fffbff",
+              "inverse-surface": "#2f312f",
+              "surface-bright": "#faf9f6",
+              "on-secondary-container": "#5c647a",
+              "on-background": "#1a1c1a",
+              "on-surface": "#1a1c1a",
+              "tertiary-container": "#8a4cfc",
+              "tertiary-fixed": "#eaddff",
+              "on-primary-container": "#f4fffc",
+              "on-secondary-fixed-variant": "#3f465c",
+              "secondary-fixed-dim": "#bec6e0",
+              "on-primary-fixed-variant": "#005049",
+              "on-surface-variant": "#3d4947",
+              "surface-container": "#efeeeb",
+              "on-error-container": "#93000a",
+              "surface-container-lowest": "#ffffff",
+              "surface-container-low": "#f4f3f0",
+              "error-container": "#ffdad6",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e3e2df",
+              "tertiary-fixed-dim": "#d2bbff",
+              "surface-tint": "#006a61",
+              "surface-container-high": "#e9e8e5",
+              "on-tertiary-fixed": "#25005a",
+              "on-secondary-fixed": "#131b2e",
+              "secondary": "#565e74",
+              "primary": "#00685f",
+              "tertiary": "#712ae2",
+              "outline-variant": "#bcc9c6",
+              "error": "#ba1a1a",
+              "secondary-fixed": "#dae2fd",
+              "inverse-primary": "#6bd8cb",
+              "on-secondary": "#ffffff",
+              "outline": "#6d7a77",
+              "inverse-on-surface": "#f2f1ee",
+              "background": "#faf9f6",
+              "on-tertiary-fixed-variant": "#5a00c6",
+              "primary-fixed-dim": "#6bd8cb",
+              "secondary-container": "#dae2fd",
+              "on-tertiary": "#ffffff",
+              "surface-variant": "#e3e2df",
+              "primary-fixed": "#89f5e7",
+              "on-primary-fixed": "#00201d"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e3e2df; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #bcc9c6; }
+        .no-line-rule { border: none !important; }
+        .tonal-layering { transition: background-color 0.2s ease; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased overflow-hidden h-screen flex">
+<!-- Left Global Navigation (SideNavBar) -->
+<aside class="bg-slate-900 dark:bg-slate-950 w-64 h-screen fixed left-0 top-0 overflow-y-auto z-40 flex flex-col py-6 no-line-rule">
+<div class="px-6 mb-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-white text-lg">visibility</span>
+</div>
+<div>
+<h1 class="text-xl font-bold text-white tracking-tight leading-none">FloorEye</h1>
+<p class="text-[10px] text-teal-500 uppercase tracking-widest font-bold mt-1">Enterprise AI</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-3">
+<!-- Navigation Items Mapping from JSON -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="dashboard">dashboard</span>
+<span class="font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="videocam">videocam</span>
+<span class="font-medium text-sm">Live Monitoring</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="history">history</span>
+<span class="font-medium text-sm">Detection History</span>
+</a>
+<!-- Active Item: API Tester -->
+<a class="bg-teal-900/30 text-teal-400 font-semibold border-r-4 border-teal-500 flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="developer_mode">developer_mode</span>
+<span class="font-medium text-sm">API Tester</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="photo_camera">photo_camera</span>
+<span class="font-medium text-sm">Cameras</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="database">database</span>
+<span class="font-medium text-sm">Dataset</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl" data-icon="model_training">model_training</span>
+<span class="font-medium text-sm">Models</span>
+</a>
+</nav>
+<div class="mt-auto px-6 pt-6">
+<div class="flex items-center gap-3 p-3 bg-slate-800/30 rounded-xl">
+<div class="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center text-xs font-bold text-white">JD</div>
+<div class="overflow-hidden">
+<p class="text-xs font-semibold text-white truncate">John Doe</p>
+<p class="text-[10px] text-slate-500 truncate">Admin Console</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 flex flex-col overflow-hidden h-full">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full h-16 z-30 flex justify-between items-center px-8 bg-[#FAF9F6]/70 backdrop-blur-md shadow-sm no-line-rule">
+<div class="flex items-center gap-6">
+<h2 class="text-xl font-bold tracking-tight text-on-surface">API Tester</h2>
+<nav class="hidden md:flex gap-6">
+<a class="text-sm font-medium text-slate-500 hover:text-teal-600 transition-colors" href="#">Configuration</a>
+<a class="text-sm font-bold text-teal-700" href="#">API Tester</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/30"></div>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high text-xs font-bold text-on-surface">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                    PROD-WEST-01
+                </button>
+</div>
+</header>
+<!-- 3-Pane Interface Container -->
+<div class="flex-1 flex overflow-hidden p-6 gap-6 bg-surface-container-low">
+<!-- Pane 1: Endpoint Library (Left) -->
+<section class="w-72 bg-surface-container-lowest rounded-xl flex flex-col shadow-sm overflow-hidden">
+<div class="p-4 border-b border-surface-container-highest flex items-center justify-between">
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Endpoint Library</span>
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
+</div>
+<div class="flex-1 overflow-y-auto p-2 space-y-1">
+<!-- Auth Category -->
+<details class="group" open="">
+<summary class="flex items-center gap-2 p-2 text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded-lg list-none">
+<span class="material-symbols-outlined text-base group-open:rotate-90 transition-transform">chevron_right</span>
+                            Auth
+                        </summary>
+<div class="ml-6 mt-1 space-y-1">
+<button class="w-full text-left p-2 rounded-lg text-[11px] font-medium text-on-surface hover:bg-surface-container flex items-center gap-2">
+<span class="px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 text-[9px] font-bold">POST</span> /login
+                            </button>
+</div>
+</details>
+<!-- Stores Category -->
+<details class="group" open="">
+<summary class="flex items-center gap-2 p-2 text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded-lg list-none">
+<span class="material-symbols-outlined text-base group-open:rotate-90 transition-transform">chevron_right</span>
+                            Stores
+                        </summary>
+<div class="ml-6 mt-1 space-y-1">
+<button class="w-full text-left p-2 rounded-lg text-[11px] font-bold bg-primary/10 text-primary flex items-center gap-2">
+<span class="px-1 py-0.5 rounded-sm bg-green-100 text-green-700 text-[9px] font-bold">GET</span> /api/v1/stores
+                            </button>
+<button class="w-full text-left p-2 rounded-lg text-[11px] font-medium text-on-surface hover:bg-surface-container flex items-center gap-2 opacity-60">
+<span class="px-1 py-0.5 rounded-sm bg-blue-100 text-blue-700 text-[9px] font-bold">POST</span> /api/v1/stores
+                            </button>
+</div>
+</details>
+<!-- Cameras Category -->
+<details class="group">
+<summary class="flex items-center gap-2 p-2 text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded-lg list-none">
+<span class="material-symbols-outlined text-base group-open:rotate-90 transition-transform">chevron_right</span>
+                            Cameras
+                        </summary>
+<div class="ml-6 mt-1 space-y-1">
+<button class="w-full text-left p-2 rounded-lg text-[11px] font-medium text-on-surface hover:bg-surface-container flex items-center gap-2">
+<span class="px-1 py-0.5 rounded-sm bg-green-100 text-green-700 text-[9px] font-bold">GET</span> /cameras
+                            </button>
+</div>
+</details>
+<!-- ML Category -->
+<details class="group">
+<summary class="flex items-center gap-2 p-2 text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container transition-colors rounded-lg list-none">
+<span class="material-symbols-outlined text-base group-open:rotate-90 transition-transform">chevron_right</span>
+                            ML Inference
+                        </summary>
+</details>
+</div>
+</section>
+<!-- Pane 2: Request Builder (Center) -->
+<section class="flex-1 flex flex-col gap-6 overflow-hidden">
+<!-- Request Input Area -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-4 flex items-center gap-3">
+<div class="relative">
+<select class="appearance-none bg-surface-container-high border-none rounded-lg py-2 pl-4 pr-10 text-sm font-bold text-primary focus:ring-2 focus:ring-primary/20">
+<option>GET</option>
+<option>POST</option>
+<option>PUT</option>
+<option>DELETE</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+</div>
+<input class="flex-1 bg-surface-container-low border-none rounded-lg py-2 px-4 text-sm font-medium text-on-surface focus:ring-2 focus:ring-primary/20" placeholder="Enter request URL" type="text" value="https://api.flooreye.ai/v1/stores"/>
+<button class="bg-primary text-on-primary px-8 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2">
+                        Send
+                        <span class="material-symbols-outlined text-base" data-icon="send">send</span>
+</button>
+</div>
+<!-- Tabs & Configuration Area -->
+<div class="flex-1 bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="flex border-b border-surface-container-highest px-4">
+<button class="px-4 py-3 text-xs font-bold text-primary border-b-2 border-primary">Headers</button>
+<button class="px-4 py-3 text-xs font-bold text-on-surface-variant/60 hover:text-on-surface transition-colors">Body (JSON)</button>
+<button class="px-4 py-3 text-xs font-bold text-on-surface-variant/60 hover:text-on-surface transition-colors">Parameters</button>
+<button class="px-4 py-3 text-xs font-bold text-on-surface-variant/60 hover:text-on-surface transition-colors">Auth</button>
+</div>
+<div class="flex-1 overflow-y-auto p-6">
+<!-- Key Value Rows -->
+<div class="space-y-3">
+<div class="flex gap-4 items-center">
+<div class="flex-1">
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Key</label>
+<input class="w-full text-xs bg-surface-container-low border-none rounded px-3 py-2" type="text" value="Authorization"/>
+</div>
+<div class="flex-1">
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase mb-1">Value</label>
+<input class="w-full text-xs bg-surface-container-low border-none rounded px-3 py-2" type="text" value="Bearer {token}"/>
+</div>
+<button class="mt-5 text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+<div class="flex gap-4 items-center">
+<div class="flex-1">
+<input class="w-full text-xs bg-surface-container-low border-none rounded px-3 py-2" type="text" value="Content-Type"/>
+</div>
+<div class="flex-1">
+<input class="w-full text-xs bg-surface-container-low border-none rounded px-3 py-2" type="text" value="application/json"/>
+</div>
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- JSON Placeholder View -->
+<div class="mt-8">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-bold text-on-surface-variant uppercase">Response Panel</span>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 text-[11px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-green-600"></span> 200 OK
+                                    </span>
+<span class="text-[11px] font-medium text-on-surface-variant">124ms</span>
+<span class="text-[11px] font-medium text-on-surface-variant">1.2KB</span>
+</div>
+</div>
+<div class="bg-slate-900 rounded-xl p-4 font-mono text-xs leading-relaxed text-blue-300 overflow-x-auto min-h-[200px]">
+<span class="text-slate-500">// GET /api/v1/stores</span><br/>
+                                [<br/>
+                                  {<br/>
+                                    <span class="text-teal-400">"id"</span>: <span class="text-orange-300">"str_9284"</span>,<br/>
+                                    <span class="text-teal-400">"name"</span>: <span class="text-orange-300">"Downtown Plaza"</span>,<br/>
+                                    <span class="text-teal-400">"status"</span>: <span class="text-orange-300">"active"</span>,<br/>
+                                    <span class="text-teal-400">"last_audit"</span>: <span class="text-orange-300">"2023-11-22T10:30:00Z"</span><br/>
+                                  },<br/>
+                                  {<br/>
+                                    <span class="text-teal-400">"id"</span>: <span class="text-orange-300">"str_9285"</span>,<br/>
+                                    <span class="text-teal-400">"name"</span>: <span class="text-orange-300">"North Side Outlet"</span>,<br/>
+                                    <span class="text-teal-400">"status"</span>: <span class="text-orange-300">"inactive"</span><br/>
+                                  }<br/>
+                                ]
+                            </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Pane 3: Saved Tests (Right) -->
+<section class="w-80 bg-surface-container-lowest rounded-xl flex flex-col shadow-sm overflow-hidden">
+<div class="p-4 border-b border-surface-container-highest flex items-center justify-between">
+<span class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Saved Requests</span>
+<button class="text-primary hover:bg-primary/5 p-1 rounded transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="add_box">add_box</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-3">
+<!-- Saved Request Item -->
+<div class="p-3 bg-surface-container-low hover:bg-surface-container transition-colors rounded-xl cursor-pointer group">
+<div class="flex items-center justify-between mb-1">
+<span class="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded uppercase">Post</span>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary" data-icon="upload">upload</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-error" data-icon="delete">delete</span>
+</div>
+</div>
+<p class="text-xs font-bold text-on-surface truncate">Prod Cam Init</p>
+<p class="text-[10px] text-on-surface-variant truncate">/api/v1/cameras/initialize</p>
+</div>
+<div class="p-3 bg-surface-container-low hover:bg-surface-container transition-colors rounded-xl cursor-pointer group">
+<div class="flex items-center justify-between mb-1">
+<span class="text-[9px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded uppercase">Get</span>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary" data-icon="upload">upload</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-error" data-icon="delete">delete</span>
+</div>
+</div>
+<p class="text-xs font-bold text-on-surface truncate">List All Clips</p>
+<p class="text-[10px] text-on-surface-variant truncate">/api/v1/clips?limit=50</p>
+</div>
+<div class="p-3 bg-surface-container-low hover:bg-surface-container transition-colors rounded-xl cursor-pointer group">
+<div class="flex items-center justify-between mb-1">
+<span class="text-[9px] font-bold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded uppercase">Put</span>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-primary" data-icon="upload">upload</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant hover:text-error" data-icon="delete">delete</span>
+</div>
+</div>
+<p class="text-xs font-bold text-on-surface truncate">Update Alert Rules</p>
+<p class="text-[10px] text-on-surface-variant truncate">/api/v1/notifications/config</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low/50 mt-auto">
+<div class="flex flex-col items-center gap-2">
+<div class="w-12 h-[1px] bg-outline-variant/30"></div>
+<p class="text-[10px] text-on-surface-variant italic font-medium">"See Every Drop. Stop Every Slip."</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual FAB (Suppressed based on Transactional UI) -->
+<!-- Suppressed for API Tester task-focus screen -->
+</body></html>

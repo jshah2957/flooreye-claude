@@ -1,0 +1,10 @@
+{
+  "screenName": "detection-history",
+  "screenId": "e3aef5c5b34948d28c0bd72411dd81a1",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:37:51.552Z",
+  "prompt": "Detection history page for FloorEye. \"Detection History\" title + CSV export button. Filter bar: store dropdown, camera dropdown, wet/dry toggle, model source dropdown, confidence slider (0-100%), flagged toggle, date range picker. View toggle: Gallery (grid) vs Table (rows). Gallery view (default): 4-column grid of detection cards with frame thumbnail, wet/dry badge (red/green), confidence %, wet area %, timestamp, camera name, flagged icon, selection checkbox. Bulk action bar appears when items selected: \"Flag X selected for review\". Pagination at bottom. Show realistic detection data."
+}

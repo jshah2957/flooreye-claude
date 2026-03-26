@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye - Store Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant": "#005049",
+                        "inverse-surface": "#2f312f",
+                        "on-secondary-fixed": "#131b2e",
+                        "secondary-fixed": "#dae2fd",
+                        "secondary-container": "#dae2fd",
+                        "surface-variant": "#e3e2df",
+                        "on-secondary": "#ffffff",
+                        "secondary": "#565e74",
+                        "on-primary-container": "#f4fffc",
+                        "on-surface": "#1a1c1a",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-tint": "#006a61",
+                        "tertiary-fixed": "#ffdbce",
+                        "on-error-container": "#93000a",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#bcc9c6",
+                        "primary": "#00685f",
+                        "primary-container": "#008378",
+                        "inverse-primary": "#6bd8cb",
+                        "on-primary-fixed": "#00201d",
+                        "surface-container-high": "#e9e8e5",
+                        "surface-container-highest": "#e3e2df",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "tertiary-container": "#b05e3d",
+                        "inverse-on-surface": "#f2f1ee",
+                        "surface-container-low": "#f4f3f0",
+                        "on-background": "#1a1c1a",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#faf9f6",
+                        "surface": "#faf9f6",
+                        "surface-container": "#efeeeb",
+                        "outline": "#6d7a77",
+                        "primary-fixed": "#89f5e7",
+                        "background": "#faf9f6",
+                        "on-tertiary-fixed-variant": "#773215",
+                        "on-surface-variant": "#3d4947",
+                        "on-tertiary-fixed": "#370e00",
+                        "on-secondary-container": "#5c647a",
+                        "tertiary": "#924628",
+                        "surface-dim": "#dbdad7",
+                        "on-primary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#0F172A] dark:bg-[#0F172A] flex flex-col py-8 font-inter text-[14px] tracking-tight z-50">
+<div class="px-6 mb-10 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xl">F</div>
+<div>
+<h1 class="text-xl font-bold text-white">FloorEye</h1>
+<p class="text-[10px] text-primary uppercase tracking-widest font-bold">Editorial Intelligence</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-[#CBD5E1] hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-lg">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="text-[#CBD5E1] hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-lg">visibility</span>
+<span>Monitoring</span>
+</a>
+<a class="text-[#CBD5E1] hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-lg">history</span>
+<span>Detection History</span>
+</a>
+<a class="text-[#CBD5E1] hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-lg">emergency</span>
+<span>Incidents</span>
+</a>
+<!-- Active Navigation -->
+<a class="text-white border-l-4 border-[#0D9488] bg-white/5 font-semibold px-6 py-3 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">store</span>
+<span>Stores</span>
+</a>
+<a class="text-[#CBD5E1] hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-lg">videocam</span>
+<span>Cameras</span>
+</a>
+<a class="text-[#CBD5E1] hover:text-white px-6 py-3 flex items-center gap-3 transition-colors hover:bg-white/5 mt-auto" href="#">
+<span class="material-symbols-outlined text-lg">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<div class="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+<img alt="User Profile" class="w-8 h-8 rounded-full object-cover" data-alt="professional portrait of a store operations manager with a confident and approachable expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXvaX2DV1Dl2QR-Q9rIf7FmfkKuT1eruB-fI053eC3NQhS9cMyPQ9b1wjQSfiCLYJiyOW8H5EB0VO7qfMuzCckQ1gNhvns4trLvtrL5-AZvfVZaBitR3pikEPQhCyFpmGhtw6V5sXvsztCE8zecR5eggWd_XeyCFmZNcK8dI01qNZpzKQ7GnlYdUeB568uaW700Lu1bfCx6CkBvuNjkvL-J27ZJb0hfIxfxVrR0gsWAxZCQJLlKJxwpa0pj0vmQIb0_4N-L-RBoHKd"/>
+<div class="overflow-hidden">
+<p class="text-white text-xs font-semibold truncate">Alex Rivera</p>
+<p class="text-[#CBD5E1] text-[10px] truncate">Admin Access</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="sticky top-0 w-full z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-[0_4px_24px_rgba(26,28,26,0.06)] flex justify-between items-center h-16 px-8">
+<div class="flex items-center gap-4 w-1/3">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors text-xl">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Global search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-2xl">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-2xl">help</span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200"></div>
+<div class="flex items-center gap-3">
+<p class="text-sm font-medium text-slate-700">Central Operations</p>
+<img alt="Organization Logo" class="w-8 h-8 rounded border border-slate-200 object-cover" data-alt="modern corporate architectural logo icon representing security and management" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsRIBAe4cxaTMaN0UDyxcb4u7y3PSJaXvKDk2_KZwy-a-2vcZrs5Ux71KErVX3nT4T6TD7_ltHcirI-ihrwERnE9nL23Ml9Qhx6ZlNXIUnk_3u00o5EAW9rcWgTh-fuwPtBItOn2UX5QvQKlQNy-KbnTSfCFk1j8p6PIA6TOwYjdSfQglGmRost0dID6tff5mTQiOTeIdF5z5n004EHdSTEFFlQnsJp_r3mxqfhGgLNLcVwwyrjdQWO96LkJ7gLKq_c9glhzj0NN-R"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="p-10 max-w-[1440px] mx-auto">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-10">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<h2 class="text-3xl font-bold tracking-tight text-on-surface">Stores</h2>
+<span class="px-2.5 py-0.5 bg-primary/10 text-primary text-sm font-bold rounded-full">24</span>
+</div>
+<p class="text-on-surface-variant max-w-lg">Manage your facility network and monitor floor safety metrics across all active retail locations.</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined text-xl">add_circle</span>
+                    Add Store
+                </button>
+</div>
+<!-- Filters Area -->
+<div class="bg-surface-container-low p-5 rounded-xl mb-6 flex flex-wrap items-center gap-4">
+<div class="flex-1 min-w-[300px] relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60">search</span>
+<input class="w-full bg-white border-none rounded-lg py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 shadow-sm transition-all" placeholder="Filter by store name, address or city..." type="text"/>
+</div>
+<div class="w-48 relative">
+<select class="w-full bg-white border-none rounded-lg py-2.5 pl-4 pr-10 text-sm focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none cursor-pointer">
+<option value="">All Statuses</option>
+<option value="active">Active</option>
+<option value="inactive">Inactive</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 pointer-events-none">expand_more</span>
+</div>
+<button class="bg-white p-2.5 rounded-lg shadow-sm hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+<!-- Data Table Container -->
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Name</th>
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Address</th>
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">City/State</th>
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Timezone</th>
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Cameras</th>
+<th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<a class="text-primary font-bold hover:underline" href="#">Downtown Flagship</a>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">742 Evergreen Terrace</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Springfield, OR</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-mono">PST (UTC-8)</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 bg-primary/10 text-primary text-[11px] font-bold rounded-full uppercase">Active</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg">videocam</span>
+                                    12
+                                </div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-primary/10 rounded-md text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-1.5 hover:bg-error/10 rounded-md text-error transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<a class="text-primary font-bold hover:underline" href="#">Westside Market</a>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">1200 West Blvd</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Portland, OR</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-mono">PST (UTC-8)</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 bg-primary/10 text-primary text-[11px] font-bold rounded-full uppercase">Active</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg">videocam</span>
+                                    8
+                                </div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-primary/10 rounded-md text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-1.5 hover:bg-error/10 rounded-md text-error transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<a class="text-primary font-bold hover:underline" href="#">East Ridge Plaza</a>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">88 Commerce Cir</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Salem, OR</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-mono">PST (UTC-8)</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 bg-slate-200 text-slate-500 text-[11px] font-bold rounded-full uppercase">Inactive</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-sm font-semibold text-on-surface-variant/40">
+<span class="material-symbols-outlined text-lg">videocam_off</span>
+                                    0
+                                </div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-primary/10 rounded-md text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-1.5 hover:bg-error/10 rounded-md text-error transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<a class="text-primary font-bold hover:underline" href="#">North Point Outlet</a>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">4500 Skyline Pkwy</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Seattle, WA</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-mono">PST (UTC-8)</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 bg-primary/10 text-primary text-[11px] font-bold rounded-full uppercase">Active</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-1.5 text-sm font-semibold">
+<span class="material-symbols-outlined text-primary text-lg">videocam</span>
+                                    24
+                                </div>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 hover:bg-primary/10 rounded-md text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">edit</span>
+</button>
+<button class="p-1.5 hover:bg-error/10 rounded-md text-error transition-colors">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-between">
+<p class="text-sm text-on-surface-variant">Showing <span class="font-bold text-on-surface">1</span> to <span class="font-bold text-on-surface">10</span> of <span class="font-bold text-on-surface">24</span> results</p>
+<div class="flex items-center gap-1">
+<button class="p-2 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary text-white font-bold text-sm">1</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-sm transition-colors">2</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-sm transition-colors">3</button>
+<button class="p-2 rounded hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Form Drawer (Hidden by default, shown for Create/Edit) -->
+<div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end invisible opacity-0 transition-all">
+<div class="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col translate-x-full transition-transform duration-300">
+<div class="p-8 border-b border-surface-container-low flex justify-between items-center bg-surface-container-low/30">
+<div>
+<h3 class="text-xl font-bold">Add New Store</h3>
+<p class="text-sm text-on-surface-variant">Configure location and timezone settings.</p>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-8 space-y-6">
+<div class="space-y-2">
+<label class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Store Name</label>
+<input class="w-full bg-surface-container-low border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="e.g. Downtown Flagship" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Physical Address</label>
+<input class="w-full bg-surface-container-low border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary/20" placeholder="Street number and name" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">City</label>
+<input class="w-full bg-surface-container-low border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary/20" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">State / Province</label>
+<input class="w-full bg-surface-container-low border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary/20" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Timezone</label>
+<select class="w-full bg-surface-container-low border-none rounded-lg py-3 px-4 focus:ring-2 focus:ring-primary/20">
+<option>Pacific Standard Time (PST)</option>
+<option>Mountain Standard Time (MST)</option>
+<option>Central Standard Time (CST)</option>
+<option>Eastern Standard Time (EST)</option>
+</select>
+</div>
+<div class="pt-6">
+<label class="flex items-center gap-3 cursor-pointer group">
+<div class="relative">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</div>
+<span class="text-sm font-medium">Store is currently active</span>
+</label>
+</div>
+</div>
+<div class="p-8 bg-surface-container-low/30 border-t border-surface-container-low flex gap-4">
+<button class="flex-1 py-3 px-4 rounded-lg font-bold border border-outline-variant hover:bg-white transition-colors">Cancel</button>
+<button class="flex-1 py-3 px-4 rounded-lg font-bold bg-primary text-white hover:bg-primary-container shadow-md transition-all">Save Store</button>
+</div>
+</div>
+</div>
+<!-- Empty State Example (Hidden unless no data) -->
+<div class="hidden fixed inset-0 ml-64 flex items-center justify-center p-10">
+<div class="text-center max-w-sm">
+<div class="w-24 h-24 bg-surface-container-low rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-5xl text-on-surface-variant/30">storefront</span>
+</div>
+<h3 class="text-2xl font-bold mb-2">No stores yet</h3>
+<p class="text-on-surface-variant mb-8">Start your journey by adding your first retail location to FloorEye's monitoring network.</p>
+<button class="bg-primary text-white px-8 py-3 rounded-lg font-bold hover:shadow-lg transition-all">
+                Add your first store
+            </button>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,10 @@
+{
+  "screenName": "dataset",
+  "screenId": "1e644a61fb16481c871a19965003fd16",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:50:18.537Z",
+  "prompt": "Dataset management page for FloorEye. 5 stat cards header: Total Frames, Train split count, Validation split count, Test split count, Unassigned count. Filter bar: split dropdown (train/val/test/unassigned), source dropdown (detection/manual/import). Frame data table: columns Thumbnail, File Path, Label (wet/dry badge), Source, Review Status, Split assignment, Created Date, Actions (delete). Export buttons: Export COCO, Upload to Roboflow. Show sample data rows."
+}

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye | Live Monitoring</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-primary-container": "#f4fffc",
+                        "inverse-on-surface": "#f2f1ee",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "tertiary-container": "#8a4cfc",
+                        "on-secondary-fixed": "#131b2e",
+                        "tertiary": "#712ae2",
+                        "inverse-surface": "#2f312f",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#008378",
+                        "primary-fixed": "#89f5e7",
+                        "on-primary-fixed-variant": "#005049",
+                        "on-error": "#ffffff",
+                        "on-surface": "#1a1c1a",
+                        "on-surface-variant": "#3d4947",
+                        "surface-container-highest": "#e3e2df",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#5c647a",
+                        "surface-container-high": "#e9e8e5",
+                        "on-primary-fixed": "#00201d",
+                        "surface-bright": "#faf9f6",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#dbdad7",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "primary": "#00685f",
+                        "surface-container": "#efeeeb",
+                        "background": "#faf9f6",
+                        "surface-variant": "#e3e2df",
+                        "tertiary-fixed": "#eaddff",
+                        "surface-tint": "#006a61",
+                        "outline": "#6d7a77",
+                        "inverse-primary": "#6bd8cb",
+                        "secondary": "#565e74",
+                        "outline-variant": "#bcc9c6",
+                        "on-background": "#1a1c1a",
+                        "secondary-fixed": "#dae2fd",
+                        "on-tertiary-fixed": "#25005a",
+                        "surface": "#faf9f6",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-low": "#f4f3f0",
+                        "secondary-container": "#dae2fd",
+                        "secondary-fixed-dim": "#bec6e0"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .editorial-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen">
+<!-- SideNavBar Component -->
+<aside class="fixed left-0 top-0 h-full w-64 z-50 bg-slate-900 flex flex-col py-8 shadow-2xl shadow-teal-900/20">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-black text-white tracking-tight">FloorEye</h1>
+<p class="text-[10px] text-teal-500 font-bold uppercase tracking-widest mt-1">See Every Drop. Stop Every Slip.</p>
+</div>
+<nav class="flex-1 space-y-1 px-4">
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Dashboard</span>
+</a>
+<a class="bg-slate-800 text-white border-l-4 border-teal-500 flex items-center gap-3 px-4 py-3 rounded-r-lg group" href="#">
+<span class="material-symbols-outlined text-teal-500" data-icon="videocam">videocam</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Live Monitoring</span>
+</a>
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Detection History</span>
+</a>
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Incidents</span>
+</a>
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="store">store</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Stores</span>
+</a>
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="linked_camera">linked_camera</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Cameras</span>
+</a>
+<div class="pt-8 opacity-40">
+<div class="h-px bg-slate-700 mx-4 mb-4"></div>
+</div>
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="api">api</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">API Manager</span>
+</a>
+<a class="text-slate-400 flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 hover:text-slate-100 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-inter text-[11px] uppercase tracking-[0.05em] font-bold">Settings</span>
+</a>
+</nav>
+<div class="px-8 mt-auto pt-8">
+<div class="flex items-center gap-3 bg-slate-800/40 p-3 rounded-xl">
+<div class="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-teal-400 text-sm" data-icon="person">person</span>
+</div>
+<div>
+<p class="text-[10px] text-white font-bold">Admin Panel</p>
+<p class="text-[9px] text-slate-500 uppercase tracking-tighter">Enterprise Plan</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="sticky top-0 w-full z-40 bg-white/80 backdrop-blur-xl shadow-sm">
+<div class="flex justify-between items-center h-16 px-8 max-w-[1440px] mx-auto w-full">
+<div class="flex items-center gap-8">
+<span class="text-lg font-bold text-slate-900 tracking-tighter">Live Monitoring</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-teal-600 font-semibold border-b-2 border-teal-600 pb-1 text-sm tracking-tight" href="#">Grid Overview</a>
+<a class="text-slate-500 hover:text-slate-900 transition-colors text-sm font-medium tracking-tight" href="#">Detection Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-slate-100/50 border-none rounded-lg text-xs w-64 focus:ring-2 focus:ring-teal-500/20 transition-all" placeholder="Search cameras..." type="text"/>
+</div>
+<button class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-slate-600" data-icon="help">help</span>
+</button>
+</div>
+</div>
+<div class="bg-slate-100/50 h-px w-full absolute bottom-0"></div>
+</header>
+<div class="p-8 max-w-[1440px] mx-auto">
+<!-- Subheader / Filter Row -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div>
+<h2 class="text-3xl font-bold tracking-tight text-on-surface mb-2">Live Camera Feeds</h2>
+<p class="text-on-surface-variant text-sm font-medium max-w-md">Real-time AI floor analysis across all connected retail locations.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-surface-container-low px-4 py-2.5 rounded-lg flex items-center gap-3">
+<span class="editorial-label text-on-surface-variant">Store Context:</span>
+<select class="bg-transparent border-none p-0 text-sm font-bold text-primary focus:ring-0 cursor-pointer">
+<option>All Stores</option>
+<option>Mission St. Flagship</option>
+<option>Oakland North</option>
+<option>Palo Alto Square</option>
+</select>
+</div>
+<div class="bg-surface-container-low p-1 rounded-lg flex items-center">
+<button class="bg-surface-container-lowest shadow-sm px-3 py-1.5 rounded-md flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="grid_view">grid_view</span>
+<span class="editorial-label">Grid</span>
+</button>
+<button class="px-3 py-1.5 flex items-center gap-2 text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-sm" data-icon="list">list</span>
+<span class="editorial-label">List</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Main Camera Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Camera Card 1 -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-teal-900/5 transition-all duration-300">
+<div class="relative aspect-video overflow-hidden">
+<!-- Skeleton loader bg -->
+<div class="absolute inset-0 bg-slate-100 animate-pulse"></div>
+<img alt="Retail Camera Feed" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="CCTV perspective of a clean modern retail clothing store aisle with bright lighting and polished floors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW6EgtVSHFLFalUigU32Pz3VF5sZN7JMW2H5CGkxRKnW4LQ2bLUsIwW8w3-IjrjUxsq64VlT7ijthXoFDij5IsQjcuI3rqR27raJfWebifqjP3fGrKwYSS1-k8yvdyrCznSXS2afqbvFyNmTqnULcUBJTmUqBDrwgV4APDa61eW1gRbjs_v9c3N3HXc8t8FNafbfBNBWAo0h67zCFoTs8IcP9bcnNbUYYR1_lESDs7V-5YNDCSdRCftOVXhJKWC9S0gIF7N2U8W1MH"/>
+<!-- LIVE Badge -->
+<div class="absolute top-4 left-4 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<span class="text-[10px] text-white font-black tracking-widest uppercase">Live</span>
+</div>
+<!-- Hover Overlay -->
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+<button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                View Stream
+                            </button>
+</div>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-bold text-slate-900 tracking-tight">Aisle 04 Front</h3>
+<p class="text-xs text-on-surface-variant font-medium">Mission St. Flagship</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-teal-500"></div>
+<span class="editorial-label text-teal-600">Online</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex gap-2">
+<span class="bg-blue-50 text-blue-700 editorial-label px-2 py-1 rounded">Cloud</span>
+<div class="flex items-center gap-1.5 bg-error-container/20 px-2 py-1 rounded group/switch cursor-pointer">
+<span class="material-symbols-outlined text-[14px] text-error" data-icon="lens_blur">lens_blur</span>
+<span class="editorial-label text-error">Detections Active</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Camera Card 2 -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-teal-900/5 transition-all duration-300">
+<div class="relative aspect-video overflow-hidden">
+<div class="absolute inset-0 bg-slate-100 animate-pulse"></div>
+<img alt="Retail Camera Feed" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="CCTV view of a grocery store fresh produce section with tiled floors and refrigerated displays" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGAdxZOdUkUr6Oimby4mKwEuEv2zF1iGsuq_m7feXkSPGgDNxGlib2un_gP95cXt-59ZrcPKles-STVthvXf5AblbLN8u56ULaJslDa_0RTZ0xJyBDVJFj89CFPx-UUIiNuVIuyf8cRABkWuWX_1GhNYoP8x58NqezFqQ9yj1CI9J99dBBqeH3xL0MyI3McCx-g9udYJhE5o444yoI6IBhrS7TC5FC4dQTWrlPfYGDTlnS9Z3AJjNdcHmKzTZFZhAR9IVXCYbmLu3m"/>
+<div class="absolute top-4 left-4 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<span class="text-[10px] text-white font-black tracking-widest uppercase">Live</span>
+</div>
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+<button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                View Stream
+                            </button>
+</div>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-bold text-slate-900 tracking-tight">Main Entrance East</h3>
+<p class="text-xs text-on-surface-variant font-medium">Oakland North</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-teal-500"></div>
+<span class="editorial-label text-teal-600">Online</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex gap-2">
+<span class="bg-purple-50 text-purple-700 editorial-label px-2 py-1 rounded">Edge</span>
+<div class="flex items-center gap-1.5 bg-error-container/20 px-2 py-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-[14px] text-error" data-icon="lens_blur">lens_blur</span>
+<span class="editorial-label text-error">Detections Active</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Camera Card 3 -->
+<div class="group relative bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-teal-900/5 transition-all duration-300">
+<div class="relative aspect-video overflow-hidden">
+<div class="absolute inset-0 bg-slate-100 animate-pulse"></div>
+<img alt="Retail Camera Feed" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" data-alt="Overhead camera view of a modern mall corridor with glossy floors reflecting bright ceiling lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGErxp1-VXAH-kiyDtvx-EJkgmFg4SF4SmX7ajGz-_n7WlxdMW6sccmH9ZJNPVImW0b60POAE8f2AD3chfs73ctFVbTjFSJnOXrbVdmqquKVI2sRwbjApyfpd1DxMylOiIuNYwMw0MRIYe3Dz6m2e5cb69ieZO9mX67qh-l-NJvtrCufN4Wo0NjLGgkpd2wGtl74MXLHzDXsTjSbUYfSmQwAws055ilU6sU4S1iE4YsDhvY0kugUzGOOrAaH5g1UgnDt4AlrMCijJ0"/>
+<div class="absolute top-4 left-4 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20">
+<div class="w-2 h-2 rounded-full bg-error animate-pulse"></div>
+<span class="text-[10px] text-white font-black tracking-widest uppercase">Live</span>
+</div>
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px]">
+<button class="bg-primary text-white px-6 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                                View Stream
+                            </button>
+</div>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="font-bold text-slate-900 tracking-tight">Checkout Lane 01</h3>
+<p class="text-xs text-on-surface-variant font-medium">Mission St. Flagship</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-teal-500"></div>
+<span class="editorial-label text-teal-600">Online</span>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex gap-2">
+<span class="bg-teal-50 text-teal-700 editorial-label px-2 py-1 rounded">Hybrid</span>
+<div class="flex items-center gap-1.5 bg-error-container/20 px-2 py-1 rounded cursor-pointer">
+<span class="material-symbols-outlined text-[14px] text-error" data-icon="lens_blur">lens_blur</span>
+<span class="editorial-label text-error">Detections Active</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Offline Section Accordion -->
+<div class="mt-16 bg-surface-container-low rounded-xl border-l-4 border-slate-300">
+<button class="w-full flex items-center justify-between p-6 group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-500" data-icon="videocam_off">videocam_off</span>
+</div>
+<div class="text-left">
+<h3 class="font-bold text-slate-700 tracking-tight">Offline Cameras (14)</h3>
+<p class="text-xs text-on-surface-variant font-medium">Requires maintenance check or connection reset</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-slate-900 transition-colors" data-icon="expand_more">expand_more</span>
+</button>
+<!-- Expanded Content Mockup (Single item) -->
+<div class="px-6 pb-6 space-y-3">
+<div class="flex items-center justify-between py-3 border-t border-slate-200">
+<div class="flex items-center gap-6">
+<div class="w-16 h-10 rounded bg-slate-200 grayscale opacity-50 overflow-hidden">
+<img alt="Offline Feed" class="w-full h-full object-cover" data-alt="blurred grayscale shop interior" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvXak49tYKN-7FbDNp-7vBOw6vcpzky3wNtGKhBJ4-YKngfpTbqZ06FXRKjum6XCMUhKnl-MXadWkqCK9HgxxBA19CQ-h6dqiUWl-2p1bE2-1w3y1v6-wKqloWmW9vHMLIX_hgGKTI96nuKR_OpNvvCK2HMuTw-yurIK08ywCAiFuSn1pHOx_O_VIP9oYdDroV0xURdHGhkmJdZtDvzrW97WAg-3t8E9Dp5EV_KUHR46v_2dxuNCC7dHahdeXb98iu67DG30cXg82X"/>
+</div>
+<div>
+<p class="font-bold text-slate-500 text-sm">Storage Corridor North</p>
+<p class="editorial-label text-slate-400">Palo Alto Square</p>
+</div>
+</div>
+<div class="text-right">
+<p class="editorial-label text-slate-400">Last seen 2h ago</p>
+<button class="text-primary text-[10px] font-bold uppercase tracking-widest mt-1 hover:underline">Reboot Camera</button>
+</div>
+</div>
+<div class="flex items-center justify-between py-3 border-t border-slate-200">
+<div class="flex items-center gap-6">
+<div class="w-16 h-10 rounded bg-slate-200 grayscale opacity-50 overflow-hidden">
+<img alt="Offline Feed" class="w-full h-full object-cover" data-alt="blurred grayscale shop interior" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhEpIKULGWSFvER7OUZvC5w7d6ZO8p32b0Oke7EAyV_-BMu2i5rWq93OGKMQE4FPZlV0rHjg80iINJ5JWKl965UOKSHuV7j63nj1N9XmVRAYA4UxcLkTjeKT4YH9mR8ZTIlnWOZSGp3miD_rSEqaGtoi-zlIPpDyiorpvfKlxFgxDacIQzBW0pPPsiX8plLL3FIRczumH2twAn7PCcpwV0lKjrdc-O130YIMOPn6zADH3vL8f2YqMhA8_n37dYqoeEcpawUfpQiE-k"/>
+</div>
+<div>
+<p class="font-bold text-slate-500 text-sm">Employee Breakroom</p>
+<p class="editorial-label text-slate-400">Oakland North</p>
+</div>
+</div>
+<div class="text-right">
+<p class="editorial-label text-slate-400">Last seen 4h ago</p>
+<button class="text-primary text-[10px] font-bold uppercase tracking-widest mt-1 hover:underline">Reboot Camera</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Only for Home/Live Dashboard) -->
+<button class="fixed bottom-8 right-8 bg-gradient-to-br from-primary to-primary-container text-white p-4 rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 group z-50">
+<span class="material-symbols-outlined" data-icon="add_alert">add_alert</span>
+<span class="font-bold text-sm tracking-tight pr-2">Add Alarm Zone</span>
+</button>
+</body></html>

@@ -1,0 +1,10 @@
+{
+  "screenName": "detection-control",
+  "screenId": "825662ce3b3446d5aeecb15beb2a7cc2",
+  "projectId": "14976228631073666642",
+  "projectKey": "web",
+  "projectTitle": "FloorEye Web App",
+  "deviceType": "DESKTOP",
+  "generatedAt": "2026-03-26T01:40:19.922Z",
+  "prompt": "Detection Control Center for FloorEye. 3-column layout (3-6-3). Left: hierarchical scope tree (Global > Organizations > Stores > Cameras) with search input, selected node highlighted teal. Center: settings form with scope header, 7+ collapsible sections: Frame Preprocessing (resize/denoise/enhance toggles), Motion Detection (sensitivity slider, min area), ROI Filtering (zone toggles), AI Classification (confidence threshold slider, NMS threshold), Detection Settings (cooldown, min consecutive frames), Incident Settings (merge window, auto-resolve timeout), Severity Rules (critical/high/medium/low thresholds with colored backgrounds), Hybrid Mode Settings (edge/cloud ratio). Save button + Reset to Parent button. Right: inheritance viewer showing per-field provenance with color-coded source labels (Global=gray, Org=blue, Store=purple, Camera=teal)."
+}

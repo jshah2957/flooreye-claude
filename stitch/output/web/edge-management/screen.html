@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FloorEye AI | Edge Agents</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#b05e3d",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#dae2fd",
+                        "background": "#faf9f6",
+                        "on-tertiary-fixed": "#370e00",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#f4fffc",
+                        "primary-container": "#008378",
+                        "surface-bright": "#faf9f6",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container": "#efeeeb",
+                        "on-secondary-fixed": "#131b2e",
+                        "inverse-primary": "#6bd8cb",
+                        "inverse-surface": "#2f312f",
+                        "inverse-on-surface": "#f2f1ee",
+                        "surface": "#faf9f6",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#6bd8cb",
+                        "on-surface-variant": "#3d4947",
+                        "on-secondary-container": "#5c647a",
+                        "on-primary-fixed-variant": "#005049",
+                        "tertiary": "#924628",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1a1c1a",
+                        "outline": "#6d7a77",
+                        "surface-dim": "#dbdad7",
+                        "tertiary-fixed": "#ffdbce",
+                        "primary-fixed": "#89f5e7",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-variant": "#e3e2df",
+                        "surface-tint": "#006a61",
+                        "surface-container-high": "#e9e8e5",
+                        "surface-container-low": "#f4f3f0",
+                        "on-error": "#ffffff",
+                        "secondary-container": "#dae2fd",
+                        "secondary": "#565e74",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#773215",
+                        "on-primary-fixed": "#00201d",
+                        "primary": "#00685f",
+                        "surface-container-highest": "#e3e2df",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "on-background": "#1a1c1a",
+                        "outline-variant": "#bcc9c6"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #faf9f6; color: #1a1c1a; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    </style>
+</head>
+<body class="bg-surface">
+<!-- SideNavBar -->
+<aside class="w-64 h-screen fixed left-0 top-0 bg-slate-900 dark:bg-slate-950 flex flex-col h-full py-6 z-50">
+<div class="px-6 mb-10">
+<h1 class="text-xl font-bold text-white tracking-tight">FloorEye AI</h1>
+<p class="text-[10px] text-teal-400 font-medium tracking-widest uppercase mt-1">Enterprise Precision</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors duration-200 font-inter text-sm tracking-wide font-medium" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors duration-200 font-inter text-sm tracking-wide font-medium" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="visibility">visibility</span>
+                Live Monitoring
+            </a>
+<a class="flex items-center px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors duration-200 font-inter text-sm tracking-wide font-medium" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="history">history</span>
+                Detection History
+            </a>
+<a class="flex items-center px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors duration-200 font-inter text-sm tracking-wide font-medium" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="emergency_home">emergency_home</span>
+                Incidents
+            </a>
+<!-- Active State -->
+<a class="flex items-center px-6 py-3 text-white border-l-4 border-teal-500 bg-slate-800/50 font-inter text-sm tracking-wide font-medium" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="memory">memory</span>
+                Edge Agents
+            </a>
+<a class="flex items-center px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors duration-200 font-inter text-sm tracking-wide font-medium" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="px-6 mt-auto">
+<div class="flex items-center space-x-3 p-3 rounded-xl bg-slate-800/40">
+<img alt="User Avatar" class="w-8 h-8 rounded-full" data-alt="professional portrait of a tech operations manager with neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxqfpnqymx8iwC9TnLCbxZvUl1tC99T_s16Hc_qpgyk7UEPEVTZ6R7wikz_8kAROAcbmHdKKzFtLPQDBd4TDeaKrR7PR7zSP2dQKdfvYkQdljjA3bgs-AApcmNlOXxGQBGRDbBl479r4Vl3SqS_Z9QLuZPkaRLpurqS8BZ_T6r46YS4Aa81mK1ADEsFu3KuwKv2g_jIZIgyKIKRy2Ux-RvhESBJtCy3B4XMsh8Q657o0e-cZwR0BZ4My5mCuDDHmTcNbp59BTs3VrO"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold text-white truncate">Admin User</p>
+<p class="text-[10px] text-slate-500 truncate">System Architect</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="h-16 sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex items-center justify-between px-8 shadow-sm shadow-slate-200/50">
+<div class="flex items-center flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400 transition-all" placeholder="Search agents, locations, or IDs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<button class="relative text-slate-500 hover:text-teal-600 transition-all duration-300 active:opacity-80">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200"></div>
+<div class="flex items-center space-x-2">
+<span class="text-[11px] font-bold uppercase tracking-widest text-slate-500">FloorEye Cloud</span>
+<span class="material-symbols-outlined text-teal-600" data-icon="cloud_done">cloud_done</span>
+</div>
+</div>
+</header>
+<!-- Main Page Content -->
+<main class="flex-1 p-8">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="p-2 bg-primary/10 rounded-lg text-primary">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+</span>
+<h2 class="text-3xl font-extrabold tracking-tight text-on-surface">Edge Agents</h2>
+<span class="px-3 py-1 bg-surface-container-high rounded-full text-xs font-bold text-on-secondary-container">158 TOTAL</span>
+</div>
+<p class="text-on-surface-variant max-w-2xl font-medium">Manage and monitor hardware acceleration nodes across your global warehouse infrastructure.</p>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="add_circle">add_circle</span>
+                    Provision New Agent
+                </button>
+</div>
+<!-- Dashboard Overview Stats -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Active Agents</p>
+<p class="text-2xl font-black">142</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center text-error">
+<span class="material-symbols-outlined" data-icon="error">error</span>
+</div>
+<div>
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Disconnected</p>
+<p class="text-2xl font-black">9</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-tertiary/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+</div>
+<div>
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">High Load</p>
+<p class="text-2xl font-black">7</p>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/15 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="update">update</span>
+</div>
+<div>
+<p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Update Pending</p>
+<p class="text-2xl font-black">24</p>
+</div>
+</div>
+</div>
+<!-- Agent Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+<!-- Card 1: ONLINE -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0_20px_40px_rgba(26,28,26,0.04)] border border-outline-variant/10 flex flex-col group transition-all hover:translate-y-[-4px]">
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">EA-044-B</span>
+<h3 class="text-xl font-bold mt-1">Warehouse B Primary</h3>
+<p class="text-xs text-slate-500 font-medium">South San Francisco Hub</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase mb-1">ONLINE</span>
+<span class="text-[10px] text-slate-400 font-medium italic">2s ago</span>
+</div>
+</div>
+<!-- Metrics -->
+<div class="grid grid-cols-3 gap-4 py-4 mb-4 bg-surface-container-low rounded-xl px-4">
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">CPU</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-primary">32%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-primary h-full rounded-full" style="width: 32%"></div>
+</div>
+</div>
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">RAM</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-primary">45%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-primary h-full rounded-full" style="width: 45%"></div>
+</div>
+</div>
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">DISK</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-primary">12%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-primary h-full rounded-full" style="width: 12%"></div>
+</div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Firmware Model</span>
+<span class="font-bold text-on-surface">v4.2.1</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Connected Cameras</span>
+<span class="font-bold text-primary">8/12 <span class="text-slate-300 font-normal">Active</span></span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Edge TPU Status</span>
+<span class="font-bold text-on-surface">1 Device <span class="text-[9px] bg-purple-100 text-purple-600 px-1 rounded ml-1">PULSE</span></span>
+</div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 border-t border-slate-50">
+<button class="py-4 text-xs font-bold text-slate-600 hover:bg-surface-container-low transition-colors border-r border-slate-50">View Details</button>
+<button class="py-4 text-xs font-bold text-primary hover:bg-primary/5 transition-colors">Send Command</button>
+<button class="py-4 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors border-t border-slate-50 border-r border-slate-50">Restart</button>
+<button class="py-4 text-xs font-bold text-error hover:bg-error/5 transition-colors border-t border-slate-50">Deprovision</button>
+</div>
+</div>
+<!-- Card 2: OFFLINE -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0_20px_40px_rgba(26,28,26,0.04)] border border-outline-variant/10 flex flex-col group transition-all hover:translate-y-[-4px] opacity-90">
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">EA-012-A</span>
+<h3 class="text-xl font-bold mt-1">Aisle 4 Monitoring</h3>
+<p class="text-xs text-slate-500 font-medium">Downtown Flagship</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase mb-1">OFFLINE</span>
+<span class="text-[10px] text-slate-400 font-medium italic">14m ago</span>
+</div>
+</div>
+<!-- Metrics -->
+<div class="grid grid-cols-3 gap-4 py-4 mb-4 bg-surface-container-low rounded-xl px-4">
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">CPU</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-slate-400">0%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1"></div>
+</div>
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">RAM</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-slate-400">0%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1"></div>
+</div>
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">DISK</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-error">82%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-error h-full rounded-full" style="width: 82%"></div>
+</div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Firmware Model</span>
+<span class="font-bold text-on-surface">v4.1.9</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Connected Cameras</span>
+<span class="font-bold text-error">0/4 <span class="text-slate-300 font-normal">Inactive</span></span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Edge TPU Status</span>
+<span class="font-bold text-on-surface">1 Device</span>
+</div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 border-t border-slate-50">
+<button class="py-4 text-xs font-bold text-slate-600 hover:bg-surface-container-low transition-colors border-r border-slate-50">View Details</button>
+<button class="py-4 text-xs font-bold text-slate-300 cursor-not-allowed">Send Command</button>
+<button class="py-4 text-xs font-bold text-primary hover:bg-primary/5 transition-colors border-t border-slate-50 border-r border-slate-50">Restart</button>
+<button class="py-4 text-xs font-bold text-error hover:bg-error/5 transition-colors border-t border-slate-50">Deprovision</button>
+</div>
+</div>
+<!-- Card 3: WARNING -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0_20px_40px_rgba(26,28,26,0.04)] border border-outline-variant/10 flex flex-col group transition-all hover:translate-y-[-4px]">
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">EA-089-C</span>
+<h3 class="text-xl font-bold mt-1">Entrance Backup</h3>
+<p class="text-xs text-slate-500 font-medium">Oakland North</p>
+</div>
+<div class="flex flex-col items-end">
+<span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase mb-1">WARNING</span>
+<span class="text-[10px] text-slate-400 font-medium italic">5s ago</span>
+</div>
+</div>
+<!-- Metrics -->
+<div class="grid grid-cols-3 gap-4 py-4 mb-4 bg-surface-container-low rounded-xl px-4">
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">CPU</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-error">84%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-error h-full rounded-full" style="width: 84%"></div>
+</div>
+</div>
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">RAM</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-orange-500">62%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-orange-500 h-full rounded-full" style="width: 62%"></div>
+</div>
+</div>
+<div>
+<p class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-1">DISK</p>
+<div class="flex items-baseline gap-1">
+<span class="text-lg font-black text-primary">45%</span>
+</div>
+<div class="w-full h-1 bg-slate-200 rounded-full mt-1">
+<div class="bg-primary h-full rounded-full" style="width: 45%"></div>
+</div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Firmware Model</span>
+<span class="font-bold text-on-surface">v4.2.0</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Connected Cameras</span>
+<span class="font-bold text-primary">6/6 <span class="text-slate-300 font-normal">Active</span></span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-500 font-medium">Edge TPU Status</span>
+<span class="font-bold text-on-surface">1 Device</span>
+</div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 border-t border-slate-50">
+<button class="py-4 text-xs font-bold text-slate-600 hover:bg-surface-container-low transition-colors border-r border-slate-50">View Details</button>
+<button class="py-4 text-xs font-bold text-primary hover:bg-primary/5 transition-colors">Send Command</button>
+<button class="py-4 text-xs font-bold text-slate-400 hover:bg-slate-50 transition-colors border-t border-slate-50 border-r border-slate-50">Restart</button>
+<button class="py-4 text-xs font-bold text-error hover:bg-error/5 transition-colors border-t border-slate-50">Deprovision</button>
+</div>
+</div>
+</div>
+<!-- More Agents Teaser/Pagination -->
+<div class="mt-12 flex justify-center">
+<button class="flex items-center gap-2 text-primary font-bold text-sm hover:underline underline-offset-8">
+                    Load More Infrastructure Nodes
+                    <span class="material-symbols-outlined" data-icon="keyboard_arrow_down">keyboard_arrow_down</span>
+</button>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-4 bg-slate-50 dark:bg-slate-950 flex justify-between items-center px-8 border-t border-slate-100 dark:border-slate-800">
+<p class="text-[11px] font-medium tracking-[0.05rem] uppercase text-slate-400">© 2026 FloorEye AI Precision. All rights reserved.</p>
+<div class="flex space-x-6">
+<a class="text-[11px] font-medium tracking-[0.05rem] uppercase text-slate-400 hover:text-teal-500 underline underline-offset-4" href="#">Privacy Policy</a>
+<a class="text-[11px] font-medium tracking-[0.05rem] uppercase text-slate-400 hover:text-teal-500 underline underline-offset-4" href="#">Support</a>
+</div>
+</footer>
+</div>
+</body></html>
