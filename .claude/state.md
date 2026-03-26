@@ -1,37 +1,32 @@
 # FloorEye Session State
-# Last session: 32 (Live Streaming + Clips + UI Fixes)
-# Status: All services running, code pushed
-# Date: 2026-03-24
+# Last session: 33 (Dataset System + Cloud Detection Fixes + UI Audit)
+# Status: All services running, v4.7.0, 42/42 tests pass
+# Date: 2026-03-25
 
 ## NEXT SESSION TASK
-Implement Dataset System rewrite (docs/DATASET_SYSTEM_FIX_PLAN.md)
-- Session 1: Folders CRUD + core data model fixes
-- 6 sessions total, 16 issues to fix
+Full UI redesign — go deep on each page section, redesign with proper instructions,
+shared components, consistent patterns. Reference docs/UI_IMPROVEMENT_REPORT.md.
 
-## PENDING TESTS (from this session — rate limited)
-Fix 2 (blank name 422), Fix 3 (org_query), Fix 4 (stale time) need browser verification.
-Fix 1 (class delete by name) and Fix 5 (thumbnails) are verified.
-All code committed and pushed. Test from browser at app.puddlewatch.com.
+Key tasks:
+1. Fix broken: dark mode toggle, compliance exports, version string
+2. Add instructions/help to all 17 pages
+3. Add onboarding "Getting Started" card to Dashboard
+4. Add incident timeline display
+5. Migrate pages to shared UI components
+6. Add auto-refresh to 5 stale pages
+7. Stitch outputs at stitch/output/web/ for design reference
 
-## What Was Done Session 32
-- go2rtc integration on edge (docker-compose, camera_manager auto-sync)
-- LiveStreamPlayer component (MSE via iframe + polling fallback)
-- useLiveFrame hook (was // TODO, now implemented)
-- Cloud clip recording via clip_service.py (cv2 → S3 → presigned URLs)
-- Frame extraction from clips (download S3 → cv2 → extract → upload)
-- Save frames to dataset (proper fields)
-- ClipsPage complete rewrite (video player, download, extract, thumbnails)
-- GZip response compression (-80% on detection/history)
-- Mobile camera frame routes through edge proxy
-- Presigned URLs use public S3 endpoint (thumbnails visible in browser)
-- 6 UI fixes: class deletion, blank names, org_query, stale data, refresh intervals
-- Data transfer research report
-- Dataset system research + fix plan
+## What Was Done This Session (Sessions 31-33)
+- Session 31: 50+ fixes, Roboflow Browser, cloud detection pipeline, 200+ tests
+- Session 32: go2rtc streaming, clips, frame extraction, thumbnails, GZip, 6 UI fixes
+- Session 33: Dataset system (folders, annotations, Roboflow sync), cloud detection fixes
+  (Roboflow fallback removed, incident timeline, IoT edge proxy, private IP warning),
+  UI audit (33 pages, Stitch regeneration)
 
 ## Current Docker State
 - Cloud: backend:8000, web:80, mongodb, redis, minio:9000, worker, cloudflared
 - Edge: edge-agent, inference-server, redis-buffer (all healthy)
-- go2rtc: running at store1.puddlewatch.com
+- go2rtc: store1.puddlewatch.com
 
 ## Credentials
 - admin@flooreye.io / FloorEye@2026! (super_admin)
@@ -39,6 +34,14 @@ All code committed and pushed. Test from browser at app.puddlewatch.com.
 - store@flooreye.io / Store@2026! (store_owner)
 
 ## GitHub
-- Latest commit: 20fc3fd (Dataset plan)
-- Tag: v4.5.0
-- All code pushed to origin/main
+- Latest: 809251c (UI improvement report)
+- Tags: v4.5.0, v4.6.0, v4.7.0
+- All pushed to origin/main
+
+## Key Reports
+- docs/UI_IMPROVEMENT_REPORT.md — 33-page audit with action plan
+- docs/SESSION_31_REPORT.md — Session 31 complete report
+- docs/SESSION_32_REPORT.md — Session 32 complete report
+- docs/DATASET_SYSTEM_FIX_PLAN.md — Dataset plan (implemented)
+- docs/LIVE_STREAMING_AND_CLIPS_PLAN.md — Streaming plan (implemented)
+- docs/CLOUD_DETECTION_FIX_PLAN.md — Cloud detection (implemented)
