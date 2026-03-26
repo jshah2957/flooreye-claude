@@ -70,6 +70,7 @@ export default function ClipsPage() {
       const res = await api.get("/clips", { params: { limit: 50 } });
       return res.data;
     },
+    refetchInterval: 15000,
   });
 
   const deleteMutation = useMutation({

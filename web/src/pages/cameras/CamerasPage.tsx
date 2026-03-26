@@ -73,6 +73,7 @@ export default function CamerasPage() {
       const res = await api.get<PaginatedResponse<Camera>>("/cameras", { params });
       return res.data;
     },
+    refetchInterval: 30000,
   });
 
   const cameras = data?.data ?? [];

@@ -154,7 +154,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-gray-400">
-          FloorEye v2.0 &middot; Enterprise Spill Detection
+          FloorEye &middot; Enterprise AI Spill Detection
         </p>
       </div>
     </div>

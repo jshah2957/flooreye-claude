@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Bell, LogOut, ChevronRight, Menu, Sun, Moon, User as UserIcon } from "lucide-react";
+import { Bell, LogOut, ChevronRight, Menu, User as UserIcon } from "lucide-react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useNotifications } from "@/components/NotificationProvider";
 import type { User } from "@/types";
@@ -99,7 +99,6 @@ export default function Header({ user, onLogout, onMenuToggle }: HeaderProps) {
   const navigate = useNavigate();
   const { unreadCount, clearUnread } = useNotifications();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleBellClick = () => {
@@ -153,15 +152,6 @@ export default function Header({ user, onLogout, onMenuToggle }: HeaderProps) {
 
       {/* Right: controls */}
       <div className="flex items-center gap-2">
-        {/* Theme toggle */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
         {/* Notification bell */}
         <button
           onClick={handleBellClick}

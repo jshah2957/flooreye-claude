@@ -133,6 +133,7 @@ export default function DetectionHistoryPage() {
       const res = await api.get<PaginatedResponse<Detection>>("/detection/history", { params });
       return res.data;
     },
+    refetchInterval: 10000,
   });
 
   const flagMutation = useMutation({

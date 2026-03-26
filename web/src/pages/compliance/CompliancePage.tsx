@@ -124,10 +124,23 @@ export default function CompliancePage() {
             />
           </div>
           <div className="flex gap-2">
-            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+            <button
+              onClick={() => window.open(`/api/v1/reports/compliance?format=pdf${storeId ? `&store_id=${storeId}` : ""}${dateFrom ? `&date_from=${dateFrom}` : ""}${dateTo ? `&date_to=${dateTo}` : ""}`, "_blank")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
               <FileText size={14} /> Generate PDF
             </button>
-            <button className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">
+            <button
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (storeId) params.set("store_id", storeId);
+                if (dateFrom) params.set("date_from", dateFrom);
+                if (dateTo) params.set("date_to", dateTo);
+                const url = `/api/v1/reports/compliance?format=csv${params.toString() ? `&${params}` : ""}`;
+                window.open(url, "_blank");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
               <Download size={14} /> Export CSV
             </button>
           </div>
