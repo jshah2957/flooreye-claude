@@ -126,6 +126,7 @@ export interface Incident {
   detection_count: number;
   devices_triggered: string[];
   notes: string | null;
+  timeline: { event: string; timestamp: string; details?: Record<string, unknown> }[];
   created_at: string;
 }
 

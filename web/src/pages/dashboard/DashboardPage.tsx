@@ -336,6 +336,21 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Getting Started — shown when no cameras set up */}
+      {isAdmin && (camerasData?.meta?.total ?? 0) === 0 && (
+        <div className="rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/50 p-6">
+          <h2 className="text-lg font-bold text-teal-800">Getting Started</h2>
+          <p className="mt-1 text-sm text-teal-700">Set up your first detection pipeline in 5 steps:</p>
+          <ol className="mt-3 space-y-2 text-sm text-teal-700">
+            <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">1</span> <a href="/stores" className="underline hover:text-teal-900">Create a store</a> — the physical location to monitor</li>
+            <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">2</span> <a href="/cameras/wizard" className="underline hover:text-teal-900">Add a camera</a> — RTSP, HTTP, or cloud-managed</li>
+            <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">3</span> Draw the floor area (ROI) on the camera detail page</li>
+            <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">4</span> <a href="/models" className="underline hover:text-teal-900">Deploy an AI model</a> — pull from Roboflow or upload ONNX</li>
+            <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white">5</span> Run your first detection from the camera detail page</li>
+          </ol>
+        </div>
+      )}
+
       {/* Stats Row */}
       <div className={`grid gap-4 ${isAdmin ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-6" : "grid-cols-2 md:grid-cols-3"}`}>
         {isAdmin ? (

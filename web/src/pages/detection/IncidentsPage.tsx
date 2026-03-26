@@ -803,6 +803,38 @@ function IncidentDetail({
               </div>
             )}
 
+            {/* Incident Timeline (from timeline[] array added in v4.7) */}
+            {inc.timeline && inc.timeline.length > 0 && (
+              <div className="mt-5">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Incident Timeline
+                </label>
+                <div className="space-y-2">
+                  {inc.timeline.map((evt: { event: string; timestamp: string; details?: Record<string, unknown> }, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs">
+                      <div className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
+                        evt.event === "created" ? "bg-blue-500" :
+                        evt.event === "severity_upgraded" ? "bg-red-500" :
+                        evt.event === "acknowledged" ? "bg-amber-500" :
+                        evt.event === "resolved" ? "bg-green-500" :
+                        evt.event === "device_triggered" ? "bg-purple-500" :
+                        "bg-gray-400"
+                      }`} />
+                      <div>
+                        <span className="font-medium text-gray-700">{evt.event.replace(/_/g, " ")}</span>
+                        <span className="ml-2 text-gray-400">{new Date(evt.timestamp).toLocaleString()}</span>
+                        {evt.details && Object.keys(evt.details).length > 0 && (
+                          <span className="ml-1 text-gray-400">
+                            ({Object.entries(evt.details).filter(([,v]) => v != null).map(([k, v]) => `${k}: ${v}`).join(", ")})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             <div className="mt-5">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">
