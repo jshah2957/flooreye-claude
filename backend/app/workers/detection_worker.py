@@ -101,39 +101,33 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     _, buffer = cv2.imencode(".jpg", frame)
     frame_base64 = base64.b64encode(buffer).decode("utf-8")
 
-    # Inference — prefer local ONNX, fallback to Roboflow API
-    model_source = "roboflow"
-    if settings.LOCAL_INFERENCE_ENABLED:
+    # Inference — local ONNX only (no Roboflow fallback for production detection)
+    model_source = "local_onnx"
+    model_version_id = None
+    try:
+        from app.services.onnx_inference_service import run_local_inference
+        inference_result = await run_local_inference(frame_base64, db=db)
+        model_version_id = inference_result.get("model_version_id")
+    except (RuntimeError, ValueError, OSError) as exc:
+        logger.error("ONNX inference failed for camera %s: %s", camera_id, exc)
         try:
-            from app.services.onnx_inference_service import run_local_inference
-            inference_result = await run_local_inference(frame_base64, db=db)
-            model_source = "local_onnx"
-        except Exception as onnx_err:
-            import logging
-            logging.getLogger(__name__).warning(
-                "Local ONNX inference failed for camera %s, falling back to Roboflow: %s",
-                camera_id, onnx_err,
+            from app.services.system_log_service import emit_system_log
+            await emit_system_log(
+                db, org_id, "error", "detection",
+                f"Continuous detection ONNX failure: {exc}",
+                {"camera_id": camera_id, "error": str(exc)},
             )
-            try:
-                inference_result = await run_roboflow_inference(frame_base64)
-            except Exception as e:
-                return {"error": f"Inference failed: {str(e)}", "camera_id": camera_id}
-    else:
-        try:
-            inference_result = await run_roboflow_inference(frame_base64)
-        except Exception as e:
-            return {"error": f"Inference failed: {str(e)}", "camera_id": camera_id}
+        except Exception:
+            pass
+        return {"error": f"Inference unavailable: {exc}", "camera_id": camera_id}
 
     predictions = inference_result["predictions"]
     inference_time_ms = inference_result["inference_time_ms"]
-    if model_source == "local_onnx":
-        summary = {
-            "is_wet": inference_result.get("is_wet", False),
-            "confidence": inference_result.get("confidence", 0.0),
-            "wet_area_percent": inference_result.get("wet_area_percent", 0.0),
-        }
-    else:
-        summary = compute_detection_summary(predictions)
+    summary = {
+        "is_wet": inference_result.get("is_wet", False),
+        "confidence": inference_result.get("confidence", 0.0),
+        "wet_area_percent": inference_result.get("wet_area_percent", 0.0),
+    }
 
     # Resolve per-camera detection control settings (same as detection_service.py)
     from app.services.detection_control_service import resolve_effective_settings
@@ -156,17 +150,35 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
         layer4_enabled=effective.get("layer4_enabled", True),
     )
 
-    # Upload frame to S3 (match detection_service.py pattern)
+    # Upload BOTH clean + annotated frames to S3
     from app.utils.s3_utils import upload_frame
+    clean_s3_path = None
+    annotated_s3_path = None
     try:
-        s3_path = await upload_frame(frame_base64, org_id, camera_id)
+        clean_s3_path = await upload_frame(frame_base64, org_id, camera_id, frame_type="clean")
     except Exception:
-        s3_path = None
+        pass
+    try:
+        from app.utils.annotation_utils import draw_annotations
+        annotated_b64 = draw_annotations(frame_base64, predictions)
+        if annotated_b64:
+            annotated_s3_path = await upload_frame(annotated_b64, org_id, camera_id, frame_type="annotated")
+    except Exception:
+        pass
 
     # Log detection
+    import hashlib as _hl
+    import time as _time
+    idem_input = f"{camera_id}:{summary['confidence']:.4f}:{summary['wet_area_percent']:.4f}:{int(_time.time())}"
+    idem_hash = _hl.sha256(idem_input.encode()).hexdigest()[:24]
+    existing = await db.detection_logs.find_one({"idempotency_key": idem_hash})
+    if existing:
+        return {"duplicate": True, "detection_id": existing["id"]}
+
     now = datetime.now(timezone.utc)
     detection_doc = {
         "id": str(uuid.uuid4()),
+        "idempotency_key": idem_hash,
         "camera_id": camera_id,
         "store_id": camera["store_id"],
         "org_id": org_id,
@@ -176,10 +188,11 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
         "wet_area_percent": summary["wet_area_percent"],
         "inference_time_ms": inference_time_ms,
         "frame_base64": None,
-        "frame_s3_path": s3_path,
+        "frame_s3_path": clean_s3_path,
+        "annotated_frame_s3_path": annotated_s3_path,
         "predictions": predictions,
         "model_source": model_source,
-        "model_version_id": None,
+        "model_version_id": model_version_id,
         "is_flagged": False,
         "incident_id": None,
     }

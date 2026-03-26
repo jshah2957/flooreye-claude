@@ -96,11 +96,19 @@ async def run_manual_detection(
         log.warning(f"Failed to resolve detection control settings for camera {camera_id}: {e}")
         effective = {}
 
-    # Run inference — use per-camera confidence, prefer local ONNX, fallback to Roboflow
+    # Run inference — local ONNX only (Roboflow only for explicit test requests)
     inference_confidence = effective.get("layer1_confidence", 0.5)
-    source = model_source or ("local_onnx" if settings.LOCAL_INFERENCE_ENABLED else "roboflow")
+    source = model_source or "local_onnx"
     model_version_id = None
-    if source == "local_onnx":
+
+    if source == "roboflow":
+        # Explicit Roboflow request (testing only — not used for production detection)
+        inference_result = await run_roboflow_inference(frame_base64)
+        predictions = inference_result["predictions"]
+        inference_time_ms = inference_result["inference_time_ms"]
+        summary = compute_detection_summary(predictions)
+    else:
+        # Local ONNX inference — no Roboflow fallback
         try:
             inference_result = await run_local_inference(
                 frame_base64, confidence=inference_confidence, db=db,
@@ -113,18 +121,18 @@ async def run_manual_detection(
                 "confidence": inference_result.get("confidence", 0.0),
                 "wet_area_percent": inference_result.get("wet_area_percent", 0.0),
             }
-        except Exception as exc:
-            log.warning("Local ONNX inference failed, falling back to Roboflow: %s", exc)
-            source = "roboflow"
-            inference_result = await run_roboflow_inference(frame_base64)
-            predictions = inference_result["predictions"]
-            inference_time_ms = inference_result["inference_time_ms"]
-            summary = compute_detection_summary(predictions)
-    else:
-        inference_result = await run_roboflow_inference(frame_base64)
-        predictions = inference_result["predictions"]
-        inference_time_ms = inference_result["inference_time_ms"]
-        summary = compute_detection_summary(predictions)
+        except (RuntimeError, ValueError, OSError) as exc:
+            log.error("ONNX inference failed for camera %s: %s", camera_id, exc)
+            # Emit system log for monitoring
+            await emit_system_log(
+                db, org_id, "error", "detection",
+                f"ONNX inference failed: {exc}",
+                {"camera_id": camera_id, "error": str(exc)},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Inference unavailable: {exc}",
+            )
 
     # Run validation pipeline with effective settings
     validation = await run_validation_pipeline(

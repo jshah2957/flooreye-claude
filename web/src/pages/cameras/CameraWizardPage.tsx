@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { isPrivateUrl as isPrivateAddress } from "@/constants/validation";
 import {
   Loader2,
   CheckCircle,
@@ -406,9 +407,15 @@ export default function CameraWizardPage() {
               <input
                 value={camUrl}
                 onChange={(e) => handleUrlChange(e.target.value)}
-                placeholder="rtsp://admin:pass@192.168.1.100/stream"
+                placeholder={inferenceMode === "cloud" ? "rtsp://user:pass@your-public-ip:554/stream" : "rtsp://admin:pass@192.168.1.100/stream"}
                 className="w-full rounded-lg border border-gray-200 px-3.5 py-2.5 font-mono text-sm text-gray-900 placeholder-gray-400 outline-none transition-all focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20"
               />
+              {inferenceMode === "cloud" && camUrl && isPrivateAddress(camUrl) && (
+                <p className="mt-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  This looks like a private network address. Cloud detection cannot reach private cameras.
+                  Use Edge mode, set up port forwarding, or use a tunnel service.
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>

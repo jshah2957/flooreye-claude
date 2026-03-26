@@ -185,11 +185,31 @@ async def create_or_update_incident(
             )
             set_fields["severity"] = severity_override or calculated_sev
 
+            # Build timeline events
+            timeline_events = [
+                {"event": "detection_added", "timestamp": now.isoformat(), "details": {
+                    "count": new_count, "confidence": confidence,
+                }},
+            ]
+
+            # Check for severity upgrade → trigger notification
+            old_severity = existing.get("severity", "low")
+            new_severity = set_fields.get("severity", old_severity)
+            severity_upgraded = False
+            severity_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+            if severity_order.get(new_severity, 0) > severity_order.get(old_severity, 0):
+                severity_upgraded = True
+                timeline_events.append({
+                    "event": "severity_upgraded", "timestamp": now.isoformat(),
+                    "details": {"from": old_severity, "to": new_severity},
+                })
+
             updated = await db.events.find_one_and_update(
                 {"id": existing["id"]},
                 {
                     "$inc": {"detection_count": 1},
                     "$set": set_fields,
+                    "$push": {"timeline": {"$each": timeline_events}},
                 },
                 return_document=True,
             )
@@ -198,12 +218,13 @@ async def create_or_update_incident(
 
             await emit_system_log(
                 db, org_id, "info", "incident", "Incident updated",
-                {"incident_id": existing["id"], "detection_count": new_count, "severity": set_fields.get("severity", existing.get("severity"))},
+                {"incident_id": existing["id"], "detection_count": new_count, "severity": new_severity},
             )
 
-            # Broadcast via WebSocket and dispatch notifications
+            # Broadcast + notify (also on severity upgrade)
+            should_notify = auto_notify or severity_upgraded
             await _broadcast_and_notify(
-                db, existing, detection, is_new=False, auto_notify=auto_notify
+                db, existing, detection, is_new=False, auto_notify=should_notify
             )
 
             return existing
@@ -252,6 +273,11 @@ async def create_or_update_incident(
         "devices_triggered": [],
         "notes": None,
         "roboflow_sync_status": "not_sent",
+        "timeline": [
+            {"event": "created", "timestamp": now.isoformat(), "details": {
+                "severity": severity, "confidence": confidence, "camera_id": camera_id,
+            }},
+        ],
         "created_at": now,
     }
     await db.events.insert_one(incident_doc)
@@ -317,32 +343,42 @@ async def _auto_trigger_devices(
 
     from app.services.device_service import trigger_device
 
+    # Check if store has an online edge agent for local device routing
+    edge_agent = await db.edge_agents.find_one({
+        "store_id": store_id, "status": "online",
+    })
+
     async def _trigger_one(device: dict) -> str | None:
         """Trigger a single device, return device ID on success or None."""
         device_id = device["id"]
         try:
-            # Check if device should be triggered for this camera
             trigger_on_any = device.get("trigger_on_any", True)
             assigned_cameras = device.get("assigned_cameras") or []
 
             if not trigger_on_any and camera_id not in assigned_cameras:
-                log.debug(
-                    "Device %s skipped — camera %s not in assigned_cameras",
-                    device_id, camera_id,
-                )
                 return None
 
+            # Route through edge proxy for stores with edge agent (reaches LAN devices)
+            if edge_agent:
+                try:
+                    from app.services.edge_proxy_service import proxy_to_edge
+                    result = await proxy_to_edge(edge_agent, "/api/devices/control", {
+                        "device_id": device_id,
+                        "action": "trigger",
+                        "incident_id": incident_id,
+                    })
+                    if result:
+                        log.info("Device %s triggered via edge proxy for incident %s", device_id, incident_id)
+                        return device_id
+                except Exception as proxy_err:
+                    log.warning("Edge proxy trigger failed for device %s, trying direct: %s", device_id, proxy_err)
+
+            # Fallback: direct trigger (works for devices with public URLs)
             await trigger_device(db, device_id, org_id)
-            log.info(
-                "Auto-triggered device %s for incident %s (camera %s)",
-                device_id, incident_id, camera_id,
-            )
+            log.info("Auto-triggered device %s (direct) for incident %s", device_id, incident_id)
             return device_id
         except Exception as e:
-            log.warning(
-                "Failed to auto-trigger device %s for incident %s: %s",
-                device_id, incident_id, e,
-            )
+            log.warning("Failed to trigger device %s for incident %s: %s", device_id, incident_id, e)
             return None
 
     # Fire all device triggers concurrently (fire-and-forget per device)
@@ -496,11 +532,18 @@ async def acknowledge_incident(
 
     result = await db.events.find_one_and_update(
         {**org_query(org_id), "id": event_id},
-        {"$set": updates},
+        {
+            "$set": updates,
+            "$push": {"timeline": {
+                "event": "acknowledged", "timestamp": now.isoformat(),
+                "details": {"by": user_id, "notes": notes},
+            }},
+        },
         return_document=True,
     )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
+    result.pop("_id", None)
     return result
 
 
@@ -544,9 +587,16 @@ async def resolve_incident(
 
     result = await db.events.find_one_and_update(
         {**org_query(org_id), "id": event_id},
-        {"$set": updates},
+        {
+            "$set": updates,
+            "$push": {"timeline": {
+                "event": "resolved", "timestamp": now.isoformat(),
+                "details": {"by": user_id, "status": resolve_status, "notes": notes},
+            }},
+        },
         return_document=True,
     )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
+    result.pop("_id", None)
     return result
