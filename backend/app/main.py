@@ -16,6 +16,7 @@ from app.db.database import get_db
 from app.routers import (
     audit_logs,
     auth,
+    dashboard,
     organizations,
     cameras,
     clips,
@@ -166,6 +167,7 @@ def create_app() -> FastAPI:
         }
 
     # Register all routers
+    application.include_router(dashboard.router)
     application.include_router(auth.router)
     application.include_router(stores.router)
     application.include_router(cameras.router)

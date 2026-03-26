@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # S3 / MinIO / R2 Storage
     S3_ENDPOINT_URL: str = "http://localhost:9000"  # Internal (backend → S3)
-    S3_PUBLIC_URL: str = ""  # Browser-accessible URL. If empty, auto-detects from request origin.
+    S3_PUBLIC_URL: str = ""  # Browser-accessible S3 URL (e.g., http://localhost/storage/flooreye-frames). If empty, auto-detects.
     S3_ACCESS_KEY_ID: str = "minioadmin"
     S3_SECRET_ACCESS_KEY: str = "minioadmin"
     S3_BUCKET_NAME: str = "flooreye"

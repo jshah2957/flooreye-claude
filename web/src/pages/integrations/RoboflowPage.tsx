@@ -13,8 +13,18 @@ export default function RoboflowPage() {
   const { success, error: showError } = useToast();
   const [apiKey, setApiKey] = useState("");
   const [modelId, setModelId] = useState("");
-  const [apiUrl, setApiUrl] = useState("https://detect.roboflow.com");
+  const [apiUrl, setApiUrl] = useState("");
+  const [testSucceeded, setTestSucceeded] = useState(false);
   const [showKey, setShowKey] = useState(false);
+
+  const { data: modelsData } = useQuery({
+    queryKey: ["production-model"],
+    queryFn: async () => {
+      const res = await api.get("/models", { params: { status: "production", limit: 1 } });
+      return res.data;
+    },
+  });
+  const prodModel = modelsData?.data?.[0] ?? null;
 
   const { data: integration, isLoading } = useQuery({
     queryKey: ["integration-roboflow"],
@@ -43,6 +53,7 @@ export default function RoboflowPage() {
     mutationFn: () => api.post("/integrations/roboflow/test"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integration-roboflow"] });
+      setTestSucceeded(true);
       success("Roboflow test passed");
     },
     onError: (err: any) => {
@@ -65,7 +76,7 @@ export default function RoboflowPage() {
           <h1 className="text-2xl font-bold text-gray-900">Roboflow Integration</h1>
           <p className="mt-1 text-sm text-gray-500">Configure the Roboflow inference API connection</p>
         </div>
-        {integration && (
+        {(integration || testSucceeded) && (
           <button
             onClick={() => navigate("/integrations/roboflow/browse")}
             className="flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700"
@@ -102,7 +113,7 @@ export default function RoboflowPage() {
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-900">Model ID *</label>
+              <label className="mb-1.5 block text-sm font-medium text-gray-900">Model ID</label>
               <input
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
@@ -121,7 +132,7 @@ export default function RoboflowPage() {
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => saveMutation.mutate()}
-                disabled={!apiKey || !modelId || saveMutation.isPending}
+                disabled={!apiKey || saveMutation.isPending}
                 className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50"
               >
                 {saveMutation.isPending && <Loader2 size={14} className="animate-spin" />}
@@ -129,7 +140,7 @@ export default function RoboflowPage() {
               </button>
               <button
                 onClick={() => testMutation.mutate()}
-                disabled={!integration || testMutation.isPending}
+                disabled={(!integration && !apiKey) || testMutation.isPending}
                 className="flex items-center gap-2 rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
               >
                 {testMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
@@ -200,7 +211,17 @@ export default function RoboflowPage() {
                     <dd className="font-semibold text-gray-900">{integration.last_test_response_ms.toFixed(0)}ms</dd>
                   </div>
                 )}
+                {integration?.last_test_result === "success" && (
+                  <p className="text-xs text-green-600">Connected to workspace</p>
+                )}
               </dl>
+              {prodModel && (
+                <div className="mt-3 rounded-lg bg-teal-50 p-3">
+                  <p className="text-xs font-medium text-teal-700">Current Model</p>
+                  <p className="text-sm font-bold text-teal-900">{prodModel.version_str}</p>
+                  <p className="text-[10px] text-teal-600">{prodModel.architecture} · {prodModel.model_size_mb}MB</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12 text-center">

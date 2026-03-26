@@ -58,6 +58,16 @@ export default function RoboflowBrowserPage() {
   const [selectedProject, setSelectedProject] = useState<RoboflowProject | null>(null);
   const [deployingVersion, setDeployingVersion] = useState<number | null>(null);
 
+  // Current production model
+  const { data: prodModelData } = useQuery({
+    queryKey: ["production-model-browser"],
+    queryFn: async () => {
+      const res = await api.get("/models", { params: { status: "production", limit: 1 } });
+      return res.data?.data?.[0] ?? null;
+    },
+  });
+  const deployedVersion = prodModelData?.pulled_from?.split("/").pop();
+
   // Fetch workspace + projects
   const { data: workspace, isLoading: wsLoading, error: wsError, refetch: refetchWs } = useQuery({
     queryKey: ["roboflow-workspace"],
@@ -130,6 +140,17 @@ export default function RoboflowBrowserPage() {
           Refresh
         </button>
       </div>
+
+      {/* Current deployment info */}
+      {prodModelData && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3">
+          <Check size={18} className="text-teal-600" />
+          <div>
+            <span className="text-sm font-medium text-teal-900">Currently deployed: </span>
+            <span className="text-sm text-teal-700">{prodModelData.version_str} ({prodModelData.model_size_mb} MB, {prodModelData.architecture})</span>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {wsLoading && (
@@ -282,7 +303,7 @@ export default function RoboflowBrowserPage() {
                   )}
                   {versions.versions?.map((v: RoboflowVersion) => {
                     const isDeploying = deployingVersion === v.version;
-                    const hasTrained = v.model && v.model.status === "finished";
+                    const hasTrained = v.model && (v.model.status === "finished" || Number(v.model.map) > 0);
                     const canDeploy = hasTrained;
 
                     return (
@@ -292,29 +313,34 @@ export default function RoboflowBrowserPage() {
                       >
                         <td className="px-6 py-3.5">
                           <span className="font-semibold text-gray-900">v{v.version}</span>
+                          {String(v.version) === String(deployedVersion) && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-800">
+                              <Check size={10} /> Deployed
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-3.5">
-                          {v.model?.map != null ? (
+                          {v.model?.map != null && Number(v.model.map) > 0 ? (
                             <span className="font-medium text-gray-900">
-                              {(v.model.map * 100).toFixed(1)}%
+                              {Number(v.model.map) > 1 ? `${Number(v.model.map).toFixed(1)}%` : `${(Number(v.model.map) * 100).toFixed(1)}%`}
                             </span>
                           ) : (
                             <span className="text-gray-400">--</span>
                           )}
                         </td>
                         <td className="px-6 py-3.5">
-                          {v.model?.precision != null ? (
+                          {v.model?.precision != null && Number(v.model.precision) > 0 ? (
                             <span className="text-gray-700">
-                              {(v.model.precision * 100).toFixed(1)}%
+                              {Number(v.model.precision) > 1 ? `${Number(v.model.precision).toFixed(1)}%` : `${(Number(v.model.precision) * 100).toFixed(1)}%`}
                             </span>
                           ) : (
                             <span className="text-gray-400">--</span>
                           )}
                         </td>
                         <td className="px-6 py-3.5">
-                          {v.model?.recall != null ? (
+                          {v.model?.recall != null && Number(v.model.recall) > 0 ? (
                             <span className="text-gray-700">
-                              {(v.model.recall * 100).toFixed(1)}%
+                              {Number(v.model.recall) > 1 ? `${Number(v.model.recall).toFixed(1)}%` : `${(Number(v.model.recall) * 100).toFixed(1)}%`}
                             </span>
                           ) : (
                             <span className="text-gray-400">--</span>

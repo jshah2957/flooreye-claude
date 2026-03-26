@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -254,7 +255,20 @@ async def _fetch_roboflow_classes(
                     # Upsert each class into detection_classes collection (ensure UUID id)
                     await db.detection_classes.update_one(
                         {"org_id": org_id, "name": name},
-                        {"$set": class_doc, "$setOnInsert": {"id": str(uuid.uuid4())}},
+                        {
+                            "$set": class_doc,
+                            "$setOnInsert": {
+                                "id": str(uuid.uuid4()),
+                                "display_label": name.replace("_", " ").title(),
+                                "color": f"#{hashlib.md5(name.encode()).hexdigest()[:6]}" if name else "#00FFFF",
+                                "enabled": True,
+                                "severity": "medium",
+                                "alert_on_detect": name.lower() in {"wet_floor", "spill", "puddle", "water", "wet", "leak", "flood"},
+                                "min_confidence": 0.5,
+                                "min_area_percent": 0.0,
+                                "created_at": now,
+                            },
+                        },
                         upsert=True,
                     )
                     class_list.append({"name": name, "count": class_doc["count"]})

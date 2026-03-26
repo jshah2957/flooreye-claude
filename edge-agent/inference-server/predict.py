@@ -1,7 +1,8 @@
 """ONNX inference: preprocessing, inference, and postprocessing.
 
-Supports YOLOv8 output [1, 84, 8400], YOLO26 output [1, 300, 6],
-and custom ONNX exports (YOLOv8-based or DETR format).
+Supports YOLOv8 output [1, 84, 8400], YOLOv8-seg output (2 outputs with mask
+prototypes), YOLO26 output [1, 300, 6], and custom ONNX exports (YOLOv8-based
+or DETR format).
 """
 
 import base64
@@ -36,6 +37,21 @@ def update_alert_classes(class_names: set[str]):
     """Update the set of classes that trigger alerts. Called by command_poller."""
     global ALERT_CLASSES
     ALERT_CLASSES = class_names
+
+
+def _sigmoid(x):
+    """Numerically stable sigmoid."""
+    return np.where(x >= 0, 1.0 / (1.0 + np.exp(-x)), np.exp(x) / (1.0 + np.exp(x)))
+
+
+def _crop_mask(mask, x1, y1, x2, y2):
+    """Zero out mask pixels outside bbox."""
+    h, w = mask.shape
+    cropped = np.zeros_like(mask)
+    y1c, y2c = max(0, min(y1, h)), max(0, min(y2, h))
+    x1c, x2c = max(0, min(x1, w)), max(0, min(x2, w))
+    cropped[y1c:y2c, x1c:x2c] = mask[y1c:y2c, x1c:x2c]
+    return cropped
 
 
 def load_saved_alert_classes(config_dir: str = "/data/config"):
@@ -220,6 +236,112 @@ def postprocess_nms_free(output: np.ndarray, conf_thresh: float) -> list[dict]:
     return detections[:MAX_DETECTIONS_PER_FRAME]
 
 
+def postprocess_yolov8_seg(outputs: list[np.ndarray], conf_thresh: float,
+                           input_size: int = 640) -> list[dict]:
+    """Parse YOLOv8-seg output with mask prototypes.
+
+    Args:
+        outputs: List of 2 ONNX outputs:
+            - output0: [1, 4+C+32, N] detection predictions with mask coefficients
+            - output1: [1, 32, H_mask, W_mask] mask prototypes
+        conf_thresh: Confidence threshold.
+        input_size: Model input dimension (e.g., 640).
+
+    Returns:
+        List of detection dicts with bbox, confidence, mask_area_percent,
+        mask_polygon, and has_mask fields.
+    """
+    output0 = outputs[0]  # [1, 4+C+32, N]
+    protos = outputs[1]   # [1, 32, H_mask, W_mask]
+
+    proto_h, proto_w = protos.shape[2], protos.shape[3]
+    protos_2d = protos[0].reshape(32, -1)  # [32, H_mask * W_mask]
+
+    preds = output0[0].T  # [N, 4+C+32]
+    num_features = preds.shape[1]
+    num_classes = num_features - 4 - 32  # 4 box + C classes + 32 mask coeffs
+
+    detections = []
+    for pred in preds:
+        box = pred[:4]
+        class_scores = pred[4:4 + num_classes]
+        mask_coeffs = pred[4 + num_classes:]
+
+        max_score = float(np.max(class_scores))
+        if max_score < conf_thresh:
+            continue
+
+        class_id = int(np.argmax(class_scores))
+        cx, cy, w, h = box
+
+        detections.append({
+            "class_id": class_id,
+            "confidence": round(max_score, 4),
+            "bbox": {
+                "cx": round(float(cx) / input_size, 4),
+                "cy": round(float(cy) / input_size, 4),
+                "w": round(float(w) / input_size, 4),
+                "h": round(float(h) / input_size, 4),
+            },
+            "_mask_coeffs": mask_coeffs,
+            "_box_px": (float(cx), float(cy), float(w), float(h)),
+        })
+
+    # NMS
+    detections = _nms_iou(detections)
+
+    # Decode masks for surviving detections
+    scale_x = proto_w / input_size
+    scale_y = proto_h / input_size
+
+    for det in detections:
+        coeffs = det.pop("_mask_coeffs")
+        cx_px, cy_px, w_px, h_px = det.pop("_box_px")
+
+        # Compute mask: coefficients @ prototypes -> sigmoid
+        raw_mask = coeffs @ protos_2d  # [H_mask * W_mask]
+        raw_mask = raw_mask.reshape(proto_h, proto_w)
+        mask = _sigmoid(raw_mask)
+
+        # Crop mask to bbox region
+        x1 = int((cx_px - w_px / 2) * scale_x)
+        y1 = int((cy_px - h_px / 2) * scale_y)
+        x2 = int((cx_px + w_px / 2) * scale_x)
+        y2 = int((cy_px + h_px / 2) * scale_y)
+        mask = _crop_mask(mask, x1, y1, x2, y2)
+
+        # Threshold mask
+        binary = (mask > 0.5).astype(np.uint8)
+
+        # Calculate mask area as percent of total image
+        mask_pixels = int(np.sum(binary))
+        total_pixels = proto_h * proto_w
+        det["mask_area_percent"] = round(mask_pixels / total_pixels * 100, 2) if total_pixels > 0 else 0.0
+
+        # Generate simplified polygon from mask contour
+        polygon = []
+        try:
+            import cv2
+            contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                largest = max(contours, key=cv2.contourArea)
+                epsilon = 0.02 * cv2.arcLength(largest, True)
+                approx = cv2.approxPolyDP(largest, epsilon, True)
+                polygon = [
+                    {"x": round(float(pt[0][0]) / proto_w, 4),
+                     "y": round(float(pt[0][1]) / proto_h, 4)}
+                    for pt in approx
+                ]
+        except ImportError:
+            # cv2 not available — skip polygon extraction
+            pass
+
+        det["mask_polygon"] = polygon
+        det["has_mask"] = True
+
+    return detections
+
+
 def postprocess_custom_export(output: np.ndarray, conf_thresh: float, session=None) -> list[dict]:
     """Parse custom ONNX export output -- auto-detects format.
 
@@ -276,6 +398,13 @@ def detect_model_type(session) -> str:
     3. Output shape heuristics: NMS-free [1,300,6], DETR [1,N,5-7], custom
        small-class-count [1, 4+C, N] where C is small, YOLOv8 fallback
     """
+    # Check for segmentation model (2 outputs with mask prototypes)
+    outputs = session.get_outputs()
+    if len(outputs) >= 2:
+        shape1 = outputs[1].shape
+        if len(shape1) == 4 and shape1[1] == 32:
+            return "yolov8_seg"
+
     # Check ONNX metadata for known export tool producers
     try:
         meta = session.get_modelmeta()
@@ -375,7 +504,9 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
     if model_type is None:
         model_type = detect_model_type(session)
 
-    if model_type in ("roboflow", "custom_export"):
+    if model_type == "yolov8_seg":
+        detections = postprocess_yolov8_seg(outputs, confidence, INPUT_SIZE)
+    elif model_type in ("roboflow", "custom_export"):
         detections = postprocess_custom_export(outputs[0], confidence, session)
     elif model_type == "nms_free":
         detections = postprocess_nms_free(outputs[0], confidence)
@@ -389,6 +520,14 @@ def run_inference(session, image_base64: str, confidence: float = 0.5,
             det["class_name"] = names.get(det["class_id"], f"class_{det['class_id']}")
 
     inference_ms = round((time.time() - t0) * 1000, 1)
+
+    # Compute area_percent: prefer mask-based area, fall back to bbox area
+    for det in detections:
+        if det.get("has_mask") and "mask_area_percent" in det:
+            det["area_percent"] = det["mask_area_percent"]
+        elif "area_percent" not in det:
+            bbox = det.get("bbox", {})
+            det["area_percent"] = round(bbox.get("w", 0) * bbox.get("h", 0) * 100, 2)
 
     # Detect wet floor by class name (not hardcoded class_id)
     is_wet = any(

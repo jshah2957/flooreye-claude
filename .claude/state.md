@@ -1,47 +1,67 @@
 # FloorEye Session State
-# Last session: 33 (Dataset System + Cloud Detection Fixes + UI Audit)
-# Status: All services running, v4.7.0, 42/42 tests pass
-# Date: 2026-03-25
+# Last session: 35 (Clip Fix + Class Fix + Dashboard Redesign + Roboflow Pipeline)
+# Status: All services running, 15/15 endpoints pass, segmentation model deployed
+# Date: 2026-03-26
 
 ## NEXT SESSION TASK
-Full UI redesign — go deep on each page section, redesign with proper instructions,
-shared components, consistent patterns. Reference docs/UI_IMPROVEMENT_REPORT.md.
+Polish and production hardening:
+1. Frontend detection display: render mask polygons on annotated frames (AnnotatedFrame.tsx)
+2. Clean up old broken model_versions records (ZIP-based, retired)
+3. Add model comparison view in Model Registry
+4. Edge agent model version verification (currently shows old model ID)
+5. Continuous detection loop testing with live cameras
+6. Commit all changes and tag release
 
-Key tasks:
-1. Fix broken: dark mode toggle, compliance exports, version string
-2. Add instructions/help to all 17 pages
-3. Add onboarding "Getting Started" card to Dashboard
-4. Add incident timeline display
-5. Migrate pages to shared UI components
-6. Add auto-refresh to 5 stale pages
-7. Stitch outputs at stitch/output/web/ for design reference
+## What Was Done This Session (Session 35)
 
-## What Was Done This Session (Sessions 31-33)
-- Session 31: 50+ fixes, Roboflow Browser, cloud detection pipeline, 200+ tests
-- Session 32: go2rtc streaming, clips, frame extraction, thumbnails, GZip, 6 UI fixes
-- Session 33: Dataset system (folders, annotations, Roboflow sync), cloud detection fixes
-  (Roboflow fallback removed, incident timeline, IoT edge proxy, private IP warning),
-  UI audit (33 pages, Stitch regeneration)
+### Clip Playback Fix
+- Nginx /storage/ proxy eliminates CORS for S3 presigned URLs
+- MJPG recording → ffmpeg H.264 transcode → browser-playable MP4
+- Video player error handling with retry logic
+- Presigned URLs signed against internal endpoint, rewritten for browser
 
-## Current Docker State
-- Cloud: backend:8000, web:80, mongodb, redis, minio:9000, worker, cloudflared
-- Edge: edge-agent, inference-server, redis-buffer (all healthy)
-- go2rtc: store1.puddlewatch.com
+### Detection Class Fix
+- Backfilled 76 class docs missing `id` field
+- Added unique indexes on (id) and (org_id, name)
+- Fixed DELETE/PUT to use org_query() consistently
+- Added _normalize_class() to GET response
+- POST now checks for duplicates (409 Conflict)
+- Expanded POST/PUT to accept color, enabled, severity
+- Frontend delete guard for missing id
 
-## Credentials
-- admin@flooreye.io / FloorEye@2026! (super_admin)
-- demo@flooreye.io / Demo@2026! (org_admin)
-- store@flooreye.io / Store@2026! (store_owner)
+### Dashboard Redesign
+- New /dashboard/summary aggregation endpoint (single API call)
+- 5 KPI stat cards (incidents, detections, cameras, edge, model)
+- Recharts area chart (7-day detection trend)
+- Recharts donut chart (incident severity)
+- Infrastructure health panel
+- Recent detections grid with thumbnails
+- Edge agent status cards
+- Removed live monitoring panel
 
-## GitHub
-- Latest: 809251c (UI improvement report)
-- Tags: v4.5.0, v4.6.0, v4.7.0
-- All pushed to origin/main
+### Roboflow Integration Complete Pipeline
+- Fixed _test_roboflow: calls api.roboflow.com (not detect.roboflow.com)
+- Fixed workspace API parsing (projects nested under workspace key)
+- Two-path model download: ONNX REST (detection) → .pt SDK + convert (segmentation)
+- .pt → ONNX conversion via ultralytics (automatic, any architecture)
+- Segmentation post-processing added to cloud + edge (mask decoding, area calculation)
+- Classes auto-sync from model when Roboflow API returns empty
+- Browse Models page: shows projects, versions, mAP, "Use This Model" button
+- "Currently Deployed" banner + per-version deployed badge
+- Model switching works (deploy v8, switch to v9, auto-retire old)
+- Detection runs successfully on live cameras (101-201ms inference)
+- Added roboflow, onnx, onnxslim to requirements.txt
+- Gunicorn timeout increased to 300s for model operations
 
-## Key Reports
-- docs/UI_IMPROVEMENT_REPORT.md — 33-page audit with action plan
-- docs/SESSION_31_REPORT.md — Session 31 complete report
-- docs/SESSION_32_REPORT.md — Session 32 complete report
-- docs/DATASET_SYSTEM_FIX_PLAN.md — Dataset plan (implemented)
-- docs/LIVE_STREAMING_AND_CLIPS_PLAN.md — Streaming plan (implemented)
-- docs/CLOUD_DETECTION_FIX_PLAN.md — Cloud detection (implemented)
+### Key Numbers
+- Production model: rf-my-first-project-rsboo-v9 (11.09 MB, yolo-segment, 3 classes)
+- Classes: Caution Sign, Mopped Floor, Water Spill
+- Edge agents: 3 (1 online), all received deploy commands
+- API endpoints: 15/15 pass
+- Detection inference: 101-201ms on cloud
+
+## Architecture
+- Cloud: FastAPI + ONNX Runtime (auto-detect model type: yolov8, nms_free, yolov8_seg)
+- Edge: Docker + ONNX Runtime (same auto-detection, hot-swap with rollback)
+- Models: dynamic — any YOLO variant, detection or segmentation, any class count
+- Roboflow: .pt download → ONNX convert → S3 upload → promote → edge deploy

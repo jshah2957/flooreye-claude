@@ -1,12 +1,14 @@
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.audit_service import log_action
 
+from app.core.org_filter import org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.detection_control import (
@@ -22,6 +24,32 @@ from app.services import detection_control_service
 
 import logging
 _log = logging.getLogger(__name__)
+
+
+def _normalize_class(doc: dict) -> dict:
+    """Ensure a detection_classes document has all expected fields with defaults."""
+    doc.pop("_id", None)
+    name = doc.get("name") or doc.get("class_name") or ""
+    if not doc.get("id"):
+        doc["id"] = str(uuid.uuid4())
+    if not doc.get("name") and doc.get("class_name"):
+        doc["name"] = doc["class_name"]
+    if not doc.get("display_label"):
+        doc["display_label"] = name.replace("_", " ").title()
+    if "color" not in doc or not doc.get("color"):
+        h = hashlib.md5(name.encode()).hexdigest()[:6]
+        doc["color"] = f"#{h}" if name else "#00FFFF"
+    if "enabled" not in doc:
+        doc["enabled"] = True
+    if "severity" not in doc:
+        doc["severity"] = "medium"
+    if "min_confidence" not in doc:
+        doc["min_confidence"] = 0.5
+    if "min_area_percent" not in doc:
+        doc["min_area_percent"] = 0.0
+    if "alert_on_detect" not in doc:
+        doc["alert_on_detect"] = False
+    return doc
 
 
 async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | None, user_id: str) -> dict:
@@ -229,11 +257,9 @@ async def list_classes(
 ):
     org_id = current_user.get("org_id", "")
     # Use org_query for proper super_admin (org_id=None) handling
-    from app.core.org_filter import org_query
     cursor = db.detection_classes.find(org_query(org_id))
     classes = await cursor.to_list(length=1000)
-    for c in classes:
-        c.pop("_id", None)
+    classes = [_normalize_class(c) for c in classes]
     return {"data": classes}
 
 
@@ -249,7 +275,6 @@ async def sync_classes_from_model(
     from app.services.onnx_inference_service import onnx_service
     org_id = current_user.get("org_id", "")
     if not onnx_service.is_loaded:
-        from fastapi import HTTPException
         raise HTTPException(503, "No ONNX model loaded — load a production model first")
     count = await onnx_service.sync_classes_to_db(db, org_id)
     # Push to edge agents
@@ -278,6 +303,9 @@ async def create_class(
         "org_id": org_id,
         "name": body.get("name", ""),
         "display_label": body.get("display_label", ""),
+        "color": body.get("color") or _normalize_class({"name": class_name}).get("color", "#00FFFF"),
+        "enabled": body.get("enabled", True),
+        "severity": body.get("severity", "medium"),
         "min_confidence": body.get("min_confidence", 0.5),
         "min_area_percent": body.get("min_area_percent", 0.0),
         "alert_on_detect": body.get("alert_on_detect", True),
@@ -285,7 +313,24 @@ async def create_class(
         "created_at": now,
         "updated_at": now,
     }
-    await db.detection_classes.insert_one(doc)
+    # Check for duplicate class name in this org
+    existing = await db.detection_classes.find_one(
+        {**org_query(org_id), "name": class_name}
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Class '{class_name}' already exists",
+        )
+    try:
+        await db.detection_classes.insert_one(doc)
+    except Exception as e:
+        if "duplicate" in str(e).lower() or "E11000" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Class '{class_name}' already exists",
+            )
+        raise
     doc.pop("_id", None)
     return {"data": doc}
 
@@ -298,16 +343,18 @@ async def update_class(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     org_id = current_user.get("org_id", "")
-    updates = {k: v for k, v in body.items() if k in ("name", "display_label", "min_confidence", "min_area_percent", "alert_on_detect")}
+    updates = {k: v for k, v in body.items() if k in (
+        "name", "display_label", "color", "enabled", "severity",
+        "min_confidence", "min_area_percent", "alert_on_detect",
+    )}
     updates["updated_at"] = datetime.now(timezone.utc)
 
     result = await db.detection_classes.find_one_and_update(
-        {"id": class_id, "org_id": org_id},
+        {**org_query(org_id), "id": class_id},
         {"$set": updates},
         return_document=True,
     )
     if not result:
-        from fastapi import HTTPException
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     result.pop("_id", None)
     return {"data": result}
@@ -321,16 +368,15 @@ async def delete_class(
 ):
     org_id = current_user.get("org_id", "")
     # Try delete by UUID id first, then fallback to name (model-synced classes may lack id)
-    query = {"org_id": org_id} if org_id else {}
-    result = await db.detection_classes.delete_one({**query, "id": class_id})
+    base = org_query(org_id)
+    result = await db.detection_classes.delete_one({**base, "id": class_id})
     if result.deleted_count == 0:
         # Fallback: try by name (for classes synced from model/Roboflow without UUID)
-        result = await db.detection_classes.delete_one({**query, "name": class_id})
+        result = await db.detection_classes.delete_one({**base, "name": class_id})
     if result.deleted_count == 0:
-        from fastapi import HTTPException
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     # Also remove all overrides for this class
-    await db.detection_class_overrides.delete_many({"class_id": class_id, "org_id": org_id})
+    await db.detection_class_overrides.delete_many({**org_query(org_id), "class_id": class_id})
     return {"data": {"ok": True}}
 
 

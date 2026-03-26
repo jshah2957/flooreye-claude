@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 33 (Dataset + Cloud Detection + UI Audit) — Dataset system v4.6 (folders, annotations, presigned URLs, Roboflow sync fix). Cloud detection v4.7 (removed Roboflow fallback, incident timeline, IoT edge proxy routing, private IP warning). Full 33-page UI audit with Stitch SDK regeneration. 42/42 endpoint tests pass. All services running at v4.7.0.
+Session 35 (Clip Fix + Class Fix + Dashboard + Roboflow Pipeline) — Clip playback fixed (nginx proxy + H.264 transcode). Class deletion fixed (backfill 76 docs + normalize + org_query). Dashboard redesigned (KPI cards + Recharts charts + summary endpoint). Roboflow pipeline complete (.pt download → ONNX convert → deploy, segmentation support, model browser UI). Production model: rf-my-first-project-rsboo-v9 (11.09MB, yolo-segment, 3 classes). 15/15 endpoints pass. Detection runs at 101-201ms.
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform

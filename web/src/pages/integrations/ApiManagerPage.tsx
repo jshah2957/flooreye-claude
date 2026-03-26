@@ -52,6 +52,7 @@ interface FieldDef {
   helper?: string;
   defaultValue?: string;
   readOnly?: boolean;
+  optional?: boolean;
 }
 
 interface ServiceMeta {
@@ -74,9 +75,9 @@ const SERVICE_META: Record<string, ServiceMeta> = {
     category: "required",
     fields: [
       { key: "api_key", label: "API Key", type: "password", helper: "Your Roboflow private API key (Settings > Roboflow API)" },
-      { key: "workspace", label: "Workspace", type: "text", helper: "Auto-detected from API key. Override only if needed." },
-      { key: "model_id", label: "Model ID (optional)", type: "text", helper: "Use the Roboflow Browser to select models interactively" },
-      { key: "api_url", label: "Inference API URL", type: "text", helper: "Only change for dedicated inference servers", defaultValue: "https://detect.roboflow.com" },
+      { key: "workspace", label: "Workspace", type: "text", helper: "Auto-detected from API key. Override only if needed.", optional: true },
+      { key: "model_id", label: "Model ID (optional)", type: "text", helper: "Use the Roboflow Browser to select models interactively", optional: true },
+      { key: "api_url", label: "Inference API URL", type: "text", helper: "Only change for dedicated inference servers", defaultValue: "", optional: true },
     ],
   },
   smtp: {
@@ -541,7 +542,7 @@ export default function ApiManagerPage() {
     if (serviceMeta) {
       const emptyFields: string[] = [];
       for (const field of serviceMeta.fields) {
-        if (field.readOnly) continue;
+        if (field.readOnly || field.optional) continue;
         const value = formData[field.key];
         if (!value || (typeof value === "string" && value.trim() === "")) {
           emptyFields.push(field.label);

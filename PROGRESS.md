@@ -1113,3 +1113,55 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 - Full UI redesign based on docs/UI_IMPROVEMENT_REPORT.md
 - Fix broken: dark mode, compliance exports, version string
 - Add instructions to 17 pages, onboarding flow, shared components
+
+---
+
+## Session 35 — 2026-03-26
+### Clip Playback Fix
+- Added nginx /storage/ proxy for S3 presigned URLs (eliminates CORS)
+- Fixed clip recording: MJPG → ffmpeg H.264 transcode pipeline
+- Added video player error handling with retry logic in ClipsPage
+- Storage service: sign against internal endpoint, rewrite URL for browser
+
+### Detection Class Fix
+- Backfilled 76 class docs missing `id` field via migration script
+- Added unique indexes: (id), (org_id, name)
+- Fixed DELETE/PUT endpoints to use org_query() consistently
+- Added _normalize_class() for GET response defaults
+- POST duplicate check (409 Conflict) + expanded field support (color, enabled, severity)
+- Frontend: delete guard for missing id, disabled button
+
+### Dashboard Redesign
+- New GET /dashboard/summary aggregation endpoint
+- Replaced live monitoring with: 5 KPI cards, Recharts area chart (detection trend), donut chart (severity), infrastructure health, active incidents, recent detections grid, edge status
+- Responsive layout (5→3→2 columns), 30s auto-refresh
+
+### Roboflow Complete Pipeline
+- Fixed _test_roboflow: api.roboflow.com (was detect.roboflow.com)
+- Fixed workspace parsing: projects nested under workspace key
+- Two-path download: ONNX REST (detection projects) → .pt SDK + ONNX convert (segmentation)
+- ultralytics .pt → .onnx conversion (dynamic, any architecture)
+- Segmentation post-processing: cloud (onnx_inference_service.py) + edge (predict.py)
+- Mask decoding: coefficients × prototypes → sigmoid → crop → area calculation
+- Auto model type detection: yolov8, yolov8_seg, nms_free, roboflow
+- Classes auto-sync from model.names when Roboflow API returns empty
+- Browse Models UI: project grid, version table, mAP scores, "Use This Model" button
+- "Currently Deployed" banner + per-version deployed badge
+- Model switching: deploy any version, auto-retire old
+- Added roboflow, onnx, onnxslim to requirements.txt
+- Gunicorn timeout 30s → 300s
+
+### Test Results
+- 15/15 API endpoints pass
+- Production model: rf-my-first-project-rsboo-v9 (11.09MB, yolo-segment)
+- 3 classes: Caution Sign, Mopped Floor, Water Spill
+- Detection inference: 101-201ms on live cameras
+- Model switching: v8 → v9 verified
+- Edge deploy: 3 agents received commands
+
+### Next Session Plan
+- Render mask polygons on detection frames (AnnotatedFrame.tsx)
+- Clean up old broken model_versions records
+- Edge model version verification
+- Continuous detection loop testing
+- Production deployment checklist

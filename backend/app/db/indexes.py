@@ -129,6 +129,13 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("status", ASCENDING)]),
     ])
 
+    # detection_classes
+    await db.detection_classes.create_indexes([
+        IndexModel([("id", ASCENDING)], unique=True),
+        IndexModel([("org_id", ASCENDING), ("name", ASCENDING)], unique=True),
+        IndexModel([("org_id", ASCENDING)]),
+    ])
+
     # detection_control_settings
     await db.detection_control_settings.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),

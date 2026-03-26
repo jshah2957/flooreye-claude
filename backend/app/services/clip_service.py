@@ -115,39 +115,84 @@ async def _record_clip_async(
         thumbnail_path = os.path.join(temp_dir, f"{clip_id}_thumb.jpg")
 
         def _blocking_record():
-            cap = cv2.VideoCapture(stream_url)
-            if not cap.isOpened():
-                return False, None, None
-
-            # Get resolution
-            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            resolution = f"{w}x{h}"
-
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            writer = cv2.VideoWriter(temp_path, fourcc, fps, (w, h))
-
             import time
-            start = time.time()
+            import numpy as np
+            import urllib.request
+
+            # Detect if this is an HTTP snapshot URL or RTSP stream
+            is_http_snapshot = stream_url.startswith("http://") or stream_url.startswith("https://")
+
+            writer = None
             frame_count = 0
             first_frame = None
+            w, h = 0, 0
 
-            while time.time() - start < duration:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                writer.write(frame)
-                frame_count += 1
-                if first_frame is None:
-                    first_frame = frame.copy()
-                # Pace at configured FPS
-                elapsed = time.time() - start
-                expected = frame_count / fps
-                if expected > elapsed:
-                    time.sleep(expected - elapsed)
+            if is_http_snapshot:
+                # HTTP snapshot mode: poll the URL repeatedly at configured FPS
+                start = time.time()
+                while time.time() - start < duration:
+                    try:
+                        resp = urllib.request.urlopen(stream_url, timeout=10)
+                        img_data = resp.read()
+                        nparr = np.frombuffer(img_data, np.uint8)
+                        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                        if frame is None:
+                            continue
+                    except Exception:
+                        time.sleep(1.0 / fps)
+                        continue
 
-            cap.release()
-            writer.release()
+                    if writer is None:
+                        h, w = frame.shape[:2]
+                        # Use MJPG codec in AVI container — transcoded to H.264 MP4 after
+                        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+                        avi_path = temp_path.replace(".mp4", ".avi")
+                        writer = cv2.VideoWriter(avi_path, fourcc, fps, (w, h))
+
+                    writer.write(frame)
+                    frame_count += 1
+                    if first_frame is None:
+                        first_frame = frame.copy()
+
+                    elapsed = time.time() - start
+                    expected = frame_count / fps
+                    if expected > elapsed:
+                        time.sleep(expected - elapsed)
+            else:
+                # RTSP stream mode: use cv2.VideoCapture
+                cap = cv2.VideoCapture(stream_url)
+                if not cap.isOpened():
+                    return False, None, None
+
+                w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+                avi_path = temp_path.replace(".mp4", ".avi")
+                writer = cv2.VideoWriter(avi_path, fourcc, fps, (w, h))
+
+                start = time.time()
+                while time.time() - start < duration:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    writer.write(frame)
+                    frame_count += 1
+                    if first_frame is None:
+                        first_frame = frame.copy()
+                    elapsed = time.time() - start
+                    expected = frame_count / fps
+                    if expected > elapsed:
+                        time.sleep(expected - elapsed)
+
+                cap.release()
+
+            if writer:
+                writer.release()
+            # Update temp_path to the actual AVI file
+            nonlocal temp_path
+            temp_path = temp_path.replace(".mp4", ".avi")
+            resolution = f"{w}x{h}" if w > 0 else None
 
             # Generate thumbnail
             if first_frame is not None:
@@ -160,7 +205,7 @@ async def _record_clip_async(
 
         success, resolution, frame_count = await asyncio.to_thread(_blocking_record)
 
-        if not success:
+        if not success or not frame_count or frame_count == 0:
             await db.clips.update_one(
                 {"id": clip_id},
                 {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc)}},
@@ -173,14 +218,50 @@ async def _record_clip_async(
         s3_key = f"clips/{org_id}/{clip_doc['camera_id']}/{date_str}/{clip_id}.mp4"
         thumb_s3_key = f"clips/{org_id}/{clip_doc['camera_id']}/{date_str}/{clip_id}_thumb.jpg"
 
-        with open(temp_path, "rb") as f:
+        # Transcode AVI (MJPG) → MP4 (H.264) for browser playback
+        mp4_path = temp_path.replace(".avi", ".mp4")
+        try:
+            import subprocess
+            proc = await asyncio.to_thread(
+                subprocess.run,
+                ["ffmpeg", "-y", "-i", temp_path, "-c:v", "libx264",
+                 "-preset", "fast", "-crf", "23", "-pix_fmt", "yuv420p",
+                 "-movflags", "+faststart", mp4_path],
+                capture_output=True, timeout=120,
+            )
+            if proc.returncode == 0 and os.path.exists(mp4_path):
+                upload_path = mp4_path
+            else:
+                log.error("ffmpeg transcode failed (rc=%s): %s", proc.returncode,
+                          proc.stderr.decode()[:500] if proc.stderr else "")
+                await db.clips.update_one(
+                    {"id": clip_id},
+                    {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc)}},
+                )
+                return
+        except FileNotFoundError:
+            log.error("ffmpeg not found — cannot transcode clip %s to MP4", clip_id)
+            await db.clips.update_one(
+                {"id": clip_id},
+                {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc)}},
+            )
+            return
+        except Exception as e:
+            log.error("ffmpeg transcode error for clip %s: %s", clip_id, e)
+            await db.clips.update_one(
+                {"id": clip_id},
+                {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc)}},
+            )
+            return
+
+        with open(upload_path, "rb") as f:
             await upload_to_s3(s3_key, f.read(), "video/mp4")
 
         if os.path.exists(thumbnail_path):
             with open(thumbnail_path, "rb") as f:
                 await upload_to_s3(thumb_s3_key, f.read(), "image/jpeg")
 
-        file_size = os.path.getsize(temp_path) / (1024 * 1024)
+        file_size = os.path.getsize(upload_path) / (1024 * 1024)
 
         # Update clip doc
         await db.clips.update_one(
@@ -198,9 +279,12 @@ async def _record_clip_async(
 
         log.info("Clip recorded: %s (%.1fMB, %d frames, %s)", clip_id, file_size, frame_count or 0, resolution)
 
-        # Cleanup temp files
+        # Cleanup temp files (both AVI source and MP4 transcode)
         try:
-            os.unlink(temp_path)
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+            if mp4_path != temp_path and os.path.exists(mp4_path):
+                os.unlink(mp4_path)
             if os.path.exists(thumbnail_path):
                 os.unlink(thumbnail_path)
             os.rmdir(temp_dir)

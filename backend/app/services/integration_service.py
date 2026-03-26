@@ -349,16 +349,18 @@ async def _test_redis(config: dict) -> dict:
 
 
 async def _test_roboflow(config: dict) -> dict:
+    """Test Roboflow API key by calling the metadata API endpoint."""
     import httpx
     api_key = config.get("api_key", "")
-    model_id = config.get("model_id", "")
-    api_url = config.get("api_url", "https://detect.roboflow.com")
-    # Just validate the API key by hitting the model endpoint
+    if not api_key:
+        raise Exception("API key is required")
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(f"{api_url}/{model_id}", params={"api_key": api_key})
+        resp = await client.get("https://api.roboflow.com/", params={"api_key": api_key})
     if resp.status_code >= 400:
         raise Exception(f"Roboflow API returned {resp.status_code}: {resp.text[:200]}")
-    return {"status_code": resp.status_code, "message": "Roboflow API connected"}
+    data = resp.json()
+    workspace = data.get("workspace", "unknown")
+    return {"workspace": workspace, "message": f"Connected to workspace: {workspace}"}
 
 
 async def _test_smtp(config: dict) -> dict:

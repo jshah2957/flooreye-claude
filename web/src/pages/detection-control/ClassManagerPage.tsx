@@ -98,6 +98,7 @@ export default function ClassManagerPage() {
   // Delete
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!id) throw new Error("Class has no ID");
       return api.delete(`/detection-control/classes/${id}`);
     },
     onSuccess: () => {
@@ -290,8 +291,15 @@ export default function ClassManagerPage() {
                   <Pencil size={14} />
                 </button>
                 <button
-                  onClick={() => setDeleteTarget(cls)}
-                  className="rounded-lg border border-gray-200 p-2 text-gray-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                  onClick={() => {
+                    if (!cls.id) {
+                      showError("Cannot delete: class has no identifier");
+                      return;
+                    }
+                    setDeleteTarget(cls);
+                  }}
+                  disabled={!cls.id}
+                  className="rounded-lg border border-gray-200 p-2 text-gray-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 size={14} />
                 </button>

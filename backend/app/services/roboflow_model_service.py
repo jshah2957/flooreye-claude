@@ -7,6 +7,8 @@ Models are downloaded, stored in MinIO/S3, and registered in model_versions.
 import hashlib
 import logging
 import os
+import shutil
+import tempfile
 import uuid
 from datetime import datetime, timezone
 
@@ -85,8 +87,13 @@ async def fetch_workspace_projects(db, org_id: str) -> dict:
             )
         data = resp.json()
 
+    # Roboflow API nests projects under "workspace" key or at top level
+    raw_projects = data.get("projects", [])
+    if not raw_projects and isinstance(data.get("workspace"), dict):
+        raw_projects = data["workspace"].get("projects", [])
+
     projects = []
-    for p in data.get("projects", []):
+    for p in raw_projects:
         projects.append({
             "id": p.get("id", "").split("/")[-1] if "/" in p.get("id", "") else p.get("id", ""),
             "full_id": p.get("id", ""),
@@ -134,6 +141,11 @@ async def fetch_project_versions(db, org_id: str, project_id: str) -> dict:
         export_names = [e if isinstance(e, str) else e.get("name", "") for e in exports]
         has_onnx = "onnx" in export_names
 
+        # Determine if model is trained: has map score or endpoint
+        is_trained = bool(model_info and (model_info.get("map") or model_info.get("endpoint")))
+        model_status = "finished" if is_trained else (model_info.get("status", "") if model_info else "")
+        model_type = v.get("modelType") or model_info.get("type", "") if model_info else ""
+
         versions.append({
             "version": int(version_num) if str(version_num).isdigit() else version_num,
             "id": v.get("id", ""),
@@ -143,8 +155,8 @@ async def fetch_project_versions(db, org_id: str, project_id: str) -> dict:
                 "map": model_info.get("map"),
                 "precision": model_info.get("precision"),
                 "recall": model_info.get("recall"),
-                "type": v.get("modelType", model_info.get("type", "")),
-                "status": model_info.get("status", ""),
+                "type": model_type or "yolov11n-seg",
+                "status": model_status,
             } if model_info else None,
             "exports": export_names,
             "has_onnx": has_onnx,
@@ -184,10 +196,39 @@ async def select_and_deploy_model(
     )
     model_id = model_version["id"]
 
-    # Step 2: Pull classes
-    classes_result = await pull_classes_from_roboflow(
-        db, org_id, user_id, project_id=project_id,
-    )
+    # Step 2: Pull classes — try Roboflow API first, then fall back to model's class_names
+    classes_result = {"classes": []}
+    try:
+        classes_result = await pull_classes_from_roboflow(
+            db, org_id, user_id, project_id=project_id,
+        )
+    except Exception as e:
+        log.warning("pull_classes_from_roboflow failed (will use model class_names): %s", e)
+
+    # If Roboflow API returned no classes, sync from the model's extracted class_names
+    model_class_names = model_version.get("class_names", [])
+    if not classes_result.get("classes") and model_class_names:
+        log.info("Syncing %d classes from model class_names (Roboflow API returned none)", len(model_class_names))
+        now = datetime.now(timezone.utc)
+        for idx, name in enumerate(model_class_names):
+            await db.detection_classes.update_one(
+                {"org_id": org_id, "name": name},
+                {
+                    "$set": {"org_id": org_id, "name": name, "class_id": idx, "source": "model", "synced_at": now},
+                    "$setOnInsert": {
+                        "id": str(uuid.uuid4()),
+                        "display_label": name.replace("_", " ").title(),
+                        "color": f"#{hashlib.md5(name.encode()).hexdigest()[:6]}",
+                        "enabled": True,
+                        "alert_on_detect": name.lower() in {"wet_floor", "spill", "puddle", "water", "wet", "water spill", "mopped floor"},
+                        "min_confidence": 0.5,
+                        "min_area_percent": 0.0,
+                        "created_at": now,
+                    },
+                },
+                upsert=True,
+            )
+        classes_result = {"classes": [{"name": n} for n in model_class_names]}
 
     # Step 3: Promote to production (this auto-deploys to all edge agents)
     from app.services.model_service import promote_model
@@ -215,6 +256,170 @@ async def select_and_deploy_model(
     }
 
 
+def _is_valid_onnx(data: bytes) -> bool:
+    """Check if bytes represent a valid ONNX file.
+
+    ONNX files use protobuf encoding. The first byte of a protobuf message
+    with field 1, wire type 0 (varint) is 0x08. We also check minimum size.
+    """
+    if len(data) < 1000:
+        return False
+    return data[0:1] == b'\x08'
+
+
+async def _try_onnx_rest_download(
+    client: httpx.AsyncClient,
+    api_key: str,
+    workspace: str,
+    rf_project: str,
+    rf_version: int,
+    version_data: dict,
+) -> bytes | None:
+    """Path A: Try to download ONNX directly via REST API.
+
+    Works for detection projects. Returns ONNX bytes or None if unavailable.
+    """
+    # Check existing exports first
+    exports = version_data.get("exports", [])
+    onnx_export = None
+    for exp in exports:
+        if exp.get("format") == "onnx" or "onnx" in exp.get("name", "").lower():
+            onnx_export = exp
+            break
+
+    download_url = None
+    if onnx_export:
+        download_url = onnx_export.get("link") or onnx_export.get("url")
+
+    if not download_url:
+        # Use the Roboflow export/download endpoint
+        try:
+            export_resp = await client.get(
+                f"{ROBOFLOW_API_BASE}/{workspace}/{rf_project}/{rf_version}/onnx",
+                params={"api_key": api_key},
+                timeout=60,
+            )
+            if export_resp.status_code == 200:
+                export_data = export_resp.json()
+                download_url = (
+                    export_data.get("onnx", {}).get("link")
+                    or export_data.get("export", {}).get("link")
+                    or export_data.get("link")
+                )
+        except Exception:
+            log.warning("ONNX REST export request failed for %s/%s", rf_project, rf_version)
+            return None
+
+    if not download_url:
+        return None
+
+    # Download the file
+    try:
+        resp = await client.get(
+            download_url,
+            params={"api_key": api_key},
+            follow_redirects=True,
+            timeout=settings.HTTP_TIMEOUT_DOWNLOAD,
+        )
+        if resp.status_code != 200:
+            return None
+    except Exception:
+        log.warning("ONNX download failed for %s/%s", rf_project, rf_version)
+        return None
+
+    onnx_bytes = resp.content
+
+    # Validate it's actually ONNX (not a dataset ZIP)
+    if not _is_valid_onnx(onnx_bytes):
+        log.warning(
+            "REST download for %s/%s returned non-ONNX data (%d bytes, first byte=0x%s). "
+            "Falling back to .pt download + conversion.",
+            rf_project, rf_version, len(onnx_bytes),
+            onnx_bytes[0:1].hex() if onnx_bytes else "??",
+        )
+        return None
+
+    log.info("Path A success: downloaded ONNX via REST API for %s/%s (%d bytes)", rf_project, rf_version, len(onnx_bytes))
+    return onnx_bytes
+
+
+def _download_pt_and_convert(
+    api_key: str,
+    workspace: str,
+    rf_project: str,
+    rf_version: int,
+) -> tuple[bytes, list[str], str]:
+    """Path B: Download .pt weights via Roboflow SDK, convert to ONNX.
+
+    This is a synchronous function (Roboflow SDK and ultralytics are sync).
+    Returns (onnx_bytes, class_list, architecture).
+    """
+    tmp_dir = tempfile.mkdtemp(prefix="rf_model_")
+    try:
+        # Download .pt weights using roboflow SDK
+        from roboflow import Roboflow
+        rf = Roboflow(api_key=api_key)
+        rf_project_obj = rf.workspace(workspace).project(rf_project)
+        rf_version_obj = rf_project_obj.version(rf_version)
+
+        # Download weights to temp directory
+        original_cwd = os.getcwd()
+        os.chdir(tmp_dir)
+        try:
+            rf_version_obj.model.download()
+        finally:
+            os.chdir(original_cwd)
+
+        # Find the .pt file
+        pt_files = []
+        for root, dirs, files in os.walk(tmp_dir):
+            for f in files:
+                if f.endswith('.pt'):
+                    pt_files.append(os.path.join(root, f))
+
+        if not pt_files:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="No .pt weights found in Roboflow download",
+            )
+
+        pt_path = pt_files[0]
+        log.info("Downloaded .pt weights: %s (%d bytes)", pt_path, os.path.getsize(pt_path))
+
+        # Convert to ONNX using ultralytics
+        from ultralytics import YOLO
+        yolo_model = YOLO(pt_path)
+        export_path = yolo_model.export(format="onnx", imgsz=640, simplify=True)
+
+        if not export_path or not os.path.exists(export_path):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="ONNX conversion failed",
+            )
+
+        with open(export_path, "rb") as f:
+            onnx_bytes = f.read()
+
+        log.info("Converted to ONNX: %s (%d bytes)", export_path, len(onnx_bytes))
+
+        # Extract class names from the model
+        class_list = []
+        if hasattr(yolo_model, 'names') and yolo_model.names:
+            class_list = list(yolo_model.names.values())
+
+        # Determine architecture from model info
+        architecture = "onnx"
+        if hasattr(yolo_model, 'cfg') and yolo_model.cfg:
+            architecture = str(yolo_model.cfg)
+        elif hasattr(yolo_model, 'task') and yolo_model.task:
+            architecture = f"yolo-{yolo_model.task}"
+
+        return onnx_bytes, class_list, architecture
+
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 async def pull_model_from_roboflow(
     db,
     org_id: str,
@@ -224,41 +429,26 @@ async def pull_model_from_roboflow(
 ) -> dict:
     """Pull the latest ONNX model from Roboflow and register it.
 
-    1. Fetch model metadata from Roboflow API
-    2. Download ONNX file
-    3. Compute SHA256 checksum
-    4. Upload to S3/MinIO
-    5. Create model_versions document with status="draft"
+    Uses a two-path approach:
+      Path A: Try ONNX export via REST API (works for detection projects)
+      Path B: Download .pt via Roboflow SDK + convert to ONNX (works for all projects)
+
+    Steps:
+    1. Resolve credentials via _get_roboflow_credentials (per-org first, env fallback)
+    2. Fetch project metadata to find latest version if not specified
+    3. Try Path A, fall back to Path B
+    4. Compute SHA256 checksum
+    5. Upload to S3/MinIO
+    6. Create model_versions document with status="draft"
 
     Returns the created model version document.
     """
-    # Try global env vars first, then fall back to per-org encrypted config
-    api_key = settings.ROBOFLOW_API_KEY
+    # Use unified credential resolution (per-org first, env vars fallback)
+    api_key, workspace = await _get_roboflow_credentials(db, org_id)
+
     rf_project = project_id or settings.ROBOFLOW_PROJECT_ID
     rf_version = version or settings.ROBOFLOW_PROJECT_VERSION
 
-    if not api_key:
-        # Fall back to org-level integration config (AES-256-GCM encrypted)
-        integration = await db.integration_configs.find_one(
-            {"org_id": org_id, "service": "roboflow"}
-        )
-        if integration and integration.get("config_encrypted"):
-            from app.core.encryption import decrypt_config
-            try:
-                rf_config = decrypt_config(integration["config_encrypted"])
-                api_key = rf_config.get("api_key", "")
-                if not rf_project:
-                    model_id = rf_config.get("model_id", "")
-                    if "/" in model_id:
-                        rf_project = model_id.split("/")[0]
-            except Exception:
-                pass
-
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ROBOFLOW_API_KEY not configured — set env var or integration config",
-        )
     if not rf_project:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -269,7 +459,7 @@ async def pull_model_from_roboflow(
     async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_SLOW) as client:
         if not rf_version:
             resp = await client.get(
-                f"https://api.roboflow.com/{rf_project}",
+                f"{ROBOFLOW_API_BASE}/{workspace}/{rf_project}",
                 params={"api_key": api_key},
             )
             if resp.status_code != 200:
@@ -284,11 +474,10 @@ async def pull_model_from_roboflow(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"No versions found for Roboflow project: {rf_project}",
                 )
-            # Get the latest version number
             rf_version = max(int(v.get("id", "0").split("/")[-1]) for v in versions)
 
-        # Step 2: Get version details and ONNX download URL
-        version_url = f"https://api.roboflow.com/{rf_project}/{rf_version}"
+        # Step 2: Get version details
+        version_url = f"{ROBOFLOW_API_BASE}/{workspace}/{rf_project}/{rf_version}"
         resp = await client.get(version_url, params={"api_key": api_key})
         if resp.status_code != 200:
             raise HTTPException(
@@ -297,65 +486,25 @@ async def pull_model_from_roboflow(
             )
         version_data = resp.json()
 
-        # Extract model export info — check existing exports first
-        exports = version_data.get("exports", [])
-        onnx_export = None
-        for exp in exports:
-            if exp.get("format") == "onnx" or "onnx" in exp.get("name", "").lower():
-                onnx_export = exp
-                break
+        # --- Path A: Try ONNX download via REST API ---
+        log.info("Attempting Path A: ONNX REST download for %s/%s", rf_project, rf_version)
+        onnx_bytes = await _try_onnx_rest_download(client, api_key, workspace, rf_project, rf_version, version_data)
 
-        download_url = None
-        if onnx_export:
-            download_url = onnx_export.get("link") or onnx_export.get("url")
+    # Determine class list and architecture based on which path succeeded
+    architecture = "onnx"
 
-        if not download_url:
-            # Use the Roboflow export/download endpoint:
-            # GET /{project}/{version}/{format}?api_key=...
-            # This triggers an export if one doesn't exist and returns the download link
-            export_resp = await client.get(
-                f"https://api.roboflow.com/{rf_project}/{rf_version}/onnx",
-                params={"api_key": api_key},
-                timeout=60,
-            )
-            if export_resp.status_code == 200:
-                export_data = export_resp.json()
-                download_url = export_data.get("onnx", {}).get("link") or export_data.get("export", {}).get("link")
-                if not download_url:
-                    # Some responses put the link at the top level
-                    download_url = export_data.get("link")
-
-        if not download_url:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Could not obtain ONNX download URL for {rf_project}/{rf_version}. "
-                       "Ensure the model has been trained and an ONNX export is available.",
-            )
-
-        # Extract classes from version data
+    if onnx_bytes is not None:
+        # Path A succeeded — extract classes from version metadata
         classes_data = version_data.get("classes", {})
         class_list = list(classes_data.keys()) if isinstance(classes_data, dict) else []
-
-        # Step 3: Download ONNX file
-        log.info("Downloading ONNX model from Roboflow: %s/%s", rf_project, rf_version)
-        resp = await client.get(
-            download_url,
-            params={"api_key": api_key},
-            follow_redirects=True,
-            timeout=settings.HTTP_TIMEOUT_DOWNLOAD,
+        log.info("Path A: ONNX REST download succeeded for %s/%s", rf_project, rf_version)
+    else:
+        # --- Path B: Download .pt via SDK, convert to ONNX ---
+        log.info("Path A failed. Attempting Path B: .pt download + ONNX conversion for %s/%s", rf_project, rf_version)
+        import asyncio
+        onnx_bytes, class_list, architecture = await asyncio.to_thread(
+            _download_pt_and_convert, api_key, workspace, rf_project, rf_version,
         )
-        if resp.status_code != 200:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to download ONNX model: {resp.status_code}",
-            )
-
-        onnx_bytes = resp.content
-        if len(onnx_bytes) < 1000:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Downloaded file too small — likely not a valid ONNX model",
-            )
 
     # Step 4: Compute checksum
     checksum = hashlib.sha256(onnx_bytes).hexdigest()
@@ -395,7 +544,7 @@ async def pull_model_from_roboflow(
         "id": str(uuid.uuid4()),
         "org_id": org_id,
         "version_str": f"rf-{rf_project}-v{rf_version}",
-        "architecture": "onnx",
+        "architecture": architecture,
         "param_count": None,
         "status": "draft",
         "training_job_id": None,
@@ -435,8 +584,9 @@ async def pull_model_from_roboflow(
     model_version.pop("_id", None)
 
     log.info(
-        "Model pulled from Roboflow: %s/%s -> %s (%.1f MB)",
+        "Model pulled from Roboflow: %s/%s -> %s (%.1f MB, path=%s)",
         rf_project, rf_version, model_version["id"], model_version["model_size_mb"],
+        "A-rest" if architecture == "onnx" else "B-convert",
     )
 
     return model_version
@@ -452,35 +602,20 @@ async def pull_classes_from_roboflow(
 
     Returns the class list.
     """
-    api_key = settings.ROBOFLOW_API_KEY
+    # Use unified credential resolution (per-org first, env vars fallback)
+    api_key, workspace = await _get_roboflow_credentials(db, org_id)
+
     rf_project = project_id or settings.ROBOFLOW_PROJECT_ID
 
-    if not api_key:
-        # Fall back to org-level integration config
-        integration = await db.integration_configs.find_one(
-            {"org_id": org_id, "service": "roboflow"}
-        )
-        if integration and integration.get("config_encrypted"):
-            from app.core.encryption import decrypt_config
-            try:
-                rf_config = decrypt_config(integration["config_encrypted"])
-                api_key = rf_config.get("api_key", "")
-                if not rf_project:
-                    model_id = rf_config.get("model_id", "")
-                    if "/" in model_id:
-                        rf_project = model_id.split("/")[0]
-            except Exception:
-                pass
-
-    if not api_key or not rf_project:
+    if not rf_project:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="ROBOFLOW_API_KEY and ROBOFLOW_PROJECT_ID required — set env vars or integration config",
+            detail="ROBOFLOW_PROJECT_ID required — set env var, integration config, or pass project_id",
         )
 
     async with httpx.AsyncClient(timeout=settings.HTTP_TIMEOUT_MEDIUM) as client:
         resp = await client.get(
-            f"https://api.roboflow.com/{rf_project}",
+            f"{ROBOFLOW_API_BASE}/{workspace}/{rf_project}",
             params={"api_key": api_key},
         )
         if resp.status_code != 200:

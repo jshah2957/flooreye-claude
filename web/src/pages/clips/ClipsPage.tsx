@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import HelpSection from "@/components/ui/HelpSection";
 import { PAGE_HELP } from "@/constants/help";
@@ -10,6 +10,8 @@ import {
   Scissors,
   Play,
   X,
+  AlertCircle,
+  RotateCcw,
   Save,
   Image as ImageIcon,
   Cloud,
@@ -65,6 +67,10 @@ export default function ClipsPage() {
   const [extractingClip, setExtractingClip] = useState<string | null>(null);
   const [extractedFrames, setExtractedFrames] = useState<ExtractedFrame[]>([]);
   const [selectedFrames, setSelectedFrames] = useState<Set<string>>(new Set());
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["clips"],
@@ -146,6 +152,55 @@ export default function ClipsPage() {
 
   const clips: Clip[] = data?.data ?? [];
 
+  async function handlePlayClick(clip: Clip) {
+    if (clip.status !== "completed" || !clip.clip_url) return;
+    setVideoError(null);
+    setIsVideoLoading(true);
+    setRetryCount(0);
+    try {
+      const res = await api.get(`/clips/local/${clip.id}`);
+      const freshUrl = res.data?.data?.clip_url;
+      if (freshUrl) {
+        setPlayingClip({ ...clip, clip_url: freshUrl });
+      } else {
+        setPlayingClip(clip);
+      }
+    } catch {
+      setPlayingClip(clip);
+    } finally {
+      setIsVideoLoading(false);
+    }
+  }
+
+  function handleVideoError(e: React.SyntheticEvent<HTMLVideoElement>) {
+    const video = e.currentTarget;
+    const err = video.error;
+    const messages: Record<number, string> = {
+      1: "Playback cancelled",
+      2: "Network error — check connection",
+      3: "Video file is corrupted",
+      4: "Video format not supported by browser",
+    };
+    setVideoError(messages[err?.code ?? 0] || "Playback failed");
+    setIsVideoLoading(false);
+  }
+
+  async function handleRetryVideo() {
+    if (!playingClip) return;
+    setVideoError(null);
+    setRetryCount((c) => c + 1);
+    try {
+      const res = await api.get(`/clips/local/${playingClip.id}`);
+      const url = res.data?.data?.clip_url;
+      if (url && videoRef.current) {
+        videoRef.current.src = url;
+        videoRef.current.load();
+      }
+    } catch {
+      setVideoError("Failed to reload video");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6">
@@ -177,7 +232,7 @@ export default function ClipsPage() {
               {/* Thumbnail / Play */}
               <div
                 className="relative aspect-video cursor-pointer bg-gray-900"
-                onClick={() => clip.clip_url && setPlayingClip(clip)}
+                onClick={() => clip.status === "completed" && handlePlayClick(clip)}
               >
                 {clip.thumbnail_url ? (
                   <img
@@ -190,7 +245,7 @@ export default function ClipsPage() {
                     <Film size={32} className="text-gray-600" />
                   </div>
                 )}
-                {clip.clip_url && (
+                {clip.status === "completed" && clip.clip_url && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition hover:opacity-100">
                     <div className="rounded-full bg-white/90 p-3">
                       <Play size={20} className="text-gray-900" />
@@ -278,20 +333,47 @@ export default function ClipsPage() {
 
       {/* Video Player Modal */}
       {playingClip && playingClip.clip_url && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPlayingClip(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => { setPlayingClip(null); setVideoError(null); }}>
           <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={() => setPlayingClip(null)}
+              onClick={() => { setPlayingClip(null); setVideoError(null); }}
               className="absolute -right-2 -top-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
             >
               <X size={20} />
             </button>
-            <video
-              src={playingClip.clip_url}
-              controls
-              autoPlay
-              className="w-full rounded-xl"
-            />
+            <div className="relative rounded-xl overflow-hidden bg-black">
+              {isVideoLoading && !videoError && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+                  <Loader2 size={32} className="animate-spin text-white" />
+                </div>
+              )}
+              <video
+                ref={videoRef}
+                src={playingClip.clip_url}
+                controls
+                autoPlay
+                className="w-full"
+                onError={handleVideoError}
+                onLoadStart={() => setIsVideoLoading(true)}
+                onCanPlay={() => setIsVideoLoading(false)}
+              />
+              {videoError && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/70">
+                  <AlertCircle size={36} className="mb-3 text-red-400" />
+                  <p className="mb-4 text-sm text-white">{videoError}</p>
+                  <div className="flex gap-2">
+                    {retryCount < 2 && (
+                      <button onClick={handleRetryVideo} className="flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+                        <RotateCcw size={14} /> Retry
+                      </button>
+                    )}
+                    <button onClick={() => { setPlayingClip(null); setVideoError(null); }} className="rounded-lg border border-gray-500 px-4 py-2 text-sm text-white hover:bg-white/10">
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <p className="mt-2 text-center text-xs text-gray-400">
               {formatDuration(playingClip.duration)} · {playingClip.file_size_mb?.toFixed(1)} MB · {playingClip.resolution || ""}
             </p>
