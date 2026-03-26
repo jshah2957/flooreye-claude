@@ -105,7 +105,10 @@ export default function ModelRegistryPage() {
     <div className="min-h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Model Registry</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Model Registry</h1>
+          <p className="mt-1 text-sm text-gray-500">AI models: Draft → Staging → Production → Retired. Promote to deploy to edge agents.</p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => pullFromRoboflowMutation.mutate()}

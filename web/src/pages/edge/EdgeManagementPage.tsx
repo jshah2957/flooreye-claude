@@ -340,7 +340,7 @@ export default function EdgeManagementPage() {
             <h1 className="text-2xl font-bold text-gray-900">Edge Agents</h1>
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">{agents.length}</span>
           </div>
-          <p className="mt-1 text-sm text-gray-500">{agents.length} agent{agents.length !== 1 ? "s" : ""} registered</p>
+          <p className="mt-1 text-sm text-gray-500">{agents.length} agent{agents.length !== 1 ? "s" : ""} · On-premise devices for local camera detection + IoT control</p>
         </div>
         <button
           onClick={() => { setProvisionOpen(true); setProvResult(null); setProvName(""); setProvStoreId(""); }}

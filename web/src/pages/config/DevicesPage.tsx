@@ -307,7 +307,7 @@ export default function DevicesPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">IoT Devices</h1>
-          <p className="mt-1 text-sm text-gray-500">{devices.length} device{devices.length !== 1 ? "s" : ""} registered</p>
+          <p className="mt-1 text-sm text-gray-500">{devices.length} device{devices.length !== 1 ? "s" : ""} · Warning signs, alarms, smart plugs (TP-Link, MQTT, Webhook)</p>
         </div>
         <button onClick={() => setDrawerOpen(true)}
           className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0F766E]">

@@ -293,7 +293,7 @@ export default function NotificationsPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Notification Settings</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage notification rules and delivery history</p>
+          <p className="mt-1 text-sm text-gray-500">Configure alert rules · Channels: Email, Push, SMS, Webhook · Set quiet hours and severity filters</p>
         </div>
         <button
           onClick={openCreateDrawer}
