@@ -13,11 +13,15 @@ import time
 import uuid
 from datetime import datetime, timezone
 
+import logging
+
 import cv2
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 def _get_sync_loop():
@@ -75,7 +79,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     if camera.get("stream_url_encrypted"):
         try:
             stream_url = decrypt_string(camera["stream_url_encrypted"])
-        except Exception:
+        except Exception as exc:
+            logger.warning("Failed to decrypt stream_url for camera %s: %s", camera_id, exc)
             stream_url = camera.get("stream_url", "")
     else:
         stream_url = camera.get("stream_url", "")
@@ -95,8 +100,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
         try:
             from app.utils.roi_utils import apply_roi_mask
             frame = apply_roi_mask(frame, roi["polygon_points"])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to apply ROI mask for camera %s: %s", camera_id, exc)
 
     _, buffer = cv2.imencode(".jpg", frame)
     frame_base64 = base64.b64encode(buffer).decode("utf-8")
@@ -117,8 +122,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
                 f"Continuous detection ONNX failure: {exc}",
                 {"camera_id": camera_id, "error": str(exc)},
             )
-        except Exception:
-            pass
+        except Exception as exc2:
+            logger.warning("Failed to emit system log for ONNX failure on camera %s: %s", camera_id, exc2)
         return {"error": f"Inference unavailable: {exc}", "camera_id": camera_id}
 
     predictions = inference_result["predictions"]
@@ -133,7 +138,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     from app.services.detection_control_service import resolve_effective_settings
     try:
         effective, _ = await resolve_effective_settings(db, org_id, camera_id)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Failed to resolve detection control settings for camera %s: %s", camera_id, exc)
         effective = {}
 
     # Validation with effective settings
@@ -156,15 +162,15 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
     annotated_s3_path = None
     try:
         clean_s3_path = await upload_frame(frame_base64, org_id, camera_id, frame_type="clean")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Failed to upload clean frame for camera %s: %s", camera_id, exc)
     try:
         from app.utils.annotation_utils import draw_annotations
         annotated_b64 = draw_annotations(frame_base64, predictions)
         if annotated_b64:
             annotated_s3_path = await upload_frame(annotated_b64, org_id, camera_id, frame_type="annotated")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Failed to upload annotated frame for camera %s: %s", camera_id, exc)
 
     # Log detection
     import hashlib as _hl
@@ -206,8 +212,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
             if isinstance(val, datetime):
                 det_clean[key] = val.isoformat()
         await publish_detection(org_id, det_clean)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Failed to broadcast detection via WebSocket for camera %s: %s", camera_id, exc)
 
     # Incident creation + system log
     if validation.is_wet:
@@ -217,8 +223,8 @@ async def _async_detect(camera_id: str, org_id: str) -> dict:
                 db, org_id, "info", "detection", "Wet floor detected (continuous)",
                 {"camera_id": camera_id, "confidence": summary["confidence"]},
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to emit system log for wet detection on camera %s: %s", camera_id, exc)
         incident = await create_or_update_incident(db, detection_doc)
         if incident:
             detection_doc["incident_id"] = incident["id"]

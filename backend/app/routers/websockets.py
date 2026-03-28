@@ -125,11 +125,16 @@ class ConnectionManager:
             logger.warning("Redis pub/sub unavailable, falling back to local broadcast")
             await self._local_broadcast(channel, message)
 
-    async def send_to(self, websocket: WebSocket, message: dict):
+    async def send_to(self, websocket: WebSocket, message: dict) -> bool:
         try:
             await websocket.send_json(message)
+            return True
         except Exception:
-            pass
+            logger.debug("send_to: removing dead WebSocket connection")
+            for channel in list(self._connections.keys()):
+                if websocket in self._connections[channel]:
+                    self._connections[channel].remove(websocket)
+            return False
 
 
 manager = ConnectionManager()
@@ -228,8 +233,10 @@ async def _validate_ws_token(websocket: WebSocket, token: str | None) -> dict | 
                 if blacklisted:
                     await websocket.close(code=4001, reason="Token revoked")
                     return None
-        except Exception:
-            pass  # If blacklist check fails, allow connection (fail open for WS)
+        except Exception as exc:
+            logger.error("Token blacklist check failed, denying WS connection: %s", exc)
+            await websocket.close(code=4001, reason="Auth check unavailable")
+            return None
         return payload
     except Exception:
         await websocket.close(code=4001, reason="Invalid token")
