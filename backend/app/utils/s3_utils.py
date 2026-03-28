@@ -175,6 +175,8 @@ def build_detection_path(
     Path structure:
       frames/{org_id}/{store_name}/{camera_name}/{YYYY-MM-DD}/{frame_type}/{filename}.jpg
     """
+    if not org_id:
+        raise ValueError("org_id is required for S3 detection path — cannot be None or empty")
     # Use frame_type as the path component; fall back to suffix for backward compat
     path_type = frame_type or suffix
     ts = timestamp or datetime.now(timezone.utc)
@@ -256,6 +258,8 @@ def build_clip_path(
     Path structure:
       clips/{org_id}/{store_name}/{camera_name}/{YYYY-MM-DD}/{incident_id}.mp4
     """
+    if not org_id:
+        raise ValueError("org_id is required for S3 clip path — cannot be None or empty")
     ts = timestamp or datetime.now(timezone.utc)
     date_str = ts.strftime("%Y-%m-%d")
     s_name = _sanitize_name(store_name or store_id)

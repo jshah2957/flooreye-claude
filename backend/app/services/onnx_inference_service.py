@@ -52,8 +52,8 @@ async def _get_alert_classes(db=None) -> set[str]:
             from app.core.validation_constants import get_alert_class_names
             _cached_alert_classes = await get_alert_class_names(db)
             return _cached_alert_classes
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to load alert classes from DB, using defaults: %s", e)
     return _DEFAULT_WET_CLASSES
 
 
@@ -207,8 +207,8 @@ class OnnxInferenceService:
                 if alert_set:
                     self._alert_classes = alert_set
                     log.info("Loaded %d alert classes from DB", len(alert_set))
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning("Failed to load alert classes after model load: %s", e)
             # Sync extracted classes to DB
             try:
                 org_id = model.get("org_id", "")
@@ -521,8 +521,8 @@ class OnnxInferenceService:
                         {"x": round(float(pt[0][0]) / proto_w, 4), "y": round(float(pt[0][1]) / proto_h, 4)}
                         for pt in approx
                     ]
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning("Failed to extract mask polygon via cv2: %s", e)
 
             detections.append({
                 "class_id": int(filt_class_ids[idx]),
@@ -549,8 +549,8 @@ class OnnxInferenceService:
             producer = (meta.producer_name or "").lower()
             if "roboflow" in producer:
                 return "roboflow"
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to read ONNX model metadata: %s", e)
         output_shape = session.get_outputs()[0].shape
         if len(output_shape) == 3 and output_shape[1] == 300 and output_shape[2] == 6:
             return "nms_free"
@@ -581,8 +581,8 @@ class OnnxInferenceService:
                         return {i: name for i, name in enumerate(data)}
                     if isinstance(data, dict):
                         return {int(k): v for k, v in data.items()}
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning("Failed to parse class names from %s: %s", path, e)
         return {}
 
     @staticmethod

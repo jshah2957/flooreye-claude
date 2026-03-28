@@ -93,6 +93,9 @@ class Settings(BaseSettings):
     LOCAL_INFERENCE_ENABLED: bool = True
     ONNX_MODEL_CACHE_DIR: str = "/app/models"
     ONNX_USE_GPU: bool = False
+    ONNX_INPUT_SIZE: int = 640
+    NMS_IOU_THRESHOLD: float = 0.5
+    S3_PRESIGNED_URL_EXPIRY: int = 3600
 
     # Continuous Detection
     CONTINUOUS_DETECTION_ENABLED: bool = True

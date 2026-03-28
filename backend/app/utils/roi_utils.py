@@ -74,32 +74,3 @@ def is_inside_roi(x: float, y: float, polygon_points: list[dict]) -> bool:
         return True  # Fail open — don't exclude detections on error
 
 
-def normalize_polygon(
-    points: list[dict], width: int, height: int
-) -> list[dict]:
-    """
-    Normalize polygon points from pixel coordinates to 0-1 range.
-
-    Args:
-        points: List of {"x": float, "y": float} in pixel coordinates.
-        width: Image width in pixels.
-        height: Image height in pixels.
-
-    Returns:
-        List of {"x": float, "y": float} with values normalized to [0, 1].
-    """
-    if not points or width <= 0 or height <= 0:
-        return points
-
-    try:
-        normalized = []
-        for p in points:
-            normalized.append({
-                "x": round(p["x"] / width, 6),
-                "y": round(p["y"] / height, 6),
-            })
-        return normalized
-
-    except Exception as exc:
-        log.error("Polygon normalization failed: %s", exc)
-        return points

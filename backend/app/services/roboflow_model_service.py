@@ -510,6 +510,11 @@ async def pull_model_from_roboflow(
     checksum = hashlib.sha256(onnx_bytes).hexdigest()
 
     # Step 5: Upload to S3/MinIO
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="org_id is required to store model. Super admins must act within an org scope.",
+        )
     model_filename = f"{rf_project}_v{rf_version}_{checksum[:8]}.onnx"
     s3_key = f"models/{org_id}/{model_filename}"
 

@@ -34,7 +34,7 @@ def _decrypt_camera(camera: dict) -> dict:
         try:
             camera["stream_url"] = decrypt_string(camera["stream_url_encrypted"])
         except Exception:
-            log.warning("Failed to decrypt stream_url for camera %s, falling back to plaintext", camera.get("id"))
+            log.error("Failed to decrypt stream_url for camera %s, falling back to plaintext", camera.get("id"))
             # Fall back to plaintext if it exists
             if not camera.get("stream_url"):
                 camera["stream_url"] = None
@@ -44,7 +44,7 @@ def _decrypt_camera(camera: dict) -> dict:
         try:
             camera["credentials"] = decrypt_string(camera["credentials_encrypted"])
         except Exception:
-            log.warning("Failed to decrypt credentials for camera %s", camera.get("id"))
+            log.error("Failed to decrypt credentials for camera %s", camera.get("id"))
             if not camera.get("credentials"):
                 camera["credentials"] = None
 
@@ -174,12 +174,24 @@ async def delete_camera(
             "updated_at": now,
         }},
     )
+    # Cascade: deactivate ROIs for this camera
+    await db.rois.update_many(
+        {"camera_id": camera_id},
+        {"$set": {"is_active": False}},
+    )
+
+    # Cascade: deactivate dry references for this camera
+    await db.dry_references.update_many(
+        {"camera_id": camera_id},
+        {"$set": {"is_active": False}},
+    )
+
     # Notify edge to stop detection for this camera
     try:
         from app.services.edge_camera_service import push_config_to_edge
         await push_config_to_edge(db, camera_id, org_id)
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("Failed to notify edge after camera deactivation %s: %s", camera_id, e)
 
 
 async def reactivate_camera(

@@ -105,9 +105,16 @@ async def delete_store(
             status_code=status.HTTP_404_NOT_FOUND, detail="Store not found"
         )
 
-    # Disable all cameras in this store
+    # Cascade: set all cameras in this store to inactive
+    now = datetime.now(timezone.utc)
     cam_query = {"store_id": store_id, **_org_filter(org_id)}
     await db.cameras.update_many(
         cam_query,
-        {"$set": {"detection_enabled": False, "updated_at": datetime.now(timezone.utc)}},
+        {"$set": {"status": "inactive", "detection_enabled": False, "updated_at": now}},
+    )
+
+    # Cascade: deactivate all IoT devices for this store
+    await db.devices.update_many(
+        {"store_id": store_id, **_org_filter(org_id)},
+        {"$set": {"is_active": False, "updated_at": now}},
     )

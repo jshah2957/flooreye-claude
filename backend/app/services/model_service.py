@@ -140,14 +140,13 @@ async def _deploy_model_to_agents(
         elif raw_classes:
             class_names = list(raw_classes)
 
-        # Generate presigned download URL from S3 key
-        onnx_key = model_doc.get("onnx_path") or ""
-        download_url = ""
-        if onnx_key:
-            from app.services.storage_service import generate_url
-            download_url = await generate_url(onnx_key, expires=7200)
+        # Build download URL that routes through the backend API (stream mode).
+        # Edge containers can reach the backend but NOT MinIO directly,
+        # so we use the /edge/model/download/{id}?stream=true endpoint
+        # which streams the file bytes through the backend from S3.
+        download_url = f"/api/v1/edge/model/download/{model_version_id}?stream=true"
 
-        if not download_url:
+        if not model_doc.get("onnx_path"):
             return  # Can't deploy without a downloadable artifact
 
         now = datetime.now(timezone.utc)

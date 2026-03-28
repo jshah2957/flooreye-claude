@@ -53,7 +53,8 @@ async def start_cloud_recording(
     if camera.get("stream_url_encrypted"):
         try:
             stream_url = decrypt_string(camera["stream_url_encrypted"])
-        except Exception:
+        except Exception as e:
+            log.warning("Failed to decrypt stream_url for camera %s, falling back to plaintext: %s", camera_id, e)
             stream_url = camera.get("stream_url", "")
     else:
         stream_url = camera.get("stream_url", "")
@@ -451,16 +452,16 @@ async def delete_clip_with_files(
         if s3_key:
             try:
                 await delete_from_s3(s3_key)
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning("Failed to delete S3 object %s during clip cleanup: %s", s3_key, e)
 
     # Delete extracted frames from S3
     extracted = await db.extracted_frames.find({"clip_id": clip_id}).to_list(1000)
     for ef in extracted:
         try:
             await delete_from_s3(ef.get("s3_path", ""))
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("Failed to delete extracted frame S3 object %s: %s", ef.get("s3_path", ""), e)
     await db.extracted_frames.delete_many({"clip_id": clip_id})
 
     # Delete clip doc

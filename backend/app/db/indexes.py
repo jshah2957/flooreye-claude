@@ -171,6 +171,7 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("status", ASCENDING)]),
         IndexModel([("org_id", ASCENDING), ("rule_id", ASCENDING), ("status", ASCENDING), ("sent_at", DESCENDING)]),
         IndexModel([("incident_id", ASCENDING), ("rule_id", ASCENDING), ("recipient", ASCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("incident_id", ASCENDING), ("status", ASCENDING), ("sent_at", DESCENDING)]),
     ])
 
     # devices (IoT)
