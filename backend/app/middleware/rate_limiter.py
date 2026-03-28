@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 # Rate limits per path prefix: (requests, window_seconds)
 RATE_LIMITS = {
     "/api/v1/auth/login": (10, 60),
+    "/api/v1/auth/register": (10, 60),
     "/api/v1/auth/forgot": (5, 60),
     "/api/v1/auth/reset": (5, 60),
     "/api/v1/detection/run": (60, 60),
