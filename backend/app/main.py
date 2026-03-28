@@ -3,6 +3,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+# Configure root logger with LOG_LEVEL from settings
+from app.core.config import settings as _settings
+logging.basicConfig(
+    level=getattr(logging, _settings.LOG_LEVEL, logging.INFO),
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 log = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
