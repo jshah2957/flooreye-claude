@@ -9,6 +9,11 @@ services:
       dockerfile: Dockerfile.inference
     container_name: flooreye-inference
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     volumes:
       - ./models:/models
     ports:
@@ -36,6 +41,11 @@ services:
       dockerfile: Dockerfile.agent
     container_name: flooreye-edge-agent
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     env_file: .env
     ports:
       - "${WEB_UI_PORT:-8090}:8090"
@@ -71,6 +81,11 @@ services:
     image: alexxit/go2rtc
     container_name: flooreye-go2rtc
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     volumes:
       - ./data/config/go2rtc.yaml:/config/go2rtc.yaml
     ports:
@@ -94,6 +109,11 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: flooreye-cloudflared
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     command: tunnel --no-autoupdate run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
@@ -111,6 +131,11 @@ services:
     image: redis:7-alpine
     container_name: flooreye-redis
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     command: >
       redis-server
       --maxmemory ${MAX_BUFFER_GB:-2}gb
