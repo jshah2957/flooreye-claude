@@ -40,7 +40,7 @@ class CameraResponse(BaseModel):
     org_id: Optional[str] = None
     name: str
     stream_type: str
-    stream_url: str
+    stream_url: Optional[str] = None
     credentials: Optional[str] = None
     status: str
     fps_config: int

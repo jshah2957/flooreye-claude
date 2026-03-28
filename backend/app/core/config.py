@@ -15,6 +15,8 @@ _INSECURE_DEFAULTS = {
     "flooreye_secret_2026",
 }
 
+_INSECURE_SUBSTRINGS = ["changeme", "change_me", "default", "example", "placeholder", "insecure"]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -158,7 +160,16 @@ class Settings(BaseSettings):
 
     @property
     def allowed_origins_list(self) -> list[str]:
-        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        origins = [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        if self.ENVIRONMENT == "production":
+            import re
+            _PRIVATE = re.compile(r"https?://(localhost|127\.0\.0\.1|10\.\d|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)")
+            filtered = [o for o in origins if not _PRIVATE.match(o)]
+            removed = set(origins) - set(filtered)
+            if removed:
+                log.warning("Production CORS: filtered out private origins: %s", removed)
+            return filtered
+        return origins
 
 
 settings = Settings()
@@ -174,6 +185,16 @@ if settings.ENVIRONMENT == "production":
                 attr
             )
             sys.exit(1)
+    # Additional check: substring and minimum length for JWT secrets
+    for secret_attr in ("SECRET_KEY", "EDGE_SECRET_KEY"):
+        val = getattr(settings, secret_attr, "")
+        if len(val) < 32:
+            log.critical("FATAL: %s is too short (%d chars, minimum 32)", secret_attr, len(val))
+            sys.exit(1)
+        for substr in _INSECURE_SUBSTRINGS:
+            if substr in val.lower():
+                log.critical("FATAL: %s contains insecure substring '%s'", secret_attr, substr)
+                sys.exit(1)
     for url_attr in ("REDIS_URL", "MONGODB_URI"):
         url_val = getattr(settings, url_attr, "")
         for insecure in _INSECURE_DEFAULTS:
@@ -184,3 +205,10 @@ if settings.ENVIRONMENT == "production":
                     url_attr, insecure
                 )
                 sys.exit(1)
+
+if settings.ENVIRONMENT != "production":
+    log.warning(
+        "Running in %s mode — security gates DISABLED: "
+        "secret validation, cookie Secure flag, TrustedHostMiddleware, HSTS, CORS restrictions",
+        settings.ENVIRONMENT,
+    )
