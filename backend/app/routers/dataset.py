@@ -431,7 +431,22 @@ async def export_coco(
             ann_by_frame[fid] = []
         ann_by_frame[fid].append(a)
 
-    categories = [{"id": 1, "name": "wet_floor", "supercategory": "hazard"}]
+    # Build categories dynamically from detection_classes collection
+    det_classes = await db.detection_classes.find(org_query(org_id)).to_list(length=200)
+    class_name_to_id = {}
+    categories = []
+    for i, cls in enumerate(det_classes):
+        cat_id = i + 1
+        name = cls.get("name", f"class_{i}")
+        categories.append({"id": cat_id, "name": name, "supercategory": "detection"})
+        class_name_to_id[name] = cat_id
+        # Also map lowercase for case-insensitive matching
+        class_name_to_id[name.lower()] = cat_id
+    # Fallback: if no classes in DB, use a generic category
+    if not categories:
+        categories = [{"id": 1, "name": "detection", "supercategory": "detection"}]
+        class_name_to_id["detection"] = 1
+
     coco_images = []
     coco_annotations = []
     ann_id = 1
@@ -445,10 +460,13 @@ async def export_coco(
         coco_images.append(img_entry)
         for a in ann_by_frame.get(frame["id"], []):
             for box in a.get("bboxes", []):
+                # Map annotation label_class to category_id dynamically
+                label = box.get("label", a.get("label_class", "detection"))
+                cat_id = class_name_to_id.get(label) or class_name_to_id.get(str(label).lower(), 1)
                 coco_annotations.append({
                     "id": ann_id,
                     "image_id": idx + 1,
-                    "category_id": 1,
+                    "category_id": cat_id,
                     "bbox": [box.get("x", 0), box.get("y", 0), box.get("w", 0), box.get("h", 0)],
                     "area": box.get("w", 0) * box.get("h", 0),
                     "iscrowd": 0,
