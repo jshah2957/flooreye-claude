@@ -69,6 +69,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         log.warning("Redis connection failed: %s — rate limiting and caching degraded", e)
 
+    # Verify encryption system
+    from app.core.encryption import verify_encryption, get_key_source
+    enc_status = verify_encryption()
+    if enc_status["ok"]:
+        log.info("Encryption verified: key_source=%s", enc_status["key_source"])
+    else:
+        log.critical("ENCRYPTION BROKEN: %s", enc_status["error"])
+        if settings.ENVIRONMENT == "production" and enc_status.get("key_source") == "failed":
+            raise RuntimeError(f"Encryption system failed: {enc_status['error']}")
+
     await ensure_indexes(get_db())
     from app.utils.s3_utils import ensure_bucket
     try:
