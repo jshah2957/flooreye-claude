@@ -1210,3 +1210,70 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 - Execute `.claude/RUN_ALL_PHASES.md` in a fresh session
 - Fixes 33 issues across 8 phases automatically
 - Est. time: 4-6 hours unattended
+
+---
+
+## Session 37 — 2026-03-27
+
+### Full-Stack 11-Role Audit + 8-Phase Remediation + Hardcoded Class Removal
+
+#### Audits Conducted
+- Full-stack audit: 39 issues (7 critical, 10 high, 12 medium, 10 low)
+- Post-fix verification: confirmed 32 fixed, found encryption regression
+- Deployment & operations audit: model pipeline, updates, credentials, launch instructions
+- Production readiness report: 7.5/10 initial, 8.5/10 final
+- Combined fix plan: 23 items across 12 sections
+
+#### 8-Phase Remediation (automated)
+- Phase 1: Security (strong keys, production mode, CORS)
+- Phase 2: Urgent bugs (worker logger, WS blacklist, cloudflared)
+- Phase 3: Multi-tenancy (23 routers, 246 sites, 33 records migrated)
+- Phase 4: XSS + input validation + nginx headers
+- Phase 5: Code quality (logging, constants, dead code)
+- Phase 6: Database (cascade deletes, indexes, strip_mongo_id)
+- Phase 7: Frontend (error handling, empty catches)
+- Phase 8: Polish (edge logging, model validation, mobile offline)
+
+#### Encryption Key Fix
+- Rewrote encryption.py: bulletproof key resolution (any input → 32 bytes)
+- Generated production key, migrated 12 records, verified cameras + Roboflow + detection
+
+#### Critical Fixes (Phase 1 of final plan)
+- Fixed import error in inference_test.py (WET_CLASS_NAMES → DEFAULT_WET_CLASS_NAMES)
+- Fixed COCO export: reads categories from detection_classes DB (was hardcoded "wet_floor")
+- Fixed API class_names: added field to ModelVersionResponse schema
+- Added edge log rotation: 5/5 services (20MB × 3 files)
+- Added /auth/register rate limit: 10/min
+- Added global exception handler: logs traceback, returns clean 500
+
+#### Zero Hardcoded Classes (Phases 2-3 of final plan)
+- Created class_config.py (MD5 hash-based color generation)
+- Replaced 22 hardcoded locations across 14 files:
+  - 7 backend alert-class sets → empty set (DB authoritative)
+  - 4 color maps → hash-based generation
+  - 4 MQTT event types → dynamic class_name
+  - Frontend WET_CLASS_NAMES + CLASS_COLORS → getClassColor() + isAlertClass()
+  - COCO export → dynamic from DB
+  - Edge ALERT_CLASSES → empty set (cloud push authoritative)
+- Grep verification: ZERO hardcoded class names remain
+
+#### Phase 4: Logging
+- Configured LOG_LEVEL on startup with structured format
+
+#### Final Numbers
+- Total issues across all audits: 62
+- Verified fixed: 52
+- Deferred non-blocking: 8 (TypeScript any, CD pipeline, edge OTA, mobile OTA, etc.)
+- False positives: 2
+- Endpoints: 15/15
+- Detection: 155ms ONNX inference
+- Readiness: 8.5/10
+
+### Reports Created (9 total in .claude/)
+- FULL_STACK_AUDIT_REPORT.md, REMEDIATION_PLAN.md, IMPLEMENTATION_SESSION_PLAN.md
+- RUN_ALL_PHASES.md, POST_FIX_VERIFICATION_REPORT.md
+- DEPLOYMENT_AND_OPERATIONS_AUDIT.md, PRODUCTION_READINESS_REPORT.md
+- COMBINED_FIX_PLAN.md, FINAL_COMPLETE_REPORT.md
+
+### Next Session Plan
+- Create 4 documentation files: USER_MANUAL.md, INSTALLATION_GUIDE.md, UPGRADE_GUIDE.md, TROUBLESHOOTING_GUIDE.md

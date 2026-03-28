@@ -161,7 +161,14 @@
       "Bash(find edge-agent:*)",
       "Bash(find mobile:*)",
       "Bash(find web/src/pages -name *.tsx)",
-      "Bash(grep -roh db.\\\\\\([a-z_]*\\\\\\) backend/app/)"
+      "Bash(grep -roh db.\\\\\\([a-z_]*\\\\\\) backend/app/)",
+      "Bash(docker exec flooreye-backend-1 python -c \":*)",
+      "Bash(find /c/Users/jshah/flooreye -name *.onnx -o -name *.pt)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec flooreye-backend-1 ls -la /app/models/ 2>&1)",
+      "Bash(MSYS_NO_PATHCONV=1 docker exec flooreye-inference ls -la /models/ 2>&1)",
+      "Bash(find . -name *.json -path *grafana* -o -name *.json -path *dashboard*)",
+      "Bash(find /c/Users/jshah/flooreye/mobile/app -name *.tsx)",
+      "Bash(echo \"===FILE EXISTS: $?==\")"
     ]
   }
 }
