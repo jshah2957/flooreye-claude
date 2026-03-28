@@ -42,6 +42,8 @@ class ModelVersionResponse(BaseModel):
     pt_path: Optional[str] = None
     model_size_mb: Optional[float] = None
     model_source: Optional[str] = None  # "roboflow" or "yolo_cloud"
+    class_names: Optional[list[str]] = None
+    checksum: Optional[str] = None
     promoted_to_staging_at: Optional[datetime] = None
     promoted_to_production_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
