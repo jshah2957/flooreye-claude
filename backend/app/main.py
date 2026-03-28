@@ -181,6 +181,11 @@ def create_app() -> FastAPI:
     async def value_error_handler(request, exc):
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
+    @application.exception_handler(Exception)
+    async def unhandled_exception_handler(request, exc):
+        log.error("Unhandled exception: %s %s — %s", request.method, request.url.path, exc, exc_info=True)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
     # Register all routers
     application.include_router(dashboard.router)
     application.include_router(auth.router)
