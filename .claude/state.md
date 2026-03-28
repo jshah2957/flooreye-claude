@@ -1,67 +1,55 @@
 # FloorEye Session State
-# Last session: 35 (Clip Fix + Class Fix + Dashboard Redesign + Roboflow Pipeline)
-# Status: All services running, 15/15 endpoints pass, segmentation model deployed
-# Date: 2026-03-26
+# Last session: 36 (Roboflow Test Removal + Video Detection + Full Audit + Remediation Plan)
+# Status: All services running, 13/13 endpoints pass, video detection working
+# Date: 2026-03-27
 
 ## NEXT SESSION TASK
-Polish and production hardening:
-1. Frontend detection display: render mask polygons on annotated frames (AnnotatedFrame.tsx)
-2. Clean up old broken model_versions records (ZIP-based, retired)
-3. Add model comparison view in Model Registry
-4. Edge agent model version verification (currently shows old model ID)
-5. Continuous detection loop testing with live cameras
-6. Commit all changes and tag release
+Execute automated remediation: paste `.claude/RUN_ALL_PHASES.md` into a fresh session.
+Fixes 33 issues across 8 phases (security, bugs, multi-tenancy, XSS, quality, database, frontend, polish).
 
-## What Was Done This Session (Session 35)
+## What Was Done This Session (Session 36)
 
-### Clip Playback Fix
-- Nginx /storage/ proxy eliminates CORS for S3 presigned URLs
-- MJPG recording → ffmpeg H.264 transcode → browser-playable MP4
-- Video player error handling with retry logic
-- Presigned URLs signed against internal endpoint, rewritten for browser
+### Roboflow Test Page Removed
+- Deleted RoboflowTestPage.tsx and roboflow_test.py
+- Removed route, sidebar item, breadcrumb, router registration
+- 6 files changed, 0 regressions
 
-### Detection Class Fix
-- Backfilled 76 class docs missing `id` field
-- Added unique indexes on (id) and (org_id, name)
-- Fixed DELETE/PUT to use org_query() consistently
-- Added _normalize_class() to GET response
-- POST now checks for duplicates (409 Conflict)
-- Expanded POST/PUT to accept color, enabled, severity
-- Frontend delete guard for missing id
+### Video Detection Feature Added
+- New backend: video_inference_service.py (upload, transcode, process, poll, delete)
+- New endpoints: POST /inference/video, GET /inference/video/{id}, DELETE /inference/video/{id}, GET /inference/videos
+- Handles any video format (ffprobe + ffmpeg transcode to H.264)
+- Adaptive FPS based on duration (<1min: 4fps, 1-10min: 2fps, 10-30min: 1fps)
+- Frontend: Video tab on TestInferencePage with canvas overlay, timeline, stats
+- requestAnimationFrame sync with binary search for nearest detection frame
+- Detection timeline bar (red=wet, green=dry), confidence filter, play controls
+- Delete button cleans up S3 + MongoDB
+- Tested: upload, process, poll, delete all working
 
-### Dashboard Redesign
-- New /dashboard/summary aggregation endpoint (single API call)
-- 5 KPI stat cards (incidents, detections, cameras, edge, model)
-- Recharts area chart (7-day detection trend)
-- Recharts donut chart (incident severity)
-- Infrastructure health panel
-- Recent detections grid with thumbnails
-- Edge agent status cards
-- Removed live monitoring panel
+### Full-Stack 11-Role Audit
+- Ran 5 parallel agent groups covering all 11 roles
+- Found 39 issues: 7 CRITICAL, 10 HIGH, 12 MEDIUM, 10 LOW
+- 2 false positives identified (BT-1, BT-2)
+- Report: .claude/FULL_STACK_AUDIT_REPORT.md
 
-### Roboflow Integration Complete Pipeline
-- Fixed _test_roboflow: calls api.roboflow.com (not detect.roboflow.com)
-- Fixed workspace API parsing (projects nested under workspace key)
-- Two-path model download: ONNX REST (detection) → .pt SDK + convert (segmentation)
-- .pt → ONNX conversion via ultralytics (automatic, any architecture)
-- Segmentation post-processing added to cloud + edge (mask decoding, area calculation)
-- Classes auto-sync from model when Roboflow API returns empty
-- Browse Models page: shows projects, versions, mAP, "Use This Model" button
-- "Currently Deployed" banner + per-version deployed badge
-- Model switching works (deploy v8, switch to v9, auto-retire old)
-- Detection runs successfully on live cameras (101-201ms inference)
-- Added roboflow, onnx, onnxslim to requirements.txt
-- Gunicorn timeout increased to 300s for model operations
+### Remediation Plan
+- Deep-researched every issue with source code analysis
+- Proposed fixes with 10-agent review (all approved)
+- Dependency graph and implementation order
+- Report: .claude/REMEDIATION_PLAN.md
+
+### Implementation Session Plan
+- 10 copy-paste prompts for executing fixes
+- Per-phase: tasks, test criteria, commit messages, regression suite
+- Report: .claude/IMPLEMENTATION_SESSION_PLAN.md
+
+### Automated Single-Prompt Plan
+- One prompt that runs all 8 phases sequentially
+- Tests after each, auto-retries, commits after each
+- Report: .claude/RUN_ALL_PHASES.md
 
 ### Key Numbers
-- Production model: rf-my-first-project-rsboo-v9 (11.09 MB, yolo-segment, 3 classes)
-- Classes: Caution Sign, Mopped Floor, Water Spill
-- Edge agents: 3 (1 online), all received deploy commands
-- API endpoints: 15/15 pass
-- Detection inference: 101-201ms on cloud
-
-## Architecture
-- Cloud: FastAPI + ONNX Runtime (auto-detect model type: yolov8, nms_free, yolov8_seg)
-- Edge: Docker + ONNX Runtime (same auto-detection, hot-swap with rollback)
-- Models: dynamic — any YOLO variant, detection or segmentation, any class count
-- Roboflow: .pt download → ONNX convert → S3 upload → promote → edge deploy
+- API endpoints tested: 55+
+- Video pipeline: upload → transcode → ONNX inference → canvas overlay
+- Audit issues: 39 found, 33 actionable, 6 informational
+- Remediation phases: 8 planned, ~10 sessions estimated
+- Production model: rf-my-first-project-rsboo-v9 (11.09MB, yolo-segment)

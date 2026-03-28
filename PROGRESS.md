@@ -1165,3 +1165,48 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 - Edge model version verification
 - Continuous detection loop testing
 - Production deployment checklist
+
+---
+
+## Session 36 — 2026-03-27
+
+### Roboflow Test Page Removed
+- Deleted `RoboflowTestPage.tsx` and `roboflow_test.py`
+- Removed route, sidebar nav item, breadcrumb label, router registration
+- 6 files changed, 0 regressions
+
+### Video Detection Feature
+- Created `video_inference_service.py` — full job lifecycle (create, process, poll, delete)
+- 5 new endpoints: POST/GET/DELETE /inference/video/{id}, GET /inference/videos
+- Any video format accepted → ffprobe validation → ffmpeg H.264 transcode
+- Adaptive FPS: <1min=4fps, 1-10min=2fps, 10-30min=1fps, 30+min=0.5fps
+- Frontend: Video tab on TestInferencePage with canvas overlay
+- requestAnimationFrame + binary search sync for bounding box overlay
+- Detection timeline bar (red=wet, green=dry), confidence slider, play controls
+- Delete button cleans up S3 + MongoDB
+- E2E tested: upload 5s video → 25 frames processed → delete confirmed
+
+### Full-Stack 11-Role Audit
+- 5 parallel agent groups, 11 specialized roles
+- 39 issues found: 7 CRITICAL, 10 HIGH, 12 MEDIUM, 10 LOW
+- 2 false positives identified (missing mobile endpoints match SRD)
+- Top criticals: secrets in .env, weak SECRET_KEY, ENVIRONMENT=development, org_id=None, XSS in store names, cloudflared restart loop, WS blacklist fail-open
+- Report: `.claude/FULL_STACK_AUDIT_REPORT.md`
+
+### Remediation Plan
+- Deep-researched all 39 issues with source code analysis
+- Each fix: root cause, step-by-step solution, files affected, risk assessment
+- 10-agent review (all approved, 0 rejections)
+- Dependency graph + 8-phase implementation order
+- Report: `.claude/REMEDIATION_PLAN.md`
+
+### Implementation Session Plan
+- 10 detailed prompts (8 phases + integration test + final report)
+- Per-phase: exact tasks, test criteria, commit messages, regression suite
+- Automated single-prompt version for unattended execution
+- Reports: `.claude/IMPLEMENTATION_SESSION_PLAN.md`, `.claude/RUN_ALL_PHASES.md`
+
+### Next Session Plan
+- Execute `.claude/RUN_ALL_PHASES.md` in a fresh session
+- Fixes 33 issues across 8 phases automatically
+- Est. time: 4-6 hours unattended

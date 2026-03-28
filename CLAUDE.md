@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 35 (Clip Fix + Class Fix + Dashboard + Roboflow Pipeline) — Clip playback fixed (nginx proxy + H.264 transcode). Class deletion fixed (backfill 76 docs + normalize + org_query). Dashboard redesigned (KPI cards + Recharts charts + summary endpoint). Roboflow pipeline complete (.pt download → ONNX convert → deploy, segmentation support, model browser UI). Production model: rf-my-first-project-rsboo-v9 (11.09MB, yolo-segment, 3 classes). 15/15 endpoints pass. Detection runs at 101-201ms.
+Session 36 (Video Detection + Full Audit + Remediation Plan) — Removed Roboflow Test page. Added video detection feature (upload any format → ffmpeg transcode → ONNX inference per frame → canvas overlay with timeline). Full 11-role audit found 39 issues (7 critical, 10 high). Created remediation plan + implementation session plan + automated single-prompt runner. 13/13 endpoints pass. Production model: rf-my-first-project-rsboo-v9 (11.09MB, yolo-segment).
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform
