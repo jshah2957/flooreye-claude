@@ -224,7 +224,7 @@ async def assemble_camera_config(db: AsyncIOMotorDatabase, camera_id: str, org_i
     }
 
 
-async def push_config_to_edge(
+async def push_camera_config_to_edge(
     db: AsyncIOMotorDatabase, camera_id: str, org_id: str, user_id: str = "system"
 ) -> dict:
     """Push camera config to edge device. Falls back to command queue if unreachable."""

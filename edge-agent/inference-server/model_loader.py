@@ -39,6 +39,13 @@ def validate_model_file(path: str) -> tuple[bool, str]:
             f"Model file too small (likely corrupt): {path} ({file_size} bytes)"
         )
 
+    MAX_MODEL_SIZE = 500 * 1024 * 1024  # 500MB
+    if file_size > MAX_MODEL_SIZE:
+        log.error("Model file too large: %d bytes (max %d)", file_size, MAX_MODEL_SIZE)
+        return False, (
+            f"Model file too large: {path} ({file_size} bytes, max {MAX_MODEL_SIZE})"
+        )
+
     # Read first 4 bytes and check ONNX protobuf magic tag
     try:
         with open(path, "rb") as f:
@@ -54,6 +61,15 @@ def validate_model_file(path: str) -> tuple[bool, str]:
         return False, f"Cannot read model file {path}: {e}"
 
     return True, ""
+
+
+def compute_model_hash(path: str) -> str:
+    """Compute SHA256 hash of a model file."""
+    sha256 = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256.update(chunk)
+    return sha256.hexdigest()
 
 
 class ModelLoader:
@@ -238,11 +254,12 @@ class ModelLoader:
         """Return class names as {id: name} dict for use in predictions."""
         return {i: name for i, name in enumerate(self.class_names)}
 
-    def download_model(self, url: str, dest_path: str, checksum: str | None = None) -> bool:
+    def download_model(self, url: str, dest_path: str, checksum: str | None = None,
+                       headers: dict | None = None) -> bool:
         """Download ONNX model from URL with optional SHA256 checksum verification."""
         log.info(f"Downloading model from {url}")
         try:
-            resp = requests.get(url, stream=True, timeout=120)
+            resp = requests.get(url, stream=True, timeout=120, headers=headers or {})
             resp.raise_for_status()
             temp_path = dest_path + ".tmp"
             sha256 = hashlib.sha256()

@@ -42,8 +42,8 @@ export function SyncTracker({ cameraIds, onComplete, onDismiss }: SyncTrackerPro
           setPolling(false);
           onComplete?.();
         }
-      } catch {
-        // Silent — will retry on next interval
+      } catch (e) {
+        console.error("Sync tracker poll failed:", e);
       }
     };
 

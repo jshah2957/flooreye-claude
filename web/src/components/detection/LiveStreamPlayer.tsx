@@ -90,8 +90,8 @@ export default function LiveStreamPlayer({
           if (state === "connecting" || state === "offline") setState("polling");
         }
       }
-    } catch {
-      // Silent fail — will retry on next poll
+    } catch (e) {
+      console.error("Live stream poll failed:", e);
     }
   }, [fallbackFrameUrl, cameraId, state]);
 

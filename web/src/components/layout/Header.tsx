@@ -25,7 +25,6 @@ const ROUTE_LABELS: Record<string, string> = {
   models: "Model Registry",
   ml: "ML",
   "test-inference": "Test Inference",
-  "roboflow-test": "Roboflow Test",
   stores: "Stores",
   cameras: "Cameras",
   devices: "Devices",

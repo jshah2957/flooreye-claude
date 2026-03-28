@@ -50,8 +50,8 @@ function CameraCell({ camera }: { camera: CameraType }) {
           setFrameData(res.data.data.frame_base64);
           setLoading(false);
         }
-      } catch {
-        // Camera may not be streaming — keep loading until first frame
+      } catch (e) {
+        console.error("Camera frame poll failed:", e);
         if (!cancelled && frameData) setLoading(false);
       }
     };

@@ -112,8 +112,8 @@ def _load_class_overrides_for_validation() -> dict[str, dict] | None:
                 c["name"]: c for c in classes if isinstance(c, dict) and "name" in c
             }
             _class_overrides_mtime = mtime
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("Failed to load class overrides: %s", e)
     return _class_overrides_cache
 
 
@@ -121,6 +121,7 @@ async def register_with_backend(cameras: dict[str, str]) -> dict | None:
     """Register this edge agent with the backend."""
     log.info(f"Registering with backend: {config.BACKEND_URL}")
     # Detect actual hardware
+    import psutil
     ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 1)
     has_gpu = False
     try:
@@ -128,8 +129,8 @@ async def register_with_backend(cameras: dict[str, str]) -> dict | None:
         pynvml.nvmlInit()
         has_gpu = pynvml.nvmlDeviceGetCount() > 0
         pynvml.nvmlShutdown()
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("GPU detection unavailable: %s", e)
 
     body = {
         "store_id": config.STORE_ID,
@@ -186,8 +187,8 @@ async def heartbeat_loop(inference: InferenceClient, buffer: FrameBuffer | None 
                         handle = pynvml.nvmlDeviceGetHandleByIndex(0)
                         util = pynvml.nvmlDeviceGetUtilizationRates(handle)
                         gpu_pct = util.gpu
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("GPU utilization read failed: %s", e)
                     body["gpu_percent"] = gpu_pct
                 except ImportError:
                     body["gpu_percent"] = None
@@ -196,8 +197,8 @@ async def heartbeat_loop(inference: InferenceClient, buffer: FrameBuffer | None 
                     try:
                         disk = shutil.disk_usage(config.DATA_PATH)
                         body["disk_percent"] = round(disk.used / disk.total * 100, 1)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("Disk usage check failed: %s", e)
                 # Buffer stats (frames count, size in MB, dropped frames)
                 if buffer:
                     try:
@@ -265,8 +266,8 @@ async def heartbeat_loop(inference: InferenceClient, buffer: FrameBuffer | None 
                             "last_triggered_at": _device_last_triggered.get(dname),
                             "consecutive_failures": _device_consecutive_failures.get(dname, 0),
                         }
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.debug("Device status collection failed: %s", e)
                 body["device_status"] = device_status
 
                 # ── Model load status ──
@@ -790,8 +791,8 @@ async def threaded_camera_loop(
                             _dname = _dev.get("name", "")
                             _device_consecutive_failures[_dname] = _device_consecutive_failures.get(_dname, 0) + 1
                             _device_state[_dname] = "offline"
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        log.debug("Failed to update device failure counters: %s", exc)
                     log.warning(f"[{cam.name}] IoT trigger failed: {iot_err}")
                     if alert_log:
                         alert_log.log_event("device_trigger_failed", cam.name, {
@@ -1163,12 +1164,13 @@ async def cleanup_old_files_loop():
                         _alert_log.log_event("disk_emergency", details={
                             "disk_percent": disk_pct,
                         })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("Failed to log disk emergency event: %s", e)
                 else:
                     _disk_emergency_active = False
                     emergency_cutoff = None
-            except Exception:
+            except Exception as e:
+                log.warning("Disk usage check in cleanup failed: %s", e)
                 disk_pct = 0
                 emergency_cutoff = None
 
@@ -1208,7 +1210,8 @@ async def cleanup_old_files_loop():
                         if mtime < clip_cutoff:
                             clip_file.unlink(missing_ok=True)
                             removed_clips += 1
-                    except Exception:
+                    except Exception as e:
+                        log.debug("Failed to remove old clip %s: %s", clip_file, e)
                         continue
                 if removed_clips:
                     log.info(f"Cleanup: removed {removed_clips} old clips (>{config.CLIP_RETENTION_DAYS}d)")
@@ -1226,8 +1229,8 @@ async def cleanup_old_files_loop():
                         continue
                     else:
                         _disk_emergency_active = False
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning("Post-cleanup disk recheck failed: %s", e)
 
         except Exception as e:
             log.warning(f"Cleanup loop error: {e}")
@@ -1284,8 +1287,8 @@ async def check_and_download_model(inference: InferenceClient):
                             "version": latest_version,
                             "previous_version": current_version,
                         })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("Failed to log model_loaded event: %s", e)
                 else:
                     log.warning(f"Model download/load failed: {result}")
                     _model_load_status = "failed"
@@ -1296,8 +1299,8 @@ async def check_and_download_model(inference: InferenceClient):
                             "version": latest_version,
                             "error": str(result),
                         })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("Failed to log model_load_failed event: %s", e)
 
     except Exception as e:
         log.warning(f"Model check failed (non-critical, continuing with current model): {e}")
@@ -1636,8 +1639,8 @@ async def main():
     try:
         from config_receiver import update_captures
         update_captures(cam_objects)
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("Config receiver capture update skipped: %s", e)
 
     # Start all tasks — cameras run concurrently via asyncio.gather
     tasks = [
@@ -1758,8 +1761,8 @@ async def main():
                     # Update config receiver with new capture objects
                     try:
                         update_captures(cam_objects)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("Config receiver update after camera add failed: %s", e)
 
                 # Cameras removed
                 removed = running_names - config_names
@@ -1777,8 +1780,8 @@ async def main():
                     log.info("[DYNAMIC] Camera removed: %s (capture stopped)", cam_name)
                     try:
                         update_captures(cam_objects)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("Config receiver update after camera remove failed: %s", e)
 
             except Exception as e:
                 log.debug("Dynamic camera sync error: %s", e)
@@ -1878,8 +1881,8 @@ async def main():
         for cam in cam_objects.values():
             try:
                 cam.stop()
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug("Error stopping camera during shutdown: %s", e)
         log.info("Edge agent shut down cleanly")
 
 

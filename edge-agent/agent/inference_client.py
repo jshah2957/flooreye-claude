@@ -89,13 +89,15 @@ class InferenceClient:
         return resp.json()
 
     async def download_model_from_url(
-        self, url: str, checksum: str | None = None, filename: str = "model.onnx"
+        self, url: str, checksum: str | None = None, filename: str = "model.onnx",
+        headers: dict | None = None,
     ) -> dict:
         """Download and load a model from URL via inference server."""
         client = await self._get_client()
         resp = await client.post(
             f"{self.url}/model/download",
-            json={"url": url, "checksum": checksum, "filename": filename},
+            json={"url": url, "checksum": checksum, "filename": filename,
+                  "headers": headers or {}},
             timeout=config.MODEL_DOWNLOAD_TIMEOUT,
         )
         return resp.json()

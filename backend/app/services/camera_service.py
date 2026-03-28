@@ -188,8 +188,8 @@ async def delete_camera(
 
     # Notify edge to stop detection for this camera
     try:
-        from app.services.edge_camera_service import push_config_to_edge
-        await push_config_to_edge(db, camera_id, org_id)
+        from app.services.edge_camera_service import push_camera_config_to_edge
+        await push_camera_config_to_edge(db, camera_id, org_id)
     except Exception as e:
         log.warning("Failed to notify edge after camera deactivation %s: %s", camera_id, e)
 
@@ -441,8 +441,8 @@ async def save_roi(
 
     # Push config to edge if camera is edge-managed
     try:
-        from app.services.edge_camera_service import push_config_to_edge
-        push_result = await push_config_to_edge(db, camera_id, org_id, user_id)
+        from app.services.edge_camera_service import push_camera_config_to_edge
+        push_result = await push_camera_config_to_edge(db, camera_id, org_id, user_id)
         # Track sync status on the ROI document
         await db.rois.update_one(
             {"camera_id": camera_id, "is_active": True},
@@ -566,8 +566,8 @@ async def capture_dry_reference(
 
         # Push config to edge if camera is edge-managed
         try:
-            from app.services.edge_camera_service import push_config_to_edge
-            push_result = await push_config_to_edge(db, camera_id, org_id, user_id)
+            from app.services.edge_camera_service import push_camera_config_to_edge
+            push_result = await push_camera_config_to_edge(db, camera_id, org_id, user_id)
             # Track sync status on the dry reference document
             await db.dry_references.update_one(
                 {"camera_id": camera_id, "is_active": True},

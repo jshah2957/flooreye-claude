@@ -691,7 +691,7 @@ async def _try_direct_push(
     return False
 
 
-async def push_config_to_edge(
+async def push_agent_config(
     db: AsyncIOMotorDatabase,
     org_id: str,
     agent_id: str,

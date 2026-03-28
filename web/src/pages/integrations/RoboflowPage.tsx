@@ -32,7 +32,7 @@ export default function RoboflowPage() {
       try {
         const res = await api.get("/integrations/roboflow");
         return res.data.data;
-      } catch { return null; }
+      } catch (e) { console.error("Failed to load Roboflow config:", e); return null; }
     },
   });
 

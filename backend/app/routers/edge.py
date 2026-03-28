@@ -190,7 +190,7 @@ async def push_config_to_edge(
     # otherwise treat the whole body as config (minus any meta keys).
     if "config" in body and isinstance(body["config"], dict):
         config = body["config"]
-    cmd = await edge_service.push_config_to_edge(
+    cmd = await edge_service.push_agent_config(
         db, get_org_id(current_user), agent_id, config,
         user_id=current_user["id"],
     )

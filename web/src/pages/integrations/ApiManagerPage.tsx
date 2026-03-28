@@ -521,8 +521,8 @@ export default function ApiManagerPage() {
         }
       }
       setFormData(filled);
-    } catch {
-      // No existing config -- apply defaults
+    } catch (e) {
+      console.error("Failed to load integration config:", e);
       const meta = SERVICE_META[service];
       const defaults: Record<string, string> = {};
       if (meta) {

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "0",
+    "name": "Caution Sign",
+    "enabled": true,
+    "alert_on_detect": false,
+    "min_confidence": 0.5,
+    "min_area_percent": 0.0,
+    "incident_enabled": true,
+    "incident_severity_override": null,
+    "incident_grouping_separate": false,
+    "device_trigger_enabled": true
+  },
+  {
+    "id": "1",
+    "name": "Mopped Floor",
+    "enabled": true,
+    "alert_on_detect": true,
+    "min_confidence": 0.5,
+    "min_area_percent": 0.0,
+    "incident_enabled": true,
+    "incident_severity_override": null,
+    "incident_grouping_separate": false,
+    "device_trigger_enabled": true
+  },
+  {
+    "id": "2",
+    "name": "Water Spill",
+    "enabled": true,
+    "alert_on_detect": true,
+    "min_confidence": 0.5,
+    "min_area_percent": 0.0,
+    "incident_enabled": true,
+    "incident_severity_override": null,
+    "incident_grouping_separate": false,
+    "device_trigger_enabled": true
+  }
+]

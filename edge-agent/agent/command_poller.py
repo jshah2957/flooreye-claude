@@ -59,10 +59,25 @@ class CommandPoller:
                 download_url = payload.get("download_url", "")
                 checksum = payload.get("checksum")
                 version_id = payload.get("version_id", "model")
+                class_names = payload.get("class_names", [])
+                # Resolve relative URLs against backend base URL
+                if download_url and download_url.startswith("/"):
+                    download_url = f"{config.BACKEND_URL}{download_url}"
                 if download_url:
+                    filename = f"{version_id}.onnx"
+                    # Pass auth headers so edge can authenticate with backend API
                     result = await self.inference.download_model_from_url(
-                        download_url, checksum, f"{version_id}.onnx"
+                        download_url, checksum, filename,
+                        headers=config.auth_headers(),
                     )
+                    # Save class names sidecar alongside model for inference server
+                    if class_names and result.get("loaded"):
+                        import json, os
+                        models_dir = os.getenv("MODELS_DIR", "/models")
+                        sidecar = os.path.join(models_dir, filename.replace(".onnx", "_classes.json"))
+                        with open(sidecar, "w") as f:
+                            json.dump(class_names, f)
+                        log.info(f"Saved class names sidecar: {sidecar} ({len(class_names)} classes)")
                 else:
                     log.warning("deploy_model missing download_url in payload")
                     result = {"error": "No download_url provided"}

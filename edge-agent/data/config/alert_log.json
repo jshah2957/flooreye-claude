@@ -1,0 +1,24 @@
+[
+  {
+    "id": "d259f325-89e2-46f8-9973-c88fc586a6fd",
+    "event_type": "model_load_failed",
+    "camera_id": null,
+    "details": {
+      "version": "f6a4f008-de49-4429-954f-719d86b50798",
+      "error": "{'error': 'Download or checksum verification failed'}"
+    },
+    "timestamp": "2026-03-27T20:37:14.748875+00:00",
+    "synced_to_cloud": true
+  },
+  {
+    "id": "9f74ec0d-6f60-46ce-97ab-f568daad4003",
+    "event_type": "model_load_failed",
+    "camera_id": null,
+    "details": {
+      "version": "f6a4f008-de49-4429-954f-719d86b50798",
+      "error": "{'error': 'Download or checksum verification failed'}"
+    },
+    "timestamp": "2026-03-27T21:13:45.388607+00:00",
+    "synced_to_cloud": true
+  }
+]

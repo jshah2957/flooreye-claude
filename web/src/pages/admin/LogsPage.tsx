@@ -105,8 +105,8 @@ export default function LogsPage() {
           })
         );
         setLogs(fetched);
-      } catch {
-        // Backend may not be available; leave logs empty
+      } catch (e) {
+        console.error("Failed to fetch logs:", e);
       } finally {
         if (!cancelled) setLoading(false);
       }

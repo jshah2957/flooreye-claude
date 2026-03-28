@@ -110,7 +110,7 @@ export default function CameraWizardPage() {
           return testRes.data.data as TestCameraResult;
         } finally {
           // Clean up temp camera
-          try { await api.delete(`/cameras/${tempCamId}`); } catch {}
+          try { await api.delete(`/cameras/${tempCamId}`); } catch { /* cleanup — failure acceptable */ }
         }
       } else {
         // Edge mode: test via edge proxy

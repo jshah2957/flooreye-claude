@@ -161,8 +161,8 @@ async def update_camera(
     # Push updated config to edge if camera is edge-managed
     if camera.get("edge_agent_id"):
         try:
-            from app.services.edge_camera_service import push_config_to_edge
-            await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+            from app.services.edge_camera_service import push_camera_config_to_edge
+            await push_camera_config_to_edge(db, camera_id, org_id, current_user["id"])
         except Exception:
             pass
     return {"data": _camera_response(camera)}
@@ -342,8 +342,8 @@ async def toggle_detection(
                      {"detection_enabled": new_enabled}, request)
     # Push config to edge
     try:
-        from app.services.edge_camera_service import push_config_to_edge
-        await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+        from app.services.edge_camera_service import push_camera_config_to_edge
+        await push_camera_config_to_edge(db, camera_id, org_id, current_user["id"])
     except Exception:
         pass
     return {"data": {"detection_enabled": new_enabled}}
@@ -358,8 +358,8 @@ async def push_config(
 ):
     """Manually re-push current config to edge for this camera."""
     org_id = get_org_id(current_user)
-    from app.services.edge_camera_service import push_config_to_edge
-    result = await push_config_to_edge(db, camera_id, org_id, current_user["id"])
+    from app.services.edge_camera_service import push_camera_config_to_edge
+    result = await push_camera_config_to_edge(db, camera_id, org_id, current_user["id"])
     await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "config_pushed", "camera", camera_id,
                      {"result_status": result.get("status", "unknown")}, request)

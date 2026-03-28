@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   Database,
   BrainCircuit,
-  FlaskConical,
   Boxes,
   TestTube,
   Store,
@@ -104,7 +103,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Dataset Management", path: "/dataset", icon: Database, minRole: ML_PLUS },
       { label: "Model Registry", path: "/models", icon: Boxes, minRole: ML_PLUS },
       { label: "Test Inference", path: "/ml/test-inference", icon: TestTube, minRole: ML_PLUS },
-      { label: "Roboflow Test", path: "/ml/roboflow-test", icon: FlaskConical, minRole: ADMIN_PLUS },
     ],
   },
   {

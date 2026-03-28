@@ -34,6 +34,7 @@ class DownloadModelRequest(BaseModel):
     url: str
     checksum: str | None = None
     filename: str = "model.onnx"
+    headers: dict[str, str] = {}
 
 
 @app.on_event("startup")
@@ -87,7 +88,7 @@ def load_model_endpoint(req: LoadModelRequest):
 def download_and_load(req: DownloadModelRequest):
     """Download an ONNX model from URL, verify checksum, and hot-swap it in."""
     dest_path = os.path.join(loader.models_dir, req.filename)
-    if not loader.download_model(req.url, dest_path, req.checksum):
+    if not loader.download_model(req.url, dest_path, req.checksum, req.headers):
         return JSONResponse({"error": "Download or checksum verification failed"}, status_code=500)
     success = loader.swap_model(dest_path)
     return {

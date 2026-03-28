@@ -62,11 +62,11 @@ async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | No
 
     Returns detailed push results per camera.
     """
-    from app.services.edge_camera_service import push_config_to_edge
+    from app.services.edge_camera_service import push_camera_config_to_edge
     results = {"pushed": 0, "queued": 0, "failed": 0, "skipped": 0, "details": []}
     try:
         if scope == "camera" and scope_id:
-            result = await push_config_to_edge(db, scope_id, org_id, user_id)
+            result = await push_camera_config_to_edge(db, scope_id, org_id, user_id)
             st = result.get("status", "unknown")
             if st == "skipped":
                 results["skipped"] += 1
@@ -89,7 +89,7 @@ async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | No
             ).to_list(500)
             for cam in cameras:
                 try:
-                    result = await push_config_to_edge(db, cam["id"], org_id, user_id)
+                    result = await push_camera_config_to_edge(db, cam["id"], org_id, user_id)
                     st = result.get("status", "unknown")
                     if st == "skipped":
                         results["skipped"] += 1
@@ -122,7 +122,7 @@ async def _push_settings_to_edge(db, org_id: str, scope: str, scope_id: str | No
             ).to_list(1000)
             for cam in cameras:
                 try:
-                    result = await push_config_to_edge(db, cam["id"], org_id, user_id)
+                    result = await push_camera_config_to_edge(db, cam["id"], org_id, user_id)
                     st = result.get("status", "unknown")
                     if st == "skipped":
                         results["skipped"] += 1
@@ -462,10 +462,10 @@ async def bulk_apply(
                      {"source_scope": body.source_scope, "target_cameras": len(body.target_camera_ids)}, request)
     # Push updated settings to each target camera's edge agent
     push_count = 0
-    from app.services.edge_camera_service import push_config_to_edge
+    from app.services.edge_camera_service import push_camera_config_to_edge
     for cam_id in body.target_camera_ids:
         try:
-            result = await push_config_to_edge(db, cam_id, org_id, current_user["id"])
+            result = await push_camera_config_to_edge(db, cam_id, org_id, current_user["id"])
             if result.get("status") != "skipped":
                 push_count += 1
         except Exception as e:
