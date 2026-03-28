@@ -5,6 +5,7 @@ Generates an HTML report as bytes (suitable for download as .html or conversion 
 No external PDF library required.
 """
 
+import html
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -104,9 +105,12 @@ def _build_html_report(
 ) -> str:
     """Build the HTML report string."""
 
+    # Escape user-controlled strings to prevent XSS
+    store_name = html.escape(store_name)
+
     severity_rows = ""
     for sev, count in severity_counts.items():
-        severity_rows += f"<tr><td>{sev.capitalize()}</td><td>{count}</td></tr>\n"
+        severity_rows += f"<tr><td>{html.escape(sev.capitalize())}</td><td>{count}</td></tr>\n"
     if not severity_rows:
         severity_rows = "<tr><td colspan='2'>No incidents in period</td></tr>"
 
@@ -115,13 +119,18 @@ def _build_html_report(
         created = inc.get("created_at", "")
         if hasattr(created, "strftime"):
             created = created.strftime("%Y-%m-%d %H:%M")
+        inc_id = html.escape(str(inc.get("id", ""))[:8])
+        inc_severity = html.escape(str(inc.get("severity", "N/A")))
+        inc_status = html.escape(str(inc.get("status", "N/A")))
+        inc_count = int(inc.get("detection_count", 0))
+        inc_created = html.escape(str(created))
         incident_rows += (
             f"<tr>"
-            f"<td>{inc.get('id', '')[:8]}...</td>"
-            f"<td>{inc.get('severity', 'N/A')}</td>"
-            f"<td>{inc.get('status', 'N/A')}</td>"
-            f"<td>{inc.get('detection_count', 0)}</td>"
-            f"<td>{created}</td>"
+            f"<td>{inc_id}...</td>"
+            f"<td>{inc_severity}</td>"
+            f"<td>{inc_status}</td>"
+            f"<td>{inc_count}</td>"
+            f"<td>{inc_created}</td>"
             f"</tr>\n"
         )
     if not incident_rows:
