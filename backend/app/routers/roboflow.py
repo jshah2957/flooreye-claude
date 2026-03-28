@@ -264,7 +264,7 @@ async def _fetch_roboflow_classes(
                                 "color": f"#{hashlib.md5(name.encode()).hexdigest()[:6]}" if name else "#00FFFF",
                                 "enabled": True,
                                 "severity": "medium",
-                                "alert_on_detect": name.lower() in {"wet_floor", "spill", "puddle", "water", "wet", "leak", "flood"},
+                                "alert_on_detect": False,  # Admin must explicitly enable alert classes via UI
                                 "min_confidence": 0.5,
                                 "min_area_percent": 0.0,
                                 "created_at": now,

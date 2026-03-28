@@ -114,7 +114,7 @@ def _run_local_pipeline(
     l2_on = validation_config.get("layer2_enabled", True)
     l3_on = validation_config.get("layer3_enabled", True)
     l4_on = validation_config.get("layer4_enabled", True)
-    alert_classes = validation_config.get("alert_classes", {"wet", "spill", "puddle", "water", "wet_floor", "water spill"})
+    alert_classes = validation_config.get("alert_classes", set())  # Must be provided by caller from DB
 
     layer_results = {}
 

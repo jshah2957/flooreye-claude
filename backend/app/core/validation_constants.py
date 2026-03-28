@@ -20,15 +20,19 @@ DEFAULT_LAYER3_M = 5
 # Layer 4: Dry floor reference delta threshold
 DEFAULT_LAYER4_DELTA = 0.15
 
-# Default wet detection class names (fallback if DB classes not loaded)
-# In production, classes are loaded from ONNX model + detection_classes collection
-DEFAULT_WET_CLASS_NAMES = {"wet", "spill", "puddle", "water", "wet_floor"}
+# Fallback when database is unavailable — empty set, NOT a hardcoded class list.
+# The actual alert classes come from the detection_classes collection.
+DEFAULT_WET_CLASS_NAMES: set[str] = set()
+
+import logging as _logging
+_log = _logging.getLogger(__name__)
 
 
 async def get_alert_class_names(db) -> set[str]:
     """Get alert-triggering class names from detection_classes collection.
 
-    Returns class names where alert_on_detect=True, or defaults if none configured.
+    Returns class names where alert_on_detect=True, or empty set with warning
+    if none configured or DB unavailable.
     """
     try:
         classes = await db.detection_classes.find(
@@ -37,5 +41,7 @@ async def get_alert_class_names(db) -> set[str]:
         if classes:
             return {c["name"] for c in classes}
     except Exception:
-        pass
+        _log.warning("Failed to load alert classes from DB — returning empty set")
+    if not DEFAULT_WET_CLASS_NAMES:
+        _log.warning("No alert classes configured in DB and no fallback — alert matching disabled until classes are synced")
     return DEFAULT_WET_CLASS_NAMES

@@ -170,31 +170,36 @@ class DeviceController:
     # ── Alarm publish ────────────────────────────────────────────────
 
     def trigger_alarm(self, store_id: str, camera_name: str, detection: dict):
-        """Send wet floor alert to IoT devices."""
+        """Send detection alert to IoT devices. Event type is dynamic from detection class."""
         if not self._client:
             return
 
+        # Use the actual detected class name, not a hardcoded event type
+        class_name = detection.get("class_name", detection.get("top_class", "unknown"))
         topic = f"flooreye/{store_id}/alert"
         payload = json.dumps({
-            "type": "wet_floor_detected",
+            "type": "detection_alert",
+            "class_name": class_name,
             "camera": camera_name,
             "confidence": detection.get("max_confidence", 0),
             "action": "activate_sign",
         })
         try:
             self._client.publish(topic, payload, qos=1)
-            log.info("Alert published to %s", topic)
+            log.info("Alert published to %s (class=%s)", topic, class_name)
         except Exception as e:
             log.error("MQTT publish failed: %s", e)
 
-    def clear_alarm(self, store_id: str, camera_name: str):
-        """Clear wet floor alert on IoT devices."""
+    def clear_alarm(self, store_id: str, camera_name: str, detection: dict | None = None):
+        """Clear detection alert on IoT devices. Event type is dynamic from detection class."""
         if not self._client:
             return
 
+        class_name = detection.get("class_name", "unknown") if detection else "unknown"
         topic = f"flooreye/{store_id}/clear"
         payload = json.dumps({
-            "type": "wet_floor_cleared",
+            "type": "detection_cleared",
+            "class_name": class_name,
             "camera": camera_name,
             "action": "deactivate_sign",
         })
@@ -415,11 +420,13 @@ class HTTPWebhookController:
     # ── Alarm publish ────────────────────────────────────────────────
 
     def trigger_alarm(self, store_id: str, camera_name: str, detection: dict):
-        """POST wet floor alert to all webhook devices."""
+        """POST detection alert to all webhook devices. Event type is dynamic from detection class."""
         if not self.enabled:
             return
+        class_name = detection.get("class_name", detection.get("top_class", "unknown"))
         payload = json.dumps({
-            "type": "wet_floor_detected",
+            "type": "detection_alert",
+            "class_name": class_name,
             "store_id": store_id,
             "camera": camera_name,
             "confidence": detection.get("max_confidence", 0),
@@ -430,12 +437,14 @@ class HTTPWebhookController:
             timeout = dev.get("timeout", self.DEFAULT_TIMEOUT)
             self._post_with_retry(url, payload, name, timeout)
 
-    def clear_alarm(self, store_id: str, camera_name: str):
-        """POST wet floor cleared to all webhook devices."""
+    def clear_alarm(self, store_id: str, camera_name: str, detection: dict | None = None):
+        """POST detection cleared to all webhook devices. Event type is dynamic from detection class."""
         if not self.enabled:
             return
+        class_name = detection.get("class_name", "unknown") if detection else "unknown"
         payload = json.dumps({
-            "type": "wet_floor_cleared",
+            "type": "detection_cleared",
+            "class_name": class_name,
             "store_id": store_id,
             "camera": camera_name,
             "action": "deactivate_sign",

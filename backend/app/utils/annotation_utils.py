@@ -6,17 +6,11 @@ import logging
 
 from PIL import Image, ImageDraw
 
+from app.core.class_config import get_class_color
+
 log = logging.getLogger(__name__)
 
-CLASS_COLORS = {
-    "wet_floor": "#DC2626",
-    "puddle": "#DC2626",
-    "spill": "#D97706",
-    "dry_floor": "#16A34A",
-    "reflection": "#2563EB",
-    "human": "#7C3AED",
-}
-
+# No hardcoded color map — colors generated dynamically from class name hash
 DEFAULT_COLOR = "#00FFFF"
 
 
@@ -125,7 +119,7 @@ def draw_annotations(
                     or "unknown"
                 )
                 confidence = pred.get("confidence", 0)
-                color = CLASS_COLORS.get(class_name, DEFAULT_COLOR)
+                color = get_class_color(class_name) if class_name and class_name != "unknown" else DEFAULT_COLOR
 
                 # Draw box (3px border)
                 for i in range(3):

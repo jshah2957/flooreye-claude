@@ -8,6 +8,7 @@ import {
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import { VALIDATION_DEFAULTS } from "@/constants";
+import { getClassColor } from "@/constants/detection";
 
 /* ─── Shared Types ─────────────────────────────────────────────────── */
 
@@ -69,12 +70,6 @@ interface VideoJobResult {
 
 /* ─── Canvas Drawing Utility ───────────────────────────────────────── */
 
-const CLASS_COLORS: Record<string, string> = {
-  wet_floor: "#DC2626", puddle: "#DC2626", spill: "#D97706",
-  water: "#3B82F6", dry_floor: "#16A34A", "Water Spill": "#DC2626",
-  "Mopped Floor": "#D97706", "Caution Sign": "#F59E0B",
-};
-
 function drawDetectionsOnCanvas(
   ctx: CanvasRenderingContext2D,
   detections: Prediction[],
@@ -88,7 +83,7 @@ function drawDetectionsOnCanvas(
 
   for (const det of detections) {
     if ((det.confidence || 0) < confidenceFilter) continue;
-    const color = CLASS_COLORS[det.class_name] || "#00FFFF";
+    const color = getClassColor(det.class_name);
     const bbox: Record<string, number> = (det.bbox as any) || {};
     // Handle both normalized (0-1) and pixel coords
     let x = bbox.x ?? bbox.cx ?? 0;

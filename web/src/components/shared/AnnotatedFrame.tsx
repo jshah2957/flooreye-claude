@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { CLASS_COLORS } from "@/constants/detection";
+import { getClassColor } from "@/constants/detection";
 
 interface Prediction {
   class_name?: string;
@@ -51,7 +51,7 @@ export default function AnnotatedFrame({ annotatedBase64, rawBase64, predictions
         const pw = w <= 1 ? w * img.width : w;
         const ph = h <= 1 ? h * img.height : h;
 
-        const color = CLASS_COLORS[pred.class_name ?? ""] ?? "#00FFFF";
+        const color = getClassColor(pred.class_name ?? "");
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.strokeRect(px - pw / 2, py - ph / 2, pw, ph);

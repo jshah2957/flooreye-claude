@@ -22,8 +22,9 @@ from app.core.config import settings
 log = logging.getLogger(__name__)
 
 INPUT_SIZE = 640
-# Default fallback — actual alert classes loaded from DB at runtime
-_DEFAULT_WET_CLASSES = {"wet_floor", "spill", "puddle", "water", "wet"}
+# Alert classes loaded dynamically from detection_classes DB collection.
+# Empty default — cloud sync populates this.
+_DEFAULT_WET_CLASSES: set[str] = set()
 _cached_alert_classes: set[str] | None = None
 
 
@@ -151,7 +152,7 @@ class OnnxInferenceService:
                     "display_label": class_name.replace("_", " ").title(),
                     "color": "#00FFFF",
                     "enabled": True,
-                    "alert_on_detect": class_name.lower() in {"wet_floor", "spill", "puddle", "water", "wet"},
+                    "alert_on_detect": False,  # Admin must explicitly enable alert classes via UI
                     "min_confidence": 0.5,
                     "min_area_percent": 0.5,
                     "created_at": now,

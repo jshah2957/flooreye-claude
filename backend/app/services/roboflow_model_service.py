@@ -220,7 +220,7 @@ async def select_and_deploy_model(
                         "display_label": name.replace("_", " ").title(),
                         "color": f"#{hashlib.md5(name.encode()).hexdigest()[:6]}",
                         "enabled": True,
-                        "alert_on_detect": name.lower() in {"wet_floor", "spill", "puddle", "water", "wet", "water spill", "mopped floor"},
+                        "alert_on_detect": False,  # Admin must explicitly enable alert classes via UI
                         "min_confidence": 0.5,
                         "min_area_percent": 0.0,
                         "created_at": now,

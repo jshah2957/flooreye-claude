@@ -21,16 +21,18 @@ from config import config
 
 log = logging.getLogger("edge-agent.annotator")
 
-# One distinct color per class (BGR format for OpenCV)
-CLASS_COLORS = {
-    "wet_floor": (38, 38, 220),     # Red
-    "spill": (6, 119, 217),         # Amber
-    "puddle": (38, 38, 220),        # Red
-    "water": (235, 99, 37),         # Blue
-    "dry_floor": (74, 163, 22),     # Green
-    "reflection": (235, 99, 37),    # Blue
-    "obstacle": (12, 88, 234),      # Orange
-}
+# Dynamic color generation from class name hash — no hardcoded color map
+def _get_class_color_bgr(class_name: str) -> tuple:
+    """Generate a deterministic BGR color from a class name via MD5 hash."""
+    if not class_name:
+        return (255, 255, 0)  # Cyan default
+    import hashlib
+    h = hashlib.md5(class_name.encode()).hexdigest()
+    r = int(h[0:2], 16)
+    g = int(h[2:4], 16)
+    b = int(h[4:6], 16)
+    return (b, g, r)  # BGR for OpenCV
+
 DEFAULT_COLOR = (255, 255, 0)       # Cyan
 
 
@@ -84,7 +86,7 @@ def _draw_detection(frame, pred: dict, img_w: int, img_h: int):
     # Get class info
     class_name = pred.get("class_name", pred.get("class", "unknown"))
     confidence = pred.get("confidence", 0)
-    color = CLASS_COLORS.get(class_name, DEFAULT_COLOR)
+    color = _get_class_color_bgr(class_name) if class_name and class_name != "unknown" else DEFAULT_COLOR
 
     # Resolve bbox coordinates (normalized center format from predict.py)
     bbox = pred.get("bbox", {})

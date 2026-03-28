@@ -12,7 +12,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 
-ALERT_KEYWORDS = {"wet_floor", "spill", "puddle", "water", "wet", "leak", "flood"}
+# No hardcoded alert keywords — backfill defaults alert_on_detect to False.
+# Admins must explicitly enable alert classes via the UI after migration.
 
 
 def _color_from_name(name: str) -> str:
@@ -68,7 +69,7 @@ async def run():
         if "min_area_percent" not in doc:
             updates["min_area_percent"] = 0.0
         if "alert_on_detect" not in doc:
-            updates["alert_on_detect"] = name.lower() in ALERT_KEYWORDS
+            updates["alert_on_detect"] = False  # Admin must explicitly enable
         if "created_at" not in doc:
             updates["created_at"] = now
 

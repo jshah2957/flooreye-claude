@@ -8,4 +8,4 @@ export {
   confidenceColorClass,
 } from "./severity";
 export { VALIDATION_DEFAULTS } from "./validation";
-export { WET_CLASS_NAMES, CLASS_COLORS } from "./detection";
+export { getClassColor, isAlertClass, setAlertClasses } from "./detection";

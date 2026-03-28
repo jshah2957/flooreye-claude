@@ -28,9 +28,9 @@ except ImportError:
 # Class names loaded from a sidecar JSON file alongside the ONNX model.
 CLASS_NAMES: dict[int, str] = {}
 
-# Alert classes — loaded from cloud config, defaults from model classes
-# Updated via update_alert_classes() when cloud pushes class config
-ALERT_CLASSES: set[str] = {"wet_floor", "spill", "puddle", "water", "wet"}
+# Alert classes — populated by cloud push via update_classes command.
+# Empty default — no alerts until cloud syncs class config.
+ALERT_CLASSES: set[str] = set()
 
 
 def update_alert_classes(class_names: set[str]):
