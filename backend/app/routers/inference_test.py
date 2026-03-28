@@ -219,8 +219,8 @@ async def test_inference_clip(
                 predictions = inf_result.get("predictions", [])
                 annotated = draw_annotations(frame_b64, predictions)
 
-                from app.core.validation_constants import WET_CLASS_NAMES
-                is_wet = any(p.get("class_name", "").lower() in WET_CLASS_NAMES for p in predictions)
+                from app.core.validation_constants import DEFAULT_WET_CLASS_NAMES
+                is_wet = any(p.get("class_name", "").lower() in DEFAULT_WET_CLASS_NAMES for p in predictions)
 
                 results.append({
                     "frame_index": i,
