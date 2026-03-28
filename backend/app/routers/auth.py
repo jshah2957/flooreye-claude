@@ -6,6 +6,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, R
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.core.security import (
     REFRESH_COOKIE_NAME,
@@ -123,7 +124,7 @@ async def logout_all(
     )
     if response:
         clear_refresh_cookie(response)
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "logout_all", "user", current_user["id"], {}, request)
     return {"data": {"ok": True, "message": "All sessions revoked"}}
 
@@ -134,7 +135,7 @@ async def register(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    org_id = get_org_id(current_user)
     user = await auth_service.create_user(db, body, org_id, current_user_role=current_user["role"])
     return {"data": _user_response(user)}
 
@@ -252,7 +253,7 @@ async def update_me(
 ):
     updated = await auth_service.update_profile(db, current_user["id"], body)
     from app.services.audit_service import log_action
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "profile_updated", "user", current_user["id"],
                      {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     return {"data": _user_response(updated)}
@@ -268,14 +269,14 @@ async def register_device_token(
     await auth_service.register_device_token(
         db,
         user_id=current_user["id"],
-        org_id=current_user.get("org_id", ""),
+        org_id=get_org_id(current_user) or "",
         token=body.token,
         platform=body.platform,
         app_version=body.app_version,
         device_model=body.device_model,
     )
     from app.services.audit_service import log_action
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "device_token_registered", "device_token", None,
                      {"platform": body.platform}, request)
     return {"data": {"ok": True}}
@@ -290,7 +291,7 @@ async def remove_device_token(
 ):
     await auth_service.remove_device_token(db, current_user["id"], token)
     from app.services.audit_service import log_action
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "device_token_removed", "device_token", None, {}, request)
     return {"data": {"ok": True}}
 
@@ -307,7 +308,7 @@ async def list_users(
     # Scope to user's org unless super_admin
     effective_org_id = org_id
     if current_user["role"] != "super_admin":
-        effective_org_id = current_user.get("org_id")
+        effective_org_id = get_org_id(current_user)
 
     users, total = await auth_service.list_users(db, effective_org_id, role, limit, offset)
     return {
@@ -322,10 +323,10 @@ async def create_user(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    org_id = get_org_id(current_user)
     user = await auth_service.create_user(db, body, org_id, current_user_role=current_user["role"])
     from app.services.audit_service import log_action
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "user_created", "user", user["id"], {"role": user["role"], "email": user["email"]})
     return {"data": _user_response(user)}
 
@@ -337,10 +338,10 @@ async def update_user(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    org_id = get_org_id(current_user)
     updated = await auth_service.update_user(db, user_id, body, org_id, current_user_role=current_user["role"])
     from app.services.audit_service import log_action
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "user_updated", "user", user_id, {"fields": list(body.model_dump(exclude_unset=True).keys())})
     return {"data": _user_response(updated)}
 
@@ -351,9 +352,9 @@ async def deactivate_user(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "") if current_user["role"] != "super_admin" else None
+    org_id = get_org_id(current_user)
     await auth_service.deactivate_user(db, user_id, org_id)
     from app.services.audit_service import log_action
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "user_deactivated", "user", user_id)
     return {"data": {"ok": True}}

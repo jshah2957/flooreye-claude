@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.services.audit_service import log_action
 
 from app.core.config import settings
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.core.url_validator import is_safe_url
 from app.dependencies import get_current_user, get_db
@@ -56,7 +57,7 @@ async def list_devices(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     devices, total = await device_service.list_devices(
-        db, current_user.get("org_id", ""), store_id, limit, offset
+        db, get_org_id(current_user), store_id, limit, offset
     )
     return {
         "data": [_device_response(d) for d in devices],
@@ -71,8 +72,8 @@ async def create_device(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    device = await device_service.create_device(db, current_user.get("org_id", ""), body)
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    device = await device_service.create_device(db, require_org_id(current_user), body)
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "device_created", "device", device["id"],
                      {"name": device.get("name", "")}, request)
     return {"data": _device_response(device)}
@@ -84,7 +85,7 @@ async def get_device(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    device = await device_service.get_device(db, device_id, current_user.get("org_id", ""))
+    device = await device_service.get_device(db, device_id, get_org_id(current_user))
     return {"data": _device_response(device)}
 
 
@@ -96,9 +97,9 @@ async def update_device(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     device = await device_service.update_device(db, device_id, org_id, body)
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "device_updated", "device", device_id,
                      {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     # Push update to edge if edge-managed
@@ -127,9 +128,9 @@ async def delete_device(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Soft-delete device. Notifies edge to remove from local config."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     device = await device_service.delete_device(db, device_id, org_id)
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "device_deleted", "device", device_id, {}, request)
     # Notify edge to remove device
     if device.get("edge_agent_id") and device.get("edge_device_id"):
@@ -154,8 +155,8 @@ async def reactivate_device(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Reactivate a soft-deleted device."""
-    device = await device_service.reactivate_device(db, device_id, current_user.get("org_id", ""))
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    device = await device_service.reactivate_device(db, device_id, get_org_id(current_user))
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "device_reactivated", "device", device_id, {}, request)
     return {"data": _device_response(device)}
 
@@ -169,7 +170,7 @@ async def toggle_device(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Turn device on or off from cloud dashboard. Proxies command to edge."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     device = await device_service.get_device(db, device_id, org_id)
     action = body.action
 
@@ -207,7 +208,7 @@ async def toggle_device(
         {"id": device_id},
         {"$set": {"status": new_status, "last_triggered": now if action == "on" else device.get("last_triggered"), "updated_at": now}},
     )
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "device_toggled", "device", device_id,
                      {"action": action, "new_status": new_status}, request)
     return {"data": {"id": device_id, "action": action, "status": new_status}}
@@ -222,7 +223,7 @@ async def assign_cameras(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Assign device to specific cameras. Set trigger_on_any=false to enable selective triggering."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     device = await device_service.get_device(db, device_id, org_id)
     updates = {
         "assigned_cameras": body.assigned_cameras,
@@ -249,7 +250,7 @@ async def assign_cameras(
                 })
         except Exception:
             pass
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "device_assigned", "device", device_id,
                      {"assigned_cameras": body.assigned_cameras}, request)
     return {"data": device}
@@ -263,7 +264,7 @@ async def trigger_device(
     current_user: dict = Depends(require_role("operator")),
 ):
     _check_trigger_rate_limit(device_id)
-    result = await device_service.trigger_device(db, device_id, current_user.get("org_id", ""))
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    result = await device_service.trigger_device(db, device_id, get_org_id(current_user))
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "device_triggered", "device", device_id, {}, request)
     return {"data": result}

@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.model_version import ModelVersionCreate, ModelVersionResponse, ModelVersionUpdate
@@ -24,7 +25,7 @@ async def list_models(
     current_user: dict = Depends(require_role("viewer")),
 ):
     models, total = await model_service.list_models(
-        db, current_user.get("org_id", ""), status_filter, limit, offset
+        db, get_org_id(current_user), status_filter, limit, offset
     )
     return {"data": [_model_response(m) for m in models], "meta": {"total": total, "offset": offset, "limit": limit}}
 
@@ -35,7 +36,7 @@ async def create_model(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    model = await model_service.create_model(db, current_user.get("org_id", ""), body)
+    model = await model_service.create_model(db, require_org_id(current_user), body)
     return {"data": _model_response(model)}
 
 
@@ -46,7 +47,7 @@ async def compare_models(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     a = await db.model_versions.find_one({"id": model_a, "org_id": org_id})
     b = await db.model_versions.find_one({"id": model_b, "org_id": org_id})
     if not a:
@@ -74,7 +75,7 @@ async def get_model(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    model = await model_service.get_model(db, version_id, current_user.get("org_id", ""))
+    model = await model_service.get_model(db, version_id, get_org_id(current_user))
     return {"data": _model_response(model)}
 
 
@@ -85,7 +86,7 @@ async def update_model(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    model = await model_service.update_model(db, version_id, current_user.get("org_id", ""), body)
+    model = await model_service.update_model(db, version_id, get_org_id(current_user), body)
     return {"data": _model_response(model)}
 
 
@@ -98,7 +99,7 @@ async def promote_model(
 ):
     target = body.get("target", "staging")
     model = await model_service.promote_model(
-        db, version_id, current_user.get("org_id", ""), target, current_user["id"]
+        db, version_id, get_org_id(current_user), target, current_user["id"]
     )
     return {"data": _model_response(model)}
 
@@ -109,5 +110,5 @@ async def delete_model(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await model_service.delete_model(db, version_id, current_user.get("org_id", ""))
+    await model_service.delete_model(db, version_id, get_org_id(current_user))
     return {"data": {"ok": True}}

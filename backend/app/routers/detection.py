@@ -8,6 +8,7 @@ log = logging.getLogger(__name__)
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.detection import (
@@ -77,7 +78,7 @@ async def run_detection(
     current_user: dict = Depends(require_role("operator")),
 ):
     result = await detection_service.run_manual_detection(
-        db, camera_id, current_user.get("org_id", ""), body.model_source
+        db, camera_id, get_org_id(current_user), body.model_source
     )
     return {"data": await _detection_response(result)}
 
@@ -99,7 +100,7 @@ async def detection_history(
 ):
     detections, total = await detection_service.list_detections(
         db,
-        current_user.get("org_id", ""),
+        get_org_id(current_user),
         camera_id=camera_id,
         store_id=store_id,
         incident_id=incident_id,
@@ -124,7 +125,7 @@ async def get_detection(
     current_user: dict = Depends(require_role("viewer")),
 ):
     detection = await detection_service.get_detection(
-        db, detection_id, current_user.get("org_id", "")
+        db, detection_id, get_org_id(current_user)
     )
     return {"data": await _detection_response(detection)}
 
@@ -136,7 +137,7 @@ async def flag_detection(
     current_user: dict = Depends(require_role("viewer")),
 ):
     result = await detection_service.toggle_flag(
-        db, detection_id, current_user.get("org_id", "")
+        db, detection_id, get_org_id(current_user)
     )
     return {"data": result}
 
@@ -149,7 +150,7 @@ async def bulk_flag(
 ):
     """Set is_flagged=True on multiple detections at once."""
     updated = await detection_service.bulk_set_flag(
-        db, current_user.get("org_id", ""), body.detection_ids, flagged=True
+        db, get_org_id(current_user), body.detection_ids, flagged=True
     )
     return {"data": {"updated": updated}}
 
@@ -162,7 +163,7 @@ async def bulk_unflag(
 ):
     """Set is_flagged=False on multiple detections at once."""
     updated = await detection_service.bulk_set_flag(
-        db, current_user.get("org_id", ""), body.detection_ids, flagged=False
+        db, get_org_id(current_user), body.detection_ids, flagged=False
     )
     return {"data": {"updated": updated}}
 
@@ -175,7 +176,7 @@ async def list_flagged(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     detections, total = await detection_service.list_flagged(
-        db, current_user.get("org_id", ""), limit, offset
+        db, get_org_id(current_user), limit, offset
     )
     return {
         "data": [await _detection_response(d) for d in detections],
@@ -189,7 +190,7 @@ async def export_flagged(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     detections = await detection_service.export_flagged(
-        db, current_user.get("org_id", "")
+        db, get_org_id(current_user)
     )
     return {"data": [await _detection_response(d) for d in detections]}
 
@@ -206,7 +207,7 @@ async def upload_flagged_to_roboflow(
     Otherwise, all flagged detections are uploaded (existing behavior).
     """
     from app.core.org_filter import org_query
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
 
     if body.detection_ids:
         # Upload only the specified detections
@@ -253,7 +254,7 @@ async def continuous_status(
 ):
     """Report continuous detection service status from Redis state."""
     from app.core.org_filter import org_query
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     state = await db.continuous_state.find_one({**org_query(org_id), "key": "continuous_detection"})
     if not state:
         return {"data": {"running": False, "active_cameras": 0, "total_detections": 0}}
@@ -268,7 +269,7 @@ async def continuous_start(
     """Start continuous detection for all enabled cameras."""
     from app.core.org_filter import org_query
     from datetime import timezone
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
 
     cameras = await db.cameras.find(
         {**org_query(org_id), "detection_enabled": True}
@@ -307,7 +308,7 @@ async def continuous_stop(
     """Stop continuous detection service."""
     from app.core.org_filter import org_query
     from datetime import timezone
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
 
     now = datetime.now(timezone.utc)
     await db.continuous_state.update_one(

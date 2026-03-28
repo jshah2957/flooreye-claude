@@ -11,6 +11,7 @@ from fastapi.exceptions import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.services.audit_service import log_action
@@ -70,9 +71,9 @@ async def provision(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     result = await edge_service.provision_agent(
-        db, current_user.get("org_id", ""), body.store_id, body.name
+        db, require_org_id(current_user), body.store_id, body.name
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "edge_agent_provisioned", "edge_agent", result.get("agent_id") or result.get("id"),
                      {"store_id": body.store_id, "name": body.name}, request)
     return {"data": result}
@@ -87,7 +88,7 @@ async def list_agents(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     agents, total = await edge_service.list_agents(
-        db, current_user.get("org_id", ""), store_id, limit, offset
+        db, get_org_id(current_user), store_id, limit, offset
     )
     return {
         "data": [_agent_response(a) for a in agents],
@@ -101,7 +102,7 @@ async def get_agent(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    agent = await edge_service.get_agent(db, agent_id, current_user.get("org_id", ""))
+    agent = await edge_service.get_agent(db, agent_id, get_org_id(current_user))
     return {"data": _agent_response(agent)}
 
 
@@ -112,8 +113,8 @@ async def delete_agent(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await edge_service.delete_agent(db, agent_id, current_user.get("org_id", ""))
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await edge_service.delete_agent(db, agent_id, get_org_id(current_user))
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "edge_agent_deleted", "edge_agent", agent_id, {}, request)
     return {"data": {"ok": True}}
 
@@ -128,9 +129,9 @@ async def update_agent(
 ):
     """Update edge agent name."""
     agent = await edge_service.update_agent(
-        db, agent_id, current_user.get("org_id", ""), name=body.get("name")
+        db, agent_id, get_org_id(current_user), name=body.get("name")
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "edge_agent_updated", "edge_agent", agent_id,
                      {"name": body.get("name")}, request)
     return {"data": _agent_response(agent)}
@@ -144,7 +145,7 @@ async def send_command(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     cmd = await edge_service.send_command(
-        db, agent_id, current_user.get("org_id", ""),
+        db, agent_id, get_org_id(current_user),
         body.command_type, body.payload, current_user["id"]
     )
     return {"data": cmd}
@@ -166,10 +167,10 @@ async def push_model_to_edge(
             detail="model_version_id is required",
         )
     cmd = await edge_service.push_model_to_edge(
-        db, current_user.get("org_id", ""), agent_id, model_version_id,
+        db, get_org_id(current_user), agent_id, model_version_id,
         user_id=current_user["id"],
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "model_pushed_to_edge", "edge_agent", agent_id,
                      {"model_version_id": model_version_id}, request)
     return {"data": cmd}
@@ -190,10 +191,10 @@ async def push_config_to_edge(
     if "config" in body and isinstance(body["config"], dict):
         config = body["config"]
     cmd = await edge_service.push_config_to_edge(
-        db, current_user.get("org_id", ""), agent_id, config,
+        db, get_org_id(current_user), agent_id, config,
         user_id=current_user["id"],
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "config_pushed_to_edge", "edge_agent", agent_id, {}, request)
     return {"data": cmd}
 
@@ -209,10 +210,10 @@ async def push_classes_to_all_agents(
     body = body or {}
     agent_id = body.get("agent_id")
     commands = await edge_service.push_classes_to_edge(
-        db, current_user.get("org_id", ""), agent_id=agent_id,
+        db, get_org_id(current_user), agent_id=agent_id,
         user_id=current_user["id"],
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "classes_pushed_to_edge", "edge_agent", agent_id,
                      {"agents_pushed": len(commands)}, request)
     return {
@@ -549,6 +550,7 @@ async def current_model(
 @router.get("/model/download/{version_id}")
 async def download_model(
     version_id: str,
+    stream: bool = False,
     db: AsyncIOMotorDatabase = Depends(get_db),
     agent: dict = Depends(get_edge_agent),
 ):
@@ -558,18 +560,36 @@ async def download_model(
     if model.get("model_source") == "yolo_cloud":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This model is cloud-only")
 
-    # Generate a presigned download URL from the S3 key
     onnx_key = model.get("onnx_path") or ""
-    download_url = ""
-    if onnx_key:
-        from app.services.storage_service import generate_url
-        download_url = await generate_url(onnx_key, expires=7200)
-
-    if not download_url:
+    if not onnx_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Model has no downloadable artifact (onnx_path not set)",
         )
+
+    # Stream mode: return actual file bytes (for edge containers that can't reach S3 directly)
+    if stream:
+        from fastapi.responses import Response
+        from app.services.storage_service import download_file
+        try:
+            data = await download_file(onnx_key)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Model file not found in storage")
+        return Response(
+            content=data,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": f'attachment; filename="{version_id}.onnx"',
+                "X-Checksum-SHA256": model.get("checksum", ""),
+                "X-Model-Version": model.get("version_str", ""),
+            },
+        )
+
+    # Default: return presigned URL (for browser/direct download)
+    from app.services.storage_service import generate_url
+    download_url = await generate_url(onnx_key, expires=7200)
+    if not download_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not generate download URL")
 
     return {"data": {
         "version_id": version_id,

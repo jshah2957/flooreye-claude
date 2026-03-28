@@ -11,6 +11,7 @@ from app.services.audit_service import log_action
 
 from app.core.config import settings
 from app.core.encryption import decrypt_config
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -26,7 +27,7 @@ async def get_workspace(
 ):
     """Fetch workspace info + all projects from Roboflow API live."""
     from app.services.roboflow_model_service import fetch_workspace_projects
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     result = await fetch_workspace_projects(db, org_id)
     return {"data": result}
 
@@ -39,7 +40,7 @@ async def get_project_versions(
 ):
     """Fetch all versions of a Roboflow project with training metrics."""
     from app.services.roboflow_model_service import fetch_project_versions
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     result = await fetch_project_versions(db, org_id, project_id)
     return {"data": result}
 
@@ -65,12 +66,12 @@ async def select_model(
             detail="project_id and version are required",
         )
 
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     result = await select_and_deploy_model(
         db, org_id, current_user["id"], project_id, int(version),
     )
 
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "roboflow_model_selected", "model_version", result.get("model_version_id"),
                      {"project": project_id, "version": version}, request)
 
@@ -82,7 +83,7 @@ async def list_projects(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     # Check for stored Roboflow integration config (config is AES-256-GCM encrypted)
     integration = await db.integration_configs.find_one({"org_id": org_id, "service": "roboflow"})
     if not integration or not integration.get("config_encrypted"):
@@ -104,7 +105,7 @@ async def list_models(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     models = await db.roboflow_models.find({"org_id": org_id}).to_list(length=100)
     for m in models:
         m.pop("_id", None)
@@ -118,7 +119,7 @@ async def upload_frames(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     frame_ids = body.get("frame_ids", [])
     project_id = body.get("project_id", "")
@@ -136,7 +137,7 @@ async def upload_frames(
     await db.roboflow_jobs.insert_one(job)
     job.pop("_id", None)
 
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "roboflow_upload_started", "roboflow_job", job["id"],
                      {"frame_count": len(frame_ids), "project_id": project_id}, request)
 
@@ -157,7 +158,7 @@ async def sync_dataset(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     job = {
         "id": str(uuid.uuid4()),
@@ -172,7 +173,7 @@ async def sync_dataset(
     await db.roboflow_jobs.insert_one(job)
     job.pop("_id", None)
 
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "roboflow_sync_started", "roboflow_job", job["id"],
                      {"project_id": body.get("project_id", "")}, request)
 
@@ -191,7 +192,7 @@ async def sync_status(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     latest = await db.roboflow_jobs.find_one(
         {"org_id": org_id, "type": "roboflow_sync"},
         sort=[("created_at", -1)],
@@ -291,7 +292,7 @@ async def get_roboflow_classes(
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Get class definitions from Roboflow project, with local cache fallback."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     return await _fetch_roboflow_classes(db, org_id)
 
 
@@ -311,7 +312,7 @@ async def pull_model(
     from app.services.roboflow_model_service import pull_model_from_roboflow
 
     body = body or {}
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     model = await pull_model_from_roboflow(
         db,
         org_id,
@@ -319,7 +320,7 @@ async def pull_model(
         project_id=body.get("project_id"),
         version=body.get("version"),
     )
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "roboflow_model_pulled", "model_version", model.get("id"),
                      {"project_id": body.get("project_id"), "version": body.get("version")}, request)
     return {"data": model}
@@ -340,7 +341,7 @@ async def pull_classes(
     from app.services.roboflow_model_service import pull_classes_from_roboflow
 
     body = body or {}
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     result = await pull_classes_from_roboflow(
         db,
         org_id,
@@ -368,7 +369,7 @@ async def sync_roboflow_classes(
         push_to_edge: bool — if True, push classes to all edge agents after sync
         agent_id: str — if provided with push_to_edge, push to this agent only
     """
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     body = body or {}
 
     # Fetch classes from Roboflow (also upserts into detection_classes)

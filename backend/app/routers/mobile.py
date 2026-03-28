@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.services import mobile_service, incident_service
@@ -47,7 +48,7 @@ async def dashboard(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     data = await mobile_service.get_dashboard(
-        db, current_user.get("org_id", ""), _user_store_ids(current_user)
+        db, get_org_id(current_user), _user_store_ids(current_user)
     )
     return {"data": data}
 
@@ -61,7 +62,7 @@ async def list_stores(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     stores = await mobile_service.get_stores(
-        db, current_user.get("org_id", ""), _user_store_ids(current_user)
+        db, get_org_id(current_user), _user_store_ids(current_user)
     )
     return {"data": stores}
 
@@ -74,7 +75,7 @@ async def store_status(
 ):
     # S5 fix: pass store_ids for access validation
     data = await mobile_service.get_store_status(
-        db, store_id, current_user.get("org_id", ""), _user_store_ids(current_user)
+        db, store_id, get_org_id(current_user), _user_store_ids(current_user)
     )
     return {"data": data}
 
@@ -89,7 +90,7 @@ async def camera_frame(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     data = await mobile_service.get_camera_frame(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     return {"data": data}
 
@@ -105,7 +106,7 @@ async def list_alerts(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     alerts, total = await mobile_service.get_alerts(
-        db, current_user.get("org_id", ""), _user_store_ids(current_user), limit, offset
+        db, get_org_id(current_user), _user_store_ids(current_user), limit, offset
     )
     alerts = await mobile_service.enrich_alerts_with_thumbnails(db, alerts)
     return {"data": alerts, "meta": {"total": total, "offset": offset, "limit": limit}}
@@ -118,7 +119,7 @@ async def acknowledge_alert(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     result = await incident_service.acknowledge_incident(
-        db, incident_id, current_user.get("org_id", ""), current_user["id"]
+        db, incident_id, get_org_id(current_user), current_user["id"]
     )
     return {"data": {"ok": True}}
 
@@ -130,7 +131,7 @@ async def resolve_alert(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("store_owner")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     user_id = current_user["id"]
     result = await incident_service.resolve_incident(
         db, incident_id, org_id, user_id, body.status, body.notes
@@ -149,7 +150,7 @@ async def add_alert_notes(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("store_owner")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     from app.core.org_filter import org_query
 
     # S4 fix: validate store_access
@@ -180,7 +181,7 @@ async def analytics(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     data = await mobile_service.get_analytics(
-        db, current_user.get("org_id", ""), _user_store_ids(current_user), days
+        db, get_org_id(current_user), _user_store_ids(current_user), days
     )
     return {"data": data}
 
@@ -192,7 +193,7 @@ async def analytics_heatmap(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     matrix = await mobile_service.get_analytics_heatmap(
-        db, current_user.get("org_id", ""), _user_store_ids(current_user), days
+        db, get_org_id(current_user), _user_store_ids(current_user), days
     )
     return {"data": matrix}
 
@@ -207,7 +208,7 @@ async def get_incident(
     current_user: dict = Depends(require_role("store_owner")),
 ):
     inc = await mobile_service.get_incident_detail_with_frame(
-        db, incident_id, current_user.get("org_id", "")
+        db, incident_id, get_org_id(current_user)
     )
     return {"data": inc}
 
@@ -221,7 +222,7 @@ async def get_incident_timeline(
 ):
     """Lightweight detection timeline for an incident."""
     from app.core.org_filter import org_query
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     detections = await db.detection_logs.find(
         {**org_query(org_id), "incident_id": incident_id},
         {"id": 1, "timestamp": 1, "is_wet": 1, "confidence": 1, "is_flagged": 1, "_id": 0},
@@ -240,7 +241,7 @@ async def get_detection(
 ):
     """Mobile-optimized detection detail (no frame in response body)."""
     data = await mobile_service.get_detection_detail(
-        db, detection_id, current_user.get("org_id", "")
+        db, detection_id, get_org_id(current_user)
     )
     return {"data": data}
 
@@ -253,7 +254,7 @@ async def flag_detection(
 ):
     """Toggle is_flagged on a detection."""
     result = await mobile_service.flag_detection(
-        db, detection_id, current_user.get("org_id", "")
+        db, detection_id, get_org_id(current_user)
     )
     return {"data": result}
 
@@ -266,7 +267,7 @@ async def get_detection_frame(
 ):
     """Return annotated frame for a specific detection as base64 at quality 60."""
     data = await mobile_service.get_detection_frame(
-        db, detection_id, current_user.get("org_id", "")
+        db, detection_id, get_org_id(current_user)
     )
     return {"data": data}
 
@@ -281,7 +282,7 @@ async def system_alerts(
 ):
     """Active system health issues: offline agents, model failures, recent errors."""
     alerts = await mobile_service.get_system_alerts(
-        db, current_user.get("org_id", "")
+        db, get_org_id(current_user)
     )
     return {"data": alerts}
 

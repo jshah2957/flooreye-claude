@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_db
 from app.services import report_service
@@ -23,7 +24,7 @@ async def compliance_report(
     Generate a compliance report with incident metrics, response times,
     resolution rates, and camera uptime statistics.
     """
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
 
     # Parse date strings to datetime
     parsed_from: Optional[datetime] = None

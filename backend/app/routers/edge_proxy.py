@@ -13,6 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
 from app.core.encryption import encrypt_string
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.services.edge_proxy_service import find_store_agent, proxy_to_edge
@@ -38,7 +39,7 @@ async def test_camera_via_edge(
     if not store_id or not url:
         raise HTTPException(400, "store_id and url are required")
 
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
     result = await proxy_to_edge(agent, "/api/test-camera-url", {"url": url}, timeout=settings.HTTP_TIMEOUT_MEDIUM)
     return result
@@ -60,7 +61,7 @@ async def test_device_via_edge(
     if not store_id or not ip:
         raise HTTPException(400, "store_id and ip are required")
 
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
     result = await proxy_to_edge(agent, "/api/test-device-ip", {
         "ip": ip, "type": body.get("type", "tplink"),
@@ -85,7 +86,7 @@ async def add_camera_via_edge(
     if not store_id or not name or not url:
         raise HTTPException(400, "store_id, name, and url are required")
 
-    org_id = current_user.get("org_id", "")
+    org_id = require_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
 
     # Create camera in MongoDB
@@ -148,7 +149,7 @@ async def stream_frame_via_edge(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Get live frame from edge camera (proxied). For cameras only reachable from edge LAN."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
     result = await proxy_to_edge(agent, f"/api/stream/{camera_id}/frame", {}, timeout=settings.HTTP_TIMEOUT_DEFAULT)
     return result
@@ -165,7 +166,7 @@ async def start_clip_via_edge(
     camera_id = body.get("camera_id")
     if not store_id or not camera_id:
         raise HTTPException(400, "store_id and camera_id required")
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
     result = await proxy_to_edge(agent, "/api/clips/start", {
         "camera_id": camera_id,
@@ -185,7 +186,7 @@ async def stop_clip_via_edge(
     camera_id = body.get("camera_id")
     if not store_id or not camera_id:
         raise HTTPException(400, "store_id and camera_id required")
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
     result = await proxy_to_edge(agent, "/api/clips/stop", {"camera_id": camera_id})
     return result
@@ -201,7 +202,7 @@ async def control_device_via_edge(
     store_id = body.get("store_id")
     if not store_id:
         raise HTTPException(400, "store_id required")
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
     result = await proxy_to_edge(agent, "/api/devices/control", {
         "device_name": body.get("device_name", ""),
@@ -229,7 +230,7 @@ async def add_device_via_edge(
     if not store_id or not name or not ip:
         raise HTTPException(400, "store_id, name, and ip are required")
 
-    org_id = current_user.get("org_id", "")
+    org_id = require_org_id(current_user)
     agent = await find_store_agent(db, store_id, org_id)
 
     # Create device in MongoDB first

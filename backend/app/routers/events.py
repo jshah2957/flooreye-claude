@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.services.audit_service import log_action
 
 from app.core.config import settings
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.incident import (
@@ -71,7 +72,7 @@ async def list_events(
 ):
     incidents, total = await incident_service.list_incidents(
         db,
-        current_user.get("org_id", ""),
+        get_org_id(current_user),
         store_id=store_id,
         camera_id=camera_id,
         status_filter=status_filter,
@@ -98,7 +99,7 @@ async def export_events_csv(
     max_rows = 50_000
     incidents, _total = await incident_service.list_incidents(
         db,
-        current_user.get("org_id", ""),
+        get_org_id(current_user),
         store_id=store_id,
         camera_id=camera_id,
         status_filter=status_filter,
@@ -148,12 +149,12 @@ async def bulk_acknowledge_events(
             await incident_service.acknowledge_incident(
                 db,
                 event_id,
-                current_user.get("org_id", ""),
+                get_org_id(current_user),
                 current_user["id"],
             )
             await log_action(
                 db, current_user["id"], current_user["email"],
-                current_user.get("org_id", ""),
+                get_org_id(current_user) or "",
                 "event_acknowledged", "event", event_id, {}, request,
             )
             acknowledged += 1
@@ -178,13 +179,13 @@ async def bulk_resolve_events(
             await incident_service.resolve_incident(
                 db,
                 event_id,
-                current_user.get("org_id", ""),
+                get_org_id(current_user),
                 current_user["id"],
                 resolve_status,
             )
             await log_action(
                 db, current_user["id"], current_user["email"],
-                current_user.get("org_id", ""),
+                get_org_id(current_user) or "",
                 "event_resolved", "event", event_id,
                 {"status": resolve_status}, request,
             )
@@ -201,7 +202,7 @@ async def get_event(
     current_user: dict = Depends(require_role("viewer")),
 ):
     incident = await incident_service.get_incident(
-        db, event_id, current_user.get("org_id", "")
+        db, event_id, get_org_id(current_user)
     )
     return {"data": _event_response(incident)}
 
@@ -217,11 +218,11 @@ async def acknowledge_event(
     incident = await incident_service.acknowledge_incident(
         db,
         event_id,
-        current_user.get("org_id", ""),
+        get_org_id(current_user),
         current_user["id"],
         body.notes,
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "event_acknowledged", "event", event_id, {}, request)
     return {"data": _event_response(incident)}
 
@@ -241,10 +242,10 @@ async def update_event_notes(
     incident = await incident_service.update_notes(
         db,
         event_id,
-        current_user.get("org_id", ""),
+        get_org_id(current_user),
         body.notes,
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "event_notes_updated", "event", event_id, {}, request)
     return {"data": _event_response(incident)}
 
@@ -260,12 +261,12 @@ async def resolve_event(
     incident = await incident_service.resolve_incident(
         db,
         event_id,
-        current_user.get("org_id", ""),
+        get_org_id(current_user),
         current_user["id"],
         body.status,
         body.notes,
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "event_resolved", "event", event_id,
                      {"status": body.status}, request)
     return {"data": _event_response(incident)}

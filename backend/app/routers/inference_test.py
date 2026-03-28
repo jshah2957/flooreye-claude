@@ -7,10 +7,11 @@ Foundation endpoint for TestInferencePage, live detection overlay, and clip test
 import base64
 import logging
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.utils.annotation_utils import draw_annotations
@@ -46,7 +47,7 @@ async def test_inference(
     if not camera_id and not image_base64:
         raise HTTPException(400, "Provide camera_id or image_base64")
 
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     frame_base64 = image_base64
 
     # Capture frame from camera if camera_id provided
@@ -246,3 +247,158 @@ async def test_inference_clip(
             "dry_frames": len(results) - wet_count,
         }
     }
+
+
+# ── Video Inference ──────────────────────────────────────────
+
+@router.post("/video")
+async def start_video_inference(
+    file: UploadFile = File(...),
+    target_fps: float = Query(None, ge=0.1, le=10),
+    confidence: float = Query(0.5, ge=0.1, le=1.0),
+    run_validation: bool = Query(False, description="Run 4-layer validation pipeline on each frame"),
+    layer1_confidence: float = Query(0.70, ge=0.0, le=1.0),
+    layer2_min_area: float = Query(0.5, ge=0.0, le=20.0),
+    layer3_k: int = Query(3, ge=1, le=20),
+    layer3_m: int = Query(5, ge=1, le=50),
+    layer4_delta: float = Query(0.15, ge=0.0, le=1.0),
+    layer1_enabled: bool = Query(True),
+    layer2_enabled: bool = Query(True),
+    layer3_enabled: bool = Query(True),
+    layer4_enabled: bool = Query(True),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Upload a video for frame-by-frame detection analysis.
+
+    Accepts any common video format (MP4, AVI, MOV, WebM, MKV).
+    Auto-transcodes to H.264 MP4 for browser playback.
+    Adaptive FPS: short videos get higher sample rate.
+
+    When run_validation=true, each frame passes through the 4-layer pipeline:
+      Layer 1: Confidence threshold filter
+      Layer 2: Wet area percentage filter
+      Layer 3: K-of-M temporal frame voting (in-memory buffer)
+      Layer 4: Dry reference comparison (first frame used as baseline)
+
+    Results include both raw model output and pipeline-filtered output,
+    showing exactly which frames would trigger alerts in production.
+    """
+    from app.services.video_inference_service import create_video_job
+
+    # Validate file type
+    content_type = file.content_type or ""
+    if not content_type.startswith("video/") and not file.filename.lower().endswith(
+        (".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv", ".3gp", ".m4v")
+    ):
+        raise HTTPException(status_code=400, detail="File must be a video")
+
+    # Read file (max 500MB)
+    file_bytes = await file.read()
+    if len(file_bytes) > 500 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Video too large (max 500MB)")
+    if len(file_bytes) < 1000:
+        raise HTTPException(status_code=400, detail="File too small to be a valid video")
+
+    # Build validation config
+    validation_config = None
+    if run_validation:
+        validation_config = {
+            "layer1_confidence": layer1_confidence,
+            "layer2_min_area": layer2_min_area,
+            "layer3_k": layer3_k,
+            "layer3_m": layer3_m,
+            "layer4_delta": layer4_delta,
+            "layer1_enabled": layer1_enabled,
+            "layer2_enabled": layer2_enabled,
+            "layer3_enabled": layer3_enabled,
+            "layer4_enabled": layer4_enabled,
+        }
+
+    org_id = get_org_id(current_user)
+    try:
+        result = await create_video_job(
+            db, file_bytes, file.filename or "video.mp4",
+            org_id, current_user["id"],
+            target_fps=target_fps, confidence=confidence,
+            run_validation=run_validation,
+            validation_config=validation_config,
+        )
+        return {"data": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/video/{job_id}")
+async def get_video_job_status(
+    job_id: str,
+    offset: int = Query(0, ge=0),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Poll video inference job status and results.
+
+    Use offset param to get only new frames since last poll.
+    """
+    from app.services.video_inference_service import get_video_job
+
+    org_id = get_org_id(current_user)
+    job = await get_video_job(db, job_id, org_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Video job not found")
+
+    # Return frames starting from offset
+    all_frames = job.get("frames", [])
+    job["frames"] = all_frames[offset:]
+    job["total_results"] = len(all_frames)
+
+    return {"data": job}
+
+
+@router.get("/video/{job_id}/results")
+async def get_video_results(
+    job_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Get complete video inference results (all frames)."""
+    from app.services.video_inference_service import get_video_job
+
+    org_id = get_org_id(current_user)
+    job = await get_video_job(db, job_id, org_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Video job not found")
+
+    return {"data": job}
+
+
+@router.delete("/video/{job_id}")
+async def delete_video_job_endpoint(
+    job_id: str,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """Delete a video job and its uploaded video from storage."""
+    from app.services.video_inference_service import delete_video_job
+
+    org_id = get_org_id(current_user)
+    deleted = await delete_video_job(db, job_id, org_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Video job not found")
+
+    return {"data": {"ok": True}}
+
+
+@router.get("/videos")
+async def list_video_jobs_endpoint(
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("operator")),
+):
+    """List recent video inference jobs."""
+    from app.services.video_inference_service import list_video_jobs
+
+    org_id = get_org_id(current_user)
+    jobs = await list_video_jobs(db, org_id, limit)
+
+    return {"data": jobs}

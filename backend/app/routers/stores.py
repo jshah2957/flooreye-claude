@@ -3,6 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.audit_service import log_action
 
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.store import (
@@ -40,9 +41,7 @@ async def list_stores(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id")
-    if current_user["role"] == "super_admin":
-        org_id = current_user.get("org_id")
+    org_id = get_org_id(current_user)
 
     # Non-admin users with restricted store_access only see those stores
     user_store_access = None
@@ -65,8 +64,8 @@ async def create_store(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    store = await store_service.create_store(db, body, current_user.get("org_id", ""))
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    store = await store_service.create_store(db, body, require_org_id(current_user))
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "store_created", "store", store["id"],
                      {"name": store["name"]}, request)
     return {"data": _store_response(store)}
@@ -77,11 +76,12 @@ async def store_stats(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
-    total_stores = await db.stores.count_documents({"org_id": org_id})
-    active_stores = await db.stores.count_documents({"org_id": org_id, "is_active": True})
-    total_cameras = await db.cameras.count_documents({"org_id": org_id})
-    active_incidents = await db.incidents.count_documents({"org_id": org_id, "status": "active"})
+    org_id = get_org_id(current_user)
+    base_q = {"org_id": org_id} if org_id else {}
+    total_stores = await db.stores.count_documents(base_q)
+    active_stores = await db.stores.count_documents({**base_q, "is_active": True})
+    total_cameras = await db.cameras.count_documents(base_q)
+    active_incidents = await db.incidents.count_documents({**base_q, "status": "active"})
     return {"data": {
         "total_stores": total_stores,
         "active_stores": active_stores,
@@ -99,8 +99,11 @@ async def get_store_stats(
     from datetime import datetime, timezone
     from fastapi import HTTPException
 
-    org_id = current_user.get("org_id", "")
-    store = await db.stores.find_one({"org_id": org_id, "id": store_id})
+    org_id = get_org_id(current_user)
+    store_q = {"id": store_id}
+    if org_id:
+        store_q["org_id"] = org_id
+    store = await db.stores.find_one(store_q)
     if not store:
         raise HTTPException(404, "Store not found")
 
@@ -141,7 +144,7 @@ async def get_store(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    store = await store_service.get_store(db, store_id, current_user.get("org_id", ""))
+    store = await store_service.get_store(db, store_id, get_org_id(current_user))
     return {"data": _store_response(store)}
 
 
@@ -154,9 +157,9 @@ async def update_store(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     store = await store_service.update_store(
-        db, store_id, current_user.get("org_id", ""), body
+        db, store_id, get_org_id(current_user), body
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "store_updated", "store", store_id,
                      {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     return {"data": _store_response(store)}
@@ -169,8 +172,8 @@ async def delete_store(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await store_service.delete_store(db, store_id, current_user.get("org_id", ""))
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await store_service.delete_store(db, store_id, get_org_id(current_user))
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "store_deleted", "store", store_id, {}, request)
     return {"data": {"ok": True}}
 
@@ -181,8 +184,11 @@ async def store_edge_status(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
-    agents = await db.edge_agents.find({"store_id": store_id, "org_id": org_id}).to_list(length=100)
+    org_id = get_org_id(current_user)
+    agent_q = {"store_id": store_id}
+    if org_id:
+        agent_q["org_id"] = org_id
+    agents = await db.edge_agents.find(agent_q).to_list(length=100)
     result = []
     for a in agents:
         a.pop("_id", None)

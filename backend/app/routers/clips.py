@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
-from app.core.org_filter import org_query
+from app.core.org_filter import get_org_id, org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.services.storage_service import generate_url
@@ -23,7 +23,7 @@ async def list_clips(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     query = org_query(org_id)
     if camera_id:
         query["camera_id"] = camera_id
@@ -50,7 +50,7 @@ async def delete_clip(
 ):
     """Delete a clip AND its S3 files."""
     from app.services.clip_service import delete_clip_with_files
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     deleted = await delete_clip_with_files(db, clip_id, org_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clip not found")
@@ -70,7 +70,7 @@ async def extract_frames(
     Returns array of frames with presigned URLs + base64 preview.
     """
     from app.services.clip_service import extract_frames_from_clip
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     num_frames = body.get("num_frames", int(settings.DEFAULT_EXTRACT_FRAMES if hasattr(settings, "DEFAULT_EXTRACT_FRAMES") else 10))
     frames = await extract_frames_from_clip(db, clip_id, org_id, num_frames)
     return {"data": {"clip_id": clip_id, "frame_count": len(frames), "frames": frames}}
@@ -88,7 +88,7 @@ async def save_frames(
     Body: { "frame_paths": ["s3_key1", ...], "split": "train" }
     """
     from app.services.clip_service import save_frames_to_dataset
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     frame_paths = body.get("frame_paths", body.get("frame_ids", []))
     split = body.get("split", "train")
     count = await save_frames_to_dataset(
@@ -105,7 +105,7 @@ async def serve_clip(
 ):
     """Get presigned URL for clip playback/download."""
     from app.services.clip_service import get_clip_with_urls
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     clip = await get_clip_with_urls(db, clip_id, org_id)
     if not clip:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clip not found")
@@ -119,7 +119,7 @@ async def serve_thumbnail(
     current_user: dict = Depends(require_role("viewer")),
 ):
     """Get presigned URL for clip thumbnail."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     clip = await db.clips.find_one({**org_query(org_id), "id": clip_id})
     if not clip:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clip not found")

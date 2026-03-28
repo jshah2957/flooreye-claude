@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.audit_service import log_action
 
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.camera import (
@@ -104,7 +105,7 @@ async def list_cameras(
         if not store_id:
             effective_store_id = None  # Will filter below
     cameras, total = await camera_service.list_cameras(
-        db, current_user.get("org_id", ""), effective_store_id, status_filter, limit, offset
+        db, get_org_id(current_user), effective_store_id, status_filter, limit, offset
     )
     # Filter by store_access if non-admin
     if store_access and current_user["role"] not in ("super_admin", "org_admin", "ml_engineer"):
@@ -124,9 +125,9 @@ async def create_camera(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     camera = await camera_service.create_camera(
-        db, body, current_user.get("org_id", "")
+        db, body, require_org_id(current_user)
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "camera_created", "camera", camera["id"],
                      {"name": camera["name"], "store_id": camera["store_id"]}, request)
     return {"data": _camera_response(camera)}
@@ -139,7 +140,7 @@ async def get_camera(
     current_user: dict = Depends(require_role("viewer")),
 ):
     camera = await camera_service.get_camera(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     return {"data": _camera_response(camera)}
 
@@ -152,9 +153,9 @@ async def update_camera(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     camera = await camera_service.update_camera(db, camera_id, org_id, body)
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "camera_updated", "camera", camera_id,
                      {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     # Push updated config to edge if camera is edge-managed
@@ -175,9 +176,9 @@ async def delete_camera(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     await camera_service.delete_camera(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "camera_deleted", "camera", camera_id, {}, request)
     return {"data": {"ok": True, "status": "inactive"}}
 
@@ -190,7 +191,7 @@ async def reactivate_camera(
 ):
     """Reactivate a soft-deleted camera. Needs fresh config push before detection resumes."""
     camera = await camera_service.reactivate_camera(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     return {"data": _camera_response(camera)}
 
@@ -205,7 +206,7 @@ async def test_connection(
     current_user: dict = Depends(require_role("operator")),
 ):
     result = await camera_service.test_camera_connection(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     return {"data": result}
 
@@ -217,7 +218,7 @@ async def quality_analysis(
     current_user: dict = Depends(require_role("operator")),
 ):
     result = await camera_service.analyze_camera_quality(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     return {"data": result}
 
@@ -233,7 +234,7 @@ async def change_inference_mode(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     camera = await camera_service.update_inference_mode(
-        db, camera_id, current_user.get("org_id", ""), body
+        db, camera_id, get_org_id(current_user), body
     )
     return {"data": _camera_response(camera)}
 
@@ -250,9 +251,9 @@ async def save_roi(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     roi = await camera_service.save_roi(
-        db, camera_id, current_user.get("org_id", ""), body, current_user["id"]
+        db, camera_id, require_org_id(current_user), body, current_user["id"]
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "roi_saved", "roi", roi["id"],
                      {"camera_id": camera_id, "version": roi["version"]}, request)
     return {"data": _roi_response(roi)}
@@ -265,7 +266,7 @@ async def get_roi(
     current_user: dict = Depends(require_role("viewer")),
 ):
     roi = await camera_service.get_active_roi(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     if not roi:
         return {"data": None}
@@ -279,7 +280,7 @@ async def get_roi_history(
     current_user: dict = Depends(require_role("viewer")),
 ):
     """List all ROI versions for a camera (active + inactive), most recent first."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     await camera_service.get_camera(db, camera_id, org_id)
     rois = await db.rois.find(
         {"camera_id": camera_id, "org_id": org_id}
@@ -299,9 +300,9 @@ async def capture_dry_reference(
     current_user: dict = Depends(require_role("operator")),
 ):
     dry_ref = await camera_service.capture_dry_reference(
-        db, camera_id, current_user.get("org_id", ""), current_user["id"], num_frames
+        db, camera_id, require_org_id(current_user), current_user["id"], num_frames
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "dry_reference_captured", "dry_reference", dry_ref["id"],
                      {"camera_id": camera_id, "num_frames": num_frames}, request)
     return {"data": _dry_ref_response(dry_ref)}
@@ -314,7 +315,7 @@ async def get_dry_reference(
     current_user: dict = Depends(require_role("viewer")),
 ):
     dry_ref = await camera_service.get_active_dry_reference(
-        db, camera_id, current_user.get("org_id", "")
+        db, camera_id, get_org_id(current_user)
     )
     if not dry_ref:
         return {"data": None}
@@ -329,14 +330,14 @@ async def toggle_detection(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Quick toggle detection on/off for a camera. Pushes change to edge."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     camera = await camera_service.get_camera(db, camera_id, org_id)
     new_enabled = not camera.get("detection_enabled", False)
     await db.cameras.update_one(
         {"id": camera_id},
         {"$set": {"detection_enabled": new_enabled}},
     )
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "detection_toggled", "camera", camera_id,
                      {"detection_enabled": new_enabled}, request)
     # Push config to edge
@@ -356,10 +357,10 @@ async def push_config(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Manually re-push current config to edge for this camera."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     from app.services.edge_camera_service import push_config_to_edge
     result = await push_config_to_edge(db, camera_id, org_id, current_user["id"])
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "config_pushed", "camera", camera_id,
                      {"result_status": result.get("status", "unknown")}, request)
     return {"data": result}

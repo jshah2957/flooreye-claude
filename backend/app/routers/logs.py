@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import get_org_id, org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -18,8 +19,8 @@ async def list_logs(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
-    query = {"org_id": org_id}
+    org_id = get_org_id(current_user)
+    query = org_query(org_id)
     if level:
         query["level"] = level
     if source:
@@ -39,8 +40,8 @@ async def stream_logs(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
-    query = {"org_id": org_id}
+    org_id = get_org_id(current_user)
+    query = org_query(org_id)
     if level:
         query["level"] = level
     cursor = db.system_logs.find(query).sort("timestamp", -1).limit(limit)

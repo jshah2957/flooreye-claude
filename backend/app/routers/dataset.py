@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.config import settings
-from app.core.org_filter import org_query
+from app.core.org_filter import get_org_id, org_query, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.dataset import (
@@ -35,7 +35,7 @@ async def list_folders(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     folders = await dataset_service.list_folders(db, org_id)
     return {"data": folders}
 
@@ -48,7 +48,7 @@ async def create_folder(
 ):
     if not body.name.strip():
         raise HTTPException(status_code=422, detail="Folder name is required")
-    org_id = current_user.get("org_id", "")
+    org_id = require_org_id(current_user)
     folder = await dataset_service.create_folder(
         db, org_id, body.name, body.description, body.parent_folder_id, current_user["id"]
     )
@@ -61,7 +61,7 @@ async def update_folder(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     folder = await dataset_service.update_folder(db, folder_id, org_id, body)
     return {"data": folder}
 
@@ -73,7 +73,7 @@ async def delete_folder(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     deleted = await dataset_service.delete_folder(db, folder_id, org_id, delete_frames)
     return {"data": {"ok": True, "frames_deleted": deleted}}
 
@@ -94,7 +94,7 @@ async def list_frames(
     current_user: dict = Depends(require_role("viewer")),
 ):
     frames, total = await dataset_service.list_frames(
-        db, current_user.get("org_id", ""),
+        db, get_org_id(current_user),
         split, label_source, camera_id, None, folder_id, label_class, limit, offset,
     )
     return {"data": [_frame_response(f) for f in frames], "meta": {"total": total, "offset": offset, "limit": limit}}
@@ -108,7 +108,7 @@ async def preview_frame(
     current_user: dict = Depends(require_role("viewer")),
 ):
     """Get frame image from S3. Optionally draw existing annotations on it."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     frame = await db.dataset_frames.find_one({**org_query(org_id), "id": frame_id})
     if not frame:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Frame not found")
@@ -143,7 +143,7 @@ async def add_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("operator")),
 ):
-    frame = await dataset_service.create_frame(db, current_user.get("org_id", ""), body)
+    frame = await dataset_service.create_frame(db, require_org_id(current_user), body)
     return {"data": _frame_response(frame)}
 
 
@@ -157,7 +157,7 @@ async def upload_frame(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Upload a frame image file to S3 and register in dataset."""
-    org_id = current_user.get("org_id", "")
+    org_id = require_org_id(current_user)
     contents = await file.read()
     if len(contents) < 100:
         raise HTTPException(status_code=422, detail="File too small")
@@ -186,7 +186,7 @@ async def delete_frame(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await dataset_service.delete_frame(db, frame_id, current_user.get("org_id", ""))
+    await dataset_service.delete_frame(db, frame_id, get_org_id(current_user))
     return {"data": {"ok": True}}
 
 
@@ -197,7 +197,7 @@ async def bulk_delete_frames(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     frame_ids = body.get("frame_ids", [])
-    deleted = await dataset_service.bulk_delete_frames(db, frame_ids, current_user.get("org_id", ""))
+    deleted = await dataset_service.bulk_delete_frames(db, frame_ids, get_org_id(current_user))
     return {"data": {"deleted": deleted}}
 
 
@@ -208,7 +208,7 @@ async def assign_split(
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     frame = await dataset_service.update_split(
-        db, frame_id, current_user.get("org_id", ""), body.get("split", "unassigned")
+        db, frame_id, get_org_id(current_user), body.get("split", "unassigned")
     )
     return {"data": _frame_response(frame)}
 
@@ -221,7 +221,7 @@ async def bulk_split(
 ):
     """Change split for multiple frames. Body: {frame_ids: [...], split: "train"}"""
     count = await dataset_service.bulk_update_split(
-        db, body.get("frame_ids", []), current_user.get("org_id", ""), body.get("split", "unassigned")
+        db, body.get("frame_ids", []), get_org_id(current_user), body.get("split", "unassigned")
     )
     return {"data": {"updated": count}}
 
@@ -234,7 +234,7 @@ async def move_frames(
 ):
     """Move frames to a folder. Body: {frame_ids: [...], folder_id: "..." or null}"""
     count = await dataset_service.move_frames(
-        db, body.get("frame_ids", []), current_user.get("org_id", ""), body.get("folder_id")
+        db, body.get("frame_ids", []), get_org_id(current_user), body.get("folder_id")
     )
     return {"data": {"moved": count}}
 
@@ -251,7 +251,7 @@ async def annotate_frame(
     """Save bounding box annotations for a frame."""
     data = AnnotationCreate(frame_id=frame_id, bboxes=body.get("bboxes", []))
     result = await dataset_service.save_annotation(
-        db, current_user.get("org_id", ""), data, current_user["id"]
+        db, get_org_id(current_user), data, current_user["id"]
     )
     return {"data": result}
 
@@ -265,7 +265,7 @@ async def list_annotations(
     current_user: dict = Depends(require_role("viewer")),
 ):
     annotations, total = await dataset_service.list_annotations(
-        db, current_user.get("org_id", ""), frame_id, limit, offset
+        db, get_org_id(current_user), frame_id, limit, offset
     )
     return {"data": annotations, "meta": {"total": total, "offset": offset, "limit": limit}}
 
@@ -278,7 +278,7 @@ async def dataset_stats(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    stats = await dataset_service.get_stats(db, current_user.get("org_id", ""))
+    stats = await dataset_service.get_stats(db, get_org_id(current_user))
     return {"data": stats}
 
 
@@ -291,7 +291,7 @@ async def upload_to_roboflow(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     frame_ids = body.get("frame_ids", [])
     folder_id = body.get("folder_id")
 
@@ -336,7 +336,7 @@ async def upload_to_roboflow_for_labeling(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     frame_ids = body.get("frame_ids", [])
 
     if frame_ids:
@@ -375,7 +375,7 @@ async def get_sync_settings(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     doc = await db.dataset_sync_settings.find_one({"org_id": org_id})
     if not doc:
         return {"data": {"org_id": org_id, "auto_sync": False, "sync_interval_hours": 24, "roboflow_project_id": ""}}
@@ -389,7 +389,7 @@ async def update_sync_settings(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     allowed = {"auto_sync", "sync_interval_hours", "roboflow_project_id", "include_splits", "filters"}
     update_fields = {k: v for k, v in body.items() if k in allowed}
@@ -414,7 +414,7 @@ async def export_coco(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     query = org_query(org_id)
     if split:
         query["split"] = split

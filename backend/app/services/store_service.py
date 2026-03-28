@@ -20,7 +20,7 @@ async def create_store(
     now = datetime.now(timezone.utc)
     store_doc = {
         "id": str(uuid.uuid4()),
-        "org_id": org_id or None,
+        "org_id": org_id,
         "name": data.name,
         "address": data.address,
         "city": data.city,

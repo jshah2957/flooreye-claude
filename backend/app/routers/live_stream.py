@@ -17,7 +17,7 @@ from fastapi.exceptions import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.encryption import decrypt_string
-from app.core.org_filter import org_query
+from app.core.org_filter import get_org_id, org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -48,7 +48,7 @@ async def get_frame(
     current_user: dict = Depends(require_role("viewer")),
 ):
     """Capture and return a single live frame as JPEG base64 (non-blocking)."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
@@ -91,7 +91,7 @@ async def start_stream(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Start a live stream session for a camera."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
@@ -101,7 +101,7 @@ async def start_stream(
     await db.stream_sessions.insert_one({
         "id": session_id,
         "camera_id": camera_id,
-        "org_id": current_user.get("org_id"),
+        "org_id": get_org_id(current_user),
         "started_by": current_user["id"],
         "status": "active",
         "started_at": now,
@@ -118,7 +118,7 @@ async def stop_stream(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Stop a live stream session."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     result = await db.stream_sessions.find_one_and_update(
         {**org_query(org_id), "camera_id": camera_id, "status": "active"},
@@ -141,7 +141,7 @@ async def start_recording(
     camera_id = body.get("camera_id")
     duration = body.get("duration", 60)
 
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     camera = await db.cameras.find_one({**org_query(org_id), "id": camera_id})
     if not camera:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Camera not found")
@@ -178,7 +178,7 @@ async def stop_recording(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Stop an active recording."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     result = await db.recordings.find_one_and_update(
         {**org_query(org_id), "id": rec_id, "status": "recording"},
@@ -198,7 +198,7 @@ async def recording_status(
     current_user: dict = Depends(require_role("operator")),
 ):
     """Get recording status."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     rec = await db.recordings.find_one({**org_query(org_id), "id": rec_id})
     if not rec:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recording not found")

@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.org_filter import org_query
+from app.core.org_filter import get_org_id, org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -20,7 +20,7 @@ async def dashboard_summary(
     current_user: dict = Depends(require_role("viewer")),
 ):
     """Aggregated dashboard data in a single response."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     oq = org_query(org_id)
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)

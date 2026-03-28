@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -15,7 +16,7 @@ async def get_storage_config(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     doc = await db.storage_config.find_one({"org_id": org_id})
     if not doc:
         return {"data": {"org_id": org_id, "provider": "local", "bucket": "", "region": "", "configured": False}}
@@ -35,7 +36,7 @@ async def update_storage_config(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     update_fields = {
         "provider": body.get("provider", "local"),
@@ -61,7 +62,7 @@ async def test_storage(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     doc = await db.storage_config.find_one({"org_id": org_id})
     if not doc:
         return {"data": {"success": False, "message": "Storage not configured"}}

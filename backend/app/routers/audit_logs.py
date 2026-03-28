@@ -13,6 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, Response
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_db
 from app.models.audit_log import AuditLog
@@ -36,7 +37,7 @@ def _build_filter(current_user: dict, params: dict) -> dict:
             q["org_id"] = params["org_id"]
     else:
         # org_admin and below: always scoped to own org
-        q["org_id"] = current_user.get("org_id", "")
+        q["org_id"] = get_org_id(current_user) or ""
 
     if params.get("user_id"):
         q["user_id"] = params["user_id"]

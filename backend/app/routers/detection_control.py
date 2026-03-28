@@ -8,7 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.audit_service import log_action
 
-from app.core.org_filter import org_query
+from app.core.org_filter import get_org_id, org_query, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.detection_control import (
@@ -174,7 +174,7 @@ async def get_settings(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     doc = await detection_control_service.get_settings(db, org_id, scope, scope_id)
     if not doc:
         return {"data": None}
@@ -188,11 +188,11 @@ async def save_settings(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     doc = await detection_control_service.upsert_settings(
         db, org_id, body, current_user["id"]
     )
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "detection_settings_saved", "detection_settings", doc.get("id"),
                      {"scope": body.scope, "scope_id": body.scope_id}, request)
     # Push updated settings to edge for affected cameras
@@ -209,9 +209,9 @@ async def reset_settings(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     await detection_control_service.delete_settings(db, org_id, scope, scope_id)
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "detection_settings_reset", "detection_settings", scope_id,
                      {"scope": scope}, request)
     # Push reset settings to edge for affected cameras
@@ -228,7 +228,7 @@ async def get_effective(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     effective, provenance = await detection_control_service.resolve_effective_settings(
         db, org_id, camera_id
     )
@@ -241,7 +241,7 @@ async def get_inheritance(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     chain = await detection_control_service.get_inheritance_chain(db, org_id, camera_id)
     return {"data": chain}
 
@@ -255,7 +255,7 @@ async def list_classes(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     # Use org_query for proper super_admin (org_id=None) handling
     cursor = db.detection_classes.find(org_query(org_id))
     classes = await cursor.to_list(length=1000)
@@ -273,7 +273,7 @@ async def sync_classes_from_model(
     Also pushes updated classes to all edge agents.
     """
     from app.services.onnx_inference_service import onnx_service
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     if not onnx_service.is_loaded:
         raise HTTPException(503, "No ONNX model loaded — load a production model first")
     count = await onnx_service.sync_classes_to_db(db, org_id)
@@ -292,7 +292,7 @@ async def create_class(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = require_org_id(current_user)
     class_name = (body.get("name") or "").strip()
     if not class_name:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Class name is required")
@@ -342,7 +342,7 @@ async def update_class(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     updates = {k: v for k, v in body.items() if k in (
         "name", "display_label", "color", "enabled", "severity",
         "min_confidence", "min_area_percent", "alert_on_detect",
@@ -366,7 +366,7 @@ async def delete_class(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     # Try delete by UUID id first, then fallback to name (model-synced classes may lack id)
     base = org_query(org_id)
     result = await db.detection_classes.delete_one({**base, "id": class_id})
@@ -390,7 +390,7 @@ async def get_class_overrides(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     overrides = await detection_control_service.get_class_overrides(
         db, org_id, scope, scope_id
     )
@@ -406,12 +406,12 @@ async def save_class_overrides(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     overrides_data = [o.model_dump() for o in body]
     results = await detection_control_service.upsert_class_overrides(
         db, org_id, scope, scope_id, overrides_data, current_user["id"]
     )
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "class_overrides_saved", "class_override", scope_id,
                      {"scope": scope, "override_count": len(body)}, request)
     # Push updated config to affected edge cameras
@@ -431,8 +431,8 @@ async def get_change_history(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
-    query = {"org_id": org_id}
+    org_id = get_org_id(current_user)
+    query = org_query(org_id)
     if scope:
         query["scope"] = scope
     if scope_id:
@@ -452,12 +452,12 @@ async def bulk_apply(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     applied = await detection_control_service.bulk_apply(
         db, org_id, body.source_scope, body.source_scope_id,
         body.target_camera_ids, current_user["id"]
     )
-    await log_action(db, current_user["id"], current_user["email"], org_id,
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
                      "detection_settings_bulk_applied", "detection_settings", None,
                      {"source_scope": body.source_scope, "target_cameras": len(body.target_camera_ids)}, request)
     # Push updated settings to each target camera's edge agent
@@ -480,7 +480,7 @@ async def export_config(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     result = await detection_control_service.export_settings(db, org_id, scope, scope_id)
     return {"data": result}
 
@@ -493,7 +493,7 @@ async def import_config(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     now = datetime.now(timezone.utc)
     settings_data = body.get("settings")
     if settings_data:
@@ -539,7 +539,7 @@ async def get_sync_status(
     ids = [cid.strip() for cid in camera_ids.split(",") if cid.strip()]
     if not ids:
         return {"data": []}
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     query = {"id": {"$in": ids}}
     if org_id:
         query["org_id"] = org_id

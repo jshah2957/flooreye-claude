@@ -38,7 +38,6 @@ from app.routers import (
     notifications,
     reports,
     roboflow,
-    roboflow_test,
     storage,
     stores,
     validation,
@@ -166,6 +165,12 @@ def create_app() -> FastAPI:
             "checks": checks,
         }
 
+    from fastapi.responses import JSONResponse
+
+    @application.exception_handler(ValueError)
+    async def value_error_handler(request, exc):
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
+
     # Register all routers
     application.include_router(dashboard.router)
     application.include_router(auth.router)
@@ -177,7 +182,6 @@ def create_app() -> FastAPI:
     application.include_router(clips.router)
     application.include_router(dataset.router)
     application.include_router(roboflow.router)
-    application.include_router(roboflow_test.router)
     application.include_router(inference_test.router)
     application.include_router(models.router)
     application.include_router(edge.router)

@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.audit_service import log_action
 
+from app.core.org_filter import get_org_id, require_org_id
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.notification import (
@@ -34,7 +35,7 @@ async def list_rules(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     rules, total = await notification_service.list_rules(
-        db, current_user.get("org_id", ""), limit, offset
+        db, get_org_id(current_user), limit, offset
     )
     return {
         "data": [_rule_response(r) for r in rules],
@@ -49,8 +50,8 @@ async def create_rule(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    rule = await notification_service.create_rule(db, current_user.get("org_id", ""), body)
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    rule = await notification_service.create_rule(db, require_org_id(current_user), body)
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "notification_rule_created", "notification_rule", rule["id"],
                      {"name": rule.get("name", "")}, request)
     return {"data": _rule_response(rule)}
@@ -64,8 +65,8 @@ async def update_rule(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    rule = await notification_service.update_rule(db, current_user.get("org_id", ""), rule_id, body)
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    rule = await notification_service.update_rule(db, get_org_id(current_user), rule_id, body)
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "notification_rule_updated", "notification_rule", rule_id,
                      {"fields": list(body.model_dump(exclude_unset=True).keys())}, request)
     return {"data": _rule_response(rule)}
@@ -79,7 +80,7 @@ async def test_rule(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Queue a test notification for the given rule."""
-    org_id = current_user.get("org_id", "")
+    org_id = get_org_id(current_user)
     rule = await db.notification_rules.find_one({"id": rule_id, "org_id": org_id})
     if not rule:
         raise HTTPException(status_code=404, detail="Notification rule not found")
@@ -113,8 +114,8 @@ async def delete_rule(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    await notification_service.delete_rule(db, current_user.get("org_id", ""), rule_id)
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await notification_service.delete_rule(db, get_org_id(current_user), rule_id)
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "notification_rule_deleted", "notification_rule", rule_id, {}, request)
     return {"data": {"ok": True}}
 
@@ -130,7 +131,7 @@ async def list_deliveries(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     deliveries, total = await notification_service.list_deliveries(
-        db, current_user.get("org_id", ""), rule_id, limit, offset,
+        db, get_org_id(current_user), rule_id, limit, offset,
         status=status, channel=channel,
     )
     return {

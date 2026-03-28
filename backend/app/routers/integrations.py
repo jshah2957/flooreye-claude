@@ -3,6 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.services.audit_service import log_action
 
+from app.core.org_filter import get_org_id, org_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 from app.schemas.integration import IntegrationSaveRequest
@@ -17,7 +18,7 @@ async def list_integrations(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     integrations = await integration_service.list_integrations(
-        db, current_user.get("org_id", "")
+        db, get_org_id(current_user)
     )
     return {"data": integrations}
 
@@ -28,7 +29,7 @@ async def integration_status(
     current_user: dict = Depends(require_role("viewer")),
 ):
     statuses = await integration_service.get_integration_status(
-        db, current_user.get("org_id", "")
+        db, get_org_id(current_user)
     )
     return {"data": statuses}
 
@@ -40,8 +41,8 @@ async def test_history(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = current_user.get("org_id", "")
-    query = {"org_id": org_id}
+    org_id = get_org_id(current_user)
+    query = org_query(org_id)
     total = await db.integration_test_history.count_documents(query)
     cursor = db.integration_test_history.find(query).sort("tested_at", -1).skip(offset).limit(limit)
     docs = await cursor.to_list(length=limit)
@@ -56,7 +57,7 @@ async def test_all(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     results = await integration_service.test_all_integrations(
-        db, current_user.get("org_id", "")
+        db, get_org_id(current_user)
     )
     return {"data": results}
 
@@ -68,7 +69,7 @@ async def get_integration(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     integration = await integration_service.get_integration(
-        db, current_user.get("org_id", ""), service
+        db, get_org_id(current_user), service
     )
     return {"data": integration}
 
@@ -82,9 +83,9 @@ async def save_integration(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     result = await integration_service.save_integration(
-        db, current_user.get("org_id", ""), service, body.config, current_user["id"]
+        db, get_org_id(current_user), service, body.config, current_user["id"]
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "integration_saved", "integration", service, {}, request)
     return {"data": result}
 
@@ -97,9 +98,9 @@ async def delete_integration(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     await integration_service.delete_integration(
-        db, current_user.get("org_id", ""), service
+        db, get_org_id(current_user), service
     )
-    await log_action(db, current_user["id"], current_user["email"], current_user.get("org_id", ""),
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
                      "integration_deleted", "integration", service, {}, request)
     return {"data": {"ok": True}}
 
@@ -111,6 +112,6 @@ async def test_integration(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     result = await integration_service.test_integration(
-        db, current_user.get("org_id", ""), service
+        db, get_org_id(current_user), service
     )
     return {"data": result}
