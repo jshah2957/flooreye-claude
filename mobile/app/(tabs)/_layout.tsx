@@ -1,20 +1,14 @@
 import { Tabs } from "expo-router";
-import { View, Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { BRAND } from "@/constants/colors";
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+function TabIcon({ name, focusedName, focused }: { name: keyof typeof Ionicons.glyphMap; focusedName: keyof typeof Ionicons.glyphMap; focused: boolean }) {
   return (
-    <View style={{ alignItems: "center", justifyContent: "center", width: 28, height: 28 }}>
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: focused ? "700" : "500",
-          color: focused ? BRAND.primary : BRAND.textSecondary,
-        }}
-      >
-        {label}
-      </Text>
-    </View>
+    <Ionicons
+      name={focused ? focusedName : name}
+      size={24}
+      color={focused ? BRAND.primary : BRAND.textSecondary}
+    />
   );
 }
 
@@ -45,7 +39,7 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarLabel: "Home",
-          tabBarIcon: ({ focused }) => <TabIcon label="H" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="home-outline" focusedName="home" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -53,7 +47,7 @@ export default function TabLayout() {
         options={{
           title: "Alerts",
           tabBarLabel: "Alerts",
-          tabBarIcon: ({ focused }) => <TabIcon label="!" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="alert-circle-outline" focusedName="alert-circle" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -61,7 +55,7 @@ export default function TabLayout() {
         options={{
           title: "History",
           tabBarLabel: "History",
-          tabBarIcon: ({ focused }) => <TabIcon label="=" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="time-outline" focusedName="time" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -69,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: "Analytics",
           tabBarLabel: "Analytics",
-          tabBarIcon: ({ focused }) => <TabIcon label="#" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="bar-chart-outline" focusedName="bar-chart" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -77,7 +71,7 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarLabel: "Settings",
-          tabBarIcon: ({ focused }) => <TabIcon label="*" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="settings-outline" focusedName="settings" focused={focused} />,
         }}
       />
     </Tabs>

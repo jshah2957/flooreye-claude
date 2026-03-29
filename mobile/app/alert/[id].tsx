@@ -30,6 +30,8 @@ export default function AlertDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flagLoading, setFlagLoading] = useState(false);
+  const [frameBase64, setFrameBase64] = useState<string | null>(null);
+  const [frameLoading, setFrameLoading] = useState(false);
 
   const fetchDetection = useCallback(() => {
     if (!id) return;
@@ -51,6 +53,19 @@ export default function AlertDetailScreen() {
   useEffect(() => {
     fetchDetection();
   }, [fetchDetection]);
+
+  // Fetch frame image separately (frames stored in S3, not inline)
+  useEffect(() => {
+    if (!detection?.id) return;
+    setFrameLoading(true);
+    api.get(`/mobile/detections/${detection.id}/frame`)
+      .then(res => {
+        const b64 = res.data?.data?.frame_base64;
+        if (b64) setFrameBase64(b64);
+      })
+      .catch(() => {}) // Frame fetch failure is non-critical
+      .finally(() => setFrameLoading(false));
+  }, [detection?.id]);
 
   const handleFlag = async () => {
     if (!detection) return;
@@ -243,7 +258,7 @@ export default function AlertDetailScreen() {
       </View>
 
       {/* Frame Image */}
-      {detection.frame_base64 && (
+      {frameBase64 ? (
         <View
           style={{
             backgroundColor: NEUTRAL.black,
@@ -256,12 +271,29 @@ export default function AlertDetailScreen() {
           accessibilityRole="image"
         >
           <Image
-            source={{ uri: `data:image/jpeg;base64,${detection.frame_base64}` }}
+            source={{ uri: `data:image/jpeg;base64,${frameBase64}` }}
             style={{ width: "100%", height: "100%" }}
             resizeMode="contain"
           />
         </View>
-      )}
+      ) : frameLoading ? (
+        <View
+          style={{
+            backgroundColor: "#E5E7EB",
+            borderRadius: 12,
+            marginBottom: 16,
+            aspectRatio: MEDIA.FRAME_ASPECT_RATIO,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          accessibilityLabel="Loading detection frame"
+        >
+          <ActivityIndicator size="small" color={BRAND.textSecondary} />
+          <Text style={{ fontSize: 12, color: BRAND.textSecondary, marginTop: 8 }}>
+            Loading frame...
+          </Text>
+        </View>
+      ) : null}
 
       {/* Metrics Card */}
       <View
