@@ -286,6 +286,11 @@ async def dispatch_notifications(
             except Exception as e:
                 log.warning("Notification dispatch failed for %s/%s: %s", channel, recipient, e)
                 await _log_delivery(db, org_id, rule, recipient, incident, detection, "failed", str(e))
+                await emit_system_log(
+                    db, org_id, "error", "notification",
+                    f"Notification delivery failed: {channel}/{recipient}",
+                    {"incident_id": incident_id, "channel": channel, "error": str(e)},
+                )
 
     if summary["total_sent"] > 0:
         await emit_system_log(

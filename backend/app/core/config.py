@@ -122,6 +122,9 @@ class Settings(BaseSettings):
 
     # System Logs
     SYSTEM_LOG_RETENTION_DAYS: int = 30
+    SYSTEM_LOG_MAX_DOCS: int = 500_000  # Max documents before cleanup trims oldest
+    EDGE_LOG_BATCH_MAX: int = 50  # Max logs per edge ingestion request
+    MOBILE_LOG_BATCH_MAX: int = 20  # Max logs per mobile ingestion request
 
     # Audit Logs
     AUDIT_LOG_RETENTION_DAYS: int = 365

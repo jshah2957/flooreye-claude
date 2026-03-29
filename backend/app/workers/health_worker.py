@@ -66,6 +66,15 @@ async def _async_health_check() -> dict:
     except Exception as exc:
         logger.error("Stale agent check failed: %s", exc)
 
+    # Cleanup old system logs if collection exceeds max docs
+    try:
+        from app.routers.logs import cleanup_old_logs
+        deleted = await cleanup_old_logs(db)
+        if deleted > 0:
+            results["logs_cleaned"] = deleted
+    except Exception as exc:
+        logger.error("Log cleanup failed: %s", exc)
+
     logger.info("Health check complete: %s", {k: v.get("status") for k, v in results.items() if isinstance(v, dict)})
     return results
 

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View, Text } from "react-native";
@@ -6,8 +7,15 @@ import {
   useNotificationDeepLinking,
 } from "@/hooks/usePushNotifications";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { initLogger, stopLogger } from "@/services/logger";
 
 export default function RootLayout() {
+  // Initialize centralized error logger (ships errors to cloud)
+  useEffect(() => {
+    initLogger();
+    return () => stopLogger();
+  }, []);
+
   // Set up foreground notification display
   usePushNotifications();
 

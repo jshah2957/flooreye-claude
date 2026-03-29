@@ -122,6 +122,19 @@ api.interceptors.response.use(
       }
     }
 
+    // Capture non-401 API errors in centralized logger
+    if (error.response?.status !== 401) {
+      try {
+        const { captureApiError } = require("./logger");
+        const endpoint = originalRequest?.url ?? "unknown";
+        const status = error.response?.status ?? null;
+        const msg = error.message ?? "Unknown error";
+        captureApiError(endpoint, status, msg);
+      } catch {
+        // Logger not yet initialized — ignore
+      }
+    }
+
     return Promise.reject(error);
   }
 );

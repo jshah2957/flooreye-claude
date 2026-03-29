@@ -76,12 +76,16 @@ from device_controller import DeviceController, TPLinkController, HTTPWebhookCon
 from annotator import annotate_frame, save_detection_frames
 from alert_log import AlertLog
 from clip_recorder import ClipRecorder
+from log_shipper import install_handler as install_log_shipper, ship_logs_loop
 
 logging.basicConfig(
     level=config.LOG_LEVEL,
     format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
 )
 log = logging.getLogger("edge-agent")
+
+# Install cloud log shipper (ships WARNING+ to cloud every 30s)
+install_log_shipper()
 
 # Cache for class overrides (reloaded from disk periodically)
 _class_overrides_cache: dict[str, dict] | None = None
@@ -1660,6 +1664,7 @@ async def main():
         asyncio.create_task(_auto_close_loop(lc)),
         asyncio.create_task(_incident_sync_loop()),
         asyncio.create_task(_incident_cleanup_loop()),
+        asyncio.create_task(ship_logs_loop()),
     ]
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))

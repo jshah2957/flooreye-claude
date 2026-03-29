@@ -24,10 +24,23 @@ async def write_log(
     source: str,
     message: str,
     details: Optional[dict[str, Any]] = None,
+    *,
+    source_device: str = "cloud",
+    device_id: Optional[str] = None,
+    camera_id: Optional[str] = None,
+    stack_trace: Optional[str] = None,
+    app_version: Optional[str] = None,
 ) -> None:
     """Write a system log entry to the system_logs collection.
 
     Fire-and-forget — errors are logged but never raised to the caller.
+
+    Args:
+        source_device: "cloud", "edge", or "mobile" — where the log originated.
+        device_id: Edge agent_id or mobile device identifier.
+        camera_id: Camera that triggered the log (if applicable).
+        stack_trace: Full error traceback (for errors).
+        app_version: Mobile app version string.
     """
     try:
         doc = {
@@ -38,6 +51,11 @@ async def write_log(
             "message": message,
             "details": details or {},
             "timestamp": datetime.now(timezone.utc),
+            "source_device": source_device,
+            "device_id": device_id,
+            "camera_id": camera_id,
+            "stack_trace": stack_trace,
+            "app_version": app_version,
         }
         await db.system_logs.insert_one(doc)
     except Exception as exc:
@@ -63,7 +81,7 @@ async def publish_system_log(
         await manager.broadcast(
             f"system-logs:{org_id}",
             {
-                "type": "system_log",
+                "type": "log",
                 "data": {
                     "level": level,
                     "source": source,
@@ -83,13 +101,24 @@ async def emit_system_log(
     source: str,
     message: str,
     details: Optional[dict[str, Any]] = None,
+    *,
+    source_device: str = "cloud",
+    device_id: Optional[str] = None,
+    camera_id: Optional[str] = None,
+    stack_trace: Optional[str] = None,
+    app_version: Optional[str] = None,
 ) -> None:
     """Convenience wrapper: writes to DB and publishes to WebSocket in parallel.
 
     Both operations are fire-and-forget.
     """
     await asyncio.gather(
-        write_log(db, org_id, level, source, message, details),
+        write_log(
+            db, org_id, level, source, message, details,
+            source_device=source_device, device_id=device_id,
+            camera_id=camera_id, stack_trace=stack_trace,
+            app_version=app_version,
+        ),
         publish_system_log(org_id, level, source, message),
         return_exceptions=True,
     )

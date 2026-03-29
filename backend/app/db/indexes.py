@@ -186,11 +186,11 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     _audit_ttl = _settings.AUDIT_LOG_RETENTION_DAYS * 86400  # days → seconds
     await db.audit_logs.create_indexes([
         IndexModel([("id", ASCENDING)], unique=True),
-        IndexModel([("org_id", ASCENDING), ("created_at", DESCENDING)]),
+        IndexModel([("org_id", ASCENDING), ("timestamp", DESCENDING)]),
         IndexModel([("user_id", ASCENDING)]),
         IndexModel([("action", ASCENDING)]),
         IndexModel([("resource_type", ASCENDING)]),
-        IndexModel([("created_at", ASCENDING)], expireAfterSeconds=_audit_ttl),
+        IndexModel([("timestamp", ASCENDING)], expireAfterSeconds=_audit_ttl),
     ])
 
     # edge_commands
@@ -208,6 +208,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         IndexModel([("org_id", ASCENDING), ("timestamp", DESCENDING)]),
         IndexModel([("level", ASCENDING)]),
         IndexModel([("source", ASCENDING)]),
+        IndexModel([("source_device", ASCENDING), ("timestamp", DESCENDING)]),
+        IndexModel([("device_id", ASCENDING), ("timestamp", DESCENDING)]),
         IndexModel([("timestamp", ASCENDING)], expireAfterSeconds=ttl_seconds),
     ])
 

@@ -6,6 +6,9 @@ import {
   ArrowDownToLine,
   Pause,
   Trash2,
+  Cloud,
+  Cpu,
+  Smartphone,
 } from "lucide-react";
 
 import api from "@/lib/api";
@@ -18,19 +21,46 @@ interface LogEntry {
   message: string;
   timestamp: string;
   source?: string;
+  source_device?: string;
+  device_id?: string;
+  camera_id?: string;
+  stack_trace?: string;
 }
 
 const LEVEL_TABS = ["All", "Info", "Warning", "Error", "Audit"] as const;
+
+const DEVICE_TABS = [
+  { value: "", label: "All Devices", icon: null },
+  { value: "cloud", label: "Cloud", icon: Cloud },
+  { value: "edge", label: "Edge", icon: Cpu },
+  { value: "mobile", label: "Mobile", icon: Smartphone },
+] as const;
 
 const SOURCE_OPTIONS = [
   { value: "", label: "All Sources" },
   { value: "detection", label: "Detection" },
   { value: "incident", label: "Incident" },
   { value: "edge", label: "Edge" },
+  { value: "edge/", label: "Edge Agent" },
   { value: "auth", label: "Auth" },
   { value: "notification", label: "Notification" },
   { value: "model", label: "Model" },
+  { value: "mobile/api", label: "Mobile API" },
+  { value: "mobile/crash", label: "Mobile Crash" },
+  { value: "roboflow", label: "Roboflow" },
+  { value: "storage", label: "Storage" },
 ] as const;
+
+function deviceBadge(sourceDevice?: string) {
+  switch (sourceDevice) {
+    case "edge":
+      return { icon: Cpu, color: "text-green-600", bg: "bg-green-50", label: "Edge" };
+    case "mobile":
+      return { icon: Smartphone, color: "text-orange-600", bg: "bg-orange-50", label: "Mobile" };
+    default:
+      return { icon: Cloud, color: "text-blue-600", bg: "bg-blue-50", label: "Cloud" };
+  }
+}
 
 function levelBadge(level: string) {
   switch ((level ?? "info").toLowerCase()) {
@@ -79,6 +109,7 @@ export default function LogsPage() {
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState("");
+  const [deviceFilter, setDeviceFilter] = useState("");
   const [searchText, setSearchText] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -93,15 +124,20 @@ export default function LogsPage() {
         setLoading(true);
         const params: Record<string, string | number> = { limit: 100 };
         if (sourceFilter) params.source = sourceFilter;
+        if (deviceFilter) params.source_device = deviceFilter;
         const { data: resp } = await api.get("/logs", { params });
         if (cancelled) return;
         const fetched: LogEntry[] = (resp.data ?? []).map(
           (l: Record<string, unknown>, i: number) => ({
-            id: (l.log_id as string) ?? `hist-${i}-${Date.now()}`,
+            id: (l.id as string) ?? (l.log_id as string) ?? `hist-${i}-${Date.now()}`,
             level: (l.level as string) ?? "info",
             message: (l.message as string) ?? "",
             timestamp: (l.timestamp as string) ?? new Date().toISOString(),
             source: (l.source as string) ?? "",
+            source_device: (l.source_device as string) ?? "cloud",
+            device_id: (l.device_id as string) ?? undefined,
+            camera_id: (l.camera_id as string) ?? undefined,
+            stack_trace: (l.stack_trace as string) ?? undefined,
           })
         );
         setLogs(fetched);
@@ -115,7 +151,7 @@ export default function LogsPage() {
     return () => {
       cancelled = true;
     };
-  }, [sourceFilter]);
+  }, [sourceFilter, deviceFilter]);
 
   // WebSocket streaming for new logs
   const onMessage = useCallback(
@@ -156,7 +192,10 @@ export default function LogsPage() {
     if (tab !== "All" && (l.level ?? "info").toLowerCase() !== tab.toLowerCase()) {
       return false;
     }
-    if (sourceFilter && (l.source ?? "").toLowerCase() !== sourceFilter.toLowerCase()) {
+    if (deviceFilter && (l.source_device ?? "cloud") !== deviceFilter) {
+      return false;
+    }
+    if (sourceFilter && !(l.source ?? "").toLowerCase().startsWith(sourceFilter.toLowerCase())) {
       return false;
     }
     if (searchText) {
@@ -288,11 +327,12 @@ export default function LogsPage() {
           />
         </div>
 
-        {(searchText || sourceFilter || startDate || endDate) && (
+        {(searchText || sourceFilter || deviceFilter || startDate || endDate) && (
           <button
             onClick={() => {
               setSearchText("");
               setSourceFilter("");
+              setDeviceFilter("");
               setStartDate("");
               setEndDate("");
             }}
@@ -301,6 +341,28 @@ export default function LogsPage() {
             Clear filters
           </button>
         )}
+      </div>
+
+      {/* Device filter tabs */}
+      <div className="mb-3 flex gap-2">
+        {DEVICE_TABS.map((d) => {
+          const Icon = d.icon;
+          const isActive = deviceFilter === d.value;
+          return (
+            <button
+              key={d.value}
+              onClick={() => setDeviceFilter(d.value)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                isActive
+                  ? "border-[#0D9488] bg-[#0D9488] text-white"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {Icon && <Icon size={12} />}
+              {d.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Level tabs */}
@@ -356,6 +418,7 @@ export default function LogsPage() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Timestamp</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Device</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Level</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Source</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Message</th>
@@ -369,7 +432,10 @@ export default function LogsPage() {
           >
             <table className="w-full text-sm">
               <tbody className="divide-y divide-gray-50">
-                {filtered.map((log) => (
+                {filtered.map((log) => {
+                  const db = deviceBadge(log.source_device);
+                  const DbIcon = db.icon;
+                  return (
                   <>
                     <tr
                       key={log.id}
@@ -378,6 +444,12 @@ export default function LogsPage() {
                     >
                       <td className="w-40 whitespace-nowrap px-4 py-2.5 font-mono text-xs text-gray-500">
                         {new Date(log.timestamp).toLocaleString()}
+                      </td>
+                      <td className="w-16 whitespace-nowrap px-3 py-2.5">
+                        <span className={`inline-flex items-center gap-1 rounded-full ${db.bg} px-2 py-0.5 text-[10px] font-semibold ${db.color}`}>
+                          <DbIcon size={10} />
+                          {db.label}
+                        </span>
                       </td>
                       <td className="w-20 whitespace-nowrap px-4 py-2.5">
                         <span
@@ -391,19 +463,38 @@ export default function LogsPage() {
                       </td>
                       <td className="px-4 py-2.5 text-sm text-gray-700">
                         <span className="line-clamp-1">{log.message}</span>
+                        {log.stack_trace && (
+                          <span className="ml-2 text-[10px] text-red-400">[stack trace]</span>
+                        )}
                       </td>
                     </tr>
                     {expandedLog === log.id && (
                       <tr key={`${log.id}-detail`}>
-                        <td colSpan={4} className="bg-gray-50 px-6 py-3">
-                          <pre className="whitespace-pre-wrap font-mono text-xs text-gray-600">
-                            {log.message}
-                          </pre>
+                        <td colSpan={5} className="bg-gray-50 px-6 py-3">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                              {log.device_id && <span>Device: <span className="font-mono text-gray-700">{log.device_id}</span></span>}
+                              {log.camera_id && <span>Camera: <span className="font-mono text-gray-700">{log.camera_id}</span></span>}
+                              {log.source_device && <span>Origin: <span className="font-mono text-gray-700">{log.source_device}</span></span>}
+                            </div>
+                            <pre className="whitespace-pre-wrap font-mono text-xs text-gray-600">
+                              {log.message}
+                            </pre>
+                            {log.stack_trace && (
+                              <details className="mt-2">
+                                <summary className="cursor-pointer text-xs font-medium text-red-600 hover:underline">Stack Trace</summary>
+                                <pre className="mt-1 max-h-60 overflow-y-auto whitespace-pre-wrap rounded-md bg-red-50 p-3 font-mono text-xs text-red-800">
+                                  {log.stack_trace}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}
                   </>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

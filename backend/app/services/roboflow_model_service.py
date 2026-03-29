@@ -243,6 +243,17 @@ async def select_and_deploy_model(
     except Exception:
         pass
 
+    # Log model deployment to system_logs
+    try:
+        from app.services.system_log_service import emit_system_log
+        await emit_system_log(
+            db, org_id, "info", "model",
+            f"Model deployed: {project_id}/v{version} → production ({agents_pushed} agents)",
+            {"model_id": model_id, "project": project_id, "version": version, "agents": agents_pushed},
+        )
+    except Exception:
+        pass
+
     return {
         "model_version_id": model_id,
         "version_str": model_version.get("version_str", ""),
