@@ -38,10 +38,10 @@ export type { TooltipProps } from "./Tooltip";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type { BreadcrumbsProps, BreadcrumbItem } from "./Breadcrumbs";
 
-export { LoadingPage } from "./LoadingPage";
+export { LoadingPage } from "./LoadingPage"; // UNUSED export — LoadingPage has zero consumers. Safe to remove with the file.
 
-export { ErrorState } from "./ErrorState";
-export type { ErrorStateProps } from "./ErrorState";
+export { ErrorState } from "./ErrorState"; // UNUSED export — ErrorState has zero consumers. Safe to remove with the file.
+export type { ErrorStateProps } from "./ErrorState"; // UNUSED export — same as above.
 
 export { StatCard } from "./StatCard";
 export type { StatCardProps } from "./StatCard";

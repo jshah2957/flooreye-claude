@@ -159,7 +159,7 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_MB: int = 50
 
     # Sentry (optional)
-    SENTRY_DSN: str = ""
+    SENTRY_DSN: str = ""  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports of sentry_sdk anywhere. No Sentry init code exists.
 
     @property
     def allowed_origins_list(self) -> list[str]:

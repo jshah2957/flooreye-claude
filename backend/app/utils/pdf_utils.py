@@ -1,8 +1,14 @@
 """
 PDF Report Generation — HTML-based report for detection/incident summaries.
 
-Generates an HTML report as bytes (suitable for download as .html or conversion to PDF).
-No external PDF library required.
+DEAD CODE — Safe to delete. Verified 2026-03-29.
+- generate_report() is never imported by any router, service, or worker.
+- This was built for a planned downloadable report feature that was never wired to an endpoint.
+- The reports router (backend/app/routers/reports.py) uses report_service.py with MongoDB
+  aggregation pipelines, NOT this file.
+- The mobile router has a separate stub generate_report() at /mobile/reports that returns 501.
+- grep "pdf_utils" across entire repo: 0 code references.
+- Removing this file has zero impact on any feature.
 """
 
 import html

@@ -1,7 +1,12 @@
 """
 Image Processing Utilities — encoding, decoding for frame manipulation.
 
-Uses OpenCV (cv2) and base64.
+DEAD CODE — Safe to delete. Verified 2026-03-29.
+- encode_frame_base64() and decode_base64_frame() are never imported anywhere.
+- Frame encoding is done inline using cv2.imencode() + base64.b64encode() in:
+  edge-agent/agent/capture.py, backend/app/utils/annotation_utils.py, and services.
+- grep "image_utils" across entire repo: 0 code references.
+- Removing this file has zero impact. No wildcard imports pull it in.
 """
 
 import base64

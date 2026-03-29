@@ -1,3 +1,10 @@
+// DEAD CODE — Safe to delete. Verified 2026-03-29.
+// This skeleton loading page is exported from ui/index.ts (line 41) but never
+// imported by any page, route, or component. The app uses a Loader2 spinner in
+// ProtectedRoute/PublicRoute for loading states, not this full-page skeleton.
+// grep "LoadingPage" across web/src/: only this file and ui/index.ts barrel export.
+// If deleted, also remove the export line from ui/index.ts.
+// Removing this file has zero impact on any loading UI.
 import { cn } from "@/lib/utils";
 
 function LoadingPage({ className }: { className?: string }) {

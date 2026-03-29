@@ -15,7 +15,7 @@ celery==5.4.0
 PyJWT==2.10.1
 bcrypt==4.2.1
 cryptography>=44.0.0
-passlib[bcrypt]==1.7.4
+passlib[bcrypt]==1.7.4  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports of passlib; security.py uses bcrypt directly.
 
 # Data Validation & Settings
 pydantic==2.10.4
@@ -40,15 +40,15 @@ roboflow>=1.2.0
 boto3==1.35.92
 
 # Firebase
-firebase-admin==6.6.0
+firebase-admin==6.6.0  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports; fcm_service.py uses custom OAuth2 + httpx instead.
 
 # Monitoring
-sentry-sdk[fastapi]==2.19.2
+sentry-sdk[fastapi]==2.19.2  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports; no Sentry init anywhere. Uses Prometheus + logging.
 prometheus-fastapi-instrumentator>=7.0.0
 
 # MQTT
-paho-mqtt==2.1.0
+paho-mqtt==2.1.0  # UNUSED in backend — safe to remove from here. Verified 2026-03-29. Zero backend imports. Edge-agent has its own requirements.txt with paho-mqtt.
 
 # Utilities
-python-dateutil==2.9.0
-orjson==3.10.13
+python-dateutil==2.9.0  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports of dateutil; uses stdlib datetime.
+orjson==3.10.13  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports; FastAPI uses default JSONResponse, no ORJSONResponse configured.

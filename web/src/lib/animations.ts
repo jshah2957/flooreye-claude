@@ -1,3 +1,9 @@
+// DEAD CODE — Safe to delete (along with components/AnimatedPage.tsx). Verified 2026-03-29.
+// All 8 exports (pageVariants, fadeIn, slideUp, slideRight, scaleIn, staggerContainer,
+// staggerItem, counterSpring) are only imported by AnimatedPage.tsx, which itself is
+// unused. No other file in web/src/ imports from this module.
+// grep for every export name: only AnimatedPage.tsx matches.
+// Removing this file has zero impact.
 import { Variants } from 'framer-motion';
 
 // Page transitions

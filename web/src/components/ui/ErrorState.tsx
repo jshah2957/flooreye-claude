@@ -1,3 +1,10 @@
+// DEAD CODE — Safe to delete. Verified 2026-03-29.
+// This reusable error display component is exported from ui/index.ts (lines 43-44)
+// but never imported by any page or component. Pages handle errors inline with
+// their own error UI or use the ErrorBoundary. No consumer imports ErrorState.
+// grep "ErrorState" across web/src/: only this file and ui/index.ts barrel export.
+// If deleted, also remove the export lines from ui/index.ts.
+// Removing this file has zero impact on any error handling.
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 

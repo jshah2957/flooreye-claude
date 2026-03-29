@@ -1,3 +1,9 @@
+// DEAD CODE — DUPLICATE. Safe to delete. Verified 2026-03-29.
+// This is an older, simpler error boundary. The active version is at:
+//   web/src/components/ui/ErrorBoundary.tsx (with Lucide icons, fullPage mode)
+// App.tsx imports from ui/ErrorBoundary (line 7), not this shared/ version.
+// grep "from.*shared/ErrorBoundary" or "from.*shared.*ErrorBoundary": 0 matches.
+// Removing this file has zero impact. The ui/ version handles all error catching.
 import React from "react";
 
 interface State {

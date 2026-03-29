@@ -14,7 +14,17 @@ log = logging.getLogger("edge-agent.capture")
 
 
 class CameraCapture:
-    """Manages RTSP stream capture for a single camera."""
+    """Manages RTSP stream capture for a single camera.
+
+    DEAD CODE — Safe to delete this class (lines 16-97). Verified 2026-03-29.
+    This is the legacy synchronous capture class. It was replaced by ThreadedCameraCapture
+    (defined below in this same file, line 99+) which reads frames in a daemon thread for
+    better performance. CameraCapture is NOT a base class — ThreadedCameraCapture is
+    completely independent and does not inherit from it.
+    Only ThreadedCameraCapture is instantiated in main.py (lines 1626, 1738).
+    grep "CameraCapture(" in edge-agent/: only ThreadedCameraCapture( instantiations.
+    Removing this class has zero impact on frame capture or any edge pipeline.
+    """
 
     def __init__(self, name: str, url: str, target_fps: int = 2):
         self.name = name

@@ -1,13 +1,17 @@
 """
 4-Layer Detection Validation Pipeline (utils wrapper).
 
-Delegates to the main validation pipeline in services/validation_pipeline.py.
-Provides a simplified interface for direct validation from utils context.
-
-Layer 1: Confidence threshold — reject if below threshold
-Layer 2: Wet area % — reject if below minimum
-Layer 3: K-of-M voting — check recent M detections, require K wet
-Layer 4: Dry reference comparison — compare frame brightness delta
+DEAD CODE — DUPLICATE. Safe to delete. Verified 2026-03-29.
+- This is an older copy of the validation logic. The authoritative version is:
+  backend/app/services/validation_pipeline.py (225 lines, with dynamic alert classes,
+  per-class overrides, and ValidationResult tracking).
+- This utils/ version is imported by ZERO files.
+- The services/ version is imported by 3 files:
+  1. backend/app/routers/inference_test.py
+  2. backend/app/services/detection_service.py
+  3. backend/app/workers/detection_worker.py
+- grep "from app.utils.validation_pipeline" across entire repo: 0 matches.
+- Removing this file has zero impact. All validation goes through the services/ version.
 """
 
 import logging

@@ -1,3 +1,10 @@
+// DEAD CODE — 660-line component, never imported. Safe to delete. Verified 2026-03-29.
+// This was a fully-built incident detail view, but it was replaced by the Expo Router
+// file-based route at mobile/app/alert/[id].tsx which implements its own detail screen.
+// This file also has broken imports: references NEUTRAL and ACTIONS from @/constants/colors
+// which don't exist in that module.
+// grep "AlertDetailView" across mobile/: 0 imports outside this file.
+// Removing this file has zero impact — the route-based screen handles all alert detail views.
 import { useState } from "react";
 import {
   View,

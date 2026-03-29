@@ -1,9 +1,13 @@
 """MongoDB change stream watchers for real-time notifications.
 
-Note: WebSocket broadcasts are primarily handled in incident_service.py
-via direct calls to publish_detection/publish_incident. Change streams
-are a secondary mechanism for catching changes from other sources
-(direct DB writes, admin tools, etc.).
+DEAD CODE — Safe to delete. Verified 2026-03-29.
+- watch_detections() and watch_incidents() are never called or imported anywhere.
+- No startup code in main.py or lifespan() starts these watchers.
+- WebSocket broadcasting is handled entirely by direct Redis Pub/Sub calls in
+  incident_service.py and detection_service.py via the websockets router.
+- This was a planned secondary mechanism that was superseded by direct publishing.
+- grep "change_streams" and "watch_detections" across entire repo: 0 code references.
+- Removing this file has zero impact on real-time notifications or any other feature.
 """
 
 import asyncio

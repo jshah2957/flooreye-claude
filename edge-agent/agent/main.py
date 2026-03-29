@@ -380,6 +380,12 @@ async def tplink_auto_off_loop(tplink_ctrl):
 
 
 async def camera_loop(
+    # DEAD CODE — Safe to delete this entire function (lines 382-529). Verified 2026-03-29.
+    # This is the legacy detection loop that used the synchronous CameraCapture class.
+    # It was replaced by threaded_camera_loop() (line 531) and batch_camera_loop() (line 836).
+    # grep "camera_loop(" excluding threaded_ and batch_ variants: 0 call sites.
+    # Only threaded_camera_loop() and batch_camera_loop() are called from the main function.
+    # Removing this function has zero impact on detection processing.
     cam: CameraCapture,
     inference: InferenceClient,
     uploader: Uploader,
