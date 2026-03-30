@@ -43,6 +43,16 @@ def _crop_mask(mask, x1, y1, x2, y2):
     return cropped
 
 
+def invalidate_alert_class_cache() -> None:
+    """Clear the cached alert classes so they are reloaded from DB on next inference.
+
+    Call this whenever detection_classes are modified (model deployment,
+    class sync, admin toggle of alert_on_detect, etc.).
+    """
+    global _cached_alert_classes
+    _cached_alert_classes = None
+
+
 async def _get_alert_classes(db=None) -> set[str]:
     """Get alert-triggering class names. Caches result."""
     global _cached_alert_classes
@@ -162,8 +172,7 @@ class OnnxInferenceService:
             count += 1
 
         # Invalidate cached alert classes
-        global _cached_alert_classes
-        _cached_alert_classes = None
+        invalidate_alert_class_cache()
 
         log.info("Synced %d classes from model to DB", count)
         return count

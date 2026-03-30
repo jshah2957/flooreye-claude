@@ -357,6 +357,12 @@ async def update_class(
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     result.pop("_id", None)
+
+    # Invalidate cached alert classes when alert_on_detect is toggled
+    if "alert_on_detect" in updates:
+        from app.services.onnx_inference_service import invalidate_alert_class_cache
+        invalidate_alert_class_cache()
+
     return {"data": result}
 
 
@@ -377,6 +383,9 @@ async def delete_class(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
     # Also remove all overrides for this class
     await db.detection_class_overrides.delete_many({**org_query(org_id), "class_id": class_id})
+    # Invalidate cached alert classes
+    from app.services.onnx_inference_service import invalidate_alert_class_cache
+    invalidate_alert_class_cache()
     return {"data": {"ok": True}}
 
 

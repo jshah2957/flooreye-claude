@@ -230,6 +230,10 @@ async def select_and_deploy_model(
             )
         classes_result = {"classes": [{"name": n} for n in model_class_names]}
 
+    # Invalidate cached alert classes so cloud inference picks up the new classes immediately
+    from app.services.onnx_inference_service import invalidate_alert_class_cache
+    invalidate_alert_class_cache()
+
     # Step 3: Promote to production (this auto-deploys to all edge agents)
     from app.services.model_service import promote_model
     promoted = await promote_model(db, model_id, org_id, "production", user_id)
