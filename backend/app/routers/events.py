@@ -56,7 +56,56 @@ def _event_response(e: dict) -> EventResponse:
         notes=e.get("notes"),
         roboflow_sync_status=e.get("roboflow_sync_status", "not_sent"),
         created_at=e.get("created_at", e.get("start_time")),
+        annotated_frame_url=e.get("_annotated_frame_url"),
     )
+
+
+async def _enrich_with_frame_urls(db: AsyncIOMotorDatabase, incidents: list[dict]) -> None:
+    """Look up the latest detection frame URL for each incident (in parallel)."""
+    if not incidents:
+        return
+    from app.services.storage_service import generate_url
+
+    incident_ids = [inc["id"] for inc in incidents]
+
+    # Batch: find latest detection per incident with an annotated frame
+    pipeline = [
+        {"$match": {"incident_id": {"$in": incident_ids}, "annotated_frame_s3_path": {"$ne": None}}},
+        {"$sort": {"timestamp": -1}},
+        {"$group": {"_id": "$incident_id", "s3_path": {"$first": "$annotated_frame_s3_path"}}},
+    ]
+    cursor = db.detection_logs.aggregate(pipeline)
+    frame_map: dict[str, str] = {}
+    async for doc in cursor:
+        frame_map[doc["_id"]] = doc["s3_path"]
+
+    # Also try frame_s3_path as fallback for incidents without annotated frames
+    missing = [iid for iid in incident_ids if iid not in frame_map]
+    if missing:
+        pipeline2 = [
+            {"$match": {"incident_id": {"$in": missing}, "frame_s3_path": {"$ne": None}}},
+            {"$sort": {"timestamp": -1}},
+            {"$group": {"_id": "$incident_id", "s3_path": {"$first": "$frame_s3_path"}}},
+        ]
+        async for doc in db.detection_logs.aggregate(pipeline2):
+            frame_map[doc["_id"]] = doc["s3_path"]
+
+    # Generate presigned URLs in parallel
+    import asyncio
+    tasks = {}
+    for inc_id, s3_path in frame_map.items():
+        tasks[inc_id] = asyncio.create_task(generate_url(s3_path, expires=3600))
+
+    for inc_id, task in tasks.items():
+        try:
+            url = await task
+            frame_map[inc_id] = url
+        except Exception:
+            frame_map[inc_id] = ""
+
+    # Attach URLs to incident dicts
+    for inc in incidents:
+        inc["_annotated_frame_url"] = frame_map.get(inc["id"])
 
 
 @router.get("")
@@ -80,6 +129,7 @@ async def list_events(
         limit=limit,
         offset=offset,
     )
+    await _enrich_with_frame_urls(db, incidents)
     return {
         "data": [_event_response(e) for e in incidents],
         "meta": {"total": total, "offset": offset, "limit": limit},
@@ -204,6 +254,7 @@ async def get_event(
     incident = await incident_service.get_incident(
         db, event_id, get_org_id(current_user)
     )
+    await _enrich_with_frame_urls(db, [incident])
     return {"data": _event_response(incident)}
 
 

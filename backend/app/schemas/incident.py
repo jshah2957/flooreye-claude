@@ -26,6 +26,7 @@ class EventResponse(BaseModel):
     notes: Optional[str] = None
     roboflow_sync_status: str = "not_sent"
     created_at: datetime
+    annotated_frame_url: Optional[str] = None
 
 
 class EventListResponse(BaseModel):

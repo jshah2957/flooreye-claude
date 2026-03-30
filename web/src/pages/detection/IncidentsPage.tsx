@@ -454,6 +454,7 @@ export default function IncidentsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/80">
+                    <th className="hidden px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:table-cell">Frame</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Severity</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Store / Camera</th>
                     <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 md:table-cell">Detected</th>
@@ -474,6 +475,21 @@ export default function IncidentsPage() {
                         flashIds.has(inc.id) ? "animate-flash-row" : ""
                       } ${selected?.id === inc.id ? "bg-teal-50/50" : ""}`}
                     >
+                      {/* Frame thumbnail */}
+                      <td className="hidden px-3 py-2 sm:table-cell">
+                        {inc.annotated_frame_url ? (
+                          <img
+                            src={inc.annotated_frame_url}
+                            alt="Detection frame"
+                            className="h-12 w-20 rounded object-cover bg-gray-100"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-20 items-center justify-center rounded bg-gray-100 text-gray-300">
+                            <Eye size={14} />
+                          </div>
+                        )}
+                      </td>
                       {/* Severity bar */}
                       <td className="relative px-4 py-3.5">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${SEVERITY_BAR_COLORS[inc.severity] ?? SEVERITY_BAR_COLORS.medium}`} />
@@ -694,6 +710,25 @@ function IncidentDetail({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-5">
+            {/* Detection Frame */}
+            {inc.annotated_frame_url ? (
+              <div className="mb-5 overflow-hidden rounded-lg border border-gray-200 bg-gray-900">
+                <img
+                  src={inc.annotated_frame_url}
+                  alt="Detection frame with annotations"
+                  className="w-full object-contain"
+                  style={{ maxHeight: 280 }}
+                />
+              </div>
+            ) : (
+              <div className="mb-5 flex h-32 items-center justify-center rounded-lg border border-dashed border-gray-200 bg-gray-50">
+                <div className="text-center">
+                  <Eye size={20} className="mx-auto mb-1 text-gray-300" />
+                  <p className="text-xs text-gray-400">No frame captured</p>
+                </div>
+              </div>
+            )}
+
             <dl className="space-y-3 text-sm">
               <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2.5">
                 <dt className="text-gray-500">Severity</dt>

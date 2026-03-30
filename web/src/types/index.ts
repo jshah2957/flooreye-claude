@@ -128,6 +128,7 @@ export interface Incident {
   notes: string | null;
   timeline: { event: string; timestamp: string; details?: Record<string, unknown> }[];
   created_at: string;
+  annotated_frame_url: string | null;
 }
 
 export interface PaginatedResponse<T> {
