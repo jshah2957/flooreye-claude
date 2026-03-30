@@ -48,9 +48,16 @@ def invalidate_alert_class_cache() -> None:
 
     Call this whenever detection_classes are modified (model deployment,
     class sync, admin toggle of alert_on_detect, etc.).
+
+    Clears both the module-level cache (_cached_alert_classes) AND the
+    singleton instance cache (onnx_service._alert_classes) so that
+    run_inference() picks up new classes immediately.
     """
     global _cached_alert_classes
     _cached_alert_classes = None
+    # Also clear the singleton instance cache so run_inference() reloads
+    if OnnxInferenceService._instance is not None:
+        OnnxInferenceService._instance._alert_classes = set()
 
 
 async def _get_alert_classes(db=None) -> set[str]:
@@ -259,8 +266,13 @@ class OnnxInferenceService:
 
         inference_ms = round((time.time() - t0) * 1000, 1)
 
-        # Use dynamically loaded alert classes if available, otherwise defaults
-        alert_classes = self._alert_classes if self._alert_classes else _DEFAULT_WET_CLASSES
+        # Use dynamically loaded alert classes; reload from module cache if instance was invalidated
+        alert_classes = self._alert_classes
+        if not alert_classes and _cached_alert_classes is not None:
+            alert_classes = _cached_alert_classes
+            self._alert_classes = alert_classes
+        if not alert_classes:
+            alert_classes = _DEFAULT_WET_CLASSES
 
         is_wet = any(
             d.get("class_name", "").lower() in alert_classes
@@ -620,4 +632,12 @@ async def run_local_inference(
         await onnx_service.load_production_model(db)
     if not onnx_service.is_loaded:
         raise RuntimeError("No ONNX model loaded and no production model available")
+    # Reload alert classes from DB if cache was invalidated (instance empty, module None)
+    if db and not onnx_service._alert_classes:
+        try:
+            fresh = await _get_alert_classes(db)
+            if fresh:
+                onnx_service._alert_classes = fresh
+        except Exception:
+            pass
     return onnx_service.run_inference(frame_base64, confidence)
