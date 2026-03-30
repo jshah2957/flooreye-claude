@@ -131,6 +131,7 @@ async def ingest_edge_logs_v2(
             db, org_id, entry.level, entry.source, entry.message, entry.details,
             source_device="edge", device_id=agent_id,
             camera_id=entry.camera_id, stack_trace=entry.stack_trace,
+            timestamp=ts,
         )
         ingested += 1
 
@@ -150,11 +151,17 @@ async def ingest_mobile_logs(
     ingested = 0
 
     for entry in body.logs[:settings.MOBILE_LOG_BATCH_MAX]:
+        ts = None
+        if entry.timestamp:
+            try:
+                ts = datetime.fromisoformat(entry.timestamp.replace("Z", "+00:00"))
+            except ValueError:
+                ts = None
         await write_log(
             db, org_id, entry.level, entry.source, entry.message, entry.details,
             source_device="mobile", device_id=body.device_id,
             camera_id=entry.camera_id, stack_trace=entry.stack_trace,
-            app_version=body.app_version,
+            app_version=body.app_version, timestamp=ts,
         )
         ingested += 1
 

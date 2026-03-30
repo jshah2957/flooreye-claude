@@ -30,6 +30,7 @@ async def write_log(
     camera_id: Optional[str] = None,
     stack_trace: Optional[str] = None,
     app_version: Optional[str] = None,
+    timestamp: Optional[datetime] = None,
 ) -> None:
     """Write a system log entry to the system_logs collection.
 
@@ -41,6 +42,10 @@ async def write_log(
         camera_id: Camera that triggered the log (if applicable).
         stack_trace: Full error traceback (for errors).
         app_version: Mobile app version string.
+        timestamp: When the event occurred (defaults to now if not provided).
+                   Edge/mobile logs pass the original device timestamp so the
+                   log reflects when the error actually happened, not when
+                   the cloud received it.
     """
     try:
         doc = {
@@ -50,7 +55,7 @@ async def write_log(
             "source": source,
             "message": message,
             "details": details or {},
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": timestamp or datetime.now(timezone.utc),
             "source_device": source_device,
             "device_id": device_id,
             "camera_id": camera_id,
@@ -107,6 +112,7 @@ async def emit_system_log(
     camera_id: Optional[str] = None,
     stack_trace: Optional[str] = None,
     app_version: Optional[str] = None,
+    timestamp: Optional[datetime] = None,
 ) -> None:
     """Convenience wrapper: writes to DB and publishes to WebSocket in parallel.
 
@@ -117,7 +123,7 @@ async def emit_system_log(
             db, org_id, level, source, message, details,
             source_device=source_device, device_id=device_id,
             camera_id=camera_id, stack_trace=stack_trace,
-            app_version=app_version,
+            app_version=app_version, timestamp=timestamp,
         ),
         publish_system_log(org_id, level, source, message),
         return_exceptions=True,
