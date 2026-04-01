@@ -31,6 +31,11 @@ export default function AnnotationStudioPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedBox, setSelectedBox] = useState<number | null>(null);
   const [classList, setClassList] = useState<string[]>([]);
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
+  const [drawEnd, setDrawEnd] = useState<{ x: number; y: number } | null>(null);
+  const [newClassName, setNewClassName] = useState("detection");
+  const [zoom, setZoom] = useState(1);
 
   // Load queue of frames needing review
   const { isLoading } = useQuery({
@@ -138,9 +143,65 @@ export default function AnnotationStudioPage() {
     onError: () => showError("Failed"),
   });
 
+  const saveAnnotationsMutation = useMutation({
+    mutationFn: async (annotations: Annotation[]) => {
+      if (!current) return;
+      await api.put(`/learning/frames/${current.id}`, {
+        annotations: annotations.map((a) => ({
+          class_name: a.class_name, confidence: a.confidence,
+          bbox: a.bbox, source: a.source, is_correct: a.is_correct,
+        })),
+        label_status: "human_corrected",
+      });
+    },
+    onSuccess: () => success("Annotations saved"),
+    onError: () => showError("Save failed"),
+  });
+
+  function addBox(x: number, y: number, w: number, h: number) {
+    if (!current || !canvasRef.current) return;
+    const cw = canvasRef.current.width;
+    const ch = canvasRef.current.height;
+    const newAnn: Annotation = {
+      class_name: newClassName,
+      confidence: 1.0,
+      bbox: { x: (x + w / 2) / cw, y: (y + h / 2) / ch, w: w / cw, h: h / ch },
+      source: "human",
+      is_correct: true,
+    };
+    const updated = [...(current.annotations ?? []), newAnn];
+    const updatedFrames = [...frames];
+    updatedFrames[currentIdx] = { ...current, annotations: updated };
+    setFrames(updatedFrames);
+    setSelectedBox(updated.length - 1);
+    saveAnnotationsMutation.mutate(updated);
+  }
+
+  function deleteSelectedBox() {
+    if (!current || selectedBox === null) return;
+    const updated = [...(current.annotations ?? [])];
+    updated.splice(selectedBox, 1);
+    const updatedFrames = [...frames];
+    updatedFrames[currentIdx] = { ...current, annotations: updated };
+    setFrames(updatedFrames);
+    setSelectedBox(null);
+    saveAnnotationsMutation.mutate(updated);
+  }
+
+  function changeBoxClass(newClass: string) {
+    if (!current || selectedBox === null) return;
+    const updated = [...(current.annotations ?? [])];
+    updated[selectedBox] = { ...updated[selectedBox], class_name: newClass };
+    const updatedFrames = [...frames];
+    updatedFrames[currentIdx] = { ...current, annotations: updated };
+    setFrames(updatedFrames);
+    saveAnnotationsMutation.mutate(updated);
+  }
+
   function advance() {
     if (currentIdx < frames.length - 1) setCurrentIdx(currentIdx + 1);
     setSelectedBox(null);
+    setDrawingMode(false);
   }
 
   // Keyboard shortcuts
@@ -151,6 +212,8 @@ export default function AnnotationStudioPage() {
       else if (e.key === "s" || e.key === "S") advance();
       else if (e.key === "d" || e.key === "D") deleteMutation.mutate();
       else if (e.key === "f" || e.key === "F") falsePositiveMutation.mutate();
+      else if (e.key === "b" || e.key === "B") setDrawingMode(!drawingMode);
+      else if (e.key === "Delete" || e.key === "Backspace") deleteSelectedBox();
       else if (e.key === "ArrowRight") { if (currentIdx < frames.length - 1) setCurrentIdx(currentIdx + 1); }
       else if (e.key === "ArrowLeft") { if (currentIdx > 0) setCurrentIdx(currentIdx - 1); }
     }
@@ -170,7 +233,7 @@ export default function AnnotationStudioPage() {
           </p>
         </div>
         <div className="text-xs text-gray-400">
-          Keys: <kbd className="rounded bg-gray-100 px-1">C</kbd> Confirm · <kbd className="rounded bg-gray-100 px-1">F</kbd> False Positive · <kbd className="rounded bg-gray-100 px-1">S</kbd> Skip · <kbd className="rounded bg-gray-100 px-1">D</kbd> Delete
+          Keys: <kbd className="rounded bg-gray-100 px-1">C</kbd> Confirm · <kbd className="rounded bg-gray-100 px-1">F</kbd> FP · <kbd className="rounded bg-gray-100 px-1">S</kbd> Skip · <kbd className="rounded bg-gray-100 px-1">D</kbd> Delete · <kbd className="rounded bg-gray-100 px-1">B</kbd> Draw · <kbd className="rounded bg-gray-100 px-1">Del</kbd> Remove Box · Scroll = Zoom
         </div>
       </div>
 
@@ -183,9 +246,50 @@ export default function AnnotationStudioPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
           {/* Canvas */}
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-900">
-            <canvas ref={canvasRef} className="w-full cursor-crosshair"
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-900" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+            <canvas ref={canvasRef} className={`w-full ${drawingMode ? "cursor-crosshair" : "cursor-pointer"}`}
+              onMouseDown={(e) => {
+                if (!drawingMode || !canvasRef.current) return;
+                const rect = canvasRef.current.getBoundingClientRect();
+                const scaleX = canvasRef.current.width / rect.width;
+                const scaleY = canvasRef.current.height / rect.height;
+                setDrawStart({ x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY });
+                setDrawEnd(null);
+              }}
+              onMouseMove={(e) => {
+                if (!drawingMode || !drawStart || !canvasRef.current) return;
+                const rect = canvasRef.current.getBoundingClientRect();
+                const scaleX = canvasRef.current.width / rect.width;
+                const scaleY = canvasRef.current.height / rect.height;
+                const end = { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+                setDrawEnd(end);
+                // Draw preview rectangle
+                drawCanvas();
+                const ctx = canvasRef.current.getContext("2d");
+                if (ctx) {
+                  ctx.strokeStyle = "#F59E0B";
+                  ctx.lineWidth = 2;
+                  ctx.setLineDash([6, 4]);
+                  ctx.strokeRect(drawStart.x, drawStart.y, end.x - drawStart.x, end.y - drawStart.y);
+                  ctx.setLineDash([]);
+                }
+              }}
+              onMouseUp={() => {
+                if (!drawingMode || !drawStart || !drawEnd) { setDrawStart(null); return; }
+                const x = Math.min(drawStart.x, drawEnd.x);
+                const y = Math.min(drawStart.y, drawEnd.y);
+                const w = Math.abs(drawEnd.x - drawStart.x);
+                const h = Math.abs(drawEnd.y - drawStart.y);
+                if (w > 10 && h > 10) addBox(x, y, w, h);
+                setDrawStart(null);
+                setDrawEnd(null);
+              }}
+              onWheel={(e) => {
+                e.preventDefault();
+                setZoom((z) => Math.max(0.5, Math.min(3, z + (e.deltaY < 0 ? 0.1 : -0.1))));
+              }}
               onClick={(e) => {
+                if (drawingMode) return;
                 if (!current || !canvasRef.current) return;
                 const rect = canvasRef.current.getBoundingClientRect();
                 const scaleX = canvasRef.current.width / rect.width;
@@ -240,6 +344,46 @@ export default function AnnotationStudioPage() {
               <div className="flex justify-between"><span className="text-gray-500">Source</span><span className="font-medium">{current?.source}</span></div>
               <div className="mt-1 flex justify-between"><span className="text-gray-500">Status</span><span className="font-medium">{current?.label_status}</span></div>
               <div className="mt-1 flex justify-between"><span className="text-gray-500">Captured</span><span className="font-medium">{current?.captured_at ? new Date(current.captured_at).toLocaleDateString() : "—"}</span></div>
+            </div>
+
+            {/* Drawing tools */}
+            <div className="rounded-xl border border-gray-200 bg-white p-3">
+              <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500">Tools</h3>
+              <div className="space-y-2">
+                <button onClick={() => setDrawingMode(!drawingMode)}
+                  className={`flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium transition ${drawingMode ? "bg-amber-500 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
+                  <PenTool size={14} /> {drawingMode ? "Drawing Mode ON" : "Draw Box (B)"}
+                </button>
+                {drawingMode && (
+                  <div>
+                    <label className="mb-1 block text-[10px] text-gray-500">Class for new box:</label>
+                    <select value={newClassName} onChange={(e) => setNewClassName(e.target.value)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none">
+                      {(classList.length > 0 ? classList : ["detection"]).map((c) => <option key={c} value={c}>{c}</option>)}
+                      <option value="detection">detection</option>
+                    </select>
+                  </div>
+                )}
+                {selectedBox !== null && (
+                  <>
+                    <div>
+                      <label className="mb-1 block text-[10px] text-gray-500">Change class:</label>
+                      <select value={current?.annotations?.[selectedBox]?.class_name ?? ""} onChange={(e) => changeBoxClass(e.target.value)}
+                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none">
+                        {(classList.length > 0 ? classList : ["detection"]).map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <button onClick={deleteSelectedBox}
+                      className="flex w-full items-center justify-center gap-1 rounded-lg bg-red-100 py-1.5 text-xs font-medium text-red-700 hover:bg-red-200">
+                      <Trash2 size={12} /> Delete Selected Box (Del)
+                    </button>
+                  </>
+                )}
+                <div className="flex items-center justify-between text-[10px] text-gray-400">
+                  <span>Zoom: {(zoom * 100).toFixed(0)}%</span>
+                  <button onClick={() => setZoom(1)} className="text-teal-600 hover:underline">Reset</button>
+                </div>
+              </div>
             </div>
 
             {/* Action buttons */}
