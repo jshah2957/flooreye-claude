@@ -37,6 +37,7 @@ import DatasetBrowserPage from "@/pages/learning/DatasetBrowserPage";
 import TrainingJobsPage from "@/pages/learning/TrainingJobsPage";
 import AnnotationStudioPage from "@/pages/learning/AnnotationStudioPage";
 import ModelComparisonPage from "@/pages/learning/ModelComparisonPage";
+import ModelTestingPage from "@/pages/learning/ModelTestingPage";
 import CompliancePage from "@/pages/compliance/CompliancePage";
 import MonitoringPage from "@/pages/monitoring/MonitoringPage";
 import NotificationCenterPage from "@/pages/notifications/NotificationCenterPage";
@@ -165,6 +166,7 @@ export default function AppRoutes() {
         <Route path="/learning/training" element={<TrainingJobsPage />} />
         <Route path="/learning/annotate" element={<AnnotationStudioPage />} />
         <Route path="/learning/models" element={<ModelComparisonPage />} />
+        <Route path="/learning/test" element={<ModelTestingPage />} />
 
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/logs" element={<LogsPage />} />

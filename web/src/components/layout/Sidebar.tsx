@@ -31,6 +31,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  FlaskConical,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -114,6 +115,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Annotation Studio", path: "/learning/annotate", icon: Layers, minRole: ML_PLUS },
       { label: "Training Jobs", path: "/learning/training", icon: Cpu, minRole: ML_PLUS },
       { label: "Model Comparison", path: "/learning/models", icon: Boxes, minRole: ML_PLUS },
+      { label: "Model Testing", path: "/learning/test", icon: FlaskConical, minRole: ML_PLUS },
       { label: "Settings", path: "/learning/settings", icon: Settings, minRole: ADMIN_PLUS },
     ],
   },

@@ -1074,6 +1074,273 @@ async def deploy_trained_model(
     return {"data": {"model_version_id": model_version_id, "status": "deployed", "onnx_path": main_key}}
 
 
+# ── Model Testing ────────────────────────────────────────────────
+
+@router.post("/models/{job_id}/test-image")
+async def test_image(
+    job_id: str,
+    file: UploadFile = File(...),
+    confidence: float = Query(DEFAULT_COMPARE_CONFIDENCE, ge=0.0, le=1.0),
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Run inference on an uploaded image through a specific trained model."""
+    import base64
+    import time as _time
+
+    org_id = get_org_id(current_user) or ""
+
+    # Get training job
+    job = await ldb.learning_training_jobs.find_one({"id": job_id, "org_id": org_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=422, detail="Job not completed")
+
+    trained_s3_key = job.get("resulting_model_s3_key")
+    if not trained_s3_key:
+        raise HTTPException(status_code=422, detail="No model file for this job")
+
+    # Read uploaded image
+    image_bytes = await file.read()
+    if not image_bytes:
+        raise HTTPException(status_code=422, detail="Empty file uploaded")
+
+    # Download trained model from S3 and run inference
+    predictions: list[dict] = []
+    inference_time_ms = 0.0
+    try:
+        from app.utils.s3_utils import get_s3_client
+        from app.core.config import settings
+        import asyncio as _aio
+        import tempfile
+        import os
+
+        client = get_s3_client()
+        if not client:
+            raise HTTPException(status_code=503, detail="S3 not configured")
+
+        response = await _aio.to_thread(
+            client.get_object, Bucket=settings.LEARNING_S3_BUCKET,
+            Key=trained_s3_key
+        )
+        model_bytes = response["Body"].read()
+
+        with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+            tmp.write(model_bytes)
+            tmp_path = tmp.name
+
+        try:
+            import onnxruntime as ort
+            import numpy as np
+            from PIL import Image
+            import io
+
+            sess = ort.InferenceSession(tmp_path, providers=["CPUExecutionProvider"])
+            input_name = sess.get_inputs()[0].name
+            input_shape = sess.get_inputs()[0].shape
+            imgsz = input_shape[2] if len(input_shape) >= 3 else DEFAULT_FRAME_SIZE
+
+            # Preprocess
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            orig_w, orig_h = img.size
+            img_resized = img.resize((imgsz, imgsz))
+            arr = np.array(img_resized).astype(np.float32) / 255.0
+            arr = arr.transpose(2, 0, 1)[np.newaxis, ...]  # NCHW
+
+            t0 = _time.perf_counter()
+            outputs = sess.run(None, {input_name: arr})
+            inference_time_ms = round((_time.perf_counter() - t0) * 1000, 2)
+
+            # Parse YOLO output
+            if len(outputs) > 0:
+                out = outputs[0]
+                if out.ndim == 3 and out.shape[0] == 1:
+                    out = out[0]
+                if out.ndim == 2:
+                    if out.shape[0] < out.shape[1]:
+                        out = out.T
+                    class_names = [m["class_name"] for m in job.get("per_class_metrics", [])]
+                    for row in out:
+                        if len(row) >= 6:
+                            cx, cy, w, h = row[0], row[1], row[2], row[3]
+                            scores = row[4:]
+                            max_score = float(np.max(scores))
+                            if max_score > confidence:
+                                cls_id = int(np.argmax(scores))
+                                cls_name = class_names[cls_id] if cls_id < len(class_names) else f"class_{cls_id}"
+                                predictions.append({
+                                    "class_name": cls_name,
+                                    "confidence": round(max_score, 3),
+                                    "bbox": {
+                                        "x": round(float(cx) / imgsz * orig_w, 1),
+                                        "y": round(float(cy) / imgsz * orig_h, 1),
+                                        "w": round(float(w) / imgsz * orig_w, 1),
+                                        "h": round(float(h) / imgsz * orig_h, 1),
+                                    },
+                                })
+        finally:
+            os.unlink(tmp_path)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {e}")
+
+    frame_b64 = base64.b64encode(image_bytes).decode("ascii")
+
+    return {"data": {
+        "predictions": predictions,
+        "inference_time_ms": inference_time_ms,
+        "frame_base64": frame_b64,
+    }}
+
+
+@router.post("/models/{job_id}/test-batch")
+async def test_batch(
+    job_id: str,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Run inference on all test-split frames for the org (max 100 frames)."""
+    import time as _time
+
+    org_id = get_org_id(current_user) or ""
+
+    # Get training job
+    job = await ldb.learning_training_jobs.find_one({"id": job_id, "org_id": org_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=422, detail="Job not completed")
+
+    trained_s3_key = job.get("resulting_model_s3_key")
+    if not trained_s3_key:
+        raise HTTPException(status_code=422, detail="No model file for this job")
+
+    # Get test frames (limit to MAX_PAGE_LIMIT)
+    test_frames = await ldb.learning_frames.find(
+        {"org_id": org_id, "split": "test", "frame_s3_key": {"$ne": None}},
+        projection={"frame_s3_key": 1, "_id": 0},
+    ).to_list(MAX_PAGE_LIMIT)
+
+    if not test_frames:
+        raise HTTPException(status_code=404, detail="No test frames available")
+
+    # Download trained model from S3
+    try:
+        from app.utils.s3_utils import get_s3_client
+        from app.core.config import settings
+        import asyncio as _aio
+        import tempfile
+        import os
+
+        client = get_s3_client()
+        if not client:
+            raise HTTPException(status_code=503, detail="S3 not configured")
+
+        response = await _aio.to_thread(
+            client.get_object, Bucket=settings.LEARNING_S3_BUCKET,
+            Key=trained_s3_key
+        )
+        model_bytes = response["Body"].read()
+
+        with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+            tmp.write(model_bytes)
+            tmp_path = tmp.name
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
+
+    try:
+        import onnxruntime as ort
+        import numpy as np
+        from PIL import Image
+        import io
+
+        sess = ort.InferenceSession(tmp_path, providers=["CPUExecutionProvider"])
+        input_name = sess.get_inputs()[0].name
+        input_shape = sess.get_inputs()[0].shape
+        imgsz = input_shape[2] if len(input_shape) >= 3 else DEFAULT_FRAME_SIZE
+        class_names = [m["class_name"] for m in job.get("per_class_metrics", [])]
+
+        all_predictions: list[dict] = []
+        total_inference_ms = 0.0
+
+        for frame_doc in test_frames:
+            try:
+                resp = await _aio.to_thread(
+                    client.get_object, Bucket=settings.LEARNING_S3_BUCKET,
+                    Key=frame_doc["frame_s3_key"]
+                )
+                frame_bytes = resp["Body"].read()
+                img = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
+                orig_w, orig_h = img.size
+                img_resized = img.resize((imgsz, imgsz))
+                arr = np.array(img_resized).astype(np.float32) / 255.0
+                arr = arr.transpose(2, 0, 1)[np.newaxis, ...]
+
+                t0 = _time.perf_counter()
+                outputs = sess.run(None, {input_name: arr})
+                total_inference_ms += (_time.perf_counter() - t0) * 1000
+
+                if len(outputs) > 0:
+                    out = outputs[0]
+                    if out.ndim == 3 and out.shape[0] == 1:
+                        out = out[0]
+                    if out.ndim == 2:
+                        if out.shape[0] < out.shape[1]:
+                            out = out.T
+                        for row in out:
+                            if len(row) >= 6:
+                                scores = row[4:]
+                                max_score = float(np.max(scores))
+                                if max_score > DEFAULT_COMPARE_CONFIDENCE:
+                                    cls_id = int(np.argmax(scores))
+                                    cls_name = class_names[cls_id] if cls_id < len(class_names) else f"class_{cls_id}"
+                                    all_predictions.append({
+                                        "class_name": cls_name,
+                                        "confidence": round(max_score, 3),
+                                    })
+            except Exception as e:
+                log.warning("Batch test frame failed: %s", e)
+                continue
+
+        # Aggregate metrics
+        class_breakdown: dict[str, dict] = {}
+        for pred in all_predictions:
+            cn = pred["class_name"]
+            if cn not in class_breakdown:
+                class_breakdown[cn] = {"count": 0, "total_confidence": 0.0}
+            class_breakdown[cn]["count"] += 1
+            class_breakdown[cn]["total_confidence"] += pred["confidence"]
+
+        per_class = []
+        for cn, stats in class_breakdown.items():
+            per_class.append({
+                "class_name": cn,
+                "prediction_count": stats["count"],
+                "mean_confidence": round(stats["total_confidence"] / stats["count"], 3) if stats["count"] > 0 else 0,
+            })
+
+        return {"data": {
+            "total_frames": len(test_frames),
+            "total_predictions": len(all_predictions),
+            "total_inference_ms": round(total_inference_ms, 2),
+            "avg_inference_ms": round(total_inference_ms / len(test_frames), 2) if test_frames else 0,
+            "per_class_breakdown": per_class,
+        }}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch inference failed: {e}")
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
 # ── Health Check ──────────────────────────────────────────────────
 
 @router.get("/health")
