@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
@@ -805,3 +805,166 @@ async def learning_health(
         }}
     except Exception as e:
         return {"data": {"status": "unhealthy", "error": str(e)}}
+
+
+# ── Reset Settings to Defaults ────────────────────────────────────
+
+@router.post("/settings/reset")
+async def reset_settings(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Reset all learning settings to defaults for this org."""
+    org_id = get_org_id(current_user) or ""
+    await ldb.learning_configs.delete_one({"org_id": org_id})
+    config = await learning_config_service.get_config(ldb, org_id)
+    return {"data": config}
+
+
+# ── Manual Frame Upload ───────────────────────────────────────────
+
+@router.post("/frames/upload")
+async def upload_frame(
+    file: UploadFile = File(...),
+    class_name: str = Query("detection"),
+    split: str = Query("unassigned"),
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Upload a frame image manually with optional class label."""
+    import uuid
+
+    org_id = get_org_id(current_user) or ""
+
+    # Validate file type
+    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=422, detail="Only JPEG, PNG, and WebP images are supported")
+
+    # Read file
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:  # 10MB limit
+        raise HTTPException(status_code=422, detail="File too large (max 10MB)")
+
+    frame_id = str(uuid.uuid4())
+    learning_key = f"frames/manual/{org_id}/{frame_id}.jpg"
+
+    # Get dimensions
+    frame_width = 0
+    frame_height = 0
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(content))
+        frame_width, frame_height = img.size
+    except Exception:
+        pass
+
+    # Upload to learning S3
+    try:
+        from app.utils.s3_utils import get_s3_client
+        from app.core.config import settings
+        import asyncio as _aio
+        client = get_s3_client()
+        if client:
+            await _aio.to_thread(
+                client.put_object, Bucket=settings.LEARNING_S3_BUCKET,
+                Key=learning_key, Body=content, ContentType="image/jpeg"
+            )
+            # Generate thumbnail
+            try:
+                img_thumb = Image.open(io.BytesIO(content)).convert("RGB").resize((280, 175), Image.LANCZOS)
+                buf = io.BytesIO()
+                img_thumb.save(buf, format="JPEG", quality=80)
+                thumb_key = learning_key.replace("/frames/", "/thumbnails/").replace(".jpg", "_thumb.jpg")
+                await _aio.to_thread(
+                    client.put_object, Bucket=settings.LEARNING_S3_BUCKET,
+                    Key=thumb_key, Body=buf.getvalue(), ContentType="image/jpeg"
+                )
+            except Exception:
+                thumb_key = None
+        else:
+            raise HTTPException(status_code=503, detail="S3 not configured")
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.warning("Frame upload failed: %s", e)
+        raise HTTPException(status_code=500, detail="Upload failed")
+
+    # Create frame document
+    now = datetime.now(timezone.utc)
+    frame_doc = {
+        "id": frame_id,
+        "org_id": org_id,
+        "source": "manual_upload",
+        "source_model_version": None,
+        "source_roboflow_project": None,
+        "source_detection_id": None,
+        "frame_s3_key": learning_key,
+        "thumbnail_s3_key": thumb_key if thumb_key else None,
+        "frame_width": frame_width or None,
+        "frame_height": frame_height or None,
+        "store_id": None,
+        "camera_id": None,
+        "label_status": "unlabeled",
+        "annotations": [{"class_name": class_name, "confidence": 1.0, "bbox": {}, "source": "human", "is_correct": None}] if class_name != "detection" else [],
+        "admin_verdict": None,
+        "admin_user_id": current_user["id"],
+        "admin_notes": None,
+        "incident_id": None,
+        "dataset_version_id": None,
+        "split": split,
+        "captured_at": now,
+        "ingested_at": now,
+        "tags": ["manual"],
+    }
+    await ldb.learning_frames.insert_one(frame_doc)
+    frame_doc.pop("_id", None)
+    return {"data": frame_doc}
+
+
+# ── Bulk Operations ───────────────────────────────────────────────
+
+class BulkUpdateRequest(BaseModel):
+    frame_ids: list[str] = Field(..., min_length=1, max_length=500)
+    split: Optional[Literal["unassigned", "train", "val", "test"]] = None
+    label_status: Optional[Literal["unlabeled", "auto_labeled", "human_reviewed", "human_corrected"]] = None
+    admin_verdict: Optional[Literal["true_positive", "false_positive", "uncertain"]] = None
+    tags: Optional[list[str]] = None
+    delete: bool = False
+
+
+@router.post("/frames/bulk")
+async def bulk_update_frames(
+    body: BulkUpdateRequest,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Bulk update or delete multiple frames."""
+    org_id = get_org_id(current_user) or ""
+
+    if body.delete:
+        result = await ldb.learning_frames.delete_many(
+            {"id": {"$in": body.frame_ids}, "org_id": org_id}
+        )
+        return {"data": {"deleted": result.deleted_count}}
+
+    updates: dict = {}
+    if body.split is not None:
+        updates["split"] = body.split
+    if body.label_status is not None:
+        updates["label_status"] = body.label_status
+    if body.admin_verdict is not None:
+        updates["admin_verdict"] = body.admin_verdict
+    if body.tags is not None:
+        updates["tags"] = body.tags
+    if not updates:
+        raise HTTPException(status_code=422, detail="No update fields provided")
+
+    updates["updated_at"] = datetime.now(timezone.utc)
+
+    from pymongo import UpdateMany
+    result = await ldb.learning_frames.update_many(
+        {"id": {"$in": body.frame_ids}, "org_id": org_id},
+        {"$set": updates},
+    )
+    return {"data": {"matched": result.matched_count, "modified": result.modified_count}}

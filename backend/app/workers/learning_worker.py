@@ -30,25 +30,71 @@ def _get_main_db(client):
     return client[settings.MONGODB_DB]
 
 
-async def _is_already_captured(ldb, source_type: str, source_id: str) -> bool:
-    """Check dedup log to avoid double-capture."""
-    exists = await ldb.learning_capture_log.find_one(
-        {"source_type": source_type, "source_id": source_id}
-    )
-    return exists is not None
+async def _try_capture_dedup(ldb, source_type: str, source_id: str, org_id: str) -> bool:
+    """Atomic dedup: try to insert capture log. Returns True if this is a new capture (not duplicate).
 
-
-async def _mark_captured(ldb, source_type: str, source_id: str, org_id: str):
-    """Record that a source item has been captured."""
+    Uses MongoDB upsert with $setOnInsert to avoid race conditions between
+    concurrent workers checking and inserting.
+    """
     try:
-        await ldb.learning_capture_log.insert_one({
-            "source_type": source_type,
-            "source_id": source_id,
-            "org_id": org_id,
-            "captured_at": datetime.now(timezone.utc),
-        })
+        result = await ldb.learning_capture_log.update_one(
+            {"source_type": source_type, "source_id": source_id},
+            {"$setOnInsert": {
+                "source_type": source_type,
+                "source_id": source_id,
+                "org_id": org_id,
+                "captured_at": datetime.now(timezone.utc),
+            }},
+            upsert=True,
+        )
+        return result.upserted_id is not None  # True = new insert, False = already existed
     except Exception:
-        pass  # Duplicate key is expected if already captured
+        return False  # On error, skip capture (safe default)
+
+
+async def _check_storage_quota(ldb, org_id: str, quota_mb: int) -> bool:
+    """Check if org is within storage quota. Returns True if under quota."""
+    # Estimate: count frames * avg 100KB per frame
+    count = await ldb.learning_frames.count_documents({"org_id": org_id})
+    estimated_mb = count * 0.1  # ~100KB average per frame
+    return estimated_mb < quota_mb
+
+
+async def _generate_thumbnail(frame_bytes: bytes, learning_key: str) -> str | None:
+    """Generate a 280x175 JPEG thumbnail and upload to learning bucket. Returns S3 key or None."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
+        img = img.resize((280, 175), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        thumb_bytes = buf.getvalue()
+
+        thumb_key = learning_key.replace("/frames/", "/thumbnails/").replace(".jpg", "_thumb.jpg")
+        from app.utils.s3_utils import get_s3_client
+        import asyncio as _aio
+        client = get_s3_client()
+        if client:
+            await _aio.to_thread(
+                client.put_object, Bucket=settings.LEARNING_S3_BUCKET,
+                Key=thumb_key, Body=thumb_bytes, ContentType="image/jpeg"
+            )
+            return thumb_key
+    except Exception as e:
+        logger.debug("Thumbnail generation failed: %s", e)
+    return None
+
+
+async def _get_frame_dimensions(frame_bytes: bytes) -> tuple[int, int]:
+    """Get width and height from JPEG bytes. Returns (width, height) or (0, 0) on error."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(frame_bytes))
+        return img.size  # (width, height)
+    except Exception:
+        return (0, 0)
 
 
 async def _check_daily_limit(ldb, org_id: str, max_daily: int) -> bool:
@@ -127,9 +173,14 @@ async def _async_capture_detection(detection_id: str, org_id: str) -> dict:
         if not config.get("enabled", True):
             return {"skipped": True, "reason": "org_disabled"}
 
-        # Dedup check
-        if await _is_already_captured(ldb, "detection", detection_id):
+        # Atomic dedup check (prevents race condition)
+        if not await _try_capture_dedup(ldb, "detection", detection_id, org_id):
             return {"skipped": True, "reason": "already_captured"}
+
+        # Storage quota check
+        quota_mb = config.get("storage_quota_mb", DEFAULT_CONFIG.get("storage_quota_mb", 50_000))
+        if not await _check_storage_quota(ldb, org_id, quota_mb):
+            return {"skipped": True, "reason": "storage_quota_exceeded"}
 
         # Daily limit check
         max_daily = config.get("capture_max_daily", DEFAULT_CONFIG["capture_max_daily"])
@@ -155,15 +206,39 @@ async def _async_capture_detection(detection_id: str, org_id: str) -> dict:
         if config.get("capture_wet_only", False) and not detection.get("is_wet", False):
             return {"skipped": True, "reason": "not_wet"}
 
-        # Copy frame to learning bucket
+        # Copy frame to learning bucket + generate thumbnail + get dimensions
         frame_key = detection.get("annotated_frame_s3_path") or detection.get("frame_s3_path")
         learning_key = None
+        thumbnail_key = None
+        frame_width = 0
+        frame_height = 0
         if frame_key:
             learning_key = f"frames/edge/{org_id}/{detection.get('store_id', 'unknown')}/{detection.get('camera_id', 'unknown')}/{detection_id}.jpg"
-            copied = await _copy_frame_to_learning_bucket(frame_key, learning_key)
-            if not copied:
-                logger.warning("S3 frame copy failed for detection %s — skipping capture", detection_id)
-                learning_key = None  # Frame doc will have no S3 key but still captures metadata
+            # Download frame bytes for copy + thumbnail + dimensions
+            try:
+                from app.utils.s3_utils import get_s3_client
+                import asyncio as _aio
+                client = get_s3_client()
+                if client:
+                    response = await _aio.to_thread(
+                        client.get_object, Bucket=settings.S3_BUCKET_NAME, Key=frame_key
+                    )
+                    frame_bytes = response["Body"].read()
+                    # Upload to learning bucket
+                    await _aio.to_thread(
+                        client.put_object, Bucket=settings.LEARNING_S3_BUCKET,
+                        Key=learning_key, Body=frame_bytes, ContentType="image/jpeg"
+                    )
+                    # Get dimensions
+                    frame_width, frame_height = await _get_frame_dimensions(frame_bytes)
+                    # Generate thumbnail
+                    if config.get("thumbnail_enabled", True):
+                        thumbnail_key = await _generate_thumbnail(frame_bytes, learning_key)
+                else:
+                    learning_key = None
+            except Exception as e:
+                logger.warning("Frame copy/process failed for %s: %s", detection_id, e)
+                learning_key = None
 
         # Build annotations from predictions
         annotations = []
@@ -185,9 +260,9 @@ async def _async_capture_detection(detection_id: str, org_id: str) -> dict:
             "source_roboflow_project": None,
             "source_detection_id": detection_id,
             "frame_s3_key": learning_key,
-            "thumbnail_s3_key": None,
-            "frame_width": None,
-            "frame_height": None,
+            "thumbnail_s3_key": thumbnail_key,
+            "frame_width": frame_width or None,
+            "frame_height": frame_height or None,
             "store_id": detection.get("store_id"),
             "camera_id": detection.get("camera_id"),
             "label_status": "auto_labeled" if annotations else "unlabeled",
@@ -203,7 +278,7 @@ async def _async_capture_detection(detection_id: str, org_id: str) -> dict:
             "tags": [],
         }
         await ldb.learning_frames.insert_one(frame_doc)
-        await _mark_captured(ldb, "detection", detection_id, org_id)
+        # Dedup already marked via _try_capture_dedup at start of function
 
         return {"captured": True, "frame_id": frame_doc["id"]}
     finally:
