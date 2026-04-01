@@ -1,0 +1,232 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
+
+interface LearningConfig {
+  org_id: string;
+  enabled: boolean;
+  capture_edge_detections: boolean;
+  capture_cloud_detections: boolean;
+  capture_roboflow_datasets: boolean;
+  capture_admin_feedback: boolean;
+  capture_rate: number;
+  capture_min_confidence: number;
+  capture_max_daily: number;
+  capture_wet_only: boolean;
+  dedup_enabled: boolean;
+  dedup_threshold: number;
+  storage_quota_mb: number;
+  retention_days: number;
+  thumbnail_enabled: boolean;
+  auto_cleanup_enabled: boolean;
+  auto_train_enabled: boolean;
+  auto_train_min_frames: number;
+  auto_train_schedule: string;
+  architecture: string;
+  epochs: number;
+  batch_size: number;
+  image_size: number;
+  augmentation_preset: string;
+  split_ratio_train: number;
+  split_ratio_val: number;
+  split_ratio_test: number;
+  pretrained_weights: string;
+  min_map50_to_deploy: number;
+  active_learning_enabled: boolean;
+  uncertainty_threshold: number;
+  diversity_weight: number;
+  max_review_queue: number;
+  [key: string]: unknown;
+}
+
+function Toggle({ value, onChange, label, description }: { value: boolean; onChange: (v: boolean) => void; label: string; description?: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium text-gray-900">{label}</div>
+        {description && <div className="text-xs text-gray-500">{description}</div>}
+      </div>
+      <button
+        onClick={() => onChange(!value)}
+        className={`relative h-6 w-11 rounded-full transition-colors ${value ? "bg-teal-600" : "bg-gray-300"}`}
+      >
+        <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${value ? "translate-x-5" : ""}`} />
+      </button>
+    </div>
+  );
+}
+
+function Slider({ value, onChange, label, min, max, step, description, suffix }: { value: number; onChange: (v: number) => void; label: string; min: number; max: number; step: number; description?: string; suffix?: string }) {
+  return (
+    <div className="rounded-lg border border-gray-100 px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium text-gray-900">{label}</div>
+        <span className="text-sm font-bold text-teal-700">{value}{suffix}</span>
+      </div>
+      {description && <div className="mt-0.5 text-xs text-gray-500">{description}</div>}
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-2 w-full accent-teal-600" />
+    </div>
+  );
+}
+
+function NumberInput({ value, onChange, label, min, max, description }: { value: number; onChange: (v: number) => void; label: string; min: number; max: number; description?: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium text-gray-900">{label}</div>
+        {description && <div className="text-xs text-gray-500">{description}</div>}
+      </div>
+      <input type="number" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))}
+        className="w-24 rounded-lg border border-gray-300 px-2 py-1 text-right text-sm focus:border-teal-500 focus:outline-none" />
+    </div>
+  );
+}
+
+function SelectInput({ value, onChange, label, options, description }: { value: string; onChange: (v: string) => void; label: string; options: { value: string; label: string }[]; description?: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3">
+      <div>
+        <div className="text-sm font-medium text-gray-900">{label}</div>
+        {description && <div className="text-xs text-gray-500">{description}</div>}
+      </div>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="rounded-lg border border-gray-300 px-2 py-1 text-sm focus:border-teal-500 focus:outline-none">
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
+export default function LearningSettingsPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
+  const [config, setConfig] = useState<LearningConfig | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["learning-settings"],
+    queryFn: async () => { const res = await api.get("/learning/settings"); return res.data.data as LearningConfig; },
+  });
+
+  useEffect(() => { if (data) setConfig({ ...data }); }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => { if (!config) return; await api.put("/learning/settings", config); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["learning-settings"] }); queryClient.invalidateQueries({ queryKey: ["learning-stats"] }); success("Settings saved"); setDirty(false); },
+    onError: (e: any) => showError(e?.response?.data?.detail || "Save failed"),
+  });
+
+  const set = <K extends keyof LearningConfig>(key: K, val: LearningConfig[K]) => {
+    if (!config) return;
+    setConfig({ ...config, [key]: val });
+    setDirty(true);
+  };
+
+  if (isLoading || !config) return <div className="flex h-64 items-center justify-center"><Loader2 size={24} className="animate-spin text-teal-600" /></div>;
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate("/learning")} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100"><ArrowLeft size={18} /></button>
+          <h1 className="text-2xl font-bold text-gray-900">Learning Settings</h1>
+        </div>
+        <button onClick={() => saveMutation.mutate()} disabled={!dirty || saveMutation.isPending}
+          className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-40">
+          <Save size={14} /> {saveMutation.isPending ? "Saving..." : "Save"}
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        {/* Master Switch */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">System</h2>
+          <Toggle value={config.enabled} onChange={(v) => set("enabled", v)} label="Learning System Enabled" description="Master switch — disabling stops all data capture" />
+        </section>
+
+        {/* Data Capture */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Data Capture</h2>
+          <div className="space-y-2">
+            <Toggle value={config.capture_edge_detections} onChange={(v) => set("capture_edge_detections", v)} label="Capture Edge Detections" description="Copy frames from edge detection pipeline" />
+            <Toggle value={config.capture_cloud_detections} onChange={(v) => set("capture_cloud_detections", v)} label="Capture Cloud Detections" description="Copy frames from cloud (test inference)" />
+            <Toggle value={config.capture_roboflow_datasets} onChange={(v) => set("capture_roboflow_datasets", v)} label="Capture Roboflow Datasets" description="Download training data when model deployed" />
+            <Toggle value={config.capture_admin_feedback} onChange={(v) => set("capture_admin_feedback", v)} label="Capture Admin Feedback" description="Record true/false positive from incident review" />
+            <Toggle value={config.capture_wet_only} onChange={(v) => set("capture_wet_only", v)} label="Wet Detections Only" description="Skip dry/normal detections" />
+            <Toggle value={config.dedup_enabled} onChange={(v) => set("dedup_enabled", v)} label="Deduplication" description="Skip near-duplicate frames" />
+            <Slider value={config.capture_rate} onChange={(v) => set("capture_rate", v)} label="Capture Rate" min={0.01} max={1} step={0.01} description="Percentage of detections to capture" suffix="" />
+            <Slider value={config.capture_min_confidence} onChange={(v) => set("capture_min_confidence", v)} label="Min Confidence" min={0} max={1} step={0.05} description="Only capture above this confidence" />
+            <NumberInput value={config.capture_max_daily} onChange={(v) => set("capture_max_daily", v)} label="Max Daily Captures" min={10} max={10000} description="Per org per day" />
+          </div>
+        </section>
+
+        {/* Storage */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Storage</h2>
+          <div className="space-y-2">
+            <NumberInput value={config.storage_quota_mb} onChange={(v) => set("storage_quota_mb", v)} label="Storage Quota (MB)" min={1000} max={500000} description="Max storage per org" />
+            <NumberInput value={config.retention_days} onChange={(v) => set("retention_days", v)} label="Retention (days)" min={30} max={3650} description="Auto-delete frames older than this" />
+            <Toggle value={config.thumbnail_enabled} onChange={(v) => set("thumbnail_enabled", v)} label="Generate Thumbnails" description="280x175 thumbnails for browsing" />
+            <Toggle value={config.auto_cleanup_enabled} onChange={(v) => set("auto_cleanup_enabled", v)} label="Auto Cleanup" description="Delete oldest frames when quota exceeded" />
+          </div>
+        </section>
+
+        {/* Training */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Training</h2>
+          <div className="space-y-2">
+            <Toggle value={config.auto_train_enabled} onChange={(v) => set("auto_train_enabled", v)} label="Auto Training" description="Automatically train when dataset reaches threshold" />
+            <NumberInput value={config.auto_train_min_frames} onChange={(v) => set("auto_train_min_frames", v)} label="Min Frames to Train" min={100} max={50000} />
+            <SelectInput value={config.auto_train_schedule} onChange={(v) => set("auto_train_schedule", v)} label="Training Schedule" options={[
+              { value: "manual", label: "Manual Only" },
+              { value: "daily", label: "Daily Check" },
+              { value: "weekly", label: "Weekly Check" },
+            ]} />
+            <SelectInput value={config.architecture} onChange={(v) => set("architecture", v)} label="Model Architecture" options={[
+              { value: "yolo11n", label: "YOLO11n (fastest)" },
+              { value: "yolov8n", label: "YOLOv8n (fast)" },
+              { value: "yolov8s", label: "YOLOv8s (balanced)" },
+              { value: "yolov8m", label: "YOLOv8m (accurate)" },
+            ]} />
+            <NumberInput value={config.epochs} onChange={(v) => set("epochs", v)} label="Training Epochs" min={10} max={300} />
+            <NumberInput value={config.batch_size} onChange={(v) => set("batch_size", v)} label="Batch Size" min={4} max={64} />
+            <SelectInput value={String(config.image_size)} onChange={(v) => set("image_size", Number(v))} label="Image Size" options={[
+              { value: "320", label: "320px" }, { value: "480", label: "480px" },
+              { value: "640", label: "640px" }, { value: "960", label: "960px" },
+            ]} />
+            <SelectInput value={config.augmentation_preset} onChange={(v) => set("augmentation_preset", v)} label="Augmentation" options={[
+              { value: "light", label: "Light" }, { value: "standard", label: "Standard" }, { value: "heavy", label: "Heavy" },
+            ]} />
+            <Slider value={config.min_map50_to_deploy} onChange={(v) => set("min_map50_to_deploy", v)} label="Min mAP@50 to Deploy" min={0.5} max={0.95} step={0.05} description="Model must exceed this score" />
+          </div>
+        </section>
+
+        {/* Active Learning */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Active Learning</h2>
+          <div className="space-y-2">
+            <Toggle value={config.active_learning_enabled} onChange={(v) => set("active_learning_enabled", v)} label="Active Learning" description="Score detections for training value" />
+            <Slider value={config.uncertainty_threshold} onChange={(v) => set("uncertainty_threshold", v)} label="Uncertainty Threshold" min={0.3} max={0.9} step={0.05} description="Below this = high value for training" />
+            <Slider value={config.diversity_weight} onChange={(v) => set("diversity_weight", v)} label="Diversity Weight" min={0} max={1} step={0.1} description="Prefer diverse frames over similar ones" />
+            <NumberInput value={config.max_review_queue} onChange={(v) => set("max_review_queue", v)} label="Max Review Queue" min={10} max={1000} />
+          </div>
+        </section>
+
+        {/* Dataset Splits */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Dataset Splits</h2>
+          <div className="space-y-2">
+            <Slider value={config.split_ratio_train} onChange={(v) => set("split_ratio_train", v)} label="Training Split" min={0.5} max={0.9} step={0.05} suffix="" />
+            <Slider value={config.split_ratio_val} onChange={(v) => set("split_ratio_val", v)} label="Validation Split" min={0.05} max={0.3} step={0.05} suffix="" />
+            <Slider value={config.split_ratio_test} onChange={(v) => set("split_ratio_test", v)} label="Test Split" min={0.05} max={0.2} step={0.05} suffix="" />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

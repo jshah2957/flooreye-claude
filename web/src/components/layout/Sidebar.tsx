@@ -106,6 +106,15 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    title: "LEARNING",
+    minRole: ML_PLUS,
+    items: [
+      { label: "Learning Dashboard", path: "/learning", icon: BrainCircuit, minRole: ML_PLUS },
+      { label: "Dataset Browser", path: "/learning/dataset", icon: Database, minRole: ML_PLUS },
+      { label: "Settings", path: "/learning/settings", icon: Settings, minRole: ADMIN_PLUS },
+    ],
+  },
+  {
     title: "CONFIGURATION",
     minRole: ADMIN_PLUS,
     items: [

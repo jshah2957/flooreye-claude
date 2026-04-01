@@ -28,10 +28,12 @@ import RoboflowPage from "@/pages/integrations/RoboflowPage";
 import RoboflowBrowserPage from "@/pages/integrations/RoboflowBrowserPage";
 import StoragePage from "@/pages/config/StoragePage";
 import TestInferencePage from "@/pages/ml/TestInferencePage";
-import RoboflowTestPage from "@/pages/ml/RoboflowTestPage";
 import ClassManagerPage from "@/pages/detection-control/ClassManagerPage";
 import ApiTesterPage from "@/pages/integrations/ApiTesterPage";
 import ManualPage from "@/pages/admin/ManualPage";
+import LearningDashboardPage from "@/pages/learning/LearningDashboardPage";
+import LearningSettingsPage from "@/pages/learning/LearningSettingsPage";
+import DatasetBrowserPage from "@/pages/learning/DatasetBrowserPage";
 import CompliancePage from "@/pages/compliance/CompliancePage";
 import MonitoringPage from "@/pages/monitoring/MonitoringPage";
 import NotificationCenterPage from "@/pages/notifications/NotificationCenterPage";
@@ -126,7 +128,6 @@ export default function AppRoutes() {
         <Route path="/dataset" element={<DatasetPage />} />
         <Route path="/models" element={<ModelRegistryPage />} />
         <Route path="/ml/test-inference" element={<TestInferencePage />} />
-        <Route path="/ml/roboflow-test" element={<RoboflowTestPage />} />
 
         {/* Configuration */}
         <Route path="/stores" element={<StoresPage />} />
@@ -154,6 +155,11 @@ export default function AppRoutes() {
         <Route path="/edge" element={<EdgeManagementPage />} />
 
         {/* Administration */}
+        {/* Learning System */}
+        <Route path="/learning" element={<LearningDashboardPage />} />
+        <Route path="/learning/settings" element={<LearningSettingsPage />} />
+        <Route path="/learning/dataset" element={<DatasetBrowserPage />} />
+
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/logs" element={<LogsPage />} />
         <Route path="/docs" element={<ManualPage />} />
