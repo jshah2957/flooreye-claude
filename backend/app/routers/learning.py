@@ -712,6 +712,175 @@ async def export_coco(
     return {"data": coco}
 
 
+# ── Visual Model Comparison ───────────────────────────────────────
+
+class CompareRequest(BaseModel):
+    frame_base64: Optional[str] = None
+
+
+@router.post("/models/{job_id}/compare")
+async def compare_models(
+    job_id: str,
+    body: CompareRequest,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Run inference through production model and trained model on same frame for visual comparison."""
+    import base64
+
+    org_id = get_org_id(current_user) or ""
+
+    # Get training job
+    job = await ldb.learning_training_jobs.find_one({"id": job_id, "org_id": org_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=422, detail="Job not completed")
+
+    trained_s3_key = job.get("resulting_model_s3_key")
+    if not trained_s3_key:
+        raise HTTPException(status_code=422, detail="No model file for this job")
+
+    # Get frame
+    frame_b64 = body.frame_base64
+    if not frame_b64:
+        # Pick a random test frame from the learning dataset
+        test_frame = await ldb.learning_frames.find_one(
+            {"org_id": org_id, "split": "test", "frame_s3_key": {"$ne": None}},
+        )
+        if not test_frame:
+            test_frame = await ldb.learning_frames.find_one(
+                {"org_id": org_id, "frame_s3_key": {"$ne": None}},
+            )
+        if not test_frame:
+            raise HTTPException(status_code=404, detail="No frames available for comparison")
+
+        # Download frame from S3
+        try:
+            from app.utils.s3_utils import get_s3_client
+            from app.core.config import settings
+            import asyncio as _aio
+            client = get_s3_client()
+            if client:
+                response = await _aio.to_thread(
+                    client.get_object, Bucket=settings.LEARNING_S3_BUCKET,
+                    Key=test_frame["frame_s3_key"]
+                )
+                frame_bytes = response["Body"].read()
+                frame_b64 = base64.b64encode(frame_bytes).decode("ascii")
+            else:
+                raise HTTPException(status_code=503, detail="S3 not configured")
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch frame: {e}")
+
+    # Get production model predictions
+    production_preds = []
+    try:
+        from app.services.onnx_inference_service import OnnxInferenceService
+        service = OnnxInferenceService.get_instance()
+        if service and service._session:
+            frame_bytes = base64.b64decode(frame_b64)
+            raw_preds = service.run_inference(frame_bytes)
+            production_preds = [
+                {"class_name": p.get("class_name", "unknown"), "confidence": round(p.get("confidence", 0), 3),
+                 "bbox": p.get("bbox", {})}
+                for p in (raw_preds or [])
+            ]
+    except Exception as e:
+        log.warning("Production inference failed: %s", e)
+
+    # Get trained model predictions (download from S3 and run via temp session)
+    trained_preds = []
+    try:
+        from app.utils.s3_utils import get_s3_client
+        from app.core.config import settings
+        import asyncio as _aio
+        import tempfile
+        import os
+
+        client = get_s3_client()
+        if client:
+            response = await _aio.to_thread(
+                client.get_object, Bucket=settings.LEARNING_S3_BUCKET,
+                Key=trained_s3_key
+            )
+            model_bytes = response["Body"].read()
+
+            # Write to temp file and run inference
+            with tempfile.NamedTemporaryFile(suffix=".onnx", delete=False) as tmp:
+                tmp.write(model_bytes)
+                tmp_path = tmp.name
+
+            try:
+                import onnxruntime as ort
+                import numpy as np
+                from PIL import Image
+                import io
+
+                sess = ort.InferenceSession(tmp_path, providers=["CPUExecutionProvider"])
+                input_name = sess.get_inputs()[0].name
+                input_shape = sess.get_inputs()[0].shape  # e.g., [1, 3, 640, 640]
+                imgsz = input_shape[2] if len(input_shape) >= 3 else 640
+
+                # Preprocess
+                frame_bytes = base64.b64decode(frame_b64)
+                img = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
+                orig_w, orig_h = img.size
+                img_resized = img.resize((imgsz, imgsz))
+                arr = np.array(img_resized).astype(np.float32) / 255.0
+                arr = arr.transpose(2, 0, 1)[np.newaxis, ...]  # NCHW
+
+                outputs = sess.run(None, {input_name: arr})
+                # Parse YOLO output (simplified — get top predictions)
+                if len(outputs) > 0:
+                    out = outputs[0]
+                    if out.ndim == 3 and out.shape[0] == 1:
+                        out = out[0]  # [num_classes+4, num_boxes] or [num_boxes, num_classes+4]
+                    if out.ndim == 2:
+                        if out.shape[0] < out.shape[1]:
+                            out = out.T  # Transpose to [num_boxes, ...]
+                        for row in out:
+                            if len(row) >= 6:
+                                cx, cy, w, h = row[0], row[1], row[2], row[3]
+                                scores = row[4:]
+                                max_score = float(np.max(scores))
+                                if max_score > 0.25:
+                                    cls_id = int(np.argmax(scores))
+                                    class_names = [m["class_name"] for m in job.get("per_class_metrics", [])]
+                                    cls_name = class_names[cls_id] if cls_id < len(class_names) else f"class_{cls_id}"
+                                    trained_preds.append({
+                                        "class_name": cls_name,
+                                        "confidence": round(max_score, 3),
+                                        "bbox": {
+                                            "x": round(float(cx) / imgsz * orig_w, 1),
+                                            "y": round(float(cy) / imgsz * orig_h, 1),
+                                            "w": round(float(w) / imgsz * orig_w, 1),
+                                            "h": round(float(h) / imgsz * orig_h, 1),
+                                        },
+                                    })
+            finally:
+                os.unlink(tmp_path)
+    except Exception as e:
+        log.warning("Trained model inference failed: %s", e)
+
+    return {"data": {
+        "frame_base64": frame_b64,
+        "production_predictions": production_preds,
+        "trained_predictions": trained_preds,
+        "production_model": {
+            "version": "current",
+        },
+        "trained_model": {
+            "job_id": job_id,
+            "architecture": job.get("architecture"),
+            "map50": job.get("best_map50"),
+        },
+    }}
+
+
 # ── Deploy Trained Model ──────────────────────────────────────────
 
 @router.post("/models/{job_id}/deploy")

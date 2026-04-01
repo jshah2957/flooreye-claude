@@ -6,10 +6,10 @@
 ---
 
 ## OVERALL STATUS: IN PROGRESS
-## Current Session: C (Visual Model Comparison)
-## Current Task: C1
-## Sessions Complete: 2/6
-## Total Tasks Complete: 13/24
+## Current Session: D (Analytics + Dashboard Charts)
+## Current Task: D1
+## Sessions Complete: 3/6
+## Total Tasks Complete: 16/24
 
 ---
 
@@ -47,14 +47,14 @@
 ---
 
 ## SESSION C: Visual Model Comparison
-**Status: NOT STARTED**
+**Status: COMPLETE**
 **Priority: 5 (Enables model evaluation)**
 
 | # | Task | Status | File | Notes |
 |---|------|--------|------|-------|
-| C1 | Add POST /learning/models/{job_id}/compare endpoint | NOT STARTED | backend/app/routers/learning.py | Runs frame through both production + trained model |
-| C2 | Add split-screen comparison canvas in frontend | NOT STARTED | web/src/pages/learning/ModelComparisonPage.tsx | Left=production (blue), Right=trained (green) |
-| C3 | Add rollback button (promote previous model) | NOT STARTED | web/src/pages/learning/ModelComparisonPage.tsx | Calls promote_model with previous version |
+| C1 | Add POST /learning/models/{job_id}/compare endpoint | DONE | backend/app/routers/learning.py | Downloads frame, runs both models, returns predictions |
+| C2 | Add split-screen comparison canvas in frontend | DONE | web/src/pages/learning/ModelComparisonPage.tsx | Blue=production, Green=trained, "Try another frame" |
+| C3 | Add rollback button (promote previous model) | DONE | web/src/pages/learning/ModelComparisonPage.tsx | Confirmation dialog, calls promote endpoint |
 
 ---
 
