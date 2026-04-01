@@ -258,6 +258,15 @@ async def select_and_deploy_model(
     except Exception:
         pass
 
+    # Learning system: capture Roboflow training data (fire-and-forget, non-blocking)
+    try:
+        from app.core.config import settings as _s
+        if _s.LEARNING_SYSTEM_ENABLED:
+            from app.workers.learning_worker import capture_roboflow_dataset
+            capture_roboflow_dataset.delay(org_id, project_id, version, model_id)
+    except Exception:
+        pass
+
     return {
         "model_version_id": model_id,
         "version_str": model_version.get("version_str", ""),

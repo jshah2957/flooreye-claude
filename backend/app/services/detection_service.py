@@ -215,6 +215,14 @@ async def run_manual_detection(
                 {"$set": {"incident_id": incident["id"]}},
             )
 
+    # Learning system: capture detection frame (fire-and-forget, non-blocking)
+    if settings.LEARNING_SYSTEM_ENABLED:
+        try:
+            from app.workers.learning_worker import capture_detection
+            capture_detection.delay(detection_doc["id"], org_id)
+        except Exception:
+            pass
+
     return detection_doc
 
 

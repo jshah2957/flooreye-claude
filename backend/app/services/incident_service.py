@@ -599,4 +599,14 @@ async def resolve_incident(
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     result.pop("_id", None)
+
+    # Learning system: capture admin feedback (fire-and-forget, non-blocking)
+    try:
+        from app.core.config import settings as _s
+        if _s.LEARNING_SYSTEM_ENABLED:
+            from app.workers.learning_worker import capture_admin_feedback
+            capture_admin_feedback.delay(event_id, resolve_status, user_id, org_id)
+    except Exception:
+        pass
+
     return result
