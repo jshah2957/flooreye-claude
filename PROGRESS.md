@@ -1277,3 +1277,32 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 
 ### Next Session Plan
 - Create 4 documentation files: USER_MANUAL.md, INSTALLATION_GUIDE.md, UPGRADE_GUIDE.md, TROUBLESHOOTING_GUIDE.md
+
+## Session 38 — Cleanup, Logging, Updates, Learning System
+### Date: 2026-03-29 to 2026-04-01
+### Goal: Codebase cleanup, centralized logging, automated updates, learning system
+
+### Completed
+1. **Codebase Cleanup**: Removed 149 stale docs (38,489 lines). Annotated 26 dead code files.
+2. **Architecture Diagrams**: System architecture + data flow SVGs with full documentation.
+3. **Centralized Logging**: Edge log shipper (30s batches), mobile crash capture, 2 ingestion endpoints, dashboard device filter tabs + stack traces. Fixed 3 bugs (audit TTL, WebSocket type, missing emit calls).
+4. **Incident Frame Thumbnails**: Frame column in incident table + frame in detail panel via batch aggregation.
+5. **Alert Class Cache Fix**: Fixed stale cache after model deployment (module + instance invalidation).
+6. **Automated Update System**: CI/CD deploy workflow, cloud deploy script with rollback, edge remote update command, staged rollout, database migration runner, version compatibility check.
+7. **Learning System (Sessions 1-8)**: Separate database (7 collections), separate S3 bucket, 18 API endpoints, 3 UI pages, 3 fire-and-forget capture hooks, 30+ dynamic settings, dataset versioning, auto-split, training job queue, YOLO export.
+
+### Stats
+- 20+ commits pushed to GitHub
+- ~5,000 new lines of code
+- ~38,500 lines of stale docs removed
+- 29 routers (was 28)
+- 121+ tests passed across all sessions
+- 11/11 agents approved on all reviews
+- Zero regressions on existing FloorEye functionality
+
+### Next Session Plan
+- Learning system: build remaining frontend pages (TrainingJobsPage, AnnotationStudioPage, ModelComparisonPage)
+- GPU training worker execution (ultralytics)
+- COCO export format
+- Full integration test of learning system end-to-end
+- See `.claude/LEARNING_SYSTEM_PROGRESS.md` for exact state

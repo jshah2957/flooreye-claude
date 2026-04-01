@@ -168,7 +168,27 @@
       "Bash(MSYS_NO_PATHCONV=1 docker exec flooreye-inference ls -la /models/ 2>&1)",
       "Bash(find . -name *.json -path *grafana* -o -name *.json -path *dashboard*)",
       "Bash(find /c/Users/jshah/flooreye/mobile/app -name *.tsx)",
-      "Bash(echo \"===FILE EXISTS: $?==\")"
+      "Bash(echo \"===FILE EXISTS: $?==\")",
+      "Bash(for file:*)",
+      "Bash(do basename:*)",
+      "Bash(do if:*)",
+      "Bash(then echo:*)",
+      "Bash(fi)",
+      "Bash(/tmp/unused_audit.txt:*)",
+      "Bash(find /c/Users/jshah/flooreye -type f \\\\\\(-name *.js -o -name *.ts -o -name *.tsx -o -name *.json \\\\\\))",
+      "Bash(find /c/Users/jshah/flooreye/backend -type f \\\\\\(-name *.py \\\\\\))",
+      "Bash(head:*)",
+      "Bash(head -100 mobile/app/\\\\\\(tabs\\\\\\)/alerts.tsx)",
+      "Bash(for dir:*)",
+      "Read(//c/Users/jshah/flooreye/**)",
+      "Bash(find /c/Users/jshah/flooreye/mobile/app -name *.tsx -o -name *.ts)",
+      "Bash(for var:*)",
+      "Bash(find /c/Users/jshah/flooreye -name system_log.py -o -name *system_log*)",
+      "Bash(find /c/Users/jshah/flooreye/mobile -name *.ts -o -name *.tsx)",
+      "Bash(find /c/Users/jshah/flooreye/mobile -path */node_modules -prune -o -type f \\\\\\(-name api.ts -o -name *error* -o -name _layout.tsx \\\\\\) -print)",
+      "Bash(find backend/app/routers -name \"*.py\" -exec grep -l \"router = APIRouter\" {})",
+      "Bash(find /c/Users/jshah/flooreye -name docker-compose*.yml -o -name Dockerfile* -o -name *.bat)",
+      "Bash(find /c/Users/jshah/flooreye/backend -name *dead* -o -name *dlq* -o -name *queue*)"
     ]
   }
 }
