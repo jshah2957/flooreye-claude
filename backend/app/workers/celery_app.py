@@ -23,6 +23,7 @@ celery_app.conf.update(
         "app.workers.detection_worker.*": {"queue": "detection"},
         "app.workers.notification_worker.*": {"queue": "notifications"},
         "app.workers.learning_worker.*": {"queue": "learning"},
+        "app.workers.training_worker.*": {"queue": "learning"},
     },
     beat_schedule={
         "auto-close-stale-incidents": {
@@ -36,6 +37,10 @@ celery_app.conf.update(
         "health-check": {
             "task": "app.workers.health_worker.run_health_check",
             "schedule": 60.0,  # every 60 seconds
+        },
+        "auto-train-check": {
+            "task": "app.workers.training_worker.auto_train_if_ready",
+            "schedule": crontab(hour="*/6"),
         },
     },
 )

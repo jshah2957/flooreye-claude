@@ -52,6 +52,31 @@ async def _try_capture_dedup(ldb, source_type: str, source_id: str, org_id: str)
         return False  # On error, skip capture (safe default)
 
 
+async def _is_already_captured(ldb, source_type: str, source_id: str) -> bool:
+    """Check if a capture log entry already exists for this source."""
+    doc = await ldb.learning_capture_log.find_one(
+        {"source_type": source_type, "source_id": source_id}
+    )
+    return doc is not None
+
+
+async def _mark_captured(ldb, source_type: str, source_id: str, org_id: str):
+    """Insert a capture log entry to prevent future duplicates."""
+    try:
+        await ldb.learning_capture_log.update_one(
+            {"source_type": source_type, "source_id": source_id},
+            {"$setOnInsert": {
+                "source_type": source_type,
+                "source_id": source_id,
+                "org_id": org_id,
+                "captured_at": datetime.now(timezone.utc),
+            }},
+            upsert=True,
+        )
+    except Exception:
+        pass  # Non-critical
+
+
 async def _check_storage_quota(ldb, org_id: str, quota_mb: int) -> bool:
     """Check if org is within storage quota. Returns True if under quota."""
     # Estimate: count frames * avg 100KB per frame

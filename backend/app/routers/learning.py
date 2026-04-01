@@ -515,6 +515,18 @@ async def start_training_job(
         "created_by": current_user["id"],
     }
     await ldb.learning_training_jobs.insert_one(job_doc)
+
+    # Dispatch Celery training task
+    try:
+        from app.workers.training_worker import run_training_job
+        task = run_training_job.delay(job_id, org_id)
+        await ldb.learning_training_jobs.update_one(
+            {"id": job_id}, {"$set": {"celery_task_id": task.id}}
+        )
+        job_doc["celery_task_id"] = task.id
+    except Exception as e:
+        log.warning("Failed to dispatch training task for job %s: %s", job_id, e)
+
     job_doc.pop("_id", None)
     return {"data": job_doc}
 
