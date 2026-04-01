@@ -77,6 +77,8 @@ export default function EdgeManagementPage() {
   const [cmdType, setCmdType] = useState("ping");
   const [modelUpdateTarget, setModelUpdateTarget] = useState<EdgeAgent | null>(null);
   const [addDeviceOpen, setAddDeviceOpen] = useState(false);
+  const [rolloutOpen, setRolloutOpen] = useState(false);
+  const [rolloutVersion, setRolloutVersion] = useState("");
   const [devName, setDevName] = useState("");
   const [devIp, setDevIp] = useState("");
   const [devType, setDevType] = useState("tplink");
@@ -173,6 +175,20 @@ export default function EdgeManagementPage() {
     onError: (err: any) => {
       showError(err?.response?.data?.detail || "Failed to push model");
     },
+  });
+
+  const rolloutMutation = useMutation({
+    mutationFn: async () => {
+      if (!rolloutVersion.trim()) throw new Error("Version required");
+      const res = await api.post("/edge/rollout", { target_version: rolloutVersion.trim() });
+      return res.data.data;
+    },
+    onSuccess: (data: { task_id: string; agent_count: number }) => {
+      success(`Rollout started: ${data.agent_count} agent(s) → v${rolloutVersion}`);
+      setRolloutOpen(false);
+      setRolloutVersion("");
+    },
+    onError: (err: any) => showError(err?.response?.data?.detail || "Rollout failed"),
   });
 
   const testDeviceMutation = useMutation({
@@ -342,12 +358,21 @@ export default function EdgeManagementPage() {
           </div>
           <p className="mt-1 text-sm text-gray-500">{agents.length} agent{agents.length !== 1 ? "s" : ""} · On-premise devices for local camera detection + IoT control</p>
         </div>
-        <button
-          onClick={() => { setProvisionOpen(true); setProvResult(null); setProvName(""); setProvStoreId(""); }}
-          className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700"
-        >
-          <Plus size={16} /> Provision Agent
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setRolloutOpen(true)}
+            disabled={agents.length === 0}
+            className="flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm font-medium text-teal-700 shadow-sm transition hover:bg-teal-100 disabled:opacity-40"
+          >
+            Update All Agents
+          </button>
+          <button
+            onClick={() => { setProvisionOpen(true); setProvResult(null); setProvName(""); setProvStoreId(""); }}
+            className="flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-teal-700"
+          >
+            <Plus size={16} /> Provision Agent
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -896,6 +921,46 @@ export default function EdgeManagementPage() {
         onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* Rollout Modal */}
+      {rolloutOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-1 text-lg font-bold text-gray-900">Update All Edge Agents</h3>
+            <p className="mb-4 text-sm text-gray-500">
+              Agents will be updated one at a time. Each agent is verified before proceeding to the next.
+              Detections pause for ~40 seconds per store during restart.
+            </p>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Target Version</label>
+            <input
+              type="text"
+              placeholder="e.g. 4.9.0"
+              value={rolloutVersion}
+              onChange={(e) => setRolloutVersion(e.target.value)}
+              className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            />
+            <p className="mb-4 text-xs text-gray-400">
+              This will update {agents.length} agent{agents.length !== 1 ? "s" : ""}.
+              Current versions: {[...new Set(agents.map(a => a.agent_version || "unknown"))].join(", ")}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setRolloutOpen(false); setRolloutVersion(""); }}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => rolloutMutation.mutate()}
+                disabled={!rolloutVersion.trim() || rolloutMutation.isPending}
+                className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-40"
+              >
+                {rolloutMutation.isPending ? "Starting..." : `Update ${agents.length} Agent${agents.length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
