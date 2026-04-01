@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Filter, Loader2, Image as ImageIcon, Eye, Trash2, Tag } from "lucide-react";
+import { Search, Filter, Loader2, Image as ImageIcon, Eye, Trash2, Tag, Download, Upload } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -36,6 +36,9 @@ export default function DatasetBrowserPage() {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<LearningFrame | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const limit = DEFAULT_PAGE_LIMIT;
 
   const { data, isLoading } = useQuery({
@@ -70,6 +73,55 @@ export default function DatasetBrowserPage() {
     onError: () => showError("Update failed"),
   });
 
+  const exportMutation = useMutation({
+    mutationFn: async (format: "yolo" | "coco") => {
+      const res = await api.post(`/learning/export/${format}`, {});
+      return { data: res.data.data, format };
+    },
+    onSuccess: ({ data: exportData, format }) => {
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `flooreye_dataset_${format}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      success(`Exported ${format.toUpperCase()} format`);
+    },
+    onError: () => showError("Export failed"),
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post("/learning/frames/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["learning-frames"] });
+      success("Frame uploaded");
+      setShowUpload(false);
+    },
+    onError: () => showError("Upload failed"),
+  });
+
+  const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadMutation.mutate(file);
+  }, [uploadMutation]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadMutation.mutate(file);
+  }, [uploadMutation]);
+
   const frames = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
@@ -87,9 +139,33 @@ export default function DatasetBrowserPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dataset Browser</h1>
-        <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} frames captured</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dataset Browser</h1>
+          <p className="mt-1 text-sm text-gray-500">{total.toLocaleString()} frames captured</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => exportMutation.mutate("yolo")}
+            disabled={exportMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40"
+          >
+            <Download size={14} /> Export YOLO
+          </button>
+          <button
+            onClick={() => exportMutation.mutate("coco")}
+            disabled={exportMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40"
+          >
+            <Download size={14} /> Export COCO
+          </button>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:bg-teal-700"
+          >
+            <Upload size={14} /> Upload
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -230,6 +306,46 @@ export default function DatasetBrowserPage() {
               )}
               <button onClick={() => setDetail(null)} className="mt-4 w-full rounded-lg bg-gray-100 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Close</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Upload Modal */}
+      {showUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowUpload(false)}>
+          <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-4 text-lg font-bold text-gray-900">Upload Frame</h3>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleFileDrop}
+              className={`flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition ${
+                dragOver ? "border-teal-500 bg-teal-50" : "border-gray-300 bg-gray-50 hover:border-teal-400"
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadMutation.isPending ? (
+                <Loader2 size={24} className="animate-spin text-teal-600" />
+              ) : (
+                <>
+                  <Upload size={28} className="mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-600">Drag & drop an image here</p>
+                  <p className="text-xs text-gray-400">or click to browse (JPEG, PNG, WebP)</p>
+                </>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            <button
+              onClick={() => setShowUpload(false)}
+              className="mt-4 w-full rounded-lg bg-gray-100 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}

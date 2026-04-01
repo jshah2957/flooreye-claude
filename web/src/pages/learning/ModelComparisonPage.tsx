@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trophy, RotateCcw, Rocket, BarChart3, Eye } from "lucide-react";
+import { Loader2, Trophy, RotateCcw, Rocket, BarChart3, Eye, Download } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-import { COLORS } from "@/constants/learning";
+import { COLORS, DEFAULT_COMPARE_CONFIDENCE } from "@/constants/learning";
 
 interface TrainedModel {
   id: string;
@@ -84,6 +84,7 @@ export default function ModelComparisonPage() {
   const trainCanvasRef = useRef<HTMLCanvasElement>(null);
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
   const [comparingJobId, setComparingJobId] = useState<string | null>(null);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(DEFAULT_COMPARE_CONFIDENCE);
 
   const { data: models, isLoading } = useQuery({
     queryKey: ["learning-models"],
@@ -129,17 +130,31 @@ export default function ModelComparisonPage() {
     onError: () => { showError("Comparison failed"); setComparingJobId(null); },
   });
 
-  // Draw predictions when compare result changes
+  const downloadMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      const res = await api.get(`/learning/models/${jobId}/download`);
+      return res.data.data as { url: string; s3_key: string; job_id: string };
+    },
+    onSuccess: (data) => {
+      window.open(data.url, "_blank");
+      success("Download started");
+    },
+    onError: () => showError("Download failed — model file may not be available"),
+  });
+
+  // Draw predictions when compare result or confidence threshold changes
   useEffect(() => {
     if (!compareResult) return;
     const imgSrc = `data:image/jpeg;base64,${compareResult.frame_base64}`;
+    const filteredProd = compareResult.production_predictions.filter((p) => p.confidence >= confidenceThreshold);
+    const filteredTrained = compareResult.trained_predictions.filter((p) => p.confidence >= confidenceThreshold);
     if (prodCanvasRef.current) {
-      drawPredictions(prodCanvasRef.current, imgSrc, compareResult.production_predictions, COLORS.PRODUCTION_MODEL, "Production");
+      drawPredictions(prodCanvasRef.current, imgSrc, filteredProd, COLORS.PRODUCTION_MODEL, "Production");
     }
     if (trainCanvasRef.current) {
-      drawPredictions(trainCanvasRef.current, imgSrc, compareResult.trained_predictions, COLORS.TRAINED_MODEL, "Trained");
+      drawPredictions(trainCanvasRef.current, imgSrc, filteredTrained, COLORS.TRAINED_MODEL, "Trained");
     }
-  }, [compareResult]);
+  }, [compareResult, confidenceThreshold]);
 
   const sortedModels = [...(models ?? [])].sort((a, b) => (b.best_map50 ?? 0) - (a.best_map50 ?? 0));
   const bestModel = sortedModels[0];
@@ -180,16 +195,29 @@ export default function ModelComparisonPage() {
                 <button onClick={() => { setCompareResult(null); setComparingJobId(null); }}
                   className="text-xs text-gray-500 hover:text-gray-700">Close</button>
               </div>
+              <div className="mb-3 flex items-center gap-3">
+                <label className="text-xs font-medium text-gray-600">Confidence Threshold:</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={confidenceThreshold}
+                  onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
+                  className="h-2 w-48 cursor-pointer accent-teal-600"
+                />
+                <span className="text-xs font-semibold text-gray-700">{confidenceThreshold.toFixed(2)}</span>
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <div className="mb-1 text-center text-xs font-semibold text-blue-600">
-                    Production ({compareResult.production_predictions.length} detections)
+                    Production ({compareResult.production_predictions.filter((p) => p.confidence >= confidenceThreshold).length} detections)
                   </div>
                   <canvas ref={prodCanvasRef} className="w-full rounded-lg border border-blue-200" />
                 </div>
                 <div>
                   <div className="mb-1 text-center text-xs font-semibold text-green-600">
-                    Trained ({compareResult.trained_predictions.length} detections)
+                    Trained ({compareResult.trained_predictions.filter((p) => p.confidence >= confidenceThreshold).length} detections)
                   </div>
                   <canvas ref={trainCanvasRef} className="w-full rounded-lg border border-green-200" />
                 </div>
@@ -294,6 +322,15 @@ export default function ModelComparisonPage() {
                         >
                           <Eye size={12} /> Compare
                         </button>
+                        {m.resulting_model_s3_key && (
+                          <button
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                            onClick={() => downloadMutation.mutate(m.id)}
+                            disabled={downloadMutation.isPending}
+                          >
+                            <Download size={12} /> ONNX
+                          </button>
+                        )}
                         <button
                           className="inline-flex items-center gap-1 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-100"
                           onClick={() => deployMutation.mutate(m.id)}

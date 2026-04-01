@@ -19,6 +19,7 @@ from app.core.learning_constants import (
     DEFAULT_COMPARE_CONFIDENCE,
     DEFAULT_FRAME_SIZE,
     DEFAULT_PAGE_LIMIT,
+    EARLY_STOPPING_PATIENCE_MAX,
     MAX_AGGREGATION_RESULTS,
     MAX_DATASET_VERSIONS,
     MAX_FRAMES_FETCH,
@@ -59,6 +60,7 @@ class TrainingJobCreate(BaseModel):
     image_size: int = Field(640, ge=TRAINING_IMAGE_SIZE_MIN, le=TRAINING_IMAGE_SIZE_MAX)
     augmentation_preset: Literal["light", "standard", "heavy"] = "standard"
     pretrained_weights: str = "auto"
+    patience: int = Field(0, ge=0, le=EARLY_STOPPING_PATIENCE_MAX)
 
 
 class FrameUpdate(BaseModel):
@@ -614,6 +616,7 @@ async def start_training_job(
         "image_size": body.image_size,
         "augmentation_preset": body.augmentation_preset,
         "pretrained_weights": body.pretrained_weights,
+        "patience": body.patience,
         "current_epoch": None,
         "total_epochs": body.epochs,
         "best_map50": None,
@@ -1467,6 +1470,50 @@ async def merge_classes(
     # Delete the source class doc
     await ldb.learning_classes.delete_one({"org_id": org_id, "name": body.source})
     return {"data": {"merged_frames": result.modified_count}}
+
+
+# ── Model Download ────────────────────────────────────────────────
+
+@router.get("/models/{job_id}/download")
+async def download_model(
+    job_id: str,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Get presigned URL for downloading the trained ONNX model."""
+    org_id = get_org_id(current_user) or ""
+    job = await ldb.learning_training_jobs.find_one(
+        {"id": job_id, "org_id": org_id}, {"_id": 0}
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=422, detail="Job not completed")
+
+    s3_key = job.get("resulting_model_s3_key")
+    if not s3_key:
+        raise HTTPException(status_code=422, detail="No model file produced by this job")
+
+    try:
+        from app.services.storage_service import generate_url
+        url = await generate_url(s3_key, expires=3600, bucket_override=None)
+        return {"data": {"url": url, "s3_key": s3_key, "job_id": job_id}}
+    except Exception as e:
+        # Fallback: try learning bucket directly
+        try:
+            from app.utils.s3_utils import get_s3_client
+            from app.core.config import settings
+            client = get_s3_client()
+            if client:
+                url = client.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": settings.LEARNING_S3_BUCKET, "Key": s3_key},
+                    ExpiresIn=3600,
+                )
+                return {"data": {"url": url, "s3_key": s3_key, "job_id": job_id}}
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to generate download URL: {e}")
 
 
 # ── Health Check ──────────────────────────────────────────────────

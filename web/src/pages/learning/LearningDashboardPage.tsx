@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Brain, Database, Image, CheckCircle, XCircle, Loader2, BarChart3, Settings2, HardDrive } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
-import { STATS_REFETCH_MS, CHART_REFETCH_MS, STORAGE_WARN_PCT, STORAGE_DANGER_PCT, FRAME_SOURCES_DISPLAY } from "@/constants/learning";
+import { STATS_REFETCH_MS, CHART_REFETCH_MS, STORAGE_WARN_PCT, STORAGE_DANGER_PCT, FRAME_SOURCES_DISPLAY, TRAINING_STATUS_COLORS } from "@/constants/learning";
 
 interface LearningStats {
   total_frames: number;
@@ -23,6 +23,15 @@ interface CaptureDay {
   count: number;
 }
 
+interface TrainingJobSummary {
+  id: string;
+  status: string;
+  architecture: string;
+  best_map50: number | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
 export default function LearningDashboardPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useQuery({
@@ -39,6 +48,15 @@ export default function LearningDashboardPage() {
     queryFn: async () => {
       const res = await api.get("/learning/analytics/captures-by-day");
       return res.data.data as CaptureDay[];
+    },
+    refetchInterval: CHART_REFETCH_MS,
+  });
+
+  const { data: trainingJobs } = useQuery({
+    queryKey: ["learning-training-dashboard"],
+    queryFn: async () => {
+      const res = await api.get("/learning/training");
+      return res.data.data as TrainingJobSummary[];
     },
     refetchInterval: CHART_REFETCH_MS,
   });
@@ -146,6 +164,50 @@ export default function LearningDashboardPage() {
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* Training History Chart */}
+      {(() => {
+        const completedJobs = (trainingJobs ?? [])
+          .filter((j) => j.completed_at && j.best_map50 != null)
+          .sort((a, b) => new Date(a.completed_at!).getTime() - new Date(b.completed_at!).getTime())
+          .map((j) => ({
+            date: new Date(j.completed_at!).toLocaleDateString(),
+            map50: Math.round((j.best_map50 ?? 0) * 100),
+            status: j.status,
+            architecture: j.architecture,
+          }));
+        return completedJobs.length > 0 ? (
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+            <h3 className="mb-4 text-sm font-semibold text-gray-700">Training History (mAP@50 Over Time)</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={completedJobs}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} unit="%" />
+                <Tooltip
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                  formatter={(value: number) => [`${value}%`, "mAP@50"]}
+                />
+                <Bar dataKey="map50" radius={[4, 4, 0, 0]}>
+                  {completedJobs.map((entry, index) => (
+                    <Cell key={index} fill={TRAINING_STATUS_COLORS[entry.status] ?? "#6B7280"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-2 flex items-center justify-center gap-4 text-[10px] text-gray-500">
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: TRAINING_STATUS_COLORS.completed }} />
+                Completed
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full" style={{ backgroundColor: TRAINING_STATUS_COLORS.failed }} />
+                Failed
+              </div>
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {/* Source Breakdown + Feedback */}
       <div className="mb-6 grid gap-4 md:grid-cols-2">

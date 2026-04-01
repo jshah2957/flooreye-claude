@@ -239,6 +239,7 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
         epochs = job.get("epochs", 50)
         batch_size = job.get("batch_size", 16)
         image_size = job.get("image_size", 640)
+        patience = job.get("patience", 0)
 
         # Progress callback: update job doc every epoch
         async def _update_progress(epoch: int, loss: float, val_loss: float = 0, lr: float = 0):
@@ -281,7 +282,7 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
         # Use the training/distillation.py trainer
         from training.distillation import DistillationTrainer
 
-        trainer = DistillationTrainer(
+        trainer_kwargs = dict(
             data_yaml=data_yaml_path,
             student_weights=_resolve_weights(architecture),
             architecture=architecture,
@@ -290,10 +291,14 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
             imgsz=image_size,
             output_dir=work_dir,
         )
+        if patience > 0:
+            trainer_kwargs["patience"] = patience
+
+        trainer = DistillationTrainer(**trainer_kwargs)
 
         logger.info(
-            "Starting YOLO training: arch=%s epochs=%d batch=%d imgsz=%d",
-            architecture, epochs, batch_size, image_size,
+            "Starting YOLO training: arch=%s epochs=%d batch=%d imgsz=%d patience=%d",
+            architecture, epochs, batch_size, image_size, patience,
         )
         metrics = trainer.train(job_id=job_id, progress_callback=progress_callback)
 

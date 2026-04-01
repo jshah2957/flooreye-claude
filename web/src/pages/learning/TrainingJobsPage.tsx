@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Loader2, CheckCircle, XCircle, Clock, Ban, BarChart3, Cpu } from "lucide-react";
+import { Play, Loader2, CheckCircle, XCircle, Clock, Ban, BarChart3, Cpu, GitCompare } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import {
   JOBS_REFETCH_MS, TRAINING_DEFAULTS, ARCHITECTURE_OPTIONS,
-  IMAGE_SIZE_OPTIONS, AUGMENTATION_OPTIONS,
+  IMAGE_SIZE_OPTIONS, AUGMENTATION_OPTIONS, EARLY_STOPPING_PATIENCE_MAX,
+  ESTIMATED_SECONDS_PER_BATCH,
 } from "@/constants/learning";
 
 interface TrainingJob {
@@ -23,6 +24,7 @@ interface TrainingJob {
   best_map50_95: number | null;
   per_class_metrics: { class_name: string; ap50: number; precision: number; recall: number }[];
   training_loss_history: { epoch: number; loss: number }[];
+  patience: number;
   error_message: string | null;
   dataset_version_id: string | null;
   created_at: string;
@@ -58,6 +60,8 @@ export default function TrainingJobsPage() {
   const { success, error: showError } = useToast();
   const [showCreate, setShowCreate] = useState(false);
   const [detail, setDetail] = useState<TrainingJob | null>(null);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
 
   // Form state
   const [datasetVersionId, setDatasetVersionId] = useState("");
@@ -66,6 +70,7 @@ export default function TrainingJobsPage() {
   const [batchSize, setBatchSize] = useState<number>(TRAINING_DEFAULTS.batchSize);
   const [imageSize, setImageSize] = useState<number>(TRAINING_DEFAULTS.imageSize);
   const [augmentation, setAugmentation] = useState<string>(TRAINING_DEFAULTS.augmentation);
+  const [patience, setPatience] = useState<number>(TRAINING_DEFAULTS.patience);
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ["learning-training"],
@@ -78,11 +83,19 @@ export default function TrainingJobsPage() {
     queryFn: async () => { const r = await api.get("/learning/datasets"); return r.data.data as DatasetVersion[]; },
   });
 
+  const { data: statsData } = useQuery({
+    queryKey: ["learning-stats-for-estimate"],
+    queryFn: async () => {
+      const r = await api.get("/learning/stats");
+      return r.data.data as { total_frames: number };
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const r = await api.post("/learning/training", {
         dataset_version_id: datasetVersionId || undefined,
-        architecture, epochs, batch_size: batchSize, image_size: imageSize, augmentation_preset: augmentation,
+        architecture, epochs, batch_size: batchSize, image_size: imageSize, augmentation_preset: augmentation, patience,
       });
       return r.data.data;
     },
@@ -96,6 +109,26 @@ export default function TrainingJobsPage() {
     onError: () => showError("Cancel failed"),
   });
 
+  const completedJobs = (jobs ?? []).filter((j) => j.status === "completed");
+
+  function toggleCompareSelection(jobId: string) {
+    setSelectedForCompare((prev) => {
+      if (prev.includes(jobId)) return prev.filter((id) => id !== jobId);
+      if (prev.length >= 2) return [prev[1] ?? jobId, jobId];
+      return [...prev, jobId];
+    });
+  }
+
+  const compareJobA = completedJobs.find((j) => j.id === selectedForCompare[0]) ?? null;
+  const compareJobB = completedJobs.find((j) => j.id === selectedForCompare[1]) ?? null;
+
+  function betterClass(a: number | null, b: number | null): { aClass: string; bClass: string } {
+    if (a == null || b == null) return { aClass: "", bClass: "" };
+    if (a > b) return { aClass: "text-green-600 font-bold", bClass: "" };
+    if (b > a) return { aClass: "", bClass: "text-green-600 font-bold" };
+    return { aClass: "", bClass: "" };
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
@@ -103,10 +136,18 @@ export default function TrainingJobsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Training Jobs</h1>
           <p className="mt-1 text-sm text-gray-500">{(jobs ?? []).length} job{(jobs ?? []).length !== 1 ? "s" : ""}</p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-teal-700">
-          <Play size={16} /> Start Training
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedForCompare.length === 2 && (
+            <button onClick={() => setShowCompare(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-teal-300 bg-teal-50 px-5 py-2.5 text-sm font-medium text-teal-700 shadow-sm hover:bg-teal-100">
+              <GitCompare size={16} /> Compare ({selectedForCompare.length})
+            </button>
+          )}
+          <button onClick={() => setShowCreate(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-teal-700">
+            <Play size={16} /> Start Training
+          </button>
+        </div>
       </div>
 
       {/* Job List */}
@@ -121,8 +162,17 @@ export default function TrainingJobsPage() {
       ) : (
         <div className="space-y-3">
           {(jobs ?? []).map((job) => (
-            <div key={job.id} onClick={() => setDetail(job)}
-              className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+            <div key={job.id} className="flex items-center gap-3">
+              {job.status === "completed" && (
+                <input
+                  type="checkbox"
+                  checked={selectedForCompare.includes(job.id)}
+                  onChange={() => toggleCompareSelection(job.id)}
+                  className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                />
+              )}
+              <div onClick={() => setDetail(job)}
+                className="flex-1 cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {STATUS_ICONS[job.status]}
@@ -155,6 +205,7 @@ export default function TrainingJobsPage() {
                 <p className="mt-2 text-xs text-red-600">{job.error_message}</p>
               )}
               <p className="mt-2 text-[10px] text-gray-400">Created {new Date(job.created_at).toLocaleString()}</p>
+            </div>
             </div>
           ))}
         </div>
@@ -225,6 +276,115 @@ export default function TrainingJobsPage() {
         </div>
       )}
 
+      {/* Compare Modal */}
+      {showCompare && compareJobA && compareJobB && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCompare(false)}>
+          <div className="mx-4 max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-4 text-lg font-bold text-gray-900">Compare Training Jobs</h3>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="py-2 text-left text-xs font-semibold uppercase text-gray-500">Metric</th>
+                  <th className="py-2 text-center text-xs font-semibold uppercase text-gray-500">Job A</th>
+                  <th className="py-2 text-center text-xs font-semibold uppercase text-gray-500">Job B</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const map50 = betterClass(compareJobA.best_map50, compareJobB.best_map50);
+                  const map5095 = betterClass(compareJobA.best_map50_95, compareJobB.best_map50_95);
+                  // For epochs: lower is better only if mAP is similar, show neutral
+                  const rows: { label: string; a: string; b: string; aClass: string; bClass: string }[] = [
+                    {
+                      label: "mAP@50",
+                      a: compareJobA.best_map50 != null ? `${(compareJobA.best_map50 * 100).toFixed(1)}%` : "\u2014",
+                      b: compareJobB.best_map50 != null ? `${(compareJobB.best_map50 * 100).toFixed(1)}%` : "\u2014",
+                      aClass: map50.aClass, bClass: map50.bClass,
+                    },
+                    {
+                      label: "mAP@50-95",
+                      a: compareJobA.best_map50_95 != null ? `${(compareJobA.best_map50_95 * 100).toFixed(1)}%` : "\u2014",
+                      b: compareJobB.best_map50_95 != null ? `${(compareJobB.best_map50_95 * 100).toFixed(1)}%` : "\u2014",
+                      aClass: map5095.aClass, bClass: map5095.bClass,
+                    },
+                    {
+                      label: "Architecture",
+                      a: compareJobA.architecture, b: compareJobB.architecture,
+                      aClass: "", bClass: "",
+                    },
+                    {
+                      label: "Epochs",
+                      a: String(compareJobA.epochs), b: String(compareJobB.epochs),
+                      aClass: "", bClass: "",
+                    },
+                    {
+                      label: "Training Time",
+                      a: compareJobA.started_at && compareJobA.completed_at
+                        ? `${Math.round((new Date(compareJobA.completed_at).getTime() - new Date(compareJobA.started_at).getTime()) / 60000)}m`
+                        : "\u2014",
+                      b: compareJobB.started_at && compareJobB.completed_at
+                        ? `${Math.round((new Date(compareJobB.completed_at).getTime() - new Date(compareJobB.started_at).getTime()) / 60000)}m`
+                        : "\u2014",
+                      aClass: "", bClass: "",
+                    },
+                  ];
+                  return rows.map((r) => (
+                    <tr key={r.label} className="border-b border-gray-50">
+                      <td className="py-2 text-gray-600">{r.label}</td>
+                      <td className={`py-2 text-center ${r.aClass}`}>{r.a}</td>
+                      <td className={`py-2 text-center ${r.bClass}`}>{r.b}</td>
+                    </tr>
+                  ));
+                })()}
+              </tbody>
+            </table>
+
+            {/* Per-class comparison */}
+            {(() => {
+              const allClasses = new Set<string>();
+              (compareJobA.per_class_metrics ?? []).forEach((m) => allClasses.add(m.class_name));
+              (compareJobB.per_class_metrics ?? []).forEach((m) => allClasses.add(m.class_name));
+              const classNames = Array.from(allClasses).sort();
+              if (classNames.length === 0) return null;
+
+              const aMap = Object.fromEntries((compareJobA.per_class_metrics ?? []).map((m) => [m.class_name, m]));
+              const bMap = Object.fromEntries((compareJobB.per_class_metrics ?? []).map((m) => [m.class_name, m]));
+
+              return (
+                <div className="mt-4">
+                  <h4 className="mb-2 text-xs font-semibold uppercase text-gray-500">Per-Class AP@50</h4>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b text-gray-500">
+                        <th className="py-1 text-left">Class</th>
+                        <th className="py-1 text-center">Job A</th>
+                        <th className="py-1 text-center">Job B</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classNames.map((cn) => {
+                        const aVal = aMap[cn]?.ap50 ?? null;
+                        const bVal = bMap[cn]?.ap50 ?? null;
+                        const cls = betterClass(aVal, bVal);
+                        return (
+                          <tr key={cn} className="border-b border-gray-50">
+                            <td className="py-1 font-medium">{cn}</td>
+                            <td className={`py-1 text-center ${cls.aClass}`}>{aVal != null ? `${(aVal * 100).toFixed(1)}%` : "\u2014"}</td>
+                            <td className={`py-1 text-center ${cls.bClass}`}>{bVal != null ? `${(bVal * 100).toFixed(1)}%` : "\u2014"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+
+            <button onClick={() => setShowCompare(false)} className="mt-4 w-full rounded-lg bg-gray-100 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Close</button>
+          </div>
+        </div>
+      )}
+
       {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCreate(false)}>
@@ -274,7 +434,30 @@ export default function TrainingJobsPage() {
                   </select>
                 </div>
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Early Stopping Patience (0 = disabled)</label>
+                <input type="number" min={0} max={EARLY_STOPPING_PATIENCE_MAX} value={patience} onChange={(e) => setPatience(Number(e.target.value))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none" />
+              </div>
             </div>
+            {/* Training Time Estimate */}
+            {(() => {
+              const totalFrames = statsData?.total_frames ?? 0;
+              if (totalFrames === 0 || batchSize === 0) return null;
+              const batchesPerEpoch = Math.ceil(totalFrames / batchSize);
+              const totalSeconds = epochs * batchesPerEpoch * ESTIMATED_SECONDS_PER_BATCH;
+              const minutes = Math.round(totalSeconds / 60);
+              return (
+                <div className="mt-3 rounded-lg bg-blue-50 px-4 py-3">
+                  <p className="text-xs font-medium text-blue-800">
+                    Estimated training time: ~{minutes < 60 ? `${minutes} minutes` : `${(minutes / 60).toFixed(1)} hours`}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-blue-600">
+                    {totalFrames.toLocaleString()} frames x {epochs} epochs x {batchesPerEpoch.toLocaleString()} batches/epoch
+                  </p>
+                </div>
+              );
+            })()}
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={() => setShowCreate(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
               <button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}
