@@ -233,18 +233,20 @@ export default function AnnotationStudioPage() {
 
   function undo() {
     if (!current || undoStack.length === 0) return;
-    const prev = undoStack[undoStack.length - 1];
+    const prev = undoStack[undoStack.length - 1]!;
+    const currentAnns: Annotation[] = current.annotations ?? [];
     setUndoStack((s) => s.slice(0, -1));
-    setRedoStack((s) => [...s, deepCloneAnnotations(current.annotations ?? [])]);
+    setRedoStack((s) => [...s, deepCloneAnnotations(currentAnns)]);
     updateAnnotations(prev);
     setSelectedBox(null);
   }
 
   function redo() {
     if (!current || redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
+    const next = redoStack[redoStack.length - 1]!;
+    const currentAnns: Annotation[] = current.annotations ?? [];
     setRedoStack((s) => s.slice(0, -1));
-    setUndoStack((s) => [...s, deepCloneAnnotations(current.annotations ?? [])]);
+    setUndoStack((s) => [...s, deepCloneAnnotations(currentAnns)]);
     updateAnnotations(next);
     setSelectedBox(null);
   }
@@ -278,8 +280,10 @@ export default function AnnotationStudioPage() {
   function changeBoxClass(newClass: string) {
     if (!current || selectedBox === null) return;
     pushUndo();
-    const updated = [...(current.annotations ?? [])];
-    updated[selectedBox] = { ...updated[selectedBox], class_name: newClass };
+    const updated: Annotation[] = [...(current.annotations ?? [])];
+    const existing = updated[selectedBox];
+    if (!existing) return;
+    updated[selectedBox] = { ...existing, class_name: newClass };
     updateAnnotations(updated);
   }
 
@@ -307,7 +311,8 @@ export default function AnnotationStudioPage() {
     const { bx, by, bw, bh } = bboxToPixels(ann, canvasRef.current.width, canvasRef.current.height);
     const handles = getHandlePositions(bx, by, bw, bh);
     for (let i = 0; i < handles.length; i++) {
-      if (Math.abs(cx - handles[i].x) <= HANDLE_HIT && Math.abs(cy - handles[i].y) <= HANDLE_HIT) {
+      const h = handles[i]!;
+      if (Math.abs(cx - h.x) <= HANDLE_HIT && Math.abs(cy - h.y) <= HANDLE_HIT) {
         return i;
       }
     }
@@ -317,7 +322,9 @@ export default function AnnotationStudioPage() {
   // Apply resize: given handle index and new mouse position, compute new bbox
   function applyResize(handleIdx: number, cx: number, cy: number) {
     if (selectedBox === null || !current || !canvasRef.current) return;
-    const ann = current.annotations![selectedBox];
+    const anns = current.annotations ?? [];
+    const ann = anns[selectedBox];
+    if (!ann) return;
     const cw = canvasRef.current.width;
     const ch = canvasRef.current.height;
     const { bx, by, bw, bh } = bboxToPixels(ann, cw, ch);
@@ -345,8 +352,8 @@ export default function AnnotationStudioPage() {
     const normW = newW / cw;
     const normH = newH / ch;
 
-    const updated = [...(current.annotations ?? [])];
-    updated[selectedBox] = { ...updated[selectedBox], bbox: { x: normCx, y: normCy, w: normW, h: normH } };
+    const updated: Annotation[] = [...anns];
+    updated[selectedBox] = { ...ann, bbox: { x: normCx, y: normCy, w: normW, h: normH } };
     // Update in place without saving (save on mouseup)
     const updatedFrames = [...frames];
     updatedFrames[currentIdx] = { ...current, annotations: updated };

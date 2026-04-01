@@ -54,8 +54,8 @@ export default function LearningDashboardPage() {
   const sources = data.by_source;
   const verdicts = data.by_admin_verdict;
   const classes = data.class_distribution;
-  const topClasses = Object.entries(classes).sort(([, a], [, b]) => b - a).slice(0, 10);
-  const maxClassCount = topClasses.length > 0 ? topClasses[0][1] : 1;
+  const topClasses = Object.entries(classes).sort(([, a], [, b]) => (b ?? 0) - (a ?? 0)).slice(0, 10);
+  const maxClassCount = topClasses.length > 0 ? (topClasses[0]?.[1] ?? 1) : 1;
 
   const storagePct = data.storage_quota_mb > 0 ? Math.min(100, (data.storage_usage_mb / data.storage_quota_mb) * 100) : 0;
   const storageColor = storagePct > 90 ? "bg-red-500" : storagePct > 70 ? "bg-amber-500" : "bg-teal-500";
