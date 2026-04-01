@@ -183,6 +183,7 @@ async def list_frames(
     admin_verdict: Optional[str] = Query(None),
     split: Optional[str] = Query(None),
     dataset_version_id: Optional[str] = Query(None),
+    class_name: Optional[str] = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
@@ -201,6 +202,8 @@ async def list_frames(
         query["split"] = split
     if dataset_version_id:
         query["dataset_version_id"] = dataset_version_id
+    if class_name:
+        query["annotations.class_name"] = class_name
 
     total = await ldb.learning_frames.count_documents(query)
     cursor = ldb.learning_frames.find(query, {"_id": 0}).sort("ingested_at", -1).skip(offset).limit(limit)

@@ -57,19 +57,21 @@ export default function DatasetBrowserPage() {
   const [labelStatus, setLabelStatus] = useState("");
   const [split, setSplit] = useState("");
   const [verdict, setVerdict] = useState("");
+  const [className, setClassName] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<LearningFrame | null>(null);
   const limit = 20;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["learning-frames", source, labelStatus, split, verdict, page],
+    queryKey: ["learning-frames", source, labelStatus, split, verdict, className, page],
     queryFn: async () => {
       const params: Record<string, string | number> = { limit, offset: page * limit };
       if (source) params.source = source;
       if (labelStatus) params.label_status = labelStatus;
       if (split) params.split = split;
       if (verdict) params.admin_verdict = verdict;
+      if (className) params.class_name = className;
       const res = await api.get("/learning/frames", { params });
       return res.data as { data: LearningFrame[]; meta: { total: number } };
     },
@@ -126,8 +128,13 @@ export default function DatasetBrowserPage() {
             {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         ))}
-        {(source || labelStatus || split || verdict) && (
-          <button onClick={() => { setSource(""); setLabelStatus(""); setSplit(""); setVerdict(""); setPage(0); }}
+        <input
+          type="text" placeholder="Search class..." value={className}
+          onChange={(e) => { setClassName(e.target.value); setPage(0); }}
+          className="h-9 w-32 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:border-teal-500 focus:outline-none"
+        />
+        {(source || labelStatus || split || verdict || className) && (
+          <button onClick={() => { setSource(""); setLabelStatus(""); setSplit(""); setVerdict(""); setClassName(""); setPage(0); }}
             className="text-xs font-medium text-teal-600 hover:underline">Clear</button>
         )}
       </div>

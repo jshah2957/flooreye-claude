@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, Loader2, CheckCircle, XCircle, Clock, Ban, BarChart3, Cpu } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 
@@ -195,6 +196,21 @@ export default function TrainingJobsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {/* Loss History Chart */}
+            {detail.training_loss_history.length > 0 && (
+              <div className="mt-4">
+                <h4 className="mb-2 text-xs font-semibold uppercase text-gray-500">Training Loss</h4>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={detail.training_loss_history}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="epoch" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip contentStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="loss" stroke="#0D9488" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
             )}
             {detail.error_message && (
