@@ -566,3 +566,82 @@ async def list_trained_models(
     ).sort("completed_at", -1).limit(20)
     models = await cursor.to_list(length=20)
     return {"data": models}
+
+
+@router.post("/export/coco")
+async def export_coco(
+    body: dict,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Export dataset in COCO JSON format."""
+    import uuid as _uuid
+    from datetime import datetime, timezone
+
+    org_id = get_org_id(current_user) or ""
+    dataset_version_id = body.get("dataset_version_id")
+
+    query: dict = {"org_id": org_id, "split": {"$ne": "unassigned"}}
+    if dataset_version_id:
+        query["dataset_version_id"] = dataset_version_id
+
+    cursor = ldb.learning_frames.find(query, {"_id": 0})
+    frames = await cursor.to_list(length=100_000)
+
+    # Build class mapping
+    class_set: set[str] = set()
+    for f in frames:
+        for a in (f.get("annotations") or []):
+            class_set.add(a.get("class_name", "unknown"))
+    class_list = sorted(class_set)
+    class_map = {name: i + 1 for i, name in enumerate(class_list)}
+
+    # Build COCO structure
+    images = []
+    annotations = []
+    ann_id = 1
+    for i, f in enumerate(frames):
+        img_id = i + 1
+        images.append({
+            "id": img_id,
+            "file_name": f.get("frame_s3_key", f"frame_{f['id']}.jpg"),
+            "width": f.get("frame_width") or 640,
+            "height": f.get("frame_height") or 640,
+        })
+        for a in (f.get("annotations") or []):
+            bbox = a.get("bbox", {})
+            x, y, w, h = bbox.get("x", 0), bbox.get("y", 0), bbox.get("w", 0), bbox.get("h", 0)
+            # Convert from center to top-left if normalized
+            img_w = f.get("frame_width") or 640
+            img_h = f.get("frame_height") or 640
+            if x <= 1 and y <= 1:
+                px = (x - w / 2) * img_w
+                py = (y - h / 2) * img_h
+                pw = w * img_w
+                ph = h * img_h
+            else:
+                px, py, pw, ph = x, y, w, h
+
+            annotations.append({
+                "id": ann_id,
+                "image_id": img_id,
+                "category_id": class_map.get(a.get("class_name", "unknown"), 1),
+                "bbox": [round(px, 1), round(py, 1), round(pw, 1), round(ph, 1)],
+                "area": round(pw * ph, 1),
+                "iscrowd": 0,
+            })
+            ann_id += 1
+
+    coco = {
+        "info": {
+            "description": "FloorEye Learning System Dataset",
+            "version": "1.0",
+            "year": datetime.now(timezone.utc).year,
+            "contributor": "FloorEye",
+        },
+        "categories": [{"id": cid, "name": name, "supercategory": "detection"} for name, cid in class_map.items()],
+        "images": images,
+        "annotations": annotations,
+    }
+
+    return {"data": coco}

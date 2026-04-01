@@ -34,6 +34,9 @@ import ManualPage from "@/pages/admin/ManualPage";
 import LearningDashboardPage from "@/pages/learning/LearningDashboardPage";
 import LearningSettingsPage from "@/pages/learning/LearningSettingsPage";
 import DatasetBrowserPage from "@/pages/learning/DatasetBrowserPage";
+import TrainingJobsPage from "@/pages/learning/TrainingJobsPage";
+import AnnotationStudioPage from "@/pages/learning/AnnotationStudioPage";
+import ModelComparisonPage from "@/pages/learning/ModelComparisonPage";
 import CompliancePage from "@/pages/compliance/CompliancePage";
 import MonitoringPage from "@/pages/monitoring/MonitoringPage";
 import NotificationCenterPage from "@/pages/notifications/NotificationCenterPage";
@@ -159,6 +162,9 @@ export default function AppRoutes() {
         <Route path="/learning" element={<LearningDashboardPage />} />
         <Route path="/learning/settings" element={<LearningSettingsPage />} />
         <Route path="/learning/dataset" element={<DatasetBrowserPage />} />
+        <Route path="/learning/training" element={<TrainingJobsPage />} />
+        <Route path="/learning/annotate" element={<AnnotationStudioPage />} />
+        <Route path="/learning/models" element={<ModelComparisonPage />} />
 
         <Route path="/admin/users" element={<UsersPage />} />
         <Route path="/admin/logs" element={<LogsPage />} />
