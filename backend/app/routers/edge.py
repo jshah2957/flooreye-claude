@@ -176,6 +176,71 @@ async def push_model_to_edge(
     return {"data": cmd}
 
 
+@router.post("/agents/{agent_id}/update")
+async def update_edge_agent(
+    agent_id: str,
+    body: dict,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Send a software update command to an edge agent.
+
+    Body: {"target_version": "4.9.0"}
+    The agent will pull the new Docker image and restart.
+    """
+    target_version = body.get("target_version")
+    if not target_version:
+        raise HTTPException(status_code=422, detail="target_version is required")
+    cmd = await edge_service.push_agent_update(
+        db, agent_id, get_org_id(current_user) or "", target_version, current_user["id"],
+    )
+    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
+                     "agent_update_pushed", "edge_agent", agent_id,
+                     {"target_version": target_version}, request)
+    return {"data": cmd}
+
+
+@router.post("/rollout")
+async def start_staged_rollout(
+    body: dict,
+    request: Request,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Start a staged software rollout to all (or specified) edge agents.
+
+    Body: {"target_version": "4.9.0", "agent_ids": ["id1", "id2"] (optional)}
+    If agent_ids not provided, rolls out to all agents in the org.
+    Updates agents one at a time, verifying each before proceeding.
+    """
+    target_version = body.get("target_version")
+    if not target_version:
+        raise HTTPException(status_code=422, detail="target_version is required")
+
+    org_id = get_org_id(current_user)
+    agent_ids = body.get("agent_ids")
+
+    if not agent_ids:
+        # Get all agents for this org
+        from app.core.org_filter import org_query
+        cursor = db.edge_agents.find(org_query(org_id), {"id": 1})
+        agents = await cursor.to_list(length=100)
+        agent_ids = [a["id"] for a in agents]
+
+    if not agent_ids:
+        raise HTTPException(status_code=404, detail="No edge agents found")
+
+    from app.workers.ota_worker import staged_agent_rollout
+    task = staged_agent_rollout.delay(agent_ids, target_version, org_id or "", current_user["id"])
+
+    await log_action(db, current_user["id"], current_user["email"], org_id or "",
+                     "staged_rollout_started", "edge_agent", None,
+                     {"target_version": target_version, "agent_count": len(agent_ids)}, request)
+
+    return {"data": {"task_id": task.id, "agent_count": len(agent_ids), "target_version": target_version}}
+
+
 @router.post("/agents/{agent_id}/push-config")
 async def push_config_to_edge(
     agent_id: str,

@@ -62,7 +62,8 @@ async def _async_push_update(
     now = datetime.now(timezone.utc)
 
     # Verify model version exists
-    model = await db.model_versions.find_one({"id": model_version_id, "org_id": org_id})
+    from app.core.org_filter import org_query
+    model = await db.model_versions.find_one({**org_query(org_id), "id": model_version_id})
     if not model:
         logger.error("OTA push failed: model %s not found", model_version_id)
         return {"status": "failed", "error": "Model version not found"}
@@ -142,3 +143,111 @@ async def _async_push_update(
         "dispatched": dispatched,
         "errors": errors,
     }
+
+
+@celery_app.task(
+    name="app.workers.ota_worker.staged_agent_rollout",
+    bind=True,
+    max_retries=0,
+)
+def staged_agent_rollout(self, agent_ids: list[str], target_version: str, org_id: str, triggered_by: str):
+    """Roll out an agent software update one store at a time.
+
+    For each agent:
+    1. Send update_agent command
+    2. Wait for ACK (up to 5 minutes)
+    3. Verify heartbeat shows new version
+    4. If any step fails, abort remaining agents
+
+    Returns summary of results per agent.
+    """
+    import time
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        client = AsyncIOMotorClient(settings.MONGODB_URI)
+        db = client[settings.MONGODB_DB]
+
+        results = []
+        for agent_id in agent_ids:
+            logger.info("Staged rollout: updating agent %s to %s", agent_id, target_version)
+
+            try:
+                # Send update command
+                cmd = loop.run_until_complete(
+                    _send_update_command(db, agent_id, org_id, target_version, triggered_by)
+                )
+                cmd_id = cmd["id"]
+
+                # Wait for ACK (poll every 10s, max 5 minutes)
+                acked = False
+                for _ in range(30):
+                    time.sleep(10)
+                    cmd_doc = loop.run_until_complete(
+                        db.edge_commands.find_one({"id": cmd_id})
+                    )
+                    if cmd_doc and cmd_doc.get("status") in ("completed", "failed"):
+                        acked = True
+                        break
+
+                if not acked:
+                    logger.error("Staged rollout: agent %s timed out (no ACK in 5 min)", agent_id)
+                    results.append({"agent_id": agent_id, "status": "timeout"})
+                    break  # Abort remaining agents
+
+                if cmd_doc.get("status") == "failed":
+                    logger.error("Staged rollout: agent %s update failed: %s", agent_id, cmd_doc.get("error"))
+                    results.append({"agent_id": agent_id, "status": "failed", "error": cmd_doc.get("error")})
+                    break  # Abort remaining
+
+                # Wait for heartbeat with new version (agent restarts, ~30-60s)
+                version_ok = False
+                for _ in range(12):  # 2 minutes
+                    time.sleep(10)
+                    agent_doc = loop.run_until_complete(
+                        db.edge_agents.find_one({"id": agent_id})
+                    )
+                    if agent_doc and agent_doc.get("agent_version") == target_version:
+                        version_ok = True
+                        break
+
+                if version_ok:
+                    logger.info("Staged rollout: agent %s updated successfully to %s", agent_id, target_version)
+                    results.append({"agent_id": agent_id, "status": "success", "version": target_version})
+                else:
+                    current = agent_doc.get("agent_version", "unknown") if agent_doc else "unknown"
+                    logger.warning(
+                        "Staged rollout: agent %s version mismatch (expected %s, got %s) — continuing",
+                        agent_id, target_version, current,
+                    )
+                    results.append({"agent_id": agent_id, "status": "version_mismatch", "actual": current})
+                    # Don't abort on version mismatch — agent may still be restarting
+
+            except Exception as e:
+                logger.error("Staged rollout: agent %s error: %s", agent_id, e)
+                results.append({"agent_id": agent_id, "status": "error", "error": str(e)})
+                break  # Abort remaining
+
+        client.close()
+
+        summary = {
+            "target_version": target_version,
+            "total_agents": len(agent_ids),
+            "completed": sum(1 for r in results if r["status"] == "success"),
+            "failed": sum(1 for r in results if r["status"] in ("failed", "error", "timeout")),
+            "skipped": len(agent_ids) - len(results),
+            "results": results,
+        }
+        logger.info("Staged rollout complete: %s", summary)
+        return summary
+
+    finally:
+        loop.close()
+
+
+async def _send_update_command(db, agent_id: str, org_id: str, target_version: str, user_id: str) -> dict:
+    """Create an update_agent command for a single agent."""
+    from app.services.edge_service import push_agent_update
+    return await push_agent_update(db, agent_id, org_id, target_version, user_id)

@@ -447,6 +447,23 @@ async def send_command(
     return cmd
 
 
+async def push_agent_update(
+    db: AsyncIOMotorDatabase,
+    agent_id: str,
+    org_id: str,
+    target_version: str,
+    user_id: str,
+) -> dict:
+    """Send an update_agent command to an edge agent.
+
+    The edge agent will pull the new Docker image and restart itself.
+    The command is polled by the agent every 30 seconds.
+    """
+    return await send_command(db, agent_id, org_id, "update_agent", {
+        "target_version": target_version,
+    }, user_id)
+
+
 async def get_pending_commands(
     db: AsyncIOMotorDatabase, agent_id: str
 ) -> list[dict]:

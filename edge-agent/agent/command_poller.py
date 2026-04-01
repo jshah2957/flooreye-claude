@@ -138,6 +138,38 @@ class CommandPoller:
                 lc._write_json(rules_path, rules)
                 result = {"updated": True, "rules_count": len(rules)}
                 log.info("Notification rules updated: %d rules stored", len(rules))
+            elif cmd_type == "update_agent":
+                # Remote software update: pull new Docker image and restart
+                target_version = payload.get("target_version", "latest")
+                log.warning("Agent update command received — target version: %s", target_version)
+
+                import subprocess, os as _os
+                compose_dir = _os.getenv("COMPOSE_DIR", "/app")
+                compose_file = _os.path.join(compose_dir, "docker-compose.yml")
+
+                # Write target version to .env override so compose uses the new tag
+                env_override = _os.path.join(compose_dir, ".env.version")
+                with open(env_override, "w") as f:
+                    f.write(f"AGENT_IMAGE_TAG={target_version}\n")
+                    f.write(f"INFERENCE_IMAGE_TAG={target_version}\n")
+
+                # Pull new images (non-blocking — if registry not configured, skip)
+                try:
+                    pull_result = subprocess.run(
+                        ["docker", "compose", "-f", compose_file, "pull", "edge-agent", "inference-server"],
+                        capture_output=True, text=True, timeout=300,
+                    )
+                    log.info("Docker pull stdout: %s", pull_result.stdout[:500])
+                    if pull_result.returncode != 0:
+                        log.warning("Docker pull stderr: %s", pull_result.stderr[:500])
+                except Exception as pull_err:
+                    log.warning("Docker pull failed (will restart with current image): %s", pull_err)
+
+                result = {"updating": True, "target_version": target_version}
+                # ACK first, then restart — Docker restart policy brings up new container
+                log.warning("Agent will restart in 3 seconds for update to %s", target_version)
+                asyncio.get_event_loop().call_later(3.0, lambda: _os._exit(0))
+
             elif cmd_type == "restart_agent":
                 log.warning("Restart command received — agent will restart in 2 seconds")
                 result = {"restarting": True}
