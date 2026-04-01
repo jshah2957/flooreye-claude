@@ -6,10 +6,10 @@
 ---
 
 ## OVERALL STATUS: IN PROGRESS
-## Current Session: B (Annotation Studio Resize + Undo/Redo)
-## Current Task: B1
-## Sessions Complete: 1/6
-## Total Tasks Complete: 7/24
+## Current Session: C (Visual Model Comparison)
+## Current Task: C1
+## Sessions Complete: 2/6
+## Total Tasks Complete: 13/24
 
 ---
 
@@ -32,17 +32,17 @@
 ---
 
 ## SESSION B: Annotation Studio Resize + Undo/Redo
-**Status: NOT STARTED**
+**Status: COMPLETE**
 **Priority: 4 (Improves annotation quality)**
 
 | # | Task | Status | File | Notes |
 |---|------|--------|------|-------|
-| B1 | Add 8 resize handles on selected box | NOT STARTED | web/src/pages/learning/AnnotationStudioPage.tsx | 4 corners + 4 edge midpoints |
-| B2 | Add resize cursor changes on hover | NOT STARTED | web/src/pages/learning/AnnotationStudioPage.tsx | nwse-resize, nesw-resize, etc. |
-| B3 | Add drag-to-resize with auto-save | NOT STARTED | web/src/pages/learning/AnnotationStudioPage.tsx | On mouseup, save updated annotations to backend |
-| B4 | Add undo/redo state stack | NOT STARTED | web/src/pages/learning/AnnotationStudioPage.tsx | Push on every change (draw, delete, resize, class change) |
-| B5 | Add Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts | NOT STARTED | web/src/pages/learning/AnnotationStudioPage.tsx | Undo = pop, Redo = re-apply |
-| B6 | Add undo/redo buttons to toolbar | NOT STARTED | web/src/pages/learning/AnnotationStudioPage.tsx | Show count available |
+| B1 | Add 8 resize handles on selected box | DONE | web/src/pages/learning/AnnotationStudioPage.tsx | White squares with dark border |
+| B2 | Add resize cursor changes on hover | DONE | web/src/pages/learning/AnnotationStudioPage.tsx | All 8 cursor types |
+| B3 | Add drag-to-resize with auto-save | DONE | web/src/pages/learning/AnnotationStudioPage.tsx | Save on mouseup |
+| B4 | Add undo/redo state stack | DONE | web/src/pages/learning/AnnotationStudioPage.tsx | Deep clone per frame |
+| B5 | Add Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts | DONE | web/src/pages/learning/AnnotationStudioPage.tsx | With preventDefault |
+| B6 | Add undo/redo buttons to toolbar | DONE | web/src/pages/learning/AnnotationStudioPage.tsx | With count display |
 
 ---
 
@@ -105,7 +105,7 @@
 ---
 
 ## LAST COMPLETED TASK
-Session A complete — all 7 tasks done. training_worker.py created (290 lines), wired into learning.py, celery_app.py updated.
+Session B complete — resize handles (8 anchors, cursor changes, drag-to-resize) + undo/redo (state stack, Ctrl+Z/Shift+Z, toolbar buttons with counts).
 
 ## LAST GIT COMMIT
 Check `git log --oneline -1` for latest.
