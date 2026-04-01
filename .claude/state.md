@@ -1,73 +1,66 @@
 # FloorEye Session State
-# Last session: 37 (Full Audit → Remediation → Encryption Fix → Hardcoded Class Removal → Final Verification)
-# Status: All services running, 15/15 endpoints pass, 8.5/10 readiness, zero hardcoded classes
-# Date: 2026-03-27
+# Last session: 38 (Codebase Cleanup → Architecture Diagrams → Centralized Logging → Incident Frames → Cache Fix → Automated Updates → Learning System)
+# Status: All services running, 29 routers, learning system active, zero regressions
+# Date: 2026-04-01
 
 ## NEXT SESSION TASK
-Create documentation: docs/USER_MANUAL.md, docs/INSTALLATION_GUIDE.md, docs/UPGRADE_GUIDE.md, docs/TROUBLESHOOTING_GUIDE.md
+Continue learning system: build remaining frontend pages (TrainingJobsPage, AnnotationStudioPage, ModelComparisonPage) + GPU training worker + integration testing. See `.claude/LEARNING_SYSTEM_PROGRESS.md` for full state.
 
-## What Was Done This Session (Session 37)
+## What Was Done This Session (Session 38)
 
-### Full-Stack 11-Role Audit
-- 5 parallel agent groups audited entire codebase
-- 39 original issues verified: 32 fixed, 3 still open, 2 false positives
-- 6 new issues found (encryption regression, edge log rotation, exception handler, etc.)
+### Codebase Cleanup
+- Removed 149 stale planning/audit documents (38,489 lines)
+- Annotated 26 dead code files with status comments
+- Created system architecture + data flow diagrams (SVG + HTML)
 
-### 8-Phase Automated Remediation
-- Phase 1: Security foundation (strong keys, production mode, CORS filtering)
-- Phase 2: Urgent bugs (worker logger, WS blacklist fail-closed, cloudflared)
-- Phase 3: Multi-tenancy (23 routers, 246 call sites, 33 records migrated)
-- Phase 4: XSS + input validation + nginx headers
-- Phase 5: Code quality (logging, constants, dead code, decrypt escalation)
-- Phase 6: Database (cascade deletes, indexes, strip_mongo_id)
-- Phase 7: Frontend (error handling utility, empty catches)
-- Phase 8: Polish (edge logging, model validation, function rename, mobile offline)
+### Centralized Logging System
+- Edge → cloud log shipping (log_shipper.py, 30s batches)
+- Mobile → cloud error capture (logger.ts, crashes + API errors)
+- 2 new ingestion endpoints (POST /logs/edge/ingest, /logs/mobile/ingest)
+- Enhanced system_logs schema (source_device, device_id, camera_id, stack_trace)
+- Dashboard: device filter tabs, device badges, stack trace expansion
+- Fixed 3 bugs: audit TTL, WebSocket type mismatch, missing emit_system_log calls
 
-### Encryption Key Fix
-- Rewrote encryption.py to be bulletproof (any key input → 32 bytes)
-- Generated proper production key
-- Migrated 12 encrypted records (6 cameras, 6 integrations)
-- Verified: cameras decrypt, Roboflow connects, detection runs
+### Incident Frame Thumbnails
+- Frame thumbnails in incident table + detail panel
+- Efficient batch aggregation for frame URL lookup
+- Annotated frames with bounding boxes displayed
 
-### Post-Fix Verification Audit
-- Fresh re-audit confirmed 32/39 + encryption fix working
-- Found encryption regression (33-byte key), fixed with migration
+### Alert Class Cache Fix
+- Fixed stale _cached_alert_classes after model deployment
+- Clears both module-level AND singleton instance caches
+- Auto-reloads from DB on next inference
 
-### Deployment & Operations Audit
-- Model pipeline traced function-by-function (8/10)
-- System updates: cloud manual, edge model push works, no software OTA
-- Credential rotation: all require restart, no dual-key
-- Production launch instructions written
+### Automated Update System
+- CI/CD: build + push Docker images on git tag (.github/workflows/deploy.yml)
+- Cloud deploy script with backup, health check, auto-rollback (scripts/deploy-cloud.sh)
+- Edge remote update via update_agent command
+- Staged rollout: one agent at a time with verification
+- Dashboard: "Update All Agents" button + rollout modal
+- Database migration runner (backend/app/db/migrations.py)
+- Version compatibility check in heartbeat
 
-### Combined Fix Plan + Execution
-- 23 remaining items planned across 12 sections
-- Phase 1 (Critical): import error, COCO export, API class_names, edge logs, rate limit, exception handler — ALL FIXED
-- Phase 2-3 (Hardcoded Classes): 22 locations across 14 files → ZERO remaining
-  - Created class_config.py with hash-based colors
-  - All backend/edge/frontend hardcoded sets replaced with dynamic DB sources
-  - MQTT events use dynamic class_name
-  - Frontend uses getClassColor() + isAlertClass()
-- Phase 4 (Logging): LOG_LEVEL configured on startup
-- Phase 5 (TypeScript any): Deferred as non-blocker (88 occurrences, code quality only)
-
-### Final Numbers
-- Total issues ever found: 62
-- Verified fixed: 52
-- Deferred (non-blocking): 8
-- False positives: 2
-- Hardcoded class names: 0
-- Core endpoints: 15/15
-- Detection: 155ms ONNX inference
-- Readiness: 8.5/10
-- Cloud: GO, Edge: GO, Mobile: CONDITIONAL
+### Learning System (Sessions 1-8)
+- Separate database (flooreye_learning, 7 collections)
+- Separate S3 bucket (flooreye-learning)
+- 18 API endpoints under /api/v1/learning/
+- 3 UI pages (Dashboard, Settings, Dataset Browser)
+- 3 fire-and-forget capture hooks (detection, incident, Roboflow)
+- 30+ user-configurable settings
+- Dataset versioning, auto-split, training job queue, YOLO export
 
 ## Reports Created
-- .claude/FULL_STACK_AUDIT_REPORT.md
-- .claude/REMEDIATION_PLAN.md
-- .claude/IMPLEMENTATION_SESSION_PLAN.md
-- .claude/RUN_ALL_PHASES.md
-- .claude/POST_FIX_VERIFICATION_REPORT.md
-- .claude/DEPLOYMENT_AND_OPERATIONS_AUDIT.md
-- .claude/PRODUCTION_READINESS_REPORT.md
-- .claude/COMBINED_FIX_PLAN.md
-- .claude/FINAL_COMPLETE_REPORT.md
+- .claude/CODEBASE_CLEANUP_REPORT.md
+- .claude/VERIFIED_CLEANUP_REPORT.md
+- .claude/CENTRALIZED_LOGGING_REPORT.md
+- .claude/FULL_SYSTEM_TEST_REPORT.md
+- .claude/INCIDENT_FRAMES_RESEARCH.md
+- .claude/AUTOMATED_UPDATES_REPORT.md
+- .claude/POST_UPDATE_SYSTEM_TEST_REPORT.md
+- .claude/LEARNING_SYSTEM_DESIGN.md
+- .claude/LEARNING_SYSTEM_IMPLEMENTATION_PLAN.md
+- .claude/LEARNING_SYSTEM_COMPLETE_REPORT.md
+- .claude/LEARNING_SYSTEM_PROGRESS.md
+- docs/SYSTEM_ARCHITECTURE.md
+- docs/architecture-diagram.svg
+- docs/data-flow-diagram.svg
