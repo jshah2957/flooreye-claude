@@ -85,6 +85,19 @@ class ExportRequest(BaseModel):
     dataset_version_id: Optional[str] = None
 
 
+class ClassCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Class name")
+
+
+class ClassRename(BaseModel):
+    new_name: str = Field(..., min_length=1, max_length=100, description="New class name")
+
+
+class ClassMerge(BaseModel):
+    source: str = Field(..., min_length=1, description="Source class to merge from")
+    target: str = Field(..., min_length=1, description="Target class to merge into")
+
+
 def _get_ldb() -> AsyncIOMotorDatabase:
     """Dependency: get the learning database."""
     return get_learning_db()
@@ -1339,6 +1352,121 @@ async def test_batch(
             os.unlink(tmp_path)
         except Exception:
             pass
+
+
+# ── Class Management ──────────────────────────────────────────────
+
+@router.get("/classes")
+async def list_classes(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """List all unique class names from annotations across all learning_frames for the org."""
+    org_id = get_org_id(current_user)
+    pipeline = [
+        {"$match": {"org_id": org_id}},
+        {"$unwind": "$annotations"},
+        {"$group": {
+            "_id": "$annotations.class_name",
+            "frame_ids": {"$addToSet": "$_id"},
+            "annotation_count": {"$sum": 1},
+        }},
+        {"$project": {
+            "_id": 0,
+            "class_name": "$_id",
+            "frame_count": {"$size": "$frame_ids"},
+            "annotation_count": 1,
+        }},
+        {"$sort": {"class_name": 1}},
+    ]
+    results = await ldb.learning_frames.aggregate(pipeline).to_list(MAX_AGGREGATION_RESULTS)
+    return {"data": results}
+
+
+@router.post("/classes", status_code=status.HTTP_201_CREATED)
+async def create_class(
+    body: ClassCreate,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Create a new class entry in the learning_classes collection."""
+    org_id = get_org_id(current_user)
+    existing = await ldb.learning_classes.find_one({"org_id": org_id, "name": body.name})
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Class '{body.name}' already exists")
+    doc = {
+        "org_id": org_id,
+        "name": body.name,
+        "created_at": datetime.now(timezone.utc),
+        "created_by": str(current_user.get("_id", "")),
+    }
+    result = await ldb.learning_classes.insert_one(doc)
+    doc["_id"] = str(result.inserted_id)
+    return {"data": doc}
+
+
+@router.put("/classes/{class_name}/rename")
+async def rename_class(
+    class_name: str,
+    body: ClassRename,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Rename a class, cascading to all annotations in learning_frames."""
+    org_id = get_org_id(current_user)
+    if class_name == body.new_name:
+        raise HTTPException(status_code=400, detail="New name must differ from current name")
+    # Cascade rename in all frame annotations
+    result = await ldb.learning_frames.update_many(
+        {"org_id": org_id, "annotations.class_name": class_name},
+        {"$set": {"annotations.$[elem].class_name": body.new_name}},
+        array_filters=[{"elem.class_name": class_name}],
+    )
+    # Update the class doc itself
+    await ldb.learning_classes.update_one(
+        {"org_id": org_id, "name": class_name},
+        {"$set": {"name": body.new_name}},
+    )
+    return {"data": {"renamed_frames": result.modified_count}}
+
+
+@router.delete("/classes/{class_name}")
+async def delete_class(
+    class_name: str,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Remove all annotations with this class_name from all frames and delete the class doc."""
+    org_id = get_org_id(current_user)
+    # Pull all annotations matching the class from frames
+    result = await ldb.learning_frames.update_many(
+        {"org_id": org_id, "annotations.class_name": class_name},
+        {"$pull": {"annotations": {"class_name": class_name}}},
+    )
+    # Delete the class doc
+    await ldb.learning_classes.delete_one({"org_id": org_id, "name": class_name})
+    return {"data": {"cleaned_frames": result.modified_count}}
+
+
+@router.post("/classes/merge")
+async def merge_classes(
+    body: ClassMerge,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Merge source class into target class: rename annotations, delete source class doc."""
+    org_id = get_org_id(current_user)
+    if body.source == body.target:
+        raise HTTPException(status_code=400, detail="Source and target must differ")
+    # Rename all source annotations to target
+    result = await ldb.learning_frames.update_many(
+        {"org_id": org_id, "annotations.class_name": body.source},
+        {"$set": {"annotations.$[elem].class_name": body.target}},
+        array_filters=[{"elem.class_name": body.source}],
+    )
+    # Delete the source class doc
+    await ldb.learning_classes.delete_one({"org_id": org_id, "name": body.source})
+    return {"data": {"merged_frames": result.modified_count}}
 
 
 # ── Health Check ──────────────────────────────────────────────────

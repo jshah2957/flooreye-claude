@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, ArrowLeft, RotateCcw } from "lucide-react";
+import { Loader2, Save, ArrowLeft, RotateCcw, Pencil, Trash2, Plus, Merge, Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import {
   SETTINGS_RANGES, ARCHITECTURE_OPTIONS, IMAGE_SIZE_OPTIONS, AUGMENTATION_OPTIONS,
-  STORAGE_WARN_PCT, STORAGE_DANGER_PCT,
+  STORAGE_WARN_PCT, STORAGE_DANGER_PCT, classColor,
 } from "@/constants/learning";
 
 interface LearningConfig {
@@ -105,6 +105,182 @@ function SelectInput({ value, onChange, label, options, description }: { value: 
   );
 }
 
+interface ClassInfo {
+  class_name: string;
+  frame_count: number;
+  annotation_count: number;
+}
+
+function ClassManagement() {
+  const queryClient = useQueryClient();
+  const { success, error: showError } = useToast();
+  const [newClassName, setNewClassName] = useState("");
+  const [editingClass, setEditingClass] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [mergeSource, setMergeSource] = useState<string | null>(null);
+  const [mergeTarget, setMergeTarget] = useState("");
+
+  const { data: classes, isLoading } = useQuery({
+    queryKey: ["learning-classes"],
+    queryFn: async () => {
+      const res = await api.get("/learning/classes");
+      return res.data.data as ClassInfo[];
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (name: string) => { await api.post("/learning/classes", { name }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["learning-classes"] }); success("Class created"); setNewClassName(""); },
+    onError: (e: any) => showError(e?.response?.data?.detail || "Create failed"),
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
+      await api.put(`/learning/classes/${encodeURIComponent(oldName)}/rename`, { new_name: newName });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["learning-classes"] }); success("Class renamed"); setEditingClass(null); },
+    onError: (e: any) => showError(e?.response?.data?.detail || "Rename failed"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (name: string) => { await api.delete(`/learning/classes/${encodeURIComponent(name)}`); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["learning-classes"] }); success("Class deleted"); },
+    onError: (e: any) => showError(e?.response?.data?.detail || "Delete failed"),
+  });
+
+  const mergeMutation = useMutation({
+    mutationFn: async ({ source, target }: { source: string; target: string }) => {
+      await api.post("/learning/classes/merge", { source, target });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["learning-classes"] }); success("Classes merged"); setMergeSource(null); setMergeTarget(""); },
+    onError: (e: any) => showError(e?.response?.data?.detail || "Merge failed"),
+  });
+
+  const startEdit = (name: string) => {
+    setEditingClass(name);
+    setEditValue(name);
+  };
+
+  const confirmEdit = () => {
+    if (!editingClass || !editValue.trim() || editValue === editingClass) { setEditingClass(null); return; }
+    renameMutation.mutate({ oldName: editingClass, newName: editValue.trim() });
+  };
+
+  return (
+    <div>
+      {/* Create New Class */}
+      <div className="mb-3 flex gap-2">
+        <input
+          type="text"
+          value={newClassName}
+          onChange={(e) => setNewClassName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && newClassName.trim()) createMutation.mutate(newClassName.trim()); }}
+          placeholder="New class name..."
+          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+        />
+        <button
+          onClick={() => { if (newClassName.trim()) createMutation.mutate(newClassName.trim()); }}
+          disabled={!newClassName.trim() || createMutation.isPending}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-40"
+        >
+          <Plus size={14} /> Add
+        </button>
+      </div>
+
+      {/* Class Table */}
+      {isLoading ? (
+        <div className="flex h-20 items-center justify-center"><Loader2 size={18} className="animate-spin text-teal-600" /></div>
+      ) : !classes || classes.length === 0 ? (
+        <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+          No classes found. Classes appear when frames have annotations.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-gray-200">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <tr>
+                <th className="px-4 py-2">Class</th>
+                <th className="px-4 py-2 text-right">Frames</th>
+                <th className="px-4 py-2 text-right">Annotations</th>
+                <th className="px-4 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {classes.map((cls) => (
+                <tr key={cls.class_name} className="hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: classColor(cls.class_name) }} />
+                      {editingClass === cls.class_name ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") confirmEdit(); if (e.key === "Escape") setEditingClass(null); }}
+                            autoFocus
+                            className="w-32 rounded border border-teal-400 px-1.5 py-0.5 text-sm focus:outline-none"
+                          />
+                          <button onClick={confirmEdit} className="text-teal-600 hover:text-teal-800"><Check size={14} /></button>
+                          <button onClick={() => setEditingClass(null)} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => startEdit(cls.class_name)} className="text-gray-900 hover:text-teal-700 hover:underline" title="Click to rename">
+                          {cls.class_name}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-right text-gray-600">{cls.frame_count.toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right text-gray-600">{cls.annotation_count.toLocaleString()}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => startEdit(cls.class_name)} title="Rename" className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-teal-600">
+                        <Pencil size={14} />
+                      </button>
+                      {mergeSource === cls.class_name ? (
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={mergeTarget}
+                            onChange={(e) => setMergeTarget(e.target.value)}
+                            className="rounded border border-gray-300 px-1 py-0.5 text-xs focus:border-teal-500 focus:outline-none"
+                          >
+                            <option value="">Merge into...</option>
+                            {classes.filter((c) => c.class_name !== cls.class_name).map((c) => (
+                              <option key={c.class_name} value={c.class_name}>{c.class_name}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => { if (mergeTarget) mergeMutation.mutate({ source: cls.class_name, target: mergeTarget }); }}
+                            disabled={!mergeTarget || mergeMutation.isPending}
+                            className="text-teal-600 hover:text-teal-800 disabled:opacity-40"
+                          ><Check size={14} /></button>
+                          <button onClick={() => { setMergeSource(null); setMergeTarget(""); }} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setMergeSource(cls.class_name); setMergeTarget(""); }} title="Merge into another class" className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-amber-600">
+                          <Merge size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { if (confirm(`Delete class "${cls.class_name}"? This removes all its annotations from all frames.`)) deleteMutation.mutate(cls.class_name); }}
+                        title="Delete"
+                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LearningSettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -171,6 +347,12 @@ export default function LearningSettingsPage() {
       </div>
 
       <div className="space-y-6">
+        {/* Class Management */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Class Management</h2>
+          <ClassManagement />
+        </section>
+
         {/* Master Switch */}
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">System</h2>

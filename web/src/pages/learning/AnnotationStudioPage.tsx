@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, SkipForward, Trash2, Loader2, PenTool, ChevronLeft, ChevronRight, Undo2, Redo2, Plus } from "lucide-react";
+import { Check, SkipForward, Trash2, Loader2, PenTool, ChevronLeft, ChevronRight, Undo2, Redo2, Plus, Copy, ClipboardPaste, AlertTriangle } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -46,6 +46,25 @@ function deepCloneAnnotations(anns: Annotation[]): Annotation[] {
   }));
 }
 
+const IOU_WARNING_THRESHOLD = 0.8;
+
+function computeIoU(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+): number {
+  const x1 = Math.max(a.x, b.x);
+  const y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.w, b.x + b.w);
+  const y2 = Math.min(a.y + a.h, b.y + b.h);
+  const interW = Math.max(0, x2 - x1);
+  const interH = Math.max(0, y2 - y1);
+  const inter = interW * interH;
+  const areaA = a.w * a.h;
+  const areaB = b.w * b.h;
+  const union = areaA + areaB - inter;
+  return union > 0 ? inter / union : 0;
+}
+
 export default function AnnotationStudioPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
@@ -81,6 +100,8 @@ export default function AnnotationStudioPage() {
   // Undo/Redo stacks (per-frame)
   const [undoStack, setUndoStack] = useState<Annotation[][]>([]);
   const [redoStack, setRedoStack] = useState<Annotation[][]>([]);
+  // Copy/Paste
+  const [copiedAnnotations, setCopiedAnnotations] = useState<Annotation[] | null>(null);
 
   // Load queue of frames needing review
   const { isLoading } = useQuery({
@@ -303,6 +324,70 @@ export default function AnnotationStudioPage() {
     if (currentIdx < frames.length - 1) setCurrentIdx(currentIdx + 1);
     setSelectedBox(null);
     setDrawingMode(false);
+  }
+
+  // Copy/Paste annotations
+  function copyAnnotations() {
+    if (!current || !current.annotations?.length) return;
+    setCopiedAnnotations(deepCloneAnnotations(current.annotations));
+    success("Annotations copied");
+  }
+
+  function pasteAnnotations() {
+    if (!current || !copiedAnnotations?.length) return;
+    pushUndo();
+    const merged = [...(current.annotations ?? []), ...deepCloneAnnotations(copiedAnnotations)];
+    updateAnnotations(merged);
+    success("Annotations pasted");
+  }
+
+  // Annotation validation warnings
+  function getValidationWarnings(): string[] {
+    if (!current || !canvasRef.current) return [];
+    const anns = current.annotations ?? [];
+    const cw = canvasRef.current.width;
+    const ch = canvasRef.current.height;
+    const warnings: string[] = [];
+
+    // Check overlapping boxes (IoU > threshold)
+    for (let i = 0; i < anns.length; i++) {
+      const ai = bboxToPixels(anns[i]!, cw, ch);
+      for (let j = i + 1; j < anns.length; j++) {
+        const aj = bboxToPixels(anns[j]!, cw, ch);
+        const iou = computeIoU(
+          { x: ai.bx, y: ai.by, w: ai.bw, h: ai.bh },
+          { x: aj.bx, y: aj.by, w: aj.bw, h: aj.bh },
+        );
+        if (iou > IOU_WARNING_THRESHOLD) {
+          warnings.push(`Boxes ${i + 1} (${anns[i]!.class_name}) and ${j + 1} (${anns[j]!.class_name}) overlap heavily (IoU ${(iou * 100).toFixed(0)}%)`);
+        }
+      }
+    }
+
+    // Check out-of-bounds
+    for (let i = 0; i < anns.length; i++) {
+      const { bx, by, bw, bh } = bboxToPixels(anns[i]!, cw, ch);
+      if (bx < 0 || by < 0 || bx + bw > cw || by + bh > ch) {
+        warnings.push(`Box ${i + 1} (${anns[i]!.class_name}) extends beyond canvas bounds`);
+      }
+    }
+
+    return warnings;
+  }
+
+  const validationWarnings = current ? getValidationWarnings() : [];
+
+  // Per-frame annotation stats
+  function getAnnotationStats(): { total: number; perClass: { name: string; count: number }[] } {
+    const anns = current?.annotations ?? [];
+    const counts = new Map<string, number>();
+    for (const a of anns) {
+      counts.set(a.class_name, (counts.get(a.class_name) ?? 0) + 1);
+    }
+    const perClass = [...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { total: anns.length, perClass };
   }
 
   // Get pixel coords from mouse event
@@ -562,6 +647,19 @@ export default function AnnotationStudioPage() {
         return;
       }
 
+      // Copy: Ctrl+C
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+        e.preventDefault();
+        copyAnnotations();
+        return;
+      }
+      // Paste: Ctrl+V
+      if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+        e.preventDefault();
+        pasteAnnotations();
+        return;
+      }
+
       if (e.key === "c" || e.key === "C") confirmMutation.mutate();
       else if (e.key === "s" || e.key === "S") advance();
       else if (e.key === "d" || e.key === "D") deleteMutation.mutate();
@@ -587,7 +685,7 @@ export default function AnnotationStudioPage() {
           </p>
         </div>
         <div className="text-xs text-gray-400">
-          Keys: <kbd className="rounded bg-gray-100 px-1">C</kbd> Confirm · <kbd className="rounded bg-gray-100 px-1">F</kbd> FP · <kbd className="rounded bg-gray-100 px-1">S</kbd> Skip · <kbd className="rounded bg-gray-100 px-1">D</kbd> Delete · <kbd className="rounded bg-gray-100 px-1">B</kbd> Draw · <kbd className="rounded bg-gray-100 px-1">Del</kbd> Remove Box · <kbd className="rounded bg-gray-100 px-1">Ctrl+Z</kbd> Undo · Scroll = Zoom
+          Keys: <kbd className="rounded bg-gray-100 px-1">C</kbd> Confirm · <kbd className="rounded bg-gray-100 px-1">F</kbd> FP · <kbd className="rounded bg-gray-100 px-1">S</kbd> Skip · <kbd className="rounded bg-gray-100 px-1">D</kbd> Delete · <kbd className="rounded bg-gray-100 px-1">B</kbd> Draw · <kbd className="rounded bg-gray-100 px-1">Del</kbd> Remove Box · <kbd className="rounded bg-gray-100 px-1">Ctrl+Z</kbd> Undo · <kbd className="rounded bg-gray-100 px-1">Ctrl+C/V</kbd> Copy/Paste · Scroll = Zoom
         </div>
       </div>
 
@@ -615,6 +713,18 @@ export default function AnnotationStudioPage() {
               }}
             />
           </div>
+
+          {/* Validation warnings */}
+          {validationWarnings.length > 0 && (
+            <div className="col-span-full rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2">
+              {validationWarnings.map((w, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-yellow-800">
+                  <AlertTriangle size={12} className="shrink-0 text-yellow-600" />
+                  <span>{w}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Sidebar */}
           <div className="space-y-3">
@@ -644,6 +754,29 @@ export default function AnnotationStudioPage() {
                 </div>
               )}
             </div>
+
+            {/* Per-frame annotation stats */}
+            {(() => {
+              const stats = getAnnotationStats();
+              if (stats.total === 0) return null;
+              return (
+                <div className="rounded-xl border border-gray-200 bg-white p-3">
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500">Frame Stats</h3>
+                  <div className="text-xs text-gray-700">
+                    <div className="mb-1 font-medium">Total boxes: {stats.total}</div>
+                    <div className="space-y-0.5">
+                      {stats.perClass.map((c) => (
+                        <div key={c.name} className="flex items-center gap-1.5">
+                          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: classColor(c.name) }} />
+                          <span>{c.name}:</span>
+                          <span className="font-medium">{c.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Metadata */}
             <div className="rounded-xl border border-gray-200 bg-white p-3 text-xs">
@@ -711,6 +844,23 @@ export default function AnnotationStudioPage() {
                   <button onClick={redo} disabled={redoStack.length === 0}
                     className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-gray-100 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-30">
                     <Redo2 size={12} /> Redo{redoStack.length > 0 ? ` (${redoStack.length})` : ""}
+                  </button>
+                </div>
+
+                {/* Copy / Paste */}
+                <div className="flex gap-2">
+                  <button onClick={copyAnnotations} disabled={!current?.annotations?.length}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-gray-100 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-30">
+                    <Copy size={12} /> Copy
+                  </button>
+                  <button onClick={pasteAnnotations} disabled={!copiedAnnotations?.length}
+                    className="relative flex flex-1 items-center justify-center gap-1 rounded-lg bg-gray-100 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-30">
+                    <ClipboardPaste size={12} /> Paste
+                    {copiedAnnotations && copiedAnnotations.length > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-teal-600 text-[9px] text-white">
+                        {copiedAnnotations.length}
+                      </span>
+                    )}
                   </button>
                 </div>
 
