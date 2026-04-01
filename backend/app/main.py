@@ -88,6 +88,11 @@ async def lifespan(app: FastAPI):
             raise RuntimeError(f"Encryption system failed: {enc_status['error']}")
 
     await ensure_indexes(get_db())
+
+    # Run pending database migrations (idempotent, tracked in schema_migrations)
+    from app.db.migrations import run_pending_migrations
+    await run_pending_migrations(get_db())
+
     from app.utils.s3_utils import ensure_bucket
     try:
         await ensure_bucket()
