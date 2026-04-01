@@ -131,6 +131,9 @@ class Settings(BaseSettings):
     AUDIT_LOG_FAIL_MODE: str = "warn"  # "warn" = fire-and-forget, "raise" = strict compliance
     AUDIT_LOG_DEDUP_WINDOW_SECONDS: int = 2
 
+    # Edge Agent Version
+    EDGE_MIN_AGENT_VERSION: str = ""  # Set to e.g. "4.9.0" to warn outdated agents
+
     # Auth Security
     AUTH_MAX_FAILED_ATTEMPTS: int = 5
     AUTH_LOCKOUT_MINUTES: int = 15

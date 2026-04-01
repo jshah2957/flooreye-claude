@@ -312,6 +312,14 @@ async def heartbeat(
 ):
     result = await edge_service.process_heartbeat(db, agent["id"], body.model_dump())
 
+    # Update agent_version from heartbeat (keeps it current after updates)
+    hb_data = body.model_dump()
+    if hb_data.get("agent_version"):
+        await db.edge_agents.update_one(
+            {"id": agent["id"]},
+            {"$set": {"agent_version": hb_data["agent_version"]}},
+        )
+
     # Include pending commands count so edge agent knows to poll
     pending_count = await db.edge_commands.count_documents(
         {"agent_id": agent["id"], "status": "pending"}
@@ -322,7 +330,15 @@ async def heartbeat(
     camera_configs = body.camera_configs if hasattr(body, 'camera_configs') and body.camera_configs else {}
     config_updates = await check_config_staleness(db, agent["id"], camera_configs)
 
-    return {"data": {"ok": True, "pending_commands": pending_count, "config_updates_needed": config_updates}}
+    # Version compatibility check
+    response = {"ok": True, "pending_commands": pending_count, "config_updates_needed": config_updates}
+    min_version = settings.EDGE_MIN_AGENT_VERSION
+    agent_version = hb_data.get("agent_version", "")
+    if min_version and agent_version and agent_version < min_version:
+        response["update_required"] = True
+        response["min_version"] = min_version
+
+    return {"data": response}
 
 
 @router.post("/frame")
