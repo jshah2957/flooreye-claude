@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Brain, Database, Image, CheckCircle, XCircle, Loader2, BarChart3, Settings2 } from "lucide-react";
+import { Brain, Database, Image, CheckCircle, XCircle, Loader2, BarChart3, Settings2, HardDrive } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
 
 interface LearningStats {
@@ -12,6 +13,13 @@ interface LearningStats {
   dataset_versions: number;
   training_jobs: number;
   config: Record<string, unknown>;
+  storage_usage_mb: number;
+  storage_quota_mb: number;
+}
+
+interface CaptureDay {
+  date: string;
+  count: number;
 }
 
 export default function LearningDashboardPage() {
@@ -23,6 +31,15 @@ export default function LearningDashboardPage() {
       return res.data.data as LearningStats;
     },
     refetchInterval: 30_000,
+  });
+
+  const { data: chartData } = useQuery({
+    queryKey: ["learning-captures-chart"],
+    queryFn: async () => {
+      const res = await api.get("/learning/analytics/captures-by-day");
+      return res.data.data as CaptureDay[];
+    },
+    refetchInterval: 60_000,
   });
 
   if (isLoading || !data) {
@@ -39,6 +56,9 @@ export default function LearningDashboardPage() {
   const classes = data.class_distribution;
   const topClasses = Object.entries(classes).sort(([, a], [, b]) => b - a).slice(0, 10);
   const maxClassCount = topClasses.length > 0 ? topClasses[0][1] : 1;
+
+  const storagePct = data.storage_quota_mb > 0 ? Math.min(100, (data.storage_usage_mb / data.storage_quota_mb) * 100) : 0;
+  const storageColor = storagePct > 90 ? "bg-red-500" : storagePct > 70 ? "bg-amber-500" : "bg-teal-500";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -80,6 +100,51 @@ export default function LearningDashboardPage() {
           <div className="mt-1 text-2xl font-bold text-gray-900">{Object.keys(classes).length}</div>
         </div>
       </div>
+
+      {/* Storage Usage Bar */}
+      <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2 text-gray-600"><HardDrive size={14} /> Storage</div>
+          <span className="font-medium text-gray-700">
+            {data.storage_usage_mb >= 1000
+              ? `${(data.storage_usage_mb / 1000).toFixed(1)} GB`
+              : `${data.storage_usage_mb.toFixed(0)} MB`}
+            {" / "}
+            {data.storage_quota_mb >= 1000
+              ? `${(data.storage_quota_mb / 1000).toFixed(0)} GB`
+              : `${data.storage_quota_mb} MB`}
+            {` (${storagePct.toFixed(1)}%)`}
+          </span>
+        </div>
+        <div className="mt-2 h-3 rounded-full bg-gray-100">
+          <div className={`h-3 rounded-full transition-all ${storageColor}`} style={{ width: `${Math.max(1, storagePct)}%` }} />
+        </div>
+      </div>
+
+      {/* Captures Over Time Chart */}
+      {(chartData ?? []).length > 0 && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">Captures Per Day (Last 30 Days)</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="colorCaptures" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#0D9488" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#0D9488" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                labelFormatter={(d) => `Date: ${d}`}
+              />
+              <Area type="monotone" dataKey="count" stroke="#0D9488" fill="url(#colorCaptures)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Source Breakdown + Feedback */}
       <div className="mb-6 grid gap-4 md:grid-cols-2">

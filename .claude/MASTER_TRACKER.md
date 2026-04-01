@@ -6,10 +6,10 @@
 ---
 
 ## OVERALL STATUS: IN PROGRESS
-## Current Session: D (Analytics + Dashboard Charts)
-## Current Task: D1
-## Sessions Complete: 3/6
-## Total Tasks Complete: 16/24
+## Current Session: E (Roboflow Training Dataset Download)
+## Current Task: E1
+## Sessions Complete: 4/6
+## Total Tasks Complete: 23/24
 
 ---
 
@@ -59,18 +59,18 @@
 ---
 
 ## SESSION D: Analytics + Dashboard Charts
-**Status: NOT STARTED**
+**Status: COMPLETE**
 **Priority: 3 (Makes dashboard useful)**
 
 | # | Task | Status | File | Notes |
 |---|------|--------|------|-------|
-| D1 | Add GET /learning/analytics/captures-by-day endpoint | NOT STARTED | backend/app/routers/learning.py | MongoDB aggregation, last 30 days |
-| D2 | Add GET /learning/analytics/class-balance endpoint | NOT STARTED | backend/app/routers/learning.py | Frames per class grouped by week |
-| D3 | Add storage_usage_mb to stats response | NOT STARTED | backend/app/routers/learning.py | Estimate from frame count |
-| D4 | Add Recharts AreaChart to dashboard | NOT STARTED | web/src/pages/learning/LearningDashboardPage.tsx | Captures per day, last 30 days |
-| D5 | Add storage usage progress bar to dashboard | NOT STARTED | web/src/pages/learning/LearningDashboardPage.tsx | X GB / Y GB used |
-| D6 | Add storage display to settings page | NOT STARTED | web/src/pages/learning/LearningSettingsPage.tsx | "Using X MB of Y MB (Z%)" |
-| D7 | Add date range filter to dataset browser | NOT STARTED | web/src/pages/learning/DatasetBrowserPage.tsx + backend | date_from, date_to query params |
+| D1 | Add GET /learning/analytics/captures-by-day endpoint | DONE | backend/app/routers/learning.py | MongoDB aggregation, last 30 days |
+| D2 | Add GET /learning/analytics/class-balance endpoint | DONE | backend/app/routers/learning.py | Frames per class grouped by week |
+| D3 | Add storage_usage_mb to stats response | DONE | backend/app/routers/learning.py | Estimate from frame count |
+| D4 | Add Recharts AreaChart to dashboard | DONE | web/src/pages/learning/LearningDashboardPage.tsx | Teal gradient chart |
+| D5 | Add storage usage progress bar to dashboard | DONE | web/src/pages/learning/LearningDashboardPage.tsx | Color-coded bar |
+| D6 | Add storage display to settings page | DONE | web/src/pages/learning/LearningSettingsPage.tsx | Progress bar + frame count |
+| D7 | Add date range filter to dataset browser | DONE | web/src/pages/learning/DatasetBrowserPage.tsx + backend | Two date inputs + backend params |
 
 ---
 

@@ -58,13 +58,15 @@ export default function DatasetBrowserPage() {
   const [split, setSplit] = useState("");
   const [verdict, setVerdict] = useState("");
   const [className, setClassName] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<LearningFrame | null>(null);
   const limit = 20;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["learning-frames", source, labelStatus, split, verdict, className, page],
+    queryKey: ["learning-frames", source, labelStatus, split, verdict, className, dateFrom, dateTo, page],
     queryFn: async () => {
       const params: Record<string, string | number> = { limit, offset: page * limit };
       if (source) params.source = source;
@@ -72,6 +74,8 @@ export default function DatasetBrowserPage() {
       if (split) params.split = split;
       if (verdict) params.admin_verdict = verdict;
       if (className) params.class_name = className;
+      if (dateFrom) params.date_from = new Date(dateFrom).toISOString();
+      if (dateTo) params.date_to = new Date(dateTo + "T23:59:59").toISOString();
       const res = await api.get("/learning/frames", { params });
       return res.data as { data: LearningFrame[]; meta: { total: number } };
     },
@@ -133,8 +137,20 @@ export default function DatasetBrowserPage() {
           onChange={(e) => { setClassName(e.target.value); setPage(0); }}
           className="h-9 w-32 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:border-teal-500 focus:outline-none"
         />
-        {(source || labelStatus || split || verdict || className) && (
-          <button onClick={() => { setSource(""); setLabelStatus(""); setSplit(""); setVerdict(""); setClassName(""); setPage(0); }}
+        <input
+          type="date" value={dateFrom}
+          onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+          className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:border-teal-500 focus:outline-none"
+          title="From date"
+        />
+        <input
+          type="date" value={dateTo}
+          onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+          className="h-9 rounded-lg border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:border-teal-500 focus:outline-none"
+          title="To date"
+        />
+        {(source || labelStatus || split || verdict || className || dateFrom || dateTo) && (
+          <button onClick={() => { setSource(""); setLabelStatus(""); setSplit(""); setVerdict(""); setClassName(""); setDateFrom(""); setDateTo(""); setPage(0); }}
             className="text-xs font-medium text-teal-600 hover:underline">Clear</button>
         )}
       </div>

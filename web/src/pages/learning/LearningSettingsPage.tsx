@@ -113,6 +113,11 @@ export default function LearningSettingsPage() {
     queryFn: async () => { const res = await api.get("/learning/settings"); return res.data.data as LearningConfig; },
   });
 
+  const { data: statsData } = useQuery({
+    queryKey: ["learning-stats-for-settings"],
+    queryFn: async () => { const res = await api.get("/learning/stats"); return res.data.data as { storage_usage_mb: number; storage_quota_mb: number; total_frames: number }; },
+  });
+
   useEffect(() => { if (data) setConfig({ ...data }); }, [data]);
 
   const saveMutation = useMutation({
@@ -168,6 +173,33 @@ export default function LearningSettingsPage() {
         {/* Storage */}
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Storage</h2>
+          {statsData && (
+            <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Current Usage</span>
+                <span className="font-medium text-gray-900">
+                  {statsData.storage_usage_mb >= 1000
+                    ? `${(statsData.storage_usage_mb / 1000).toFixed(1)} GB`
+                    : `${statsData.storage_usage_mb.toFixed(0)} MB`}
+                  {" / "}
+                  {statsData.storage_quota_mb >= 1000
+                    ? `${(statsData.storage_quota_mb / 1000).toFixed(0)} GB`
+                    : `${statsData.storage_quota_mb} MB`}
+                  {` (${statsData.storage_quota_mb > 0 ? ((statsData.storage_usage_mb / statsData.storage_quota_mb) * 100).toFixed(1) : "0"}%)`}
+                </span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-gray-200">
+                <div
+                  className={`h-2 rounded-full transition-all ${
+                    (statsData.storage_usage_mb / statsData.storage_quota_mb) > 0.9 ? "bg-red-500" :
+                    (statsData.storage_usage_mb / statsData.storage_quota_mb) > 0.7 ? "bg-amber-500" : "bg-teal-500"
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(1, (statsData.storage_usage_mb / statsData.storage_quota_mb) * 100))}%` }}
+                />
+              </div>
+              <div className="mt-1 text-[10px] text-gray-400">{statsData.total_frames.toLocaleString()} frames stored</div>
+            </div>
+          )}
           <div className="space-y-2">
             <NumberInput value={config.storage_quota_mb} onChange={(v) => set("storage_quota_mb", v)} label="Storage Quota (MB)" min={1000} max={500000} description="Max storage per org" />
             <NumberInput value={config.retention_days} onChange={(v) => set("retention_days", v)} label="Retention (days)" min={30} max={3650} description="Auto-delete frames older than this" />

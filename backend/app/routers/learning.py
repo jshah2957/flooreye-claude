@@ -160,6 +160,10 @@ async def get_stats(
     # Config
     config = await learning_config_service.get_config(ldb, org_id)
 
+    # Storage usage estimate (~100KB per frame)
+    storage_quota_mb = config.get("storage_quota_mb", 50_000)
+    storage_usage_mb = round(total * 0.1, 1)
+
     return {
         "data": {
             "total_frames": total,
@@ -170,8 +174,67 @@ async def get_stats(
             "dataset_versions": versions,
             "training_jobs": training_jobs,
             "config": config,
+            "storage_usage_mb": storage_usage_mb,
+            "storage_quota_mb": storage_quota_mb,
         }
     }
+
+
+# ── Analytics ─────────────────────────────────────────────────────
+
+@router.get("/analytics/captures-by-day")
+async def captures_by_day(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Frames captured per day for the last 30 days."""
+    from datetime import timedelta
+
+    org_id = get_org_id(current_user) or ""
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    pipeline = [
+        {"$match": {"org_id": org_id, "ingested_at": {"$gte": thirty_days_ago}}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$ingested_at"}},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    results = []
+    async for doc in ldb.learning_frames.aggregate(pipeline):
+        results.append({"date": doc["_id"], "count": doc["count"]})
+    return {"data": results}
+
+
+@router.get("/analytics/class-balance")
+async def class_balance(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Frames per class grouped by week."""
+    org_id = get_org_id(current_user) or ""
+    pipeline = [
+        {"$match": {"org_id": org_id}},
+        {"$unwind": "$annotations"},
+        {"$group": {
+            "_id": {
+                "week": {"$dateToString": {"format": "%Y-W%V", "date": "$ingested_at"}},
+                "class_name": "$annotations.class_name",
+            },
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id.week": 1}},
+    ]
+    # Reshape into [{week, classes: {name: count}}]
+    weeks: dict = {}
+    async for doc in ldb.learning_frames.aggregate(pipeline):
+        week = doc["_id"]["week"]
+        cls = doc["_id"]["class_name"]
+        if week not in weeks:
+            weeks[week] = {"week": week}
+        weeks[week][cls] = doc["count"]
+
+    return {"data": list(weeks.values())}
 
 
 # ── Frames ────────────────────────────────────────────────────────
@@ -184,6 +247,8 @@ async def list_frames(
     split: Optional[str] = Query(None),
     dataset_version_id: Optional[str] = Query(None),
     class_name: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
@@ -204,6 +269,20 @@ async def list_frames(
         query["dataset_version_id"] = dataset_version_id
     if class_name:
         query["annotations.class_name"] = class_name
+    if date_from or date_to:
+        date_filter: dict = {}
+        if date_from:
+            try:
+                date_filter["$gte"] = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                date_filter["$lte"] = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            except ValueError:
+                pass
+        if date_filter:
+            query["ingested_at"] = date_filter
 
     total = await ldb.learning_frames.count_documents(query)
     cursor = ldb.learning_frames.find(query, {"_id": 0}).sort("ingested_at", -1).skip(offset).limit(limit)
