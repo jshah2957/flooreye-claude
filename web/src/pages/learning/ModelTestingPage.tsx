@@ -3,10 +3,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Upload, Play, Loader2, Download, Sliders } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
-import { COLORS, classColor } from "@/constants/learning";
+import { COLORS, classColor, DEFAULT_COMPARE_CONFIDENCE } from "@/constants/learning";
 
 /* ── Constants ──────────────────────────────────────────────── */
-const DEFAULT_CONFIDENCE = 0.25;
 const CONFIDENCE_STEP = 0.05;
 const CONFIDENCE_MIN = 0;
 const CONFIDENCE_MAX = 1;
@@ -96,7 +95,7 @@ export default function ModelTestingPage() {
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [confidence, setConfidence] = useState(DEFAULT_CONFIDENCE);
+  const [confidence, setConfidence] = useState(DEFAULT_COMPARE_CONFIDENCE);
   const [result, setResult] = useState<TestImageResult | null>(null);
   const [batchResult, setBatchResult] = useState<BatchTestResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
