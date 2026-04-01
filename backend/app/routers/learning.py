@@ -216,8 +216,8 @@ async def list_frames(
             key = f.get("thumbnail_s3_key") or f.get("frame_s3_key")
             if key:
                 f["frame_url"] = await generate_url(key, expires=3600)
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("Learning system operation failed: %s", e)
 
     return {"data": frames, "meta": {"total": total, "offset": offset, "limit": limit}}
 
@@ -243,8 +243,8 @@ async def get_frame(
         key = doc.get("frame_s3_key")
         if key:
             doc["frame_url"] = await generate_url(key, expires=3600)
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("Learning system operation failed: %s", e)
 
     return {"data": doc}
 
@@ -300,8 +300,8 @@ async def delete_frame(
             await asyncio.to_thread(
                 client.delete_object, Bucket=settings.LEARNING_S3_BUCKET, Key=doc["frame_s3_key"]
             )
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning("Learning system operation failed: %s", e)
 
     return {"data": {"ok": True}}
 

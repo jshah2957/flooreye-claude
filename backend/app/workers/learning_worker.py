@@ -160,7 +160,10 @@ async def _async_capture_detection(detection_id: str, org_id: str) -> dict:
         learning_key = None
         if frame_key:
             learning_key = f"frames/edge/{org_id}/{detection.get('store_id', 'unknown')}/{detection.get('camera_id', 'unknown')}/{detection_id}.jpg"
-            await _copy_frame_to_learning_bucket(frame_key, learning_key)
+            copied = await _copy_frame_to_learning_bucket(frame_key, learning_key)
+            if not copied:
+                logger.warning("S3 frame copy failed for detection %s — skipping capture", detection_id)
+                learning_key = None  # Frame doc will have no S3 key but still captures metadata
 
         # Build annotations from predictions
         annotations = []
