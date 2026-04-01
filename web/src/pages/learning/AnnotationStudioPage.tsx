@@ -1,8 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, SkipForward, Trash2, Loader2, PenTool, ChevronLeft, ChevronRight, Undo2, Redo2 } from "lucide-react";
+import { Check, SkipForward, Trash2, Loader2, PenTool, ChevronLeft, ChevronRight, Undo2, Redo2, Plus } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import {
+  HANDLE_SIZE, HANDLE_HIT_AREA, MIN_BOX_SIZE, ZOOM_MIN, ZOOM_MAX, ZOOM_STEP,
+  HANDLE_CURSORS, COLORS, classColor, DEFAULT_PAGE_LIMIT,
+} from "@/constants/learning";
 
 interface Annotation {
   class_name: string;
@@ -21,11 +25,6 @@ interface LearningFrame {
   source: string;
   captured_at: string;
 }
-
-// Resize handle positions: 0-3 corners (TL, TR, BL, BR), 4-7 edges (T, L, R, B)
-const HANDLE_SIZE = 8;
-const HANDLE_HIT = 6;
-const HANDLE_CURSORS = ["nwse-resize", "nesw-resize", "nesw-resize", "nwse-resize", "ns-resize", "ew-resize", "ew-resize", "ns-resize"];
 
 function getHandlePositions(bx: number, by: number, bw: number, bh: number) {
   return [
@@ -59,8 +58,20 @@ export default function AnnotationStudioPage() {
   const [drawingMode, setDrawingMode] = useState(false);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [drawEnd, setDrawEnd] = useState<{ x: number; y: number } | null>(null);
-  const [newClassName, setNewClassName] = useState("detection");
+  const [newClassName, setNewClassName] = useState("");
+  const [newClassInput, setNewClassInput] = useState("");
   const [zoom, setZoom] = useState(1);
+  // Drag-to-move state
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ cx: number; cy: number; bx: number; by: number } | null>(null);
+  // Pan state
+  const [panning, setPanning] = useState(false);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [panStart, setPanStart] = useState<{ mx: number; my: number; ox: number; oy: number } | null>(null);
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  // Brightness/contrast
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
 
   // Resize state
   const [resizing, setResizing] = useState(false);
@@ -121,12 +132,13 @@ export default function AnnotationStudioPage() {
     canvas.height = img.naturalHeight;
     ctx.drawImage(img, 0, 0);
 
-    // Draw bounding boxes
+    // Draw bounding boxes with per-class colors
     (current.annotations ?? []).forEach((ann, i) => {
       const { bx, by, bw, bh } = bboxToPixels(ann, canvas.width, canvas.height);
 
       const isSelected = selectedBox === i;
-      ctx.strokeStyle = isSelected ? "#0D9488" : "#3B82F6";
+      const boxColor = isSelected ? COLORS.SELECTED_BOX : classColor(ann.class_name);
+      ctx.strokeStyle = boxColor;
       ctx.lineWidth = isSelected ? 3 : 2;
       ctx.strokeRect(bx, by, bw, bh);
 
@@ -134,17 +146,17 @@ export default function AnnotationStudioPage() {
       const label = `${ann.class_name} ${(ann.confidence * 100).toFixed(0)}%`;
       ctx.font = "14px sans-serif";
       const textW = ctx.measureText(label).width + 8;
-      ctx.fillStyle = isSelected ? "#0D9488" : "#3B82F6";
+      ctx.fillStyle = boxColor;
       ctx.fillRect(bx, Math.max(0, by - 20), textW, 20);
-      ctx.fillStyle = "white";
+      ctx.fillStyle = COLORS.LABEL_TEXT;
       ctx.fillText(label, bx + 4, Math.max(14, by - 5));
 
       // Resize handles for selected box
       if (isSelected) {
         const handles = getHandlePositions(bx, by, bw, bh);
         handles.forEach((hp, hi) => {
-          ctx.fillStyle = hoveredHandle === hi ? "#0D9488" : "white";
-          ctx.strokeStyle = "#1F2937";
+          ctx.fillStyle = hoveredHandle === hi ? COLORS.SELECTED_BOX : COLORS.HANDLE_FILL;
+          ctx.strokeStyle = COLORS.HANDLE_STROKE;
           ctx.lineWidth = 1;
           ctx.fillRect(hp.x - HANDLE_SIZE / 2, hp.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
           ctx.strokeRect(hp.x - HANDLE_SIZE / 2, hp.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
@@ -312,7 +324,7 @@ export default function AnnotationStudioPage() {
     const handles = getHandlePositions(bx, by, bw, bh);
     for (let i = 0; i < handles.length; i++) {
       const h = handles[i]!;
-      if (Math.abs(cx - h.x) <= HANDLE_HIT && Math.abs(cy - h.y) <= HANDLE_HIT) {
+      if (Math.abs(cx - h.x) <= HANDLE_HIT_AREA && Math.abs(cy - h.y) <= HANDLE_HIT_AREA) {
         return i;
       }
     }
@@ -343,8 +355,8 @@ export default function AnnotationStudioPage() {
     else if (handleIdx === 7) { newH = cy - by; }                                                    // Bottom
 
     // Enforce minimum size
-    if (newW < 10) newW = 10;
-    if (newH < 10) newH = 10;
+    if (newW < MIN_BOX_SIZE) newW = MIN_BOX_SIZE;
+    if (newH < MIN_BOX_SIZE) newH = MIN_BOX_SIZE;
 
     // Convert back to normalized center coords
     const normCx = (newX + newW / 2) / cw;
@@ -362,6 +374,13 @@ export default function AnnotationStudioPage() {
 
   // Canvas mouse handlers
   function onCanvasMouseDown(e: React.MouseEvent) {
+    // Pan mode: space+click
+    if (spaceHeld) {
+      setPanning(true);
+      setPanStart({ mx: e.clientX, my: e.clientY, ox: panOffset.x, oy: panOffset.y });
+      return;
+    }
+
     const { cx, cy } = getCanvasCoords(e);
 
     // Check resize handles first
@@ -372,6 +391,20 @@ export default function AnnotationStudioPage() {
         setResizing(true);
         setResizeHandle(handle);
         return;
+      }
+    }
+
+    // Check drag-to-move: clicking inside a selected box (not on handle)
+    if (!drawingMode && selectedBox !== null && current && canvasRef.current) {
+      const ann = current.annotations?.[selectedBox];
+      if (ann) {
+        const { bx, by, bw, bh } = bboxToPixels(ann, canvasRef.current.width, canvasRef.current.height);
+        if (cx >= bx && cx <= bx + bw && cy >= by && cy <= by + bh) {
+          pushUndo();
+          setDragging(true);
+          setDragStart({ cx, cy, bx, by });
+          return;
+        }
       }
     }
 
@@ -394,7 +427,38 @@ export default function AnnotationStudioPage() {
   }
 
   function onCanvasMouseMove(e: React.MouseEvent) {
+    // Panning
+    if (panning && panStart) {
+      setPanOffset({
+        x: panStart.ox + (e.clientX - panStart.mx),
+        y: panStart.oy + (e.clientY - panStart.my),
+      });
+      return;
+    }
+
     const { cx, cy } = getCanvasCoords(e);
+
+    // Dragging box
+    if (dragging && dragStart && selectedBox !== null && current && canvasRef.current) {
+      const cw = canvasRef.current.width;
+      const ch = canvasRef.current.height;
+      const ann = current.annotations?.[selectedBox];
+      if (ann) {
+        const { bw, bh } = bboxToPixels(ann, cw, ch);
+        const newBx = dragStart.bx + (cx - dragStart.cx);
+        const newBy = dragStart.by + (cy - dragStart.cy);
+        const normCx = (newBx + bw / 2) / cw;
+        const normCy = (newBy + bh / 2) / ch;
+        const normW = bw / cw;
+        const normH = bh / ch;
+        const updated: Annotation[] = [...(current.annotations ?? [])];
+        updated[selectedBox] = { ...ann, bbox: { x: normCx, y: normCy, w: normW, h: normH } };
+        const updatedFrames = [...frames];
+        updatedFrames[currentIdx] = { ...current, annotations: updated };
+        setFrames(updatedFrames);
+      }
+      return;
+    }
 
     // Resizing
     if (resizing && resizeHandle !== null) {
@@ -408,7 +472,7 @@ export default function AnnotationStudioPage() {
       drawCanvas();
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
-        ctx.strokeStyle = "#F59E0B";
+        ctx.strokeStyle = COLORS.DRAW_PREVIEW;
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
         ctx.strokeRect(drawStart.x, drawStart.y, cx - drawStart.x, cy - drawStart.y);
@@ -425,6 +489,21 @@ export default function AnnotationStudioPage() {
   }
 
   function onCanvasMouseUp() {
+    // Finish pan
+    if (panning) {
+      setPanning(false);
+      setPanStart(null);
+      return;
+    }
+
+    // Finish drag-to-move
+    if (dragging && current) {
+      setDragging(false);
+      setDragStart(null);
+      saveAnnotationsMutation.mutate(current.annotations ?? []);
+      return;
+    }
+
     // Finish resize
     if (resizing && current) {
       setResizing(false);
@@ -439,7 +518,7 @@ export default function AnnotationStudioPage() {
       const y = Math.min(drawStart.y, drawEnd.y);
       const w = Math.abs(drawEnd.x - drawStart.x);
       const h = Math.abs(drawEnd.y - drawStart.y);
-      if (w > 10 && h > 10) addBox(x, y, w, h);
+      if (w > MIN_BOX_SIZE && h > MIN_BOX_SIZE) addBox(x, y, w, h);
     }
     setDrawStart(null);
     setDrawEnd(null);
@@ -447,16 +526,28 @@ export default function AnnotationStudioPage() {
 
   // Determine cursor
   function getCanvasCursor() {
+    if (spaceHeld || panning) return "grab";
+    if (dragging) return "move";
     if (resizing && resizeHandle !== null) return HANDLE_CURSORS[resizeHandle];
     if (hoveredHandle !== null) return HANDLE_CURSORS[hoveredHandle];
     if (drawingMode) return "crosshair";
     return "pointer";
   }
 
+  // Space key for pan mode
+  useEffect(() => {
+    function onDown(e: KeyboardEvent) { if (e.code === "Space" && !(e.target instanceof HTMLInputElement)) { e.preventDefault(); setSpaceHeld(true); } }
+    function onUp(e: KeyboardEvent) { if (e.code === "Space") setSpaceHeld(false); }
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    return () => { window.removeEventListener("keydown", onDown); window.removeEventListener("keyup", onUp); };
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+      if (e.code === "Space") return; // handled above
 
       // Undo: Ctrl+Z
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") {
@@ -509,7 +600,7 @@ export default function AnnotationStudioPage() {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
           {/* Canvas */}
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-900" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-gray-900" style={{ transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`, transformOrigin: "top left", filter: `brightness(${brightness}%) contrast(${contrast}%)` }}>
             <canvas
               ref={canvasRef}
               className="w-full"
@@ -520,7 +611,7 @@ export default function AnnotationStudioPage() {
               onMouseLeave={() => { setHoveredHandle(null); if (resizing) onCanvasMouseUp(); }}
               onWheel={(e) => {
                 e.preventDefault();
-                setZoom((z) => Math.max(0.5, Math.min(3, z + (e.deltaY < 0 ? 0.1 : -0.1))));
+                setZoom((z) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP))));
               }}
             />
           </div>
@@ -574,9 +665,25 @@ export default function AnnotationStudioPage() {
                     <label className="mb-1 block text-[10px] text-gray-500">Class for new box:</label>
                     <select value={newClassName} onChange={(e) => setNewClassName(e.target.value)}
                       className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none">
-                      {(classList.length > 0 ? classList : ["detection"]).map((c) => <option key={c} value={c}>{c}</option>)}
-                      <option value="detection">detection</option>
+                      <option value="">Select class...</option>
+                      {classList.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
+                    <div className="mt-1 flex gap-1">
+                      <input type="text" placeholder="New class name..." value={newClassInput}
+                        onChange={(e) => setNewClassInput(e.target.value)}
+                        className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none" />
+                      <button onClick={() => {
+                        const name = newClassInput.trim().toLowerCase();
+                        if (name && !classList.includes(name)) {
+                          setClassList((prev) => [...prev, name].sort());
+                        }
+                        setNewClassName(name);
+                        setNewClassInput("");
+                      }} disabled={!newClassInput.trim()}
+                        className="rounded bg-teal-600 px-2 py-1 text-xs text-white hover:bg-teal-700 disabled:opacity-40">
+                        <Plus size={12} />
+                      </button>
+                    </div>
                   </div>
                 )}
                 {selectedBox !== null && (
@@ -585,7 +692,7 @@ export default function AnnotationStudioPage() {
                       <label className="mb-1 block text-[10px] text-gray-500">Change class:</label>
                       <select value={current?.annotations?.[selectedBox]?.class_name ?? ""} onChange={(e) => changeBoxClass(e.target.value)}
                         className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-teal-500 focus:outline-none">
-                        {(classList.length > 0 ? classList : ["detection"]).map((c) => <option key={c} value={c}>{c}</option>)}
+                        {classList.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <button onClick={deleteSelectedBox}
@@ -607,9 +714,23 @@ export default function AnnotationStudioPage() {
                   </button>
                 </div>
 
+                {/* Brightness / Contrast */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-gray-500">
+                    <span>Brightness</span><span>{brightness}%</span>
+                  </div>
+                  <input type="range" min={50} max={200} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))}
+                    className="w-full accent-teal-600" />
+                  <div className="flex items-center justify-between text-[10px] text-gray-500">
+                    <span>Contrast</span><span>{contrast}%</span>
+                  </div>
+                  <input type="range" min={50} max={200} value={contrast} onChange={(e) => setContrast(Number(e.target.value))}
+                    className="w-full accent-teal-600" />
+                </div>
+
                 <div className="flex items-center justify-between text-[10px] text-gray-400">
                   <span>Zoom: {(zoom * 100).toFixed(0)}%</span>
-                  <button onClick={() => setZoom(1)} className="text-teal-600 hover:underline">Reset</button>
+                  <button onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); setBrightness(100); setContrast(100); }} className="text-teal-600 hover:underline">Reset All</button>
                 </div>
               </div>
             </div>

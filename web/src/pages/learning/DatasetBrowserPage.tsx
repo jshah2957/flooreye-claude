@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Filter, Loader2, Image as ImageIcon, Eye, Trash2, Tag } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import {
+  FRAME_SOURCE_OPTIONS, LABEL_STATUS_OPTIONS, SPLIT_OPTIONS, VERDICT_OPTIONS,
+  DEFAULT_PAGE_LIMIT,
+} from "@/constants/learning";
 
 interface LearningFrame {
   id: string;
@@ -19,37 +23,6 @@ interface LearningFrame {
   tags: string[];
 }
 
-const SOURCE_OPTIONS = [
-  { value: "", label: "All Sources" },
-  { value: "edge_detection", label: "Edge Detection" },
-  { value: "cloud_detection", label: "Cloud Detection" },
-  { value: "roboflow_training", label: "Roboflow Training" },
-  { value: "manual_upload", label: "Manual Upload" },
-];
-
-const LABEL_OPTIONS = [
-  { value: "", label: "All Labels" },
-  { value: "unlabeled", label: "Unlabeled" },
-  { value: "auto_labeled", label: "Auto-Labeled" },
-  { value: "human_reviewed", label: "Human Reviewed" },
-  { value: "human_corrected", label: "Human Corrected" },
-];
-
-const SPLIT_OPTIONS = [
-  { value: "", label: "All Splits" },
-  { value: "unassigned", label: "Unassigned" },
-  { value: "train", label: "Train" },
-  { value: "val", label: "Validation" },
-  { value: "test", label: "Test" },
-];
-
-const VERDICT_OPTIONS = [
-  { value: "", label: "All Verdicts" },
-  { value: "true_positive", label: "True Positive" },
-  { value: "false_positive", label: "False Positive" },
-  { value: "uncertain", label: "Uncertain" },
-];
-
 export default function DatasetBrowserPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
@@ -63,7 +36,7 @@ export default function DatasetBrowserPage() {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<LearningFrame | null>(null);
-  const limit = 20;
+  const limit = DEFAULT_PAGE_LIMIT;
 
   const { data, isLoading } = useQuery({
     queryKey: ["learning-frames", source, labelStatus, split, verdict, className, dateFrom, dateTo, page],
@@ -122,8 +95,8 @@ export default function DatasetBrowserPage() {
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {[
-          { value: source, onChange: setSource, options: SOURCE_OPTIONS },
-          { value: labelStatus, onChange: setLabelStatus, options: LABEL_OPTIONS },
+          { value: source, onChange: setSource, options: FRAME_SOURCE_OPTIONS },
+          { value: labelStatus, onChange: setLabelStatus, options: LABEL_STATUS_OPTIONS },
           { value: split, onChange: setSplit, options: SPLIT_OPTIONS },
           { value: verdict, onChange: setVerdict, options: VERDICT_OPTIONS },
         ].map((f, i) => (

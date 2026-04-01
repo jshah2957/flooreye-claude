@@ -23,6 +23,16 @@ from pathlib import Path
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
+from app.core.learning_constants import (
+    ARCHITECTURE_WEIGHTS_MAP,
+    DEFAULT_FRAME_SIZE,
+    MAX_FRAMES_FETCH,
+    MIN_FRAMES_TO_TRAIN,
+    S3_MODEL_TEMPLATE,
+    TRAINING_SOFT_TIME_LIMIT_SECONDS,
+    TRAINING_TIME_LIMIT_SECONDS,
+    UNKNOWN_CLASS_NAME,
+)
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -43,8 +53,8 @@ def _get_learning_db():
     bind=True,
     max_retries=0,
     queue="learning",
-    time_limit=86400,      # 24 hour hard limit
-    soft_time_limit=82800,  # 23 hour soft limit
+    time_limit=TRAINING_TIME_LIMIT_SECONDS,
+    soft_time_limit=TRAINING_SOFT_TIME_LIMIT_SECONDS,
 )
 def run_training_job(self, job_id: str, org_id: str):
     """Execute GPU training for a learning system training job.
@@ -124,7 +134,7 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
 
         frames = await ldb.learning_frames.find(
             frame_query, {"_id": 0}
-        ).to_list(length=100_000)
+        ).to_list(length=MAX_FRAMES_FETCH)
 
         if not frames:
             raise ValueError("No frames available for training (need frames with train/val/test split)")
@@ -135,12 +145,12 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
         class_set = set()
         for f in frames:
             for a in (f.get("annotations") or []):
-                cn = a.get("class_name", "unknown")
-                if cn and cn != "unknown":
+                cn = a.get("class_name", UNKNOWN_CLASS_NAME)
+                if cn and cn != UNKNOWN_CLASS_NAME:
                     class_set.add(cn)
         class_list = sorted(class_set)
         if not class_list:
-            class_list = ["wet_floor", "dry_floor"]
+            raise ValueError("No annotated classes found in training frames — annotate frames before training")
         class_map = {name: i for i, name in enumerate(class_list)}
 
         logger.info("Classes: %s", class_list)
@@ -183,10 +193,10 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
 
             # Write YOLO label file
             lines = []
-            img_w = f.get("frame_width") or 640
-            img_h = f.get("frame_height") or 640
+            img_w = f.get("frame_width") or DEFAULT_FRAME_SIZE
+            img_h = f.get("frame_height") or DEFAULT_FRAME_SIZE
             for a in (f.get("annotations") or []):
-                cn = a.get("class_name", "unknown")
+                cn = a.get("class_name", UNKNOWN_CLASS_NAME)
                 cls_id = class_map.get(cn)
                 if cls_id is None:
                     continue
@@ -207,7 +217,7 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
 
         logger.info("Downloaded %d/%d frames", downloaded, len(frames))
 
-        if downloaded < 3:
+        if downloaded < MIN_FRAMES_TO_TRAIN:
             raise ValueError(f"Only {downloaded} frames downloaded — need at least 3 to train")
 
         # ── 5. Write data.yaml ───────────────────────────────────
@@ -309,7 +319,7 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
 
             # Upload ONNX to learning S3
             if onnx_path and os.path.exists(onnx_path) and s3:
-                onnx_s3_key = f"models/{org_id}/{job_id}/model.onnx"
+                onnx_s3_key = S3_MODEL_TEMPLATE.format(org_id=org_id, job_id=job_id)
                 with open(onnx_path, "rb") as fp:
                     s3.put_object(
                         Bucket=settings.LEARNING_S3_BUCKET,
@@ -392,14 +402,7 @@ async def _async_run_training(task, job_id: str, org_id: str) -> dict:
 
 def _resolve_weights(architecture: str) -> str:
     """Resolve architecture name to pretrained weights filename."""
-    weights_map = {
-        "yolov8n": "yolov8n.pt",
-        "yolov8s": "yolov8s.pt",
-        "yolov8m": "yolov8m.pt",
-        "yolo11n": "yolo11n.pt",
-        "yolo11s": "yolo11s.pt",
-    }
-    return weights_map.get(architecture, "yolo11n.pt")
+    return ARCHITECTURE_WEIGHTS_MAP.get(architecture, ARCHITECTURE_WEIGHTS_MAP.get("yolo11n", "yolo11n.pt"))
 
 
 # ═══════════════════════════════════════════════════════════════════

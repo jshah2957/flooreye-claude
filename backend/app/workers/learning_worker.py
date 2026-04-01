@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
+from app.core.learning_constants import THUMBNAIL_HEIGHT, THUMBNAIL_QUALITY, THUMBNAIL_WIDTH
 from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -91,9 +92,9 @@ async def _generate_thumbnail(frame_bytes: bytes, learning_key: str) -> str | No
         from PIL import Image
         import io
         img = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
-        img = img.resize((280, 175), Image.LANCZOS)
+        img = img.resize((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.LANCZOS)
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=80)
+        img.save(buf, format="JPEG", quality=THUMBNAIL_QUALITY)
         thumb_bytes = buf.getvalue()
 
         thumb_key = learning_key.replace("/frames/", "/thumbnails/").replace(".jpg", "_thumb.jpg")

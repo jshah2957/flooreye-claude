@@ -3,6 +3,7 @@ import { Brain, Database, Image, CheckCircle, XCircle, Loader2, BarChart3, Setti
 import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
+import { STATS_REFETCH_MS, CHART_REFETCH_MS, STORAGE_WARN_PCT, STORAGE_DANGER_PCT, FRAME_SOURCES_DISPLAY } from "@/constants/learning";
 
 interface LearningStats {
   total_frames: number;
@@ -30,7 +31,7 @@ export default function LearningDashboardPage() {
       const res = await api.get("/learning/stats");
       return res.data.data as LearningStats;
     },
-    refetchInterval: 30_000,
+    refetchInterval: STATS_REFETCH_MS,
   });
 
   const { data: chartData } = useQuery({
@@ -39,7 +40,7 @@ export default function LearningDashboardPage() {
       const res = await api.get("/learning/analytics/captures-by-day");
       return res.data.data as CaptureDay[];
     },
-    refetchInterval: 60_000,
+    refetchInterval: CHART_REFETCH_MS,
   });
 
   if (isLoading || !data) {
@@ -58,7 +59,7 @@ export default function LearningDashboardPage() {
   const maxClassCount = topClasses.length > 0 ? (topClasses[0]?.[1] ?? 1) : 1;
 
   const storagePct = data.storage_quota_mb > 0 ? Math.min(100, (data.storage_usage_mb / data.storage_quota_mb) * 100) : 0;
-  const storageColor = storagePct > 90 ? "bg-red-500" : storagePct > 70 ? "bg-amber-500" : "bg-teal-500";
+  const storageColor = storagePct > STORAGE_DANGER_PCT ? "bg-red-500" : storagePct > STORAGE_WARN_PCT ? "bg-amber-500" : "bg-teal-500";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -151,12 +152,7 @@ export default function LearningDashboardPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="mb-3 text-sm font-semibold text-gray-700">Frames by Source</h3>
           <div className="space-y-2">
-            {[
-              { key: "edge_detection", label: "Edge Detections", color: "bg-green-500" },
-              { key: "cloud_detection", label: "Cloud Detections", color: "bg-blue-500" },
-              { key: "roboflow_training", label: "Roboflow Training", color: "bg-purple-500" },
-              { key: "manual_upload", label: "Manual Upload", color: "bg-amber-500" },
-            ].map(({ key, label, color }) => (
+            {FRAME_SOURCES_DISPLAY.map(({ key, label, color }) => (
               <div key={key} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <div className={`h-2.5 w-2.5 rounded-full ${color}`} />

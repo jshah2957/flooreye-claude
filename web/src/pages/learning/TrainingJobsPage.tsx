@@ -4,6 +4,10 @@ import { Play, Loader2, CheckCircle, XCircle, Clock, Ban, BarChart3, Cpu } from 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import {
+  JOBS_REFETCH_MS, TRAINING_DEFAULTS, ARCHITECTURE_OPTIONS,
+  IMAGE_SIZE_OPTIONS, AUGMENTATION_OPTIONS,
+} from "@/constants/learning";
 
 interface TrainingJob {
   id: string;
@@ -57,16 +61,16 @@ export default function TrainingJobsPage() {
 
   // Form state
   const [datasetVersionId, setDatasetVersionId] = useState("");
-  const [architecture, setArchitecture] = useState("yolo11n");
-  const [epochs, setEpochs] = useState(50);
-  const [batchSize, setBatchSize] = useState(16);
-  const [imageSize, setImageSize] = useState(640);
-  const [augmentation, setAugmentation] = useState("standard");
+  const [architecture, setArchitecture] = useState<string>(TRAINING_DEFAULTS.architecture);
+  const [epochs, setEpochs] = useState<number>(TRAINING_DEFAULTS.epochs);
+  const [batchSize, setBatchSize] = useState<number>(TRAINING_DEFAULTS.batchSize);
+  const [imageSize, setImageSize] = useState<number>(TRAINING_DEFAULTS.imageSize);
+  const [augmentation, setAugmentation] = useState<string>(TRAINING_DEFAULTS.augmentation);
 
   const { data: jobs, isLoading } = useQuery({
     queryKey: ["learning-training"],
     queryFn: async () => { const r = await api.get("/learning/training"); return r.data.data as TrainingJob[]; },
-    refetchInterval: 10_000,
+    refetchInterval: JOBS_REFETCH_MS,
   });
 
   const { data: datasets } = useQuery({
@@ -239,10 +243,7 @@ export default function TrainingJobsPage() {
                 <label className="mb-1 block text-xs font-medium text-gray-700">Architecture</label>
                 <select value={architecture} onChange={(e) => setArchitecture(e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none">
-                  <option value="yolo11n">YOLO11n (fastest)</option>
-                  <option value="yolov8n">YOLOv8n (fast)</option>
-                  <option value="yolov8s">YOLOv8s (balanced)</option>
-                  <option value="yolov8m">YOLOv8m (accurate)</option>
+                  {ARCHITECTURE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -262,15 +263,14 @@ export default function TrainingJobsPage() {
                   <label className="mb-1 block text-xs font-medium text-gray-700">Image Size</label>
                   <select value={imageSize} onChange={(e) => setImageSize(Number(e.target.value))}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none">
-                    <option value={320}>320px</option><option value={480}>480px</option>
-                    <option value={640}>640px</option><option value={960}>960px</option>
+                    {IMAGE_SIZE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-700">Augmentation</label>
                   <select value={augmentation} onChange={(e) => setAugmentation(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none">
-                    <option value="light">Light</option><option value="standard">Standard</option><option value="heavy">Heavy</option>
+                    {AUGMENTATION_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
               </div>

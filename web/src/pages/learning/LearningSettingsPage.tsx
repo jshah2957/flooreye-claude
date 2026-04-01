@@ -4,6 +4,10 @@ import { Loader2, Save, ArrowLeft, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import {
+  SETTINGS_RANGES, ARCHITECTURE_OPTIONS, IMAGE_SIZE_OPTIONS, AUGMENTATION_OPTIONS,
+  STORAGE_WARN_PCT, STORAGE_DANGER_PCT,
+} from "@/constants/learning";
 
 interface LearningConfig {
   org_id: string;
@@ -183,9 +187,9 @@ export default function LearningSettingsPage() {
             <Toggle value={config.capture_admin_feedback} onChange={(v) => set("capture_admin_feedback", v)} label="Capture Admin Feedback" description="Record true/false positive from incident review" />
             <Toggle value={config.capture_wet_only} onChange={(v) => set("capture_wet_only", v)} label="Wet Detections Only" description="Skip dry/normal detections" />
             <Toggle value={config.dedup_enabled} onChange={(v) => set("dedup_enabled", v)} label="Deduplication" description="Skip near-duplicate frames" />
-            <Slider value={config.capture_rate} onChange={(v) => set("capture_rate", v)} label="Capture Rate" min={0.01} max={1} step={0.01} description="Percentage of detections to capture" suffix="" />
-            <Slider value={config.capture_min_confidence} onChange={(v) => set("capture_min_confidence", v)} label="Min Confidence" min={0} max={1} step={0.05} description="Only capture above this confidence" />
-            <NumberInput value={config.capture_max_daily} onChange={(v) => set("capture_max_daily", v)} label="Max Daily Captures" min={10} max={10000} description="Per org per day" />
+            <Slider value={config.capture_rate} onChange={(v) => set("capture_rate", v)} label="Capture Rate" min={SETTINGS_RANGES.capture_rate.min} max={SETTINGS_RANGES.capture_rate.max} step={SETTINGS_RANGES.capture_rate.step} description="Percentage of detections to capture" suffix="" />
+            <Slider value={config.capture_min_confidence} onChange={(v) => set("capture_min_confidence", v)} label="Min Confidence" min={SETTINGS_RANGES.capture_min_confidence.min} max={SETTINGS_RANGES.capture_min_confidence.max} step={SETTINGS_RANGES.capture_min_confidence.step} description="Only capture above this confidence" />
+            <NumberInput value={config.capture_max_daily} onChange={(v) => set("capture_max_daily", v)} label="Max Daily Captures" min={SETTINGS_RANGES.capture_max_daily.min} max={SETTINGS_RANGES.capture_max_daily.max} description="Per org per day" />
           </div>
         </section>
 
@@ -210,8 +214,8 @@ export default function LearningSettingsPage() {
               <div className="mt-2 h-2 rounded-full bg-gray-200">
                 <div
                   className={`h-2 rounded-full transition-all ${
-                    (statsData.storage_usage_mb / statsData.storage_quota_mb) > 0.9 ? "bg-red-500" :
-                    (statsData.storage_usage_mb / statsData.storage_quota_mb) > 0.7 ? "bg-amber-500" : "bg-teal-500"
+                    (statsData.storage_usage_mb / statsData.storage_quota_mb) * 100 > STORAGE_DANGER_PCT ? "bg-red-500" :
+                    (statsData.storage_usage_mb / statsData.storage_quota_mb) * 100 > STORAGE_WARN_PCT ? "bg-amber-500" : "bg-teal-500"
                   }`}
                   style={{ width: `${Math.min(100, Math.max(1, (statsData.storage_usage_mb / statsData.storage_quota_mb) * 100))}%` }}
                 />
@@ -220,8 +224,8 @@ export default function LearningSettingsPage() {
             </div>
           )}
           <div className="space-y-2">
-            <NumberInput value={config.storage_quota_mb} onChange={(v) => set("storage_quota_mb", v)} label="Storage Quota (MB)" min={1000} max={500000} description="Max storage per org" />
-            <NumberInput value={config.retention_days} onChange={(v) => set("retention_days", v)} label="Retention (days)" min={30} max={3650} description="Auto-delete frames older than this" />
+            <NumberInput value={config.storage_quota_mb} onChange={(v) => set("storage_quota_mb", v)} label="Storage Quota (MB)" min={SETTINGS_RANGES.storage_quota_mb.min} max={SETTINGS_RANGES.storage_quota_mb.max} description="Max storage per org" />
+            <NumberInput value={config.retention_days} onChange={(v) => set("retention_days", v)} label="Retention (days)" min={SETTINGS_RANGES.retention_days.min} max={SETTINGS_RANGES.retention_days.max} description="Auto-delete frames older than this" />
             <Toggle value={config.thumbnail_enabled} onChange={(v) => set("thumbnail_enabled", v)} label="Generate Thumbnails" description="280x175 thumbnails for browsing" />
             <Toggle value={config.auto_cleanup_enabled} onChange={(v) => set("auto_cleanup_enabled", v)} label="Auto Cleanup" description="Delete oldest frames when quota exceeded" />
           </div>
@@ -232,28 +236,18 @@ export default function LearningSettingsPage() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Training</h2>
           <div className="space-y-2">
             <Toggle value={config.auto_train_enabled} onChange={(v) => set("auto_train_enabled", v)} label="Auto Training" description="Automatically train when dataset reaches threshold" />
-            <NumberInput value={config.auto_train_min_frames} onChange={(v) => set("auto_train_min_frames", v)} label="Min Frames to Train" min={100} max={50000} />
+            <NumberInput value={config.auto_train_min_frames} onChange={(v) => set("auto_train_min_frames", v)} label="Min Frames to Train" min={SETTINGS_RANGES.auto_train_min_frames.min} max={SETTINGS_RANGES.auto_train_min_frames.max} />
             <SelectInput value={config.auto_train_schedule} onChange={(v) => set("auto_train_schedule", v)} label="Training Schedule" options={[
               { value: "manual", label: "Manual Only" },
               { value: "daily", label: "Daily Check" },
               { value: "weekly", label: "Weekly Check" },
             ]} />
-            <SelectInput value={config.architecture} onChange={(v) => set("architecture", v)} label="Model Architecture" options={[
-              { value: "yolo11n", label: "YOLO11n (fastest)" },
-              { value: "yolov8n", label: "YOLOv8n (fast)" },
-              { value: "yolov8s", label: "YOLOv8s (balanced)" },
-              { value: "yolov8m", label: "YOLOv8m (accurate)" },
-            ]} />
-            <NumberInput value={config.epochs} onChange={(v) => set("epochs", v)} label="Training Epochs" min={10} max={300} />
-            <NumberInput value={config.batch_size} onChange={(v) => set("batch_size", v)} label="Batch Size" min={4} max={64} />
-            <SelectInput value={String(config.image_size)} onChange={(v) => set("image_size", Number(v))} label="Image Size" options={[
-              { value: "320", label: "320px" }, { value: "480", label: "480px" },
-              { value: "640", label: "640px" }, { value: "960", label: "960px" },
-            ]} />
-            <SelectInput value={config.augmentation_preset} onChange={(v) => set("augmentation_preset", v)} label="Augmentation" options={[
-              { value: "light", label: "Light" }, { value: "standard", label: "Standard" }, { value: "heavy", label: "Heavy" },
-            ]} />
-            <Slider value={config.min_map50_to_deploy} onChange={(v) => set("min_map50_to_deploy", v)} label="Min mAP@50 to Deploy" min={0.5} max={0.95} step={0.05} description="Model must exceed this score" />
+            <SelectInput value={config.architecture} onChange={(v) => set("architecture", v)} label="Model Architecture" options={ARCHITECTURE_OPTIONS} />
+            <NumberInput value={config.epochs} onChange={(v) => set("epochs", v)} label="Training Epochs" min={SETTINGS_RANGES.epochs.min} max={SETTINGS_RANGES.epochs.max} />
+            <NumberInput value={config.batch_size} onChange={(v) => set("batch_size", v)} label="Batch Size" min={SETTINGS_RANGES.batch_size.min} max={SETTINGS_RANGES.batch_size.max} />
+            <SelectInput value={String(config.image_size)} onChange={(v) => set("image_size", Number(v))} label="Image Size" options={IMAGE_SIZE_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
+            <SelectInput value={config.augmentation_preset} onChange={(v) => set("augmentation_preset", v)} label="Augmentation" options={AUGMENTATION_OPTIONS} />
+            <Slider value={config.min_map50_to_deploy} onChange={(v) => set("min_map50_to_deploy", v)} label="Min mAP@50 to Deploy" min={SETTINGS_RANGES.min_map50_to_deploy.min} max={SETTINGS_RANGES.min_map50_to_deploy.max} step={SETTINGS_RANGES.min_map50_to_deploy.step} description="Model must exceed this score" />
           </div>
         </section>
 
@@ -262,9 +256,9 @@ export default function LearningSettingsPage() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Active Learning</h2>
           <div className="space-y-2">
             <Toggle value={config.active_learning_enabled} onChange={(v) => set("active_learning_enabled", v)} label="Active Learning" description="Score detections for training value" />
-            <Slider value={config.uncertainty_threshold} onChange={(v) => set("uncertainty_threshold", v)} label="Uncertainty Threshold" min={0.3} max={0.9} step={0.05} description="Below this = high value for training" />
-            <Slider value={config.diversity_weight} onChange={(v) => set("diversity_weight", v)} label="Diversity Weight" min={0} max={1} step={0.1} description="Prefer diverse frames over similar ones" />
-            <NumberInput value={config.max_review_queue} onChange={(v) => set("max_review_queue", v)} label="Max Review Queue" min={10} max={1000} />
+            <Slider value={config.uncertainty_threshold} onChange={(v) => set("uncertainty_threshold", v)} label="Uncertainty Threshold" min={SETTINGS_RANGES.uncertainty_threshold.min} max={SETTINGS_RANGES.uncertainty_threshold.max} step={SETTINGS_RANGES.uncertainty_threshold.step} description="Below this = high value for training" />
+            <Slider value={config.diversity_weight} onChange={(v) => set("diversity_weight", v)} label="Diversity Weight" min={SETTINGS_RANGES.diversity_weight.min} max={SETTINGS_RANGES.diversity_weight.max} step={SETTINGS_RANGES.diversity_weight.step} description="Prefer diverse frames over similar ones" />
+            <NumberInput value={config.max_review_queue} onChange={(v) => set("max_review_queue", v)} label="Max Review Queue" min={SETTINGS_RANGES.max_review_queue.min} max={SETTINGS_RANGES.max_review_queue.max} />
           </div>
         </section>
 
@@ -272,12 +266,12 @@ export default function LearningSettingsPage() {
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">Dataset Splits</h2>
           <div className="space-y-2">
-            <Slider value={config.split_ratio_train} onChange={(v) => set("split_ratio_train", v)} label="Training Split" min={0.5} max={0.9} step={0.05} suffix="" />
-            <Slider value={config.split_ratio_val} onChange={(v) => set("split_ratio_val", v)} label="Validation Split" min={0.05} max={0.3} step={0.05} suffix="" />
-            <Slider value={config.split_ratio_test} onChange={(v) => set("split_ratio_test", v)} label="Test Split" min={0.05} max={0.2} step={0.05} suffix="" />
+            <Slider value={config.split_ratio_train} onChange={(v) => set("split_ratio_train", v)} label="Training Split" min={SETTINGS_RANGES.split_ratio_train.min} max={SETTINGS_RANGES.split_ratio_train.max} step={SETTINGS_RANGES.split_ratio_train.step} suffix="" />
+            <Slider value={config.split_ratio_val} onChange={(v) => set("split_ratio_val", v)} label="Validation Split" min={SETTINGS_RANGES.split_ratio_val.min} max={SETTINGS_RANGES.split_ratio_val.max} step={SETTINGS_RANGES.split_ratio_val.step} suffix="" />
+            <Slider value={config.split_ratio_test} onChange={(v) => set("split_ratio_test", v)} label="Test Split" min={SETTINGS_RANGES.split_ratio_test.min} max={SETTINGS_RANGES.split_ratio_test.max} step={SETTINGS_RANGES.split_ratio_test.step} suffix="" />
             {(() => {
               const total = config.split_ratio_train + config.split_ratio_val + config.split_ratio_test;
-              const isValid = total >= 0.95 && total <= 1.05;
+              const isValid = total >= SETTINGS_RANGES.split_tolerance_low && total <= SETTINGS_RANGES.split_tolerance_high;
               return (
                 <div className={`rounded-lg px-3 py-2 text-xs font-medium ${isValid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
                   Total: {(total * 100).toFixed(0)}% {isValid ? "(valid)" : `— must be 95-105%`}

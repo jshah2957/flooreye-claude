@@ -12,6 +12,32 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
+from app.core.learning_constants import (
+    ALLOWED_ARCHITECTURES,
+    ANALYTICS_WINDOW_DAYS,
+    COCO_CATEGORY_ID_MODULO,
+    DEFAULT_COMPARE_CONFIDENCE,
+    DEFAULT_FRAME_SIZE,
+    DEFAULT_PAGE_LIMIT,
+    MAX_AGGREGATION_RESULTS,
+    MAX_DATASET_VERSIONS,
+    MAX_FRAMES_FETCH,
+    MAX_MODELS_RESULT,
+    MAX_PAGE_LIMIT,
+    MAX_TRAINING_JOBS,
+    SPLIT_RATIO_TOLERANCE_HIGH,
+    SPLIT_RATIO_TOLERANCE_LOW,
+    THUMBNAIL_HEIGHT,
+    THUMBNAIL_QUALITY,
+    THUMBNAIL_WIDTH,
+    TRAINING_BATCH_SIZE_MAX,
+    TRAINING_BATCH_SIZE_MIN,
+    TRAINING_EPOCHS_MAX,
+    TRAINING_EPOCHS_MIN,
+    TRAINING_IMAGE_SIZE_MAX,
+    TRAINING_IMAGE_SIZE_MIN,
+    UNKNOWN_CLASS_NAME,
+)
 from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.db.learning_db import get_learning_db
@@ -27,10 +53,10 @@ router = APIRouter(prefix="/api/v1/learning", tags=["learning"])
 
 class TrainingJobCreate(BaseModel):
     dataset_version_id: Optional[str] = None
-    architecture: Literal["yolo11n", "yolov8n", "yolov8s", "yolov8m"] = "yolo11n"
-    epochs: int = Field(50, ge=10, le=300)
-    batch_size: int = Field(16, ge=4, le=64)
-    image_size: int = Field(640, ge=320, le=1280)
+    architecture: str = Field("yolo11n", description="Must be one of ALLOWED_ARCHITECTURES")
+    epochs: int = Field(50, ge=TRAINING_EPOCHS_MIN, le=TRAINING_EPOCHS_MAX)
+    batch_size: int = Field(16, ge=TRAINING_BATCH_SIZE_MIN, le=TRAINING_BATCH_SIZE_MAX)
+    image_size: int = Field(640, ge=TRAINING_IMAGE_SIZE_MIN, le=TRAINING_IMAGE_SIZE_MAX)
     augmentation_preset: Literal["light", "standard", "heavy"] = "standard"
     pretrained_weights: str = "auto"
 
@@ -145,11 +171,11 @@ async def get_stats(
         {"$unwind": "$annotations"},
         {"$group": {"_id": "$annotations.class_name", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
-        {"$limit": 50},
+        {"$limit": MAX_AGGREGATION_RESULTS},
     ]
     class_dist = {}
     async for doc in ldb.learning_frames.aggregate(class_pipeline):
-        class_dist[doc["_id"] or "unknown"] = doc["count"]
+        class_dist[doc["_id"] or UNKNOWN_CLASS_NAME] = doc["count"]
 
     # Dataset versions
     versions = await ldb.learning_dataset_versions.count_documents(query)
@@ -191,7 +217,7 @@ async def captures_by_day(
     from datetime import timedelta
 
     org_id = get_org_id(current_user) or ""
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=ANALYTICS_WINDOW_DAYS)
     pipeline = [
         {"$match": {"org_id": org_id, "ingested_at": {"$gte": thirty_days_ago}}},
         {"$group": {
@@ -249,7 +275,7 @@ async def list_frames(
     class_name: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(DEFAULT_PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     offset: int = Query(0, ge=0),
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
@@ -395,8 +421,8 @@ async def list_dataset_versions(
     org_id = get_org_id(current_user) or ""
     cursor = ldb.learning_dataset_versions.find(
         {"org_id": org_id}, {"_id": 0}
-    ).sort("created_at", -1).limit(50)
-    versions = await cursor.to_list(length=50)
+    ).sort("created_at", -1).limit(MAX_DATASET_VERSIONS)
+    versions = await cursor.to_list(length=MAX_DATASET_VERSIONS)
     return {"data": versions}
 
 
@@ -485,7 +511,7 @@ async def auto_split_dataset(
 
     # Validate ratios sum to ~1.0
     total_ratio = body.train + body.val + body.test
-    if not (0.95 <= total_ratio <= 1.05):
+    if not (SPLIT_RATIO_TOLERANCE_LOW <= total_ratio <= SPLIT_RATIO_TOLERANCE_HIGH):
         raise HTTPException(status_code=422, detail=f"Split ratios must sum to ~1.0 (got {total_ratio:.2f})")
 
     # Get all unassigned frames
@@ -493,7 +519,7 @@ async def auto_split_dataset(
         {"org_id": org_id, "split": "unassigned"},
         {"id": 1, "annotations": 1},
     )
-    frames = await cursor.to_list(length=100_000)
+    frames = await cursor.to_list(length=MAX_FRAMES_FETCH)
 
     if len(frames) < 3:
         raise HTTPException(status_code=422, detail=f"Need at least 3 frames to split (found {len(frames)})")
@@ -546,8 +572,8 @@ async def list_training_jobs(
     org_id = get_org_id(current_user) or ""
     cursor = ldb.learning_training_jobs.find(
         {"org_id": org_id}, {"_id": 0}
-    ).sort("created_at", -1).limit(50)
-    jobs = await cursor.to_list(length=50)
+    ).sort("created_at", -1).limit(MAX_TRAINING_JOBS)
+    jobs = await cursor.to_list(length=MAX_TRAINING_JOBS)
     return {"data": jobs}
 
 
@@ -662,13 +688,13 @@ async def export_yolo(
         query["dataset_version_id"] = dataset_version_id
 
     cursor = ldb.learning_frames.find(query, {"_id": 0, "id": 1, "frame_s3_key": 1, "annotations": 1, "split": 1})
-    frames = await cursor.to_list(length=100_000)
+    frames = await cursor.to_list(length=MAX_FRAMES_FETCH)
 
     # Collect unique class names
     class_set = set()
     for f in frames:
         for a in (f.get("annotations") or []):
-            class_set.add(a.get("class_name", "unknown"))
+            class_set.add(a.get("class_name", UNKNOWN_CLASS_NAME))
     class_list = sorted(class_set)
     class_map = {name: i for i, name in enumerate(class_list)}
 
@@ -709,8 +735,8 @@ async def list_trained_models(
     cursor = ldb.learning_training_jobs.find(
         {"org_id": org_id, "status": "completed", "resulting_model_s3_key": {"$ne": None}},
         {"_id": 0},
-    ).sort("completed_at", -1).limit(20)
-    models = await cursor.to_list(length=20)
+    ).sort("completed_at", -1).limit(MAX_MODELS_RESULT)
+    models = await cursor.to_list(length=MAX_MODELS_RESULT)
     return {"data": models}
 
 
@@ -729,18 +755,18 @@ async def export_coco(
         query["dataset_version_id"] = dataset_version_id
 
     cursor = ldb.learning_frames.find(query, {"_id": 0})
-    frames = await cursor.to_list(length=100_000)
+    frames = await cursor.to_list(length=MAX_FRAMES_FETCH)
 
     # Build class mapping
     class_set: set[str] = set()
     for f in frames:
         for a in (f.get("annotations") or []):
-            class_set.add(a.get("class_name", "unknown"))
+            class_set.add(a.get("class_name", UNKNOWN_CLASS_NAME))
     class_list = sorted(class_set)
     import hashlib as _hl
 
     def _stable_cat_id(name: str) -> int:
-        return int(_hl.md5(name.encode()).hexdigest()[:8], 16) % 100_000 + 1
+        return int(_hl.md5(name.encode()).hexdigest()[:8], 16) % COCO_CATEGORY_ID_MODULO + 1
 
     class_map = {name: _stable_cat_id(name) for name in class_list}
 
@@ -753,15 +779,15 @@ async def export_coco(
         images.append({
             "id": img_id,
             "file_name": f.get("frame_s3_key", f"frame_{f['id']}.jpg"),
-            "width": f.get("frame_width") or 640,
-            "height": f.get("frame_height") or 640,
+            "width": f.get("frame_width") or DEFAULT_FRAME_SIZE,
+            "height": f.get("frame_height") or DEFAULT_FRAME_SIZE,
         })
         for a in (f.get("annotations") or []):
             bbox = a.get("bbox", {})
             x, y, w, h = bbox.get("x", 0), bbox.get("y", 0), bbox.get("w", 0), bbox.get("h", 0)
             # Convert from center to top-left if normalized
-            img_w = f.get("frame_width") or 640
-            img_h = f.get("frame_height") or 640
+            img_w = f.get("frame_width") or DEFAULT_FRAME_SIZE
+            img_h = f.get("frame_height") or DEFAULT_FRAME_SIZE
             if x <= 1 and y <= 1:
                 px = (x - w / 2) * img_w
                 py = (y - h / 2) * img_h
@@ -773,7 +799,7 @@ async def export_coco(
             annotations.append({
                 "id": ann_id,
                 "image_id": img_id,
-                "category_id": class_map.get(a.get("class_name", "unknown"), 1),
+                "category_id": class_map.get(a.get("class_name", UNKNOWN_CLASS_NAME), 1),
                 "bbox": [round(px, 1), round(py, 1), round(pw, 1), round(ph, 1)],
                 "area": round(pw * ph, 1),
                 "iscrowd": 0,
@@ -930,7 +956,7 @@ async def compare_models(
                                 cx, cy, w, h = row[0], row[1], row[2], row[3]
                                 scores = row[4:]
                                 max_score = float(np.max(scores))
-                                if max_score > 0.25:
+                                if max_score > DEFAULT_COMPARE_CONFIDENCE:
                                     cls_id = int(np.argmax(scores))
                                     class_names = [m["class_name"] for m in job.get("per_class_metrics", [])]
                                     cls_name = class_names[cls_id] if cls_id < len(class_names) else f"class_{cls_id}"
@@ -1090,7 +1116,7 @@ async def reset_settings(
 @router.post("/frames/upload")
 async def upload_frame(
     file: UploadFile = File(...),
-    class_name: str = Query("detection"),
+    class_name: str = Query(""),
     split: str = Query("unassigned"),
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
@@ -1136,9 +1162,9 @@ async def upload_frame(
             )
             # Generate thumbnail
             try:
-                img_thumb = Image.open(io.BytesIO(content)).convert("RGB").resize((280, 175), Image.LANCZOS)
+                img_thumb = Image.open(io.BytesIO(content)).convert("RGB").resize((THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT), Image.LANCZOS)
                 buf = io.BytesIO()
-                img_thumb.save(buf, format="JPEG", quality=80)
+                img_thumb.save(buf, format="JPEG", quality=THUMBNAIL_QUALITY)
                 thumb_key = learning_key.replace("/frames/", "/thumbnails/").replace(".jpg", "_thumb.jpg")
                 await _aio.to_thread(
                     client.put_object, Bucket=settings.LEARNING_S3_BUCKET,
@@ -1170,7 +1196,7 @@ async def upload_frame(
         "store_id": None,
         "camera_id": None,
         "label_status": "unlabeled",
-        "annotations": [{"class_name": class_name, "confidence": 1.0, "bbox": {}, "source": "human", "is_correct": None}] if class_name != "detection" else [],
+        "annotations": [{"class_name": class_name, "confidence": 1.0, "bbox": {}, "source": "human", "is_correct": None}] if class_name else [],
         "admin_verdict": None,
         "admin_user_id": current_user["id"],
         "admin_notes": None,

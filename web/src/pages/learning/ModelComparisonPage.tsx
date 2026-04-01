@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trophy, RotateCcw, Rocket, BarChart3, Eye } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import { COLORS } from "@/constants/learning";
 
 interface TrainedModel {
   id: string;
@@ -133,10 +134,10 @@ export default function ModelComparisonPage() {
     if (!compareResult) return;
     const imgSrc = `data:image/jpeg;base64,${compareResult.frame_base64}`;
     if (prodCanvasRef.current) {
-      drawPredictions(prodCanvasRef.current, imgSrc, compareResult.production_predictions, "#3B82F6", "Production");
+      drawPredictions(prodCanvasRef.current, imgSrc, compareResult.production_predictions, COLORS.PRODUCTION_MODEL, "Production");
     }
     if (trainCanvasRef.current) {
-      drawPredictions(trainCanvasRef.current, imgSrc, compareResult.trained_predictions, "#10B981", "Trained");
+      drawPredictions(trainCanvasRef.current, imgSrc, compareResult.trained_predictions, COLORS.TRAINED_MODEL, "Trained");
     }
   }, [compareResult]);
 
