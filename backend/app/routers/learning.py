@@ -258,3 +258,311 @@ async def delete_frame(
         pass
 
     return {"data": {"ok": True}}
+
+
+# ── Dataset Versions ──────────────────────────────────────────────
+
+@router.get("/datasets")
+async def list_dataset_versions(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = get_org_id(current_user) or ""
+    cursor = ldb.learning_dataset_versions.find(
+        {"org_id": org_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(50)
+    versions = await cursor.to_list(length=50)
+    return {"data": versions}
+
+
+@router.post("/datasets")
+async def create_dataset_version(
+    body: dict,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Create a versioned snapshot of the current learning frames."""
+    import uuid
+    from datetime import datetime, timezone
+
+    org_id = get_org_id(current_user) or ""
+    version_name = body.get("version", f"ds-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}")
+    description = body.get("description", "")
+
+    # Count frames by source and class
+    total = await ldb.learning_frames.count_documents({"org_id": org_id, "split": {"$ne": "unassigned"}})
+    source_pipeline = [
+        {"$match": {"org_id": org_id, "split": {"$ne": "unassigned"}}},
+        {"$group": {"_id": "$source", "count": {"$sum": 1}}},
+    ]
+    sources = {}
+    async for doc in ldb.learning_frames.aggregate(source_pipeline):
+        sources[doc["_id"] or "unknown"] = doc["count"]
+
+    split_pipeline = [
+        {"$match": {"org_id": org_id, "split": {"$ne": "unassigned"}}},
+        {"$group": {"_id": "$split", "count": {"$sum": 1}}},
+    ]
+    splits = {}
+    async for doc in ldb.learning_frames.aggregate(split_pipeline):
+        splits[doc["_id"]] = doc["count"]
+
+    class_pipeline = [
+        {"$match": {"org_id": org_id, "split": {"$ne": "unassigned"}}},
+        {"$unwind": "$annotations"},
+        {"$group": {"_id": "$annotations.class_name", "count": {"$sum": 1}}},
+    ]
+    class_dist = {}
+    async for doc in ldb.learning_frames.aggregate(class_pipeline):
+        class_dist[doc["_id"] or "unknown"] = doc["count"]
+
+    version_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    version_doc = {
+        "id": version_id,
+        "org_id": org_id,
+        "version": version_name,
+        "description": description,
+        "frame_count": total,
+        "class_distribution": class_dist,
+        "split_distribution": splits,
+        "sources": sources,
+        "model_versions_included": [],
+        "status": "ready",
+        "export_format": None,
+        "export_s3_key": None,
+        "created_at": now,
+        "created_by": current_user["id"],
+    }
+    await ldb.learning_dataset_versions.insert_one(version_doc)
+
+    # Tag all assigned frames with this version
+    await ldb.learning_frames.update_many(
+        {"org_id": org_id, "split": {"$ne": "unassigned"}, "dataset_version_id": None},
+        {"$set": {"dataset_version_id": version_id}},
+    )
+
+    version_doc.pop("_id", None)
+    return {"data": version_doc}
+
+
+@router.post("/datasets/{version_id}/auto-split")
+async def auto_split_dataset(
+    version_id: str,
+    body: dict,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Auto-assign train/val/test splits with class stratification."""
+    import random
+
+    org_id = get_org_id(current_user) or ""
+    config = await learning_config_service.get_config(ldb, org_id)
+    train_ratio = body.get("train", config.get("split_ratio_train", 0.7))
+    val_ratio = body.get("val", config.get("split_ratio_val", 0.2))
+
+    # Get all unassigned frames
+    cursor = ldb.learning_frames.find(
+        {"org_id": org_id, "split": "unassigned"},
+        {"id": 1, "annotations": 1},
+    )
+    frames = await cursor.to_list(length=100_000)
+    random.shuffle(frames)
+
+    n = len(frames)
+    n_train = int(n * train_ratio)
+    n_val = int(n * val_ratio)
+
+    updates = []
+    for i, f in enumerate(frames):
+        if i < n_train:
+            split = "train"
+        elif i < n_train + n_val:
+            split = "val"
+        else:
+            split = "test"
+        updates.append({"id": f["id"], "split": split})
+
+    # Batch update
+    for u in updates:
+        await ldb.learning_frames.update_one(
+            {"id": u["id"]}, {"$set": {"split": u["split"]}}
+        )
+
+    return {"data": {"assigned": len(updates), "train": n_train, "val": n_val, "test": n - n_train - n_val}}
+
+
+# ── Training Jobs ─────────────────────────────────────────────────
+
+@router.get("/training")
+async def list_training_jobs(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = get_org_id(current_user) or ""
+    cursor = ldb.learning_training_jobs.find(
+        {"org_id": org_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(50)
+    jobs = await cursor.to_list(length=50)
+    return {"data": jobs}
+
+
+@router.post("/training")
+async def start_training_job(
+    body: dict,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Start a GPU training job on the current dataset."""
+    import uuid
+    from datetime import datetime, timezone
+
+    org_id = get_org_id(current_user) or ""
+    config = await learning_config_service.get_config(ldb, org_id)
+
+    dataset_version_id = body.get("dataset_version_id")
+    architecture = body.get("architecture", config.get("architecture", "yolo11n"))
+    epochs = body.get("epochs", config.get("epochs", 50))
+    batch_size = body.get("batch_size", config.get("batch_size", 16))
+    image_size = body.get("image_size", config.get("image_size", 640))
+    augmentation = body.get("augmentation_preset", config.get("augmentation_preset", "standard"))
+
+    job_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    job_doc = {
+        "id": job_id,
+        "org_id": org_id,
+        "dataset_version_id": dataset_version_id,
+        "status": "queued",
+        "architecture": architecture,
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "image_size": image_size,
+        "augmentation_preset": augmentation,
+        "pretrained_weights": body.get("pretrained_weights", config.get("pretrained_weights", "auto")),
+        "current_epoch": None,
+        "total_epochs": epochs,
+        "best_map50": None,
+        "best_map50_95": None,
+        "training_loss_history": [],
+        "per_class_metrics": [],
+        "resulting_model_s3_key": None,
+        "resulting_model_version_id": None,
+        "comparison_vs_current": None,
+        "celery_task_id": None,
+        "gpu_device": None,
+        "log_s3_key": None,
+        "error_message": None,
+        "started_at": None,
+        "completed_at": None,
+        "created_at": now,
+        "created_by": current_user["id"],
+    }
+    await ldb.learning_training_jobs.insert_one(job_doc)
+    job_doc.pop("_id", None)
+    return {"data": job_doc}
+
+
+@router.get("/training/{job_id}")
+async def get_training_job(
+    job_id: str,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    org_id = get_org_id(current_user) or ""
+    doc = await ldb.learning_training_jobs.find_one(
+        {"id": job_id, "org_id": org_id}, {"_id": 0}
+    )
+    if not doc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Training job not found")
+    return {"data": doc}
+
+
+@router.post("/training/{job_id}/cancel")
+async def cancel_training_job(
+    job_id: str,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    from datetime import datetime, timezone
+    org_id = get_org_id(current_user) or ""
+    result = await ldb.learning_training_jobs.find_one_and_update(
+        {"id": job_id, "org_id": org_id, "status": {"$in": ["queued", "running"]}},
+        {"$set": {"status": "cancelled", "completed_at": datetime.now(timezone.utc)}},
+        return_document=True,
+    )
+    if not result:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Job not found or already completed")
+    result.pop("_id", None)
+    return {"data": result}
+
+
+# ── Export ────────────────────────────────────────────────────────
+
+@router.post("/export/yolo")
+async def export_yolo(
+    body: dict,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """Export dataset version in YOLO format (returns download-ready metadata)."""
+    org_id = get_org_id(current_user) or ""
+    dataset_version_id = body.get("dataset_version_id")
+
+    query = {"org_id": org_id, "split": {"$ne": "unassigned"}}
+    if dataset_version_id:
+        query["dataset_version_id"] = dataset_version_id
+
+    cursor = ldb.learning_frames.find(query, {"_id": 0, "id": 1, "frame_s3_key": 1, "annotations": 1, "split": 1})
+    frames = await cursor.to_list(length=100_000)
+
+    # Collect unique class names
+    class_set = set()
+    for f in frames:
+        for a in (f.get("annotations") or []):
+            class_set.add(a.get("class_name", "unknown"))
+    class_list = sorted(class_set)
+    class_map = {name: i for i, name in enumerate(class_list)}
+
+    # Build YOLO data.yaml content
+    data_yaml = {
+        "train": "images/train",
+        "val": "images/val",
+        "test": "images/test",
+        "nc": len(class_list),
+        "names": class_list,
+    }
+
+    return {
+        "data": {
+            "format": "yolo",
+            "total_frames": len(frames),
+            "classes": class_list,
+            "class_map": class_map,
+            "data_yaml": data_yaml,
+            "splits": {
+                "train": sum(1 for f in frames if f.get("split") == "train"),
+                "val": sum(1 for f in frames if f.get("split") == "val"),
+                "test": sum(1 for f in frames if f.get("split") == "test"),
+            },
+        }
+    }
+
+
+# ── Models (trained) ──────────────────────────────────────────────
+
+@router.get("/models")
+async def list_trained_models(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    current_user: dict = Depends(require_role("ml_engineer")),
+):
+    """List completed training jobs that produced models."""
+    org_id = get_org_id(current_user) or ""
+    cursor = ldb.learning_training_jobs.find(
+        {"org_id": org_id, "status": "completed", "resulting_model_s3_key": {"$ne": None}},
+        {"_id": 0},
+    ).sort("completed_at", -1).limit(20)
+    models = await cursor.to_list(length=20)
+    return {"data": models}
