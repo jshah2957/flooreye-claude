@@ -22,6 +22,7 @@ celery_app.conf.update(
     task_routes={
         "app.workers.detection_worker.*": {"queue": "detection"},
         "app.workers.notification_worker.*": {"queue": "notifications"},
+        "app.workers.learning_worker.*": {"queue": "learning"},
     },
     beat_schedule={
         "auto-close-stale-incidents": {

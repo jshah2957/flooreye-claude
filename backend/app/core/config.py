@@ -164,6 +164,11 @@ class Settings(BaseSettings):
     PIPELINE_LATENCY_ALERT_MS: int = 5000
     MAX_REQUEST_BODY_MB: int = 50
 
+    # Learning System
+    LEARNING_SYSTEM_ENABLED: bool = True
+    LEARNING_DB_NAME: str = "flooreye_learning"
+    LEARNING_S3_BUCKET: str = "flooreye-learning"
+
     # Sentry (optional)
     SENTRY_DSN: str = ""  # UNUSED — safe to remove. Verified 2026-03-29. Zero imports of sentry_sdk anywhere. No Sentry init code exists.
 

@@ -39,6 +39,7 @@ from app.routers import (
     inference_test,
     events,
     integrations,
+    learning,
     live_stream,
     logs,
     mobile,
@@ -98,6 +99,28 @@ async def lifespan(app: FastAPI):
         await ensure_bucket()
     except Exception as e:
         log.warning("S3/MinIO bucket initialization failed: %s — frame uploads may fail", e)
+
+    # Learning system: ensure separate DB indexes + S3 bucket
+    if settings.LEARNING_SYSTEM_ENABLED:
+        try:
+            from app.db.learning_db import ensure_learning_indexes
+            await ensure_learning_indexes()
+            # Create separate S3 bucket for learning data
+            from app.utils.s3_utils import get_s3_client, _s3_configured
+            if _s3_configured():
+                client = get_s3_client()
+                if client:
+                    import asyncio as _aio
+                    try:
+                        await _aio.to_thread(client.head_bucket, Bucket=settings.LEARNING_S3_BUCKET)
+                    except Exception:
+                        try:
+                            await _aio.to_thread(client.create_bucket, Bucket=settings.LEARNING_S3_BUCKET)
+                            log.info("Created learning S3 bucket: %s", settings.LEARNING_S3_BUCKET)
+                        except Exception as be:
+                            log.warning("Could not create learning bucket: %s", be)
+        except Exception as e:
+            log.warning("Learning system startup failed (non-critical): %s", e)
     # Pre-load production ONNX model for cloud inference
     if settings.LOCAL_INFERENCE_ENABLED:
         try:
@@ -228,6 +251,7 @@ def create_app() -> FastAPI:
     application.include_router(validation.router)
     application.include_router(websockets.router)
     application.include_router(organizations.router)
+    application.include_router(learning.router)
 
     return application
 
