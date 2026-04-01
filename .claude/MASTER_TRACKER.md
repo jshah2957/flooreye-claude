@@ -6,10 +6,10 @@
 ---
 
 ## OVERALL STATUS: IN PROGRESS
-## Current Session: E (Roboflow Training Dataset Download)
-## Current Task: E1
-## Sessions Complete: 4/6
-## Total Tasks Complete: 23/24
+## Current Session: F (Polish + Integration Test)
+## Current Task: F1
+## Sessions Complete: 5/6
+## Total Tasks Complete: 28/31
 
 ---
 
@@ -75,16 +75,16 @@
 ---
 
 ## SESSION E: Roboflow Training Dataset Download
-**Status: NOT STARTED**
+**Status: COMPLETE**
 **Priority: 2 (Populates dataset from training data)**
 
 | # | Task | Status | File | Notes |
 |---|------|--------|------|-------|
-| E1 | Download dataset zip from Roboflow API | NOT STARTED | backend/app/workers/learning_worker.py | GET /{workspace}/{project}/{version}/yolov8?api_key=KEY |
-| E2 | Extract images + labels from zip | NOT STARTED | backend/app/workers/learning_worker.py | images/ and labels/ folders |
-| E3 | Upload images to learning S3 | NOT STARTED | backend/app/workers/learning_worker.py | frames/roboflow/{org_id}/{project}/{version}/ |
-| E4 | Parse YOLO .txt labels into annotation objects | NOT STARTED | backend/app/workers/learning_worker.py | Map class IDs to names |
-| E5 | Create learning_frames docs with source="roboflow_training" | NOT STARTED | backend/app/workers/learning_worker.py | Include thumbnails + dimensions |
+| E1 | Download dataset zip from Roboflow API | DONE | backend/app/workers/learning_worker.py | requests + streaming download |
+| E2 | Extract images + labels from zip | DONE | backend/app/workers/learning_worker.py | zipfile + tempdir, handles corrupt zips |
+| E3 | Upload images to learning S3 | DONE | backend/app/workers/learning_worker.py | Per-image with thumbnail generation |
+| E4 | Parse YOLO .txt labels into annotation objects | DONE | backend/app/workers/learning_worker.py | Maps class IDs to names from model |
+| E5 | Create learning_frames docs with source="roboflow_training" | DONE | backend/app/workers/learning_worker.py | train/val/test splits preserved |
 
 ---
 
