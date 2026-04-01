@@ -26,6 +26,11 @@ RATE_LIMITS = {
     "/api/v1/edge/frame": (120, 60),      # 120 frames per minute per IP (2 FPS)
     "/api/v1/edge/detection": (120, 60),   # Same for detections
     "/api/v1/edge/heartbeat": (10, 60),    # 10 heartbeats per minute
+    "/api/v1/learning/training": (10, 60),       # 10 training jobs per minute
+    "/api/v1/learning/frames/upload": (30, 60),   # 30 uploads per minute
+    "/api/v1/learning/frames/bulk": (10, 60),     # 10 bulk operations per minute
+    "/api/v1/learning/export": (5, 60),           # 5 exports per minute
+    "/api/v1/learning/models": (10, 60),          # 10 model operations per minute
 }
 
 # Default: 1000 req/min for standard endpoints

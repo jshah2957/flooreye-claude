@@ -738,7 +738,12 @@ async def export_coco(
         for a in (f.get("annotations") or []):
             class_set.add(a.get("class_name", "unknown"))
     class_list = sorted(class_set)
-    class_map = {name: i + 1 for i, name in enumerate(class_list)}
+    import hashlib as _hl
+
+    def _stable_cat_id(name: str) -> int:
+        return int(_hl.md5(name.encode()).hexdigest()[:8], 16) % 100_000 + 1
+
+    class_map = {name: _stable_cat_id(name) for name in class_list}
 
     # Build COCO structure
     images = []

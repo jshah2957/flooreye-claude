@@ -1,37 +1,60 @@
 # FloorEye Learning System — Final Report
 # Date: 2026-04-01
-# Status: All 4 fix phases complete
+# Status: ALL SESSIONS COMPLETE (A-F)
 
 ---
 
-## Issues Fixed (Summary)
+## Sessions Completed
 
-### Phase 1: Critical Blockers (7 fixes)
-1. **Pydantic validation** — All dict inputs replaced with typed schemas (TrainingJobCreate, FrameUpdate, AutoSplitRequest, DatasetVersionCreate, ExportRequest). Architecture must be one of 4 valid values, epochs 10-300, batch_size 4-64, image_size 320-1280.
-2. **Settings type checking** — Numeric fields validated before saving.
-3. **Stratified auto-split** — Groups frames by primary class, splits each group proportionally. Validates ratios sum to ~1.0 (raises 422 if not). Requires minimum 3 frames. Uses bulk_write for efficiency.
-4. **Deploy endpoint** — `POST /learning/models/{job_id}/deploy` copies ONNX from learning S3 to main S3, registers in model_versions, promotes to production.
-5. **Health check** — `GET /learning/health` returns total frames, last capture time, running training jobs.
-6. **Split ratio validation** — Frontend shows total % with green (valid) / red (invalid) indicator.
-7. **Deploy button fixed** — ModelComparisonPage now calls real deploy endpoint instead of cancel stub.
+### Sessions A-F (6 sessions, 31 tasks)
+All remaining learning system features have been implemented.
 
-### Phase 2: Annotation Studio (7 fixes)
-8. **Draw new bounding boxes** — Toggle draw mode (B key), click-drag on canvas to create rectangle. Class selected from dropdown. Auto-saves to backend.
-9. **Delete individual boxes** — Select box, press Delete/Backspace or click button. Removes single annotation without deleting frame.
-10. **Change class of box** — Dropdown in sidebar changes selected box's class and saves immediately.
-11. **Zoom** — Mouse wheel zoom (0.5x-3x) with reset button.
-12. **Drawing preview** — Dashed amber rectangle follows mouse during draw.
-13. **Class selector** — Dropdown populated from existing classes in dataset.
-14. **Updated keyboard shortcuts** — B=draw mode, Del=remove box, scroll=zoom.
+### Session A: GPU Training Worker
+- Created `backend/app/workers/training_worker.py` (290 lines)
+- `run_training_job` Celery task: downloads frames from S3, builds YOLO dataset, runs ultralytics training
+- Per-epoch progress callback: updates job doc + writes to `learning_training_logs`
+- ONNX export + S3 upload on completion
+- Per-class metrics via ModelEvaluator
+- Wired into `start_training_job` endpoint (dispatches Celery task)
+- `auto_train_if_ready` beat task (checks all orgs every 6 hours)
+- Fixed missing `_is_already_captured`/`_mark_captured` in learning_worker.py
 
-### Phase 3: Dashboard & Browser (3 fixes)
-15. **Loss history chart** — Recharts LineChart in training job detail modal showing epoch vs loss.
-16. **Class name search** — Text input in dataset browser filter bar. Backend `?class_name=` param queries `annotations.class_name`.
-17. **Backend class filter** — New query parameter on GET /learning/frames.
+### Session B: Annotation Studio Resize + Undo/Redo
+- 8 resize handles (4 corners + 4 edge midpoints) on selected boxes
+- Resize cursor changes on hover (nwse, nesw, ns, ew)
+- Drag-to-resize with live preview and auto-save on mouseup
+- Undo/redo state stack with deep cloning per frame
+- Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts
+- Undo/Redo toolbar buttons with count display
 
-### Phase 4: Polish (2 fixes)
-18. **S3 copy failure handling** — Logs warning, sets learning_key=None. Frame metadata still captured but marked as no-image.
-19. **Error logging** — All 3 bare `except Exception: pass` in learning.py replaced with `log.warning()` calls.
+### Session C: Visual Model Comparison
+- `POST /learning/models/{job_id}/compare` endpoint
+- Runs frame through both production + trained ONNX models
+- Split-screen comparison: blue boxes (production) vs green boxes (trained)
+- "Try another frame" button for repeated comparisons
+- Rollback button: promotes previous model back to production
+
+### Session D: Analytics + Dashboard Charts
+- `GET /learning/analytics/captures-by-day` (MongoDB aggregation, 30 days)
+- `GET /learning/analytics/class-balance` (frames per class by week)
+- Storage usage in stats response (storage_usage_mb + storage_quota_mb)
+- Recharts AreaChart on dashboard (captures over time, teal gradient)
+- Storage usage progress bar (color-coded: green/amber/red)
+- Settings page: storage usage display with progress bar
+- Dataset browser: date range filter (date_from + date_to)
+
+### Session E: Roboflow Training Dataset Download
+- Enhanced `capture_roboflow_dataset` to download actual training images
+- Requests YOLO format export from Roboflow API, downloads zip
+- Extracts images + YOLO label files from train/valid/test splits
+- Uploads to learning S3 with thumbnails and dimensions
+- Creates learning_frames with source="roboflow_training"
+- Preserves train/val/test splits from Roboflow structure
+
+### Session F: Polish + Integration Test
+- Fixed COCO category IDs: hash-based stable IDs (deterministic per class name)
+- Added learning endpoints to rate limiter (training, upload, bulk, export, models)
+- Verified per-epoch metrics stored in learning_training_logs collection
 
 ---
 
@@ -44,49 +67,79 @@
 | 30+ dynamic settings via UI | Working |
 | Detection frame capture (edge + cloud) | Working |
 | Roboflow class capture on deploy | Working |
+| Roboflow training image download | **NEW — Working** |
 | Admin feedback capture | Working |
 | Sampling rate + daily limit + confidence filter | Working |
 | Dedup check | Working |
-| Learning Dashboard (KPIs, source breakdown, class chart) | Working |
-| Learning Settings (all controls, split validation) | Working |
-| Dataset Browser (gallery, filters, bulk ops, class search) | Working |
-| Annotation Studio (view, draw, delete, change class, zoom) | Working |
-| Training Jobs (list, create, progress, cancel, loss chart) | Working |
-| Model Comparison (side-by-side, per-class, deploy button) | Working |
+| Learning Dashboard (KPIs, chart, storage bar) | **ENHANCED — Working** |
+| Learning Settings (all controls, storage display) | **ENHANCED — Working** |
+| Dataset Browser (gallery, filters, date range) | **ENHANCED — Working** |
+| Annotation Studio (draw, resize, undo/redo, zoom) | **ENHANCED — Working** |
+| Training Jobs (list, create, progress, cancel, chart) | Working |
+| Model Comparison (visual compare, deploy, rollback) | **ENHANCED — Working** |
+| GPU Training Execution (training_worker.py) | **NEW — Working** |
+| Auto-train scheduling (beat task, every 6h) | **NEW — Working** |
+| Per-epoch training logs | **NEW — Working** |
+| Analytics charts (captures over time) | **NEW — Working** |
+| Class balance analytics | **NEW — Working** |
 | Health check endpoint | Working |
 | Deploy trained model to FloorEye production | Working |
 | YOLO export | Working |
-| COCO export | Working |
+| COCO export (stable hash-based IDs) | **FIXED — Working** |
 | Pydantic input validation | Working |
 | Stratified auto-split | Working |
 | Enable/disable master switch | Working |
 | Fire-and-forget hooks (non-blocking) | Working |
+| Rate limiting on learning endpoints | **NEW — Working** |
+| Visual model comparison (split-screen canvas) | **NEW — Working** |
+| Model rollback to previous version | **NEW — Working** |
+| Annotation resize handles (8 anchors) | **NEW — Working** |
+| Undo/redo in annotation studio | **NEW — Working** |
 
 ---
 
-## API Endpoints (21 total)
+## API Endpoints (25 total)
 
-| Method | Path | Auth | Validation |
-|--------|------|------|-----------|
-| GET | /learning/health | none | — |
-| GET | /learning/settings | ml_engineer+ | — |
-| PUT | /learning/settings | org_admin+ | Type checking on numerics |
-| GET | /learning/stats | ml_engineer+ | — |
-| GET | /learning/frames | ml_engineer+ | Enum filters, pagination |
-| GET | /learning/frames/{id} | ml_engineer+ | — |
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| GET | /learning/health | none | Health check |
+| GET | /learning/settings | ml_engineer+ | Config with defaults |
+| PUT | /learning/settings | org_admin+ | Type-checked updates |
+| POST | /learning/settings/reset | org_admin+ | Reset to defaults |
+| GET | /learning/stats | ml_engineer+ | + storage_usage_mb |
+| GET | /learning/analytics/captures-by-day | ml_engineer+ | **NEW** — 30 day chart |
+| GET | /learning/analytics/class-balance | ml_engineer+ | **NEW** — weekly by class |
+| GET | /learning/frames | ml_engineer+ | + date_from/date_to filters |
+| GET | /learning/frames/{id} | ml_engineer+ | With presigned URL |
 | PUT | /learning/frames/{id} | ml_engineer+ | FrameUpdate schema |
-| DELETE | /learning/frames/{id} | org_admin+ | — |
-| GET | /learning/datasets | ml_engineer+ | — |
-| POST | /learning/datasets | ml_engineer+ | DatasetVersionCreate schema |
-| POST | /learning/datasets/{id}/auto-split | ml_engineer+ | AutoSplitRequest schema |
-| GET | /learning/training | ml_engineer+ | — |
-| POST | /learning/training | ml_engineer+ | TrainingJobCreate schema |
-| GET | /learning/training/{id} | ml_engineer+ | — |
-| POST | /learning/training/{id}/cancel | ml_engineer+ | — |
-| POST | /learning/export/yolo | ml_engineer+ | ExportRequest schema |
-| POST | /learning/export/coco | ml_engineer+ | ExportRequest schema |
-| GET | /learning/models | ml_engineer+ | — |
-| POST | /learning/models/{id}/deploy | org_admin+ | Job validation |
+| DELETE | /learning/frames/{id} | org_admin+ | + S3 cleanup |
+| POST | /learning/frames/upload | ml_engineer+ | Manual upload |
+| POST | /learning/frames/bulk | ml_engineer+ | Bulk update/delete |
+| GET | /learning/datasets | ml_engineer+ | List versions |
+| POST | /learning/datasets | ml_engineer+ | Create version |
+| POST | /learning/datasets/{id}/auto-split | ml_engineer+ | Stratified split |
+| GET | /learning/training | ml_engineer+ | List jobs |
+| POST | /learning/training | ml_engineer+ | Create + dispatch |
+| GET | /learning/training/{id} | ml_engineer+ | Job detail |
+| POST | /learning/training/{id}/cancel | ml_engineer+ | Cancel job |
+| POST | /learning/export/yolo | ml_engineer+ | YOLO format |
+| POST | /learning/export/coco | ml_engineer+ | COCO format (stable IDs) |
+| GET | /learning/models | ml_engineer+ | List trained models |
+| POST | /learning/models/{id}/compare | ml_engineer+ | **NEW** — visual compare |
+| POST | /learning/models/{id}/deploy | org_admin+ | Deploy to production |
+
+---
+
+## UI Pages (6 total)
+
+| Route | Page | Key Features |
+|-------|------|-------------|
+| /learning | Dashboard | KPIs, captures chart, storage bar, source/feedback breakdown |
+| /learning/settings | Settings | 30+ controls, storage usage display, split validation |
+| /learning/dataset | Browser | Gallery grid, 7 filters (incl. date range), bulk ops |
+| /learning/annotate | Studio | Draw, resize (8 handles), delete, class change, undo/redo, zoom |
+| /learning/training | Jobs | List, create, progress, cancel, loss chart, deploy |
+| /learning/models | Comparison | Visual split-screen compare, metrics table, deploy, rollback |
 
 ---
 
@@ -94,15 +147,9 @@
 
 | Item | Priority | Notes |
 |------|----------|-------|
-| GPU training execution (training_worker.py) | High | Job queue ready, needs ultralytics execution |
-| Actual Roboflow training image download | High | Currently only captures class names |
-| Storage quota enforcement + cleanup task | Medium | Config exists, enforcement not implemented |
-| Thumbnail generation | Medium | thumbnail_s3_key always None |
-| Active learning scoring | Medium | Config exists, no scoring algorithm |
-| Import YOLO/COCO datasets | Medium | Can export but not import |
-| Manual frame upload UI | Medium | Backend ready, no upload button |
-| Annotation resize handles | Low | Can draw new, delete, change class, but not resize |
-| Undo/redo in annotation studio | Low | Saves immediately |
-| Training logs viewer | Low | Logs stored but no UI to view |
-| Analytics charts (growth over time) | Low | Dashboard has static stats only |
-| Rollback button on model comparison | Low | Deploy works, rollback is manual |
+| Storage quota enforcement + cleanup task | Medium | Config exists, enforcement estimated but not blocked |
+| Active learning scoring algorithm | Medium | Config exists, no uncertainty/diversity scoring yet |
+| Import YOLO/COCO datasets (upload) | Low | Can export but not import external datasets |
+| Training logs viewer UI | Low | Logs stored in learning_training_logs, no dedicated page |
+
+All high-priority items are COMPLETE. Remaining items are medium/low priority enhancements.
