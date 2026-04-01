@@ -19,6 +19,21 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.worker
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-Q", "detection,notifications", "--loglevel=info", "--concurrency=2"]
+    env_file:
+      - ./backend/.env.docker
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - mongodb
+      - redis
+    restart: unless-stopped
+
+  worker-learning:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-Q", "learning", "--loglevel=info", "--concurrency=1"]
     env_file:
       - ./backend/.env.docker
     volumes:

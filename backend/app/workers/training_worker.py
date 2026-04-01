@@ -34,11 +34,6 @@ def _get_learning_db():
     return client[settings.LEARNING_DB_NAME], client
 
 
-def _get_main_db(client):
-    """Get the main FloorEye database from the same client."""
-    return client[settings.MONGODB_DB]
-
-
 # ═══════════════════════════════════════════════════════════════════
 #  Task: Run GPU Training Job
 # ═══════════════════════════════════════════════════════════════════

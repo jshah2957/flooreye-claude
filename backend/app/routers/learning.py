@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
 from app.db.learning_db import get_learning_db
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_db
 from app.services import learning_config_service
 
 log = logging.getLogger(__name__)
@@ -632,7 +632,6 @@ async def cancel_training_job(
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
-    from datetime import datetime, timezone
     org_id = get_org_id(current_user) or ""
     result = await ldb.learning_training_jobs.find_one_and_update(
         {"id": job_id, "org_id": org_id, "status": {"$in": ["queued", "running"]}},

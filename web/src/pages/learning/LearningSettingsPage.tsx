@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { Loader2, Save, ArrowLeft, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
@@ -126,6 +126,18 @@ export default function LearningSettingsPage() {
     onError: (e: any) => showError(e?.response?.data?.detail || "Save failed"),
   });
 
+  const resetMutation = useMutation({
+    mutationFn: async () => { await api.post("/learning/settings/reset"); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["learning-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["learning-stats-for-settings"] });
+      success("Settings reset to defaults");
+      setDirty(false);
+    },
+    onError: () => showError("Reset failed"),
+  });
+
   const set = <K extends keyof LearningConfig>(key: K, val: LearningConfig[K]) => {
     if (!config) return;
     setConfig({ ...config, [key]: val });
@@ -141,10 +153,17 @@ export default function LearningSettingsPage() {
           <button onClick={() => navigate("/learning")} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100"><ArrowLeft size={18} /></button>
           <h1 className="text-2xl font-bold text-gray-900">Learning Settings</h1>
         </div>
-        <button onClick={() => saveMutation.mutate()} disabled={!dirty || saveMutation.isPending}
-          className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-40">
-          <Save size={14} /> {saveMutation.isPending ? "Saving..." : "Save"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { if (confirm("Reset all settings to defaults?")) resetMutation.mutate(); }}
+            disabled={resetMutation.isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40">
+            <RotateCcw size={14} /> {resetMutation.isPending ? "Resetting..." : "Reset"}
+          </button>
+          <button onClick={() => saveMutation.mutate()} disabled={!dirty || saveMutation.isPending}
+            className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-40">
+            <Save size={14} /> {saveMutation.isPending ? "Saving..." : "Save"}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">

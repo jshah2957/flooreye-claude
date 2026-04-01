@@ -42,6 +42,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.worker
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-Q", "detection,notifications", "--loglevel=info", "--concurrency=4"]
     env_file:
       - ./backend/.env
     volumes:
@@ -59,6 +60,35 @@ services:
         limits:
           memory: 4G
           cpus: "2.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  worker-learning:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-Q", "learning", "--loglevel=info", "--concurrency=1"]
+    env_file:
+      - ./backend/.env
+    volumes:
+      - backend_data:/app/data
+      - learning_data:/tmp/training
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: "4.0"
     logging:
       driver: json-file
       options:
@@ -204,6 +234,7 @@ volumes:
   redis_data:
   backend_data:
   minio_data:
+  learning_data:
 
 networks:
   frontend:
