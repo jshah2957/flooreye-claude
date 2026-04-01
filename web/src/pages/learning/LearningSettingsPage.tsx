@@ -224,6 +224,15 @@ export default function LearningSettingsPage() {
             <Slider value={config.split_ratio_train} onChange={(v) => set("split_ratio_train", v)} label="Training Split" min={0.5} max={0.9} step={0.05} suffix="" />
             <Slider value={config.split_ratio_val} onChange={(v) => set("split_ratio_val", v)} label="Validation Split" min={0.05} max={0.3} step={0.05} suffix="" />
             <Slider value={config.split_ratio_test} onChange={(v) => set("split_ratio_test", v)} label="Test Split" min={0.05} max={0.2} step={0.05} suffix="" />
+            {(() => {
+              const total = config.split_ratio_train + config.split_ratio_val + config.split_ratio_test;
+              const isValid = total >= 0.95 && total <= 1.05;
+              return (
+                <div className={`rounded-lg px-3 py-2 text-xs font-medium ${isValid ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                  Total: {(total * 100).toFixed(0)}% {isValid ? "(valid)" : `— must be 95-105%`}
+                </div>
+              );
+            })()}
           </div>
         </section>
       </div>

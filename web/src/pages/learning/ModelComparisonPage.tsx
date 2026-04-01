@@ -37,15 +37,10 @@ export default function ModelComparisonPage() {
 
   const deployMutation = useMutation({
     mutationFn: async (jobId: string) => {
-      // Register the trained model in FloorEye model_versions and promote to production
-      await api.post(`/learning/training/${jobId}/cancel`); // placeholder — actual deploy endpoint would go here
-      // In a real implementation, this would call a backend endpoint that:
-      // 1. Copies ONNX from learning S3 to main S3
-      // 2. Creates model_versions document
-      // 3. Promotes to production
-      // 4. Pushes to edge agents
+      const res = await api.post(`/learning/models/${jobId}/deploy`);
+      return res.data.data;
     },
-    onSuccess: () => { success("Model deployment initiated"); queryClient.invalidateQueries({ queryKey: ["current-production-model"] }); },
+    onSuccess: () => { success("Model deployed to production and pushed to edge agents"); queryClient.invalidateQueries({ queryKey: ["current-production-model"] }); },
     onError: () => showError("Deployment failed"),
   });
 

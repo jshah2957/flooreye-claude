@@ -5,10 +5,12 @@ Uses the separate learning database (flooreye_learning).
 """
 
 import logging
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel, Field
 
 from app.core.org_filter import get_org_id
 from app.core.permissions import require_role
@@ -19,6 +21,42 @@ from app.services import learning_config_service
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/learning", tags=["learning"])
+
+
+# ── Pydantic Schemas ──────────────────────────────────────────────
+
+class TrainingJobCreate(BaseModel):
+    dataset_version_id: Optional[str] = None
+    architecture: Literal["yolo11n", "yolov8n", "yolov8s", "yolov8m"] = "yolo11n"
+    epochs: int = Field(50, ge=10, le=300)
+    batch_size: int = Field(16, ge=4, le=64)
+    image_size: int = Field(640, ge=320, le=1280)
+    augmentation_preset: Literal["light", "standard", "heavy"] = "standard"
+    pretrained_weights: str = "auto"
+
+
+class FrameUpdate(BaseModel):
+    split: Optional[Literal["unassigned", "train", "val", "test"]] = None
+    tags: Optional[list[str]] = None
+    label_status: Optional[Literal["unlabeled", "auto_labeled", "human_reviewed", "human_corrected"]] = None
+    admin_verdict: Optional[Literal["true_positive", "false_positive", "uncertain"]] = None
+    admin_notes: Optional[str] = None
+    annotations: Optional[list[dict]] = None
+
+
+class AutoSplitRequest(BaseModel):
+    train: float = Field(0.7, ge=0.1, le=0.95)
+    val: float = Field(0.2, ge=0.05, le=0.5)
+    test: float = Field(0.1, ge=0.0, le=0.3)
+
+
+class DatasetVersionCreate(BaseModel):
+    version: Optional[str] = None
+    description: str = ""
+
+
+class ExportRequest(BaseModel):
+    dataset_version_id: Optional[str] = None
 
 
 def _get_ldb() -> AsyncIOMotorDatabase:
@@ -47,6 +85,14 @@ async def update_settings(
 ):
     """Update learning system configuration. Only allowed fields accepted."""
     org_id = get_org_id(current_user) or ""
+    # Type-check critical numeric fields before passing to service
+    for key, expected_type in [
+        ("capture_rate", (int, float)), ("capture_min_confidence", (int, float)),
+        ("capture_max_daily", int), ("epochs", int), ("batch_size", int),
+        ("image_size", int), ("storage_quota_mb", int), ("retention_days", int),
+    ]:
+        if key in body and not isinstance(body[key], expected_type):
+            raise HTTPException(status_code=422, detail=f"{key} must be a number")
     config = await learning_config_service.update_config(
         ldb, org_id, body, current_user["id"]
     )
@@ -203,19 +249,16 @@ async def get_frame(
 @router.put("/frames/{frame_id}")
 async def update_frame(
     frame_id: str,
-    body: dict,
+    body: FrameUpdate,
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Update frame metadata (split, tags, label_status, annotations)."""
     org_id = get_org_id(current_user) or ""
-    allowed = {"split", "tags", "label_status", "admin_verdict", "admin_notes", "annotations"}
-    updates = {k: v for k, v in body.items() if k in allowed}
+    updates = {k: v for k, v in body.model_dump(exclude_none=True).items()}
     if not updates:
-        from fastapi import HTTPException
         raise HTTPException(status_code=422, detail="No valid fields to update")
 
-    from datetime import datetime, timezone
     updates["updated_at"] = datetime.now(timezone.utc)
 
     result = await ldb.learning_frames.find_one_and_update(
@@ -277,17 +320,16 @@ async def list_dataset_versions(
 
 @router.post("/datasets")
 async def create_dataset_version(
-    body: dict,
+    body: DatasetVersionCreate,
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Create a versioned snapshot of the current learning frames."""
     import uuid
-    from datetime import datetime, timezone
 
     org_id = get_org_id(current_user) or ""
-    version_name = body.get("version", f"ds-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}")
-    description = body.get("description", "")
+    version_name = body.version or f"ds-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+    description = body.description
 
     # Count frames by source and class
     total = await ldb.learning_frames.count_documents({"org_id": org_id, "split": {"$ne": "unassigned"}})
@@ -349,17 +391,20 @@ async def create_dataset_version(
 @router.post("/datasets/{version_id}/auto-split")
 async def auto_split_dataset(
     version_id: str,
-    body: dict,
+    body: AutoSplitRequest,
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Auto-assign train/val/test splits with class stratification."""
     import random
+    from collections import defaultdict
 
     org_id = get_org_id(current_user) or ""
-    config = await learning_config_service.get_config(ldb, org_id)
-    train_ratio = body.get("train", config.get("split_ratio_train", 0.7))
-    val_ratio = body.get("val", config.get("split_ratio_val", 0.2))
+
+    # Validate ratios sum to ~1.0
+    total_ratio = body.train + body.val + body.test
+    if not (0.95 <= total_ratio <= 1.05):
+        raise HTTPException(status_code=422, detail=f"Split ratios must sum to ~1.0 (got {total_ratio:.2f})")
 
     # Get all unassigned frames
     cursor = ldb.learning_frames.find(
@@ -367,29 +412,46 @@ async def auto_split_dataset(
         {"id": 1, "annotations": 1},
     )
     frames = await cursor.to_list(length=100_000)
-    random.shuffle(frames)
 
-    n = len(frames)
-    n_train = int(n * train_ratio)
-    n_val = int(n * val_ratio)
+    if len(frames) < 3:
+        raise HTTPException(status_code=422, detail=f"Need at least 3 frames to split (found {len(frames)})")
 
+    # Stratified split: group by primary class, then split each group proportionally
+    class_groups: dict[str, list] = defaultdict(list)
+    for f in frames:
+        primary_class = "unknown"
+        anns = f.get("annotations") or []
+        if anns:
+            primary_class = anns[0].get("class_name", "unknown")
+        class_groups[primary_class].append(f)
+
+    n_train = n_val = n_test = 0
     updates = []
-    for i, f in enumerate(frames):
-        if i < n_train:
-            split = "train"
-        elif i < n_train + n_val:
-            split = "val"
-        else:
-            split = "test"
-        updates.append({"id": f["id"], "split": split})
+    for _cls, group in class_groups.items():
+        random.shuffle(group)
+        g_n = len(group)
+        g_train = max(1, int(g_n * body.train))
+        g_val = max(0, int(g_n * body.val))
+        # Ensure at least 1 in train for each class
+        for i, fr in enumerate(group):
+            if i < g_train:
+                split = "train"
+                n_train += 1
+            elif i < g_train + g_val:
+                split = "val"
+                n_val += 1
+            else:
+                split = "test"
+                n_test += 1
+            updates.append({"id": fr["id"], "split": split})
 
-    # Batch update
-    for u in updates:
-        await ldb.learning_frames.update_one(
-            {"id": u["id"]}, {"$set": {"split": u["split"]}}
-        )
+    # Batch update using bulk_write for efficiency
+    if updates:
+        from pymongo import UpdateOne
+        ops = [UpdateOne({"id": u["id"]}, {"$set": {"split": u["split"]}}) for u in updates]
+        await ldb.learning_frames.bulk_write(ops)
 
-    return {"data": {"assigned": len(updates), "train": n_train, "val": n_val, "test": n - n_train - n_val}}
+    return {"data": {"assigned": len(updates), "train": n_train, "val": n_val, "test": n_test, "classes": len(class_groups)}}
 
 
 # ── Training Jobs ─────────────────────────────────────────────────
@@ -409,39 +471,30 @@ async def list_training_jobs(
 
 @router.post("/training")
 async def start_training_job(
-    body: dict,
+    body: TrainingJobCreate,
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Start a GPU training job on the current dataset."""
     import uuid
-    from datetime import datetime, timezone
 
     org_id = get_org_id(current_user) or ""
-    config = await learning_config_service.get_config(ldb, org_id)
-
-    dataset_version_id = body.get("dataset_version_id")
-    architecture = body.get("architecture", config.get("architecture", "yolo11n"))
-    epochs = body.get("epochs", config.get("epochs", 50))
-    batch_size = body.get("batch_size", config.get("batch_size", 16))
-    image_size = body.get("image_size", config.get("image_size", 640))
-    augmentation = body.get("augmentation_preset", config.get("augmentation_preset", "standard"))
 
     job_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
     job_doc = {
         "id": job_id,
         "org_id": org_id,
-        "dataset_version_id": dataset_version_id,
+        "dataset_version_id": body.dataset_version_id,
         "status": "queued",
-        "architecture": architecture,
-        "epochs": epochs,
-        "batch_size": batch_size,
-        "image_size": image_size,
-        "augmentation_preset": augmentation,
-        "pretrained_weights": body.get("pretrained_weights", config.get("pretrained_weights", "auto")),
+        "architecture": body.architecture,
+        "epochs": body.epochs,
+        "batch_size": body.batch_size,
+        "image_size": body.image_size,
+        "augmentation_preset": body.augmentation_preset,
+        "pretrained_weights": body.pretrained_weights,
         "current_epoch": None,
-        "total_epochs": epochs,
+        "total_epochs": body.epochs,
         "best_map50": None,
         "best_map50_95": None,
         "training_loss_history": [],
@@ -503,13 +556,13 @@ async def cancel_training_job(
 
 @router.post("/export/yolo")
 async def export_yolo(
-    body: dict,
+    body: ExportRequest,
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Export dataset version in YOLO format (returns download-ready metadata)."""
     org_id = get_org_id(current_user) or ""
-    dataset_version_id = body.get("dataset_version_id")
+    dataset_version_id = body.dataset_version_id
 
     query = {"org_id": org_id, "split": {"$ne": "unassigned"}}
     if dataset_version_id:
@@ -570,16 +623,13 @@ async def list_trained_models(
 
 @router.post("/export/coco")
 async def export_coco(
-    body: dict,
+    body: ExportRequest,
     ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """Export dataset in COCO JSON format."""
-    import uuid as _uuid
-    from datetime import datetime, timezone
-
     org_id = get_org_id(current_user) or ""
-    dataset_version_id = body.get("dataset_version_id")
+    dataset_version_id = body.dataset_version_id
 
     query: dict = {"org_id": org_id, "split": {"$ne": "unassigned"}}
     if dataset_version_id:
@@ -645,3 +695,110 @@ async def export_coco(
     }
 
     return {"data": coco}
+
+
+# ── Deploy Trained Model ──────────────────────────────────────────
+
+@router.post("/models/{job_id}/deploy")
+async def deploy_trained_model(
+    job_id: str,
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Deploy a trained model to FloorEye production (register + promote + push to edge)."""
+    import uuid
+
+    org_id = get_org_id(current_user) or ""
+    job = await ldb.learning_training_jobs.find_one({"id": job_id, "org_id": org_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Training job not found")
+    if job.get("status") != "completed":
+        raise HTTPException(status_code=422, detail="Job not completed yet")
+
+    s3_key = job.get("resulting_model_s3_key")
+    if not s3_key:
+        raise HTTPException(status_code=422, detail="No model file produced by this job")
+
+    # Copy model from learning bucket to main bucket
+    try:
+        from app.utils.s3_utils import get_s3_client
+        from app.core.config import settings
+        import asyncio as _aio
+        client = get_s3_client()
+        if client:
+            response = await _aio.to_thread(
+                client.get_object, Bucket=settings.LEARNING_S3_BUCKET, Key=s3_key
+            )
+            model_bytes = response["Body"].read()
+            main_key = f"models/{org_id}/learning_{job_id}.onnx"
+            await _aio.to_thread(
+                client.put_object, Bucket=settings.S3_BUCKET_NAME,
+                Key=main_key, Body=model_bytes, ContentType="application/octet-stream"
+            )
+        else:
+            main_key = s3_key
+    except Exception as e:
+        log.warning("Model copy to main bucket failed: %s", e)
+        main_key = s3_key
+
+    # Register in FloorEye model_versions
+    model_version_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    model_doc = {
+        "id": model_version_id,
+        "org_id": org_id,
+        "version_str": f"learning-{job_id[:8]}",
+        "architecture": job.get("architecture", "yolo11n"),
+        "status": "staging",
+        "onnx_path": main_key,
+        "model_size_mb": 0,
+        "model_source": "learning_system",
+        "class_names": [m["class_name"] for m in job.get("per_class_metrics", [])],
+        "map_50": job.get("best_map50"),
+        "map_50_95": job.get("best_map50_95"),
+        "per_class_metrics": job.get("per_class_metrics", []),
+        "training_job_id": job_id,
+        "frame_count": 0,
+        "created_at": now,
+        "pulled_by": current_user["id"],
+    }
+    await db.model_versions.insert_one(model_doc)
+
+    # Update learning job with model version ID
+    await ldb.learning_training_jobs.update_one(
+        {"id": job_id}, {"$set": {"resulting_model_version_id": model_version_id}}
+    )
+
+    # Promote to production
+    try:
+        from app.services.model_service import promote_model
+        await promote_model(db, model_version_id, org_id, "production", current_user["id"])
+    except Exception as e:
+        log.warning("Model promotion failed: %s", e)
+
+    model_doc.pop("_id", None)
+    return {"data": {"model_version_id": model_version_id, "status": "deployed", "onnx_path": main_key}}
+
+
+# ── Health Check ──────────────────────────────────────────────────
+
+@router.get("/health")
+async def learning_health(
+    ldb: AsyncIOMotorDatabase = Depends(_get_ldb),
+):
+    """Learning system health check."""
+    try:
+        total = await ldb.learning_frames.count_documents({})
+        latest = await ldb.learning_frames.find_one({}, sort=[("ingested_at", -1)], projection={"ingested_at": 1})
+        latest_capture = latest["ingested_at"].isoformat() if latest and latest.get("ingested_at") else None
+        running_jobs = await ldb.learning_training_jobs.count_documents({"status": "running"})
+
+        return {"data": {
+            "status": "healthy",
+            "total_frames": total,
+            "last_capture": latest_capture,
+            "running_training_jobs": running_jobs,
+        }}
+    except Exception as e:
+        return {"data": {"status": "unhealthy", "error": str(e)}}
