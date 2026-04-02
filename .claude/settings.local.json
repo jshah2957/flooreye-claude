@@ -188,7 +188,10 @@
       "Bash(find /c/Users/jshah/flooreye/mobile -path */node_modules -prune -o -type f \\\\\\(-name api.ts -o -name *error* -o -name _layout.tsx \\\\\\) -print)",
       "Bash(find backend/app/routers -name \"*.py\" -exec grep -l \"router = APIRouter\" {})",
       "Bash(find /c/Users/jshah/flooreye -name docker-compose*.yml -o -name Dockerfile* -o -name *.bat)",
-      "Bash(find /c/Users/jshah/flooreye/backend -name *dead* -o -name *dlq* -o -name *queue*)"
+      "Bash(find /c/Users/jshah/flooreye/backend -name *dead* -o -name *dlq* -o -name *queue*)",
+      "Bash(find . -path ./node_modules -prune -o -name *.py -type f -exec grep -l model_versions {})",
+      "Bash(2)",
+      "Read(//tmp/**)"
     ]
   }
 }

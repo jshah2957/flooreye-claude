@@ -24,7 +24,7 @@ def create_access_token(user_id: str, role: str, org_id: str | None) -> str:
     payload = {
         "sub": user_id,
         "role": role,
-        "org_id": org_id or "",
+        "org_id": org_id or None,
         "type": "access",
         "jti": str(uuid.uuid4()),
         "iat": now,

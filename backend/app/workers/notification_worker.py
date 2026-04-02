@@ -171,7 +171,7 @@ def _send_smtp_email(config: dict, to_email: str, subject: str, body_html: str) 
     retry_backoff_max=300,
     base=DeadLetterTask,
 )
-def send_email_notification(self, recipient: str, incident_id: str, severity: str, org_id: str = "", delivery_id: str | None = None):
+def send_email_notification(self, recipient: str, incident_id: str, severity: str, org_id: str | None = None, delivery_id: str | None = None):
     """Send email notification via configured SMTP integration."""
     if not _check_circuit("smtp"):
         logger.warning(f"SMTP circuit open — email to {recipient} skipped")
@@ -365,7 +365,7 @@ def send_webhook_notification(self, url: str, incident: dict, rule_id: str | Non
     retry_backoff_max=300,
     base=DeadLetterTask,
 )
-def send_sms_notification(self, phone: str, incident_id: str, severity: str, org_id: str = "", delivery_id: str | None = None):
+def send_sms_notification(self, phone: str, incident_id: str, severity: str, org_id: str | None = None, delivery_id: str | None = None):
     """Send SMS via Twilio integration."""
     if not _check_circuit("twilio"):
         logger.warning(f"Twilio circuit open — SMS to {phone} skipped")

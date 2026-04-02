@@ -1,6 +1,20 @@
 """Org-scoped query helper. When org_id is None/empty (super_admin), omit the filter."""
 
 
+def get_org_id(user: dict) -> str | None:
+    """Extract org_id from user dict. Returns None for super_admin, never empty string."""
+    org_id = user.get("org_id")
+    return org_id if org_id else None
+
+
+def require_org_id(user: dict) -> str:
+    """Extract org_id from user dict. Raises ValueError if None/empty (super_admin can't do this)."""
+    org_id = get_org_id(user)
+    if not org_id:
+        raise ValueError("org_id is required for this operation. Super admins must act within an org scope.")
+    return org_id
+
+
 def org_query(org_id: str | None, **extra: object) -> dict:
     """Build a MongoDB query dict that includes org_id only when it is truthy."""
     q: dict = {}
