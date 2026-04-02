@@ -1365,7 +1365,7 @@ async def list_classes(
     current_user: dict = Depends(require_role("ml_engineer")),
 ):
     """List all unique class names from annotations across all learning_frames for the org."""
-    org_id = get_org_id(current_user)
+    org_id = get_org_id(current_user) or ""
     pipeline = [
         {"$match": {"org_id": org_id}},
         {"$unwind": "$annotations"},
@@ -1393,18 +1393,21 @@ async def create_class(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Create a new class entry in the learning_classes collection."""
-    org_id = get_org_id(current_user)
+    import uuid
+
+    org_id = get_org_id(current_user) or ""
     existing = await ldb.learning_classes.find_one({"org_id": org_id, "name": body.name})
     if existing:
         raise HTTPException(status_code=409, detail=f"Class '{body.name}' already exists")
     doc = {
+        "id": str(uuid.uuid4()),
         "org_id": org_id,
         "name": body.name,
         "created_at": datetime.now(timezone.utc),
-        "created_by": str(current_user.get("_id", "")),
+        "created_by": current_user.get("id", ""),
     }
-    result = await ldb.learning_classes.insert_one(doc)
-    doc["_id"] = str(result.inserted_id)
+    await ldb.learning_classes.insert_one(doc)
+    doc.pop("_id", None)
     return {"data": doc}
 
 
@@ -1416,7 +1419,7 @@ async def rename_class(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Rename a class, cascading to all annotations in learning_frames."""
-    org_id = get_org_id(current_user)
+    org_id = get_org_id(current_user) or ""
     if class_name == body.new_name:
         raise HTTPException(status_code=400, detail="New name must differ from current name")
     # Cascade rename in all frame annotations
@@ -1440,7 +1443,7 @@ async def delete_class(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Remove all annotations with this class_name from all frames and delete the class doc."""
-    org_id = get_org_id(current_user)
+    org_id = get_org_id(current_user) or ""
     # Pull all annotations matching the class from frames
     result = await ldb.learning_frames.update_many(
         {"org_id": org_id, "annotations.class_name": class_name},
@@ -1458,7 +1461,7 @@ async def merge_classes(
     current_user: dict = Depends(require_role("org_admin")),
 ):
     """Merge source class into target class: rename annotations, delete source class doc."""
-    org_id = get_org_id(current_user)
+    org_id = get_org_id(current_user) or ""
     if body.source == body.target:
         raise HTTPException(status_code=400, detail="Source and target must differ")
     # Rename all source annotations to target
