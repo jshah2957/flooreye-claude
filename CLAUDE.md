@@ -143,6 +143,7 @@ None yet. All field names must come from docs/schemas.md.
 4. ALWAYS use exact field names from docs/schemas.md
 5. ALWAYS use exact routes from docs/api.md
 6. NEVER install a new library without asking first
+15. NEVER ASSUME — always read the actual code before answering. Open the file, read the function, trace the logic. Do not trust previous reports, old documentation, CLAUDE.md notes, or subagent output. If you haven't read the code yourself in this session, you don't know the answer. This applies to audits, bug reports, status checks, and any claim about what the code does or doesn't do. Wrong answers from assumptions are worse than saying "let me check."
 7. Complete ONE task at a time, confirm before proceeding
 8. git commit after every completed task
 9. git push to origin/main after every 3 commits
