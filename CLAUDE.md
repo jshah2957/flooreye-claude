@@ -112,7 +112,7 @@ All versions pinned in:
 None yet. All field names must come from docs/schemas.md.
 
 ## Blocked Items
-- forgot-password / reset-password endpoints return 501 — require SMTP integration
+- None — forgot-password / reset-password are fully implemented (gracefully degrade if SMTP not configured)
 
 ## Session 28 New Files
 - stitch/ — Google Stitch SDK pipeline (DESIGN.md, generate-ui.js, download-outputs.js, 5 generated screens)
@@ -143,7 +143,6 @@ None yet. All field names must come from docs/schemas.md.
 4. ALWAYS use exact field names from docs/schemas.md
 5. ALWAYS use exact routes from docs/api.md
 6. NEVER install a new library without asking first
-15. NEVER ASSUME — always read the actual code before answering. Open the file, read the function, trace the logic. Do not trust previous reports, old documentation, CLAUDE.md notes, or subagent output. If you haven't read the code yourself in this session, you don't know the answer. This applies to audits, bug reports, status checks, and any claim about what the code does or doesn't do. Wrong answers from assumptions are worse than saying "let me check."
 7. Complete ONE task at a time, confirm before proceeding
 8. git commit after every completed task
 9. git push to origin/main after every 3 commits
@@ -152,11 +151,12 @@ None yet. All field names must come from docs/schemas.md.
 12. docs/SRD.md is READ-ONLY — never write to it
 13. No git tag without every agent sign-off in GM_STATE.md
 14. No file deletions without explicit human approval
+15. NEVER ASSUME — always read the actual code before answering. Open the file, read the function, trace the logic. Do not trust previous reports, old documentation, CLAUDE.md notes, or subagent output. If you haven't read the code yourself in this session, you don't know the answer. This applies to audits, bug reports, status checks, and any claim about what the code does or doesn't do. Wrong answers from assumptions are worse than saying "let me check."
 
 ## Project Status
 ALL 12 PHASES COMPLETE (0-11) + Session 20 audit/fix cycle.
 20 sessions, 120+ tasks, full backend + web + mobile + edge + ML.
-- 95 backend stubs implemented (only forgot/reset-password remain as 501)
+- All backend endpoints fully implemented (0 stubs, 0 returning 501)
 - 12 edge agent files implemented
 - 5 ML training pipeline files implemented
 - 6 empty frontend pages built
