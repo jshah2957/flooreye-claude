@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 38 (Cleanup → Logging → Updates → Learning System) — Removed 149 stale docs (38K lines). Built centralized logging (edge+mobile→cloud). Added incident frame thumbnails. Fixed alert class cache. Built automated update system (CI/CD, edge OTA, staged rollout). Built learning system (7 new files, 18 endpoints, 3 UI pages, separate DB+S3+Celery queue). 29 routers. All systems operational.
+Session 39 (Learning System Gap Fix + Production Deploy) — Fixed all 76 hardcoded values (0 remaining). Added 15 new endpoints (33 total learning). Built Model Testing page (7th learning page). Completed Annotation Studio (drag, pan, brightness, copy/paste, validation, per-class colors). Built Class Management (5 endpoints + UI). Added exports, uploads, training comparison, early stopping, performance charts. Fixed class management bug. Fixed cloudflared tunnel. Restored app.puddlewatch.com production. All 8 prod services running. 39/39 endpoints tested live.
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform
@@ -69,12 +69,11 @@ Tagline: "See Every Drop. Stop Every Slip."
 
 - Session 31 (Testing + Production Readiness): 200+ tests in 3 independent runs. Fixed 50+ bugs: 6 pipeline (command_type, presigned URLs, deploy payload, OTA worker, ObjectId, tunnel), 18 edge system (push_config allowlist, hardware detect, JSONResponse, camera config ID, restart, model sort, swap rollback, config threads, _id leaks, model version ACK), 42 cloud detection gaps (ROI masking, annotated frames, inference_mode, continuous detection wiring, frame voting fix, ONNX pre-load, dynamic alert classes). New features: Roboflow Browser (browse workspace → select version → one-click deploy), camera wizard dual-mode (cloud/edge), Run Detection button, detection control history logging. Fixed API Testing Console (10 wrong paths, 14 missing categories). Added presigned URL thumbnails for all detection images. Live camera tested at store1.puddlewatch.com with ONNX inference (126ms). All services running, 0 bugs.
 
-## CURRENT DEPLOYMENT STATE (Session 31)
-- backend/.env is set to ENVIRONMENT=development FOR TESTING — MUST change back to production before real deploy
-- edge-agent/.env exists with TEST credentials — DELETE before production
-- mobile/.env exists with local IP — DELETE before production
-- Cloudflared tunnel needs interactive login: run `cloudflared tunnel login`
-- Docker services running: backend:8000, web:80, mongodb, redis, minio, worker, edge-agent, inference-server, redis-buffer
+## CURRENT DEPLOYMENT STATE (Session 39)
+- Production LIVE at https://app.puddlewatch.com
+- backend/.env is set to ENVIRONMENT=production
+- Docker services running: backend:8000, web:80, mongodb, redis, minio, worker, worker-learning, cloudflared
+- Cloudflare tunnel connected (4 connections, reads config from .cloudflared/config.yml)
 - Login: admin@flooreye.io / FloorEye@2026! (super_admin)
 - Login: demo@flooreye.io / Demo@2026! (org_admin)
 - Login: store@flooreye.io / Store@2026! (store_owner)

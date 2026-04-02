@@ -1306,3 +1306,34 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 - COCO export format
 - Full integration test of learning system end-to-end
 - See `.claude/LEARNING_SYSTEM_PROGRESS.md` for exact state
+
+---
+
+## Session 39 — Learning System Gap Fix + Production Deploy
+### Date: 2026-04-02
+### Goal: Fix 76 hardcoded values, implement 27 missing features, test live, restore production
+
+### Completed
+1. **Phase 1 — Hardcoded Values**: Replaced all 76 hardcoded values with constants across 9 files. Created `learning_constants.py` (30+ backend constants) and `learning.ts` (40+ frontend constants).
+2. **Phase 2 — Model Testing Page**: New page with image upload, ONNX inference, batch testing, confidence slider, JSON export, per-class colored boxes. 2 new backend endpoints.
+3. **Phase 3 — Annotation Studio**: Box drag-to-move, canvas pan (space+drag), brightness/contrast sliders, copy/paste annotations (Ctrl+C/V), annotation validation (IoU overlap + out-of-bounds warnings), per-class color coding, new class text input.
+4. **Phase 4 — Class Management**: 5 new endpoints (list, create, rename with cascade, delete with cleanup, merge). Settings page UI with table, inline edit, merge dropdown, delete confirmation.
+5. **Phase 5 — Dataset/Analytics**: Export YOLO/COCO download buttons, drag-and-drop upload zone, ONNX model download button, training history bar chart, training cost estimate.
+6. **Phase 6 — Polish**: Compare two training runs side-by-side, early stopping patience config, confidence threshold on model comparison, model performance over time chart.
+7. **Live Testing**: Rebuilt Docker, tested 39/39 endpoints — all pass. Fixed class management bug (missing uuid id field + org_id null for super_admin).
+8. **Production Deploy**: Fixed cloudflared tunnel (--config flag, no hardcoded tunnel ID). Fixed MongoDB healthcheck auth. Restored app.puddlewatch.com — all 8 services running.
+9. **Documentation**: Deployment status report, inline LIMITATION/FIX comments in all learning files.
+
+### Stats
+- 12 commits pushed to GitHub
+- 2,494 lines added across 14 learning files
+- 15 new API endpoints (18 → 33 total learning endpoints)
+- 1 new UI page (6 → 7 total learning pages)
+- 19 missing features implemented, 76 hardcoded values eliminated
+- Feature coverage: 47% → 79% (31 → 52 of 66 features)
+- 39/39 endpoints tested live, 0 failures
+- Production restored at app.puddlewatch.com
+
+### Next Session Plan
+- 8 remaining features are large-effort (video testing, A/B testing, active learning, dataset import, dedup, health checks, auto-annotation, live RTSP)
+- Pick based on priority or move to other FloorEye work

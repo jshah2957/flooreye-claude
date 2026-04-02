@@ -1,66 +1,32 @@
 # FloorEye Session State
-# Last session: 38 (Codebase Cleanup → Architecture Diagrams → Centralized Logging → Incident Frames → Cache Fix → Automated Updates → Learning System)
-# Status: All services running, 29 routers, learning system active, zero regressions
-# Date: 2026-04-01
+# Last session: 39 (Learning System Gap Fix — All 6 Phases + Live Testing + Production Deploy)
+# Status: Production live at app.puddlewatch.com, 33 learning endpoints, 7 UI pages, zero hardcoded values
+# Date: 2026-04-02
 
 ## NEXT SESSION TASK
-Continue learning system: build remaining frontend pages (TrainingJobsPage, AnnotationStudioPage, ModelComparisonPage) + GPU training worker + integration testing. See `.claude/LEARNING_SYSTEM_PROGRESS.md` for full state.
+Learning system is feature-complete (79% coverage, 52/66 features). Remaining 8 features are large-effort items (video testing, A/B testing, active learning, dataset import, dedup, health checks, auto-annotation, live RTSP). Pick one based on priority or move to other FloorEye work.
 
-## What Was Done This Session (Session 38)
+## What Was Done This Session (Session 39)
 
-### Codebase Cleanup
-- Removed 149 stale planning/audit documents (38,489 lines)
-- Annotated 26 dead code files with status comments
-- Created system architecture + data flow diagrams (SVG + HTML)
+### Learning System Gap Fix — 6 Phases (2,494 lines added, 14 files)
+- **Phase 1**: Replaced 76 hardcoded values with constants (learning_constants.py + learning.ts)
+- **Phase 2**: New Model Testing page (image upload, ONNX inference, batch test, confidence slider, JSON export)
+- **Phase 3**: Annotation Studio completion (drag-to-move, pan, brightness/contrast, copy/paste, validation, per-class colors, new class creation)
+- **Phase 4**: Class Management (5 CRUD endpoints + Settings UI with rename/delete/merge)
+- **Phase 5**: Dataset/Analytics (export YOLO/COCO buttons, upload drag-and-drop, ONNX download, training history chart, cost estimate)
+- **Phase 6**: Polish (compare training runs, early stopping, confidence threshold on comparison, model performance chart)
 
-### Centralized Logging System
-- Edge → cloud log shipping (log_shipper.py, 30s batches)
-- Mobile → cloud error capture (logger.ts, crashes + API errors)
-- 2 new ingestion endpoints (POST /logs/edge/ingest, /logs/mobile/ingest)
-- Enhanced system_logs schema (source_device, device_id, camera_id, stack_trace)
-- Dashboard: device filter tabs, device badges, stack trace expansion
-- Fixed 3 bugs: audit TTL, WebSocket type mismatch, missing emit_system_log calls
+### Live Testing
+- Rebuilt Docker services, tested 39/39 endpoints — all pass
+- Found and fixed class management bug (missing uuid id + org_id null handling)
 
-### Incident Frame Thumbnails
-- Frame thumbnails in incident table + detail panel
-- Efficient batch aggregation for frame URL lookup
-- Annotated frames with bounding boxes displayed
+### Production Deploy
+- Fixed cloudflared tunnel (--config flag reads tunnel ID from config.yml, no hardcoded values)
+- Fixed MongoDB healthcheck (added auth credentials)
+- All 8 prod services running: backend, web, mongodb, redis, minio, worker, worker-learning, cloudflared
+- app.puddlewatch.com verified live
 
-### Alert Class Cache Fix
-- Fixed stale _cached_alert_classes after model deployment
-- Clears both module-level AND singleton instance caches
-- Auto-reloads from DB on next inference
-
-### Automated Update System
-- CI/CD: build + push Docker images on git tag (.github/workflows/deploy.yml)
-- Cloud deploy script with backup, health check, auto-rollback (scripts/deploy-cloud.sh)
-- Edge remote update via update_agent command
-- Staged rollout: one agent at a time with verification
-- Dashboard: "Update All Agents" button + rollout modal
-- Database migration runner (backend/app/db/migrations.py)
-- Version compatibility check in heartbeat
-
-### Learning System (Sessions 1-8)
-- Separate database (flooreye_learning, 7 collections)
-- Separate S3 bucket (flooreye-learning)
-- 18 API endpoints under /api/v1/learning/
-- 3 UI pages (Dashboard, Settings, Dataset Browser)
-- 3 fire-and-forget capture hooks (detection, incident, Roboflow)
-- 30+ user-configurable settings
-- Dataset versioning, auto-split, training job queue, YOLO export
-
-## Reports Created
-- .claude/CODEBASE_CLEANUP_REPORT.md
-- .claude/VERIFIED_CLEANUP_REPORT.md
-- .claude/CENTRALIZED_LOGGING_REPORT.md
-- .claude/FULL_SYSTEM_TEST_REPORT.md
-- .claude/INCIDENT_FRAMES_RESEARCH.md
-- .claude/AUTOMATED_UPDATES_REPORT.md
-- .claude/POST_UPDATE_SYSTEM_TEST_REPORT.md
-- .claude/LEARNING_SYSTEM_DESIGN.md
-- .claude/LEARNING_SYSTEM_IMPLEMENTATION_PLAN.md
-- .claude/LEARNING_SYSTEM_COMPLETE_REPORT.md
-- .claude/LEARNING_SYSTEM_PROGRESS.md
-- docs/SYSTEM_ARCHITECTURE.md
-- docs/architecture-diagram.svg
-- docs/data-flow-diagram.svg
+### Documentation
+- .claude/LEARNING_SYSTEM_FINAL_COMPLETE_REPORT.md
+- .claude/DEPLOYMENT_STATUS_REPORT.md
+- Inline LIMITATION/FIX comments in all learning files + docker-compose + .env
