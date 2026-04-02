@@ -134,7 +134,7 @@ services:
       - mongo_data:/data/db
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "-u", "${MONGO_ROOT_USER}", "-p", "${MONGO_ROOT_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -207,11 +207,9 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run 98e5f448-d1ac-47c7-9696-d9227f70e40c
     volumes:
       - ${CLOUDFLARED_CONFIG_DIR:-./.cloudflared}:/etc/cloudflared:ro
-    environment:
-      - TUNNEL_CONFIG=/etc/cloudflared/config.yml
     depends_on:
       - web
     restart: unless-stopped
