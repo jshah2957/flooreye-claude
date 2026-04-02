@@ -207,7 +207,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run 98e5f448-d1ac-47c7-9696-d9227f70e40c
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
     volumes:
       - ${CLOUDFLARED_CONFIG_DIR:-./.cloudflared}:/etc/cloudflared:ro
     depends_on:
