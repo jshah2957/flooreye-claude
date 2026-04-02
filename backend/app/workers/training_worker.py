@@ -48,6 +48,14 @@ def _get_learning_db():
 #  Task: Run GPU Training Job
 # ═══════════════════════════════════════════════════════════════════
 
+# LIMITATION: run_training_job requires:
+#   (1) S3/MinIO configured — downloads training frames from the learning S3 bucket
+#   (2) ultralytics YOLO package installed — uses training/distillation.py which imports ultralytics
+#   (3) GPU recommended but CPU works (much slower). Set device via ultralytics config.
+# The patience parameter enables early stopping if > 0 (stops training if mAP does not improve
+# for that many epochs). patience=0 means train all epochs.
+# FIX: Install ultralytics (pip install ultralytics), configure S3, ensure frames exist
+# with split=train/val/test in the learning_frames collection.
 @celery_app.task(
     name="app.workers.training_worker.run_training_job",
     bind=True,
@@ -414,6 +422,13 @@ def _resolve_weights(architecture: str) -> str:
 #  Task: Auto-train if ready (beat schedule)
 # ═══════════════════════════════════════════════════════════════════
 
+# LIMITATION: auto_train_if_ready runs on a Celery beat schedule (periodic task).
+# Checks all orgs that have auto_train_enabled=True in their learning config.
+# Requires LEARNING_SYSTEM_ENABLED=true in config (settings.py / .env).
+# If disabled, this task returns immediately with skipped=True.
+# Also requires the "learning" Celery queue worker to be running (worker-learning service).
+# FIX: Set LEARNING_SYSTEM_ENABLED=true in .env, ensure worker-learning is up,
+# and enable auto_train_enabled per-org via PUT /api/v1/learning/settings.
 @celery_app.task(
     name="app.workers.training_worker.auto_train_if_ready",
     max_retries=0,

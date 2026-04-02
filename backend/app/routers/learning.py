@@ -843,6 +843,11 @@ class CompareRequest(BaseModel):
     frame_base64: Optional[str] = None
 
 
+# LIMITATION: compare_models downloads frames from S3 and runs inference through both
+# the production ONNX model and the trained model. Requires both S3 configured and
+# a production ONNX model loaded (via onnxruntime). Without S3, frame download fails.
+# Without a production model deployed, only the trained model results are returned.
+# FIX: Configure S3/MinIO, deploy a production model, then compare works end-to-end.
 @router.post("/models/{job_id}/compare")
 async def compare_models(
     job_id: str,
@@ -1092,6 +1097,10 @@ async def deploy_trained_model(
 
 # ── Model Testing ────────────────────────────────────────────────
 
+# LIMITATION: test_image requires a trained ONNX model stored in S3 (MinIO or AWS).
+# Without S3/MinIO configured and at least one completed training job, this returns an error.
+# FIX: Add MinIO to docker-compose.dev.yml (ports 9000:9000, 9001:9001), configure
+# S3_ENDPOINT_URL in .env.docker, train a model via the training worker, then this works.
 @router.post("/models/{job_id}/test-image")
 async def test_image(
     job_id: str,
@@ -1211,6 +1220,10 @@ async def test_image(
     }}
 
 
+# LIMITATION: test_batch requires a trained ONNX model in S3, same as test_image above.
+# Downloads test-split frames from learning S3 bucket and runs inference on each.
+# Without S3/MinIO configured and a completed training job, this returns an error.
+# FIX: Same as test_image — add MinIO, configure S3, train a model.
 @router.post("/models/{job_id}/test-batch")
 async def test_batch(
     job_id: str,
@@ -1477,6 +1490,11 @@ async def merge_classes(
 
 # ── Model Download ────────────────────────────────────────────────
 
+# LIMITATION: download_model generates a presigned S3 URL for the ONNX model file.
+# Requires S3 (MinIO or AWS) configured with valid credentials.
+# Without S3, generate_url will fail and return an error.
+# FIX: Add MinIO container to docker-compose.dev.yml, or configure AWS S3 credentials
+# in .env.docker (S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY).
 @router.get("/models/{job_id}/download")
 async def download_model(
     job_id: str,
@@ -1558,6 +1576,11 @@ async def reset_settings(
 
 # ── Manual Frame Upload ───────────────────────────────────────────
 
+# LIMITATION: upload_frame requires S3/MinIO to store the uploaded image.
+# Thumbnail generation also needs PIL/Pillow installed (in requirements.txt).
+# Without S3 configured, the upload will fail when trying to put_object.
+# FIX: Add MinIO container to docker-compose.dev.yml (ports 9000:9000, 9001:9001),
+# set S3_ENDPOINT_URL=http://minio:9000 in .env.docker. Pillow is already in requirements.txt.
 @router.post("/frames/upload")
 async def upload_frame(
     file: UploadFile = File(...),

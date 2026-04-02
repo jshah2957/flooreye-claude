@@ -87,7 +87,13 @@ async def _check_storage_quota(ldb, org_id: str, quota_mb: int) -> bool:
 
 
 async def _generate_thumbnail(frame_bytes: bytes, learning_key: str) -> str | None:
-    """Generate a 280x175 JPEG thumbnail and upload to learning bucket. Returns S3 key or None."""
+    """Generate a 280x175 JPEG thumbnail and upload to learning bucket. Returns S3 key or None.
+
+    LIMITATION: Needs PIL/Pillow installed and S3 access to the learning bucket.
+    If Pillow is missing, thumbnail generation is silently skipped (returns None).
+    If S3 is not configured, the upload step fails and returns None.
+    FIX: Pillow is in requirements.txt. Ensure MinIO/S3 is running for upload.
+    """
     try:
         from PIL import Image
         import io
@@ -162,6 +168,11 @@ async def _copy_frame_to_learning_bucket(main_s3_key: str, learning_key: str) ->
 #  Task 1: Capture detection frame
 # ═══════════════════════════════════════════════════════════════════
 
+# LIMITATION: capture_detection is called after every detection event. It copies frames
+# from the main S3 bucket (S3_BUCKET_NAME) to the learning S3 bucket (LEARNING_S3_BUCKET).
+# Requires S3 configured for BOTH buckets. Without S3/MinIO running, frame copy silently
+# fails and the learning frame is saved with frame_s3_key=None (metadata only, no image).
+# FIX: Add MinIO to docker-compose.dev.yml, create both buckets, configure S3 credentials.
 @celery_app.task(
     name="app.workers.learning_worker.capture_detection",
     bind=True,
@@ -315,6 +326,11 @@ async def _async_capture_detection(detection_id: str, org_id: str) -> dict:
 #  Task 2: Capture Roboflow training dataset
 # ═══════════════════════════════════════════════════════════════════
 
+# LIMITATION: capture_roboflow_dataset needs ROBOFLOW_API_KEY configured in .env.
+# Without a valid API key, the Roboflow API request fails and capture is silently skipped
+# (logged as a warning but does not raise). Class names are still stored from the model doc.
+# Also requires S3 for uploading downloaded training images to the learning bucket.
+# FIX: Get API key from roboflow.com dashboard, set ROBOFLOW_API_KEY in .env.docker.
 @celery_app.task(
     name="app.workers.learning_worker.capture_roboflow_dataset",
     bind=True,
