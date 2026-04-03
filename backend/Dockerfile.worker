@@ -12,12 +12,12 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # System deps for OpenCV + mongodump for backup worker
+# Note: [trusted=yes] used because MongoDB's GPG key uses SHA1 which Debian 12+ rejects since 2026-02
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 libglib2.0-0 ffmpeg gnupg curl \
-    && curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg --dearmor -o /usr/share/keyrings/mongodb-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/mongodb-archive-keyring.gpg] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
+    libgl1 libglib2.0-0 ffmpeg curl \
+    && echo "deb [trusted=yes] https://repo.mongodb.org/apt/debian bookworm/mongodb-org/7.0 main" > /etc/apt/sources.list.d/mongodb-org-7.0.list \
     && apt-get update && apt-get install -y --no-install-recommends mongodb-database-tools \
-    && apt-get purge -y gnupg curl && apt-get autoremove -y \
+    && apt-get purge -y curl && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /install /usr/local
