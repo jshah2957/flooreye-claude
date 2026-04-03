@@ -79,6 +79,35 @@ async def provision(
     return {"data": result}
 
 
+@router.post("/agents/{agent_id}/bundle")
+async def download_setup_bundle(
+    agent_id: str,
+    body: dict,
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("org_admin")),
+):
+    """Download edge setup bundle as a ZIP file."""
+    from fastapi.responses import Response
+
+    org_id = require_org_id(current_user)
+    agent = await edge_service.get_agent(db, agent_id, org_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    token = body.get("token", "")
+    tunnel_token = agent.get("cf_tunnel_token")
+
+    from app.services.edge_bundle_service import generate_setup_bundle
+    zip_bytes = await generate_setup_bundle(db, agent, token, tunnel_token)
+
+    safe_name = agent["name"].lower().replace(" ", "-").replace("_", "-")[:30]
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="flooreye-edge-{safe_name}.zip"'},
+    )
+
+
 @router.get("/agents")
 async def list_agents(
     store_id: Optional[str] = Query(None),

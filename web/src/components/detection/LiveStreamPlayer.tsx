@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Loader2, WifiOff, Video, Image as ImageIcon } from "lucide-react";
+import { getAccessToken } from "@/lib/api";
 
 interface LiveStreamPlayerProps {
   /** go2rtc WebSocket URL e.g. wss://store1.puddlewatch.com/api/ws?src=cam1 */
@@ -78,8 +79,9 @@ export default function LiveStreamPlayer({
     if (!fallbackFrameUrl && !cameraId) return;
     try {
       const url = fallbackFrameUrl || `/api/v1/live/stream/${cameraId}/frame`;
-      const token = localStorage.getItem("flooreye_token");
+      const token = getAccessToken();
       const res = await fetch(url, {
+        credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {

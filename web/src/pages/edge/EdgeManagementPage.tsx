@@ -94,7 +94,14 @@ export default function EdgeManagementPage() {
   // Provision form
   const [provStoreId, setProvStoreId] = useState("");
   const [provName, setProvName] = useState("");
-  const [provResult, setProvResult] = useState<{ token: string; docker_compose: string } | null>(null);
+  const [provResult, setProvResult] = useState<{
+    agent_id: string;
+    token: string;
+    docker_compose: string;
+    tunnel_token: string | null;
+    tunnel_hostname: string | null;
+  } | null>(null);
+  const [bundleDownloading, setBundleDownloading] = useState(false);
 
   const { data: stores } = useQuery({
     queryKey: ["stores-list"],
@@ -118,7 +125,7 @@ export default function EdgeManagementPage() {
       return res.data.data;
     },
     onSuccess: (data) => {
-      setProvResult(data);
+      setProvResult({ ...data, agent_id: data.agent_id });
       queryClient.invalidateQueries({ queryKey: ["edge-agents"] });
       success("Agent provisioned");
     },
@@ -886,19 +893,74 @@ export default function EdgeManagementPage() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-xl bg-green-50 p-4 text-sm font-medium text-green-700">
-                    Agent provisioned successfully!
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4">
+                    <p className="text-sm font-semibold text-emerald-800">Agent provisioned successfully!</p>
+                    {provResult.tunnel_hostname && (
+                      <p className="mt-1 text-xs text-emerald-600">Tunnel: {provResult.tunnel_hostname}</p>
+                    )}
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-900">Edge Token</label>
-                    <textarea readOnly value={provResult.token} rows={3}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 font-mono text-xs" />
+
+                  {/* Download Bundle — primary action */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        setBundleDownloading(true);
+                        const res = await api.post(
+                          `/edge/agents/${provResult.agent_id}/bundle`,
+                          { token: provResult.token },
+                          { responseType: "blob", timeout: 120_000 },
+                        );
+                        const blob = new Blob([res.data], { type: "application/zip" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `flooreye-edge-${provName.replace(/\s+/g, "-").toLowerCase()}.zip`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        success("Bundle downloaded");
+                      } catch (err: any) {
+                        showError(err?.response?.data?.detail || "Failed to download bundle");
+                      } finally {
+                        setBundleDownloading(false);
+                      }
+                    }}
+                    disabled={bundleDownloading}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:opacity-50"
+                  >
+                    {bundleDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                    {bundleDownloading ? "Preparing bundle..." : "Download Setup Bundle"}
+                  </button>
+
+                  {/* Setup instructions */}
+                  <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 text-sm">
+                    <p className="font-medium text-gray-900 mb-2">Next steps:</p>
+                    <ol className="list-decimal list-inside space-y-1.5 text-gray-600">
+                      <li>Copy the ZIP to your edge device</li>
+                      <li>Run: <code className="rounded bg-gray-200 px-1.5 py-0.5 text-xs font-mono">unzip flooreye-edge-*.zip</code></li>
+                      <li>Run: <code className="rounded bg-gray-200 px-1.5 py-0.5 text-xs font-mono">cd flooreye-edge && bash install.sh</code></li>
+                      <li>Come back here — agent will show <span className="font-medium text-emerald-600">Online</span></li>
+                    </ol>
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-900">docker-compose.yml</label>
-                    <textarea readOnly value={provResult.docker_compose} rows={12}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 font-mono text-[10px]" />
-                  </div>
+
+                  {/* Manual setup — collapsible for advanced users */}
+                  <details className="text-sm">
+                    <summary className="cursor-pointer text-gray-400 hover:text-gray-600 text-xs">
+                      Show manual setup (advanced)
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-500">Edge Token</label>
+                        <textarea readOnly value={provResult.token} rows={3}
+                          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs" />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-500">docker-compose.yml</label>
+                        <textarea readOnly value={provResult.docker_compose} rows={12}
+                          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-[10px]" />
+                      </div>
+                    </div>
+                  </details>
+
                   <button onClick={() => setProvisionOpen(false)}
                     className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
                     Close

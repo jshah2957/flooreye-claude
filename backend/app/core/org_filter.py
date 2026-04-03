@@ -1,5 +1,7 @@
 """Org-scoped query helper. When org_id is None/empty (super_admin), omit the filter."""
 
+from fastapi import HTTPException, status
+
 
 def get_org_id(user: dict) -> str | None:
     """Extract org_id from user dict. Returns None for super_admin, never empty string."""
@@ -8,10 +10,13 @@ def get_org_id(user: dict) -> str | None:
 
 
 def require_org_id(user: dict) -> str:
-    """Extract org_id from user dict. Raises ValueError if None/empty (super_admin can't do this)."""
+    """Extract org_id from user dict. Raises HTTPException if None/empty (super_admin can't do this)."""
     org_id = get_org_id(user)
     if not org_id:
-        raise ValueError("org_id is required for this operation. Super admins must act within an org scope.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="org_id is required for this operation. Super admins must act within an org scope.",
+        )
     return org_id
 
 

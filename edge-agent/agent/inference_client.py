@@ -21,25 +21,43 @@ class InferenceClient:
             self._client = httpx.AsyncClient(timeout=config.INFERENCE_SERVER_TIMEOUT)
         return self._client
 
+    async def wait_for_server(self, max_wait: int = 60) -> bool:
+        """Wait until inference server HTTP endpoint is responding (model may not be loaded yet)."""
+        import asyncio
+        log.info(f"Waiting for inference server at {self.url}...")
+        client = await self._get_client()
+        for attempt in range(max_wait // 2):
+            try:
+                resp = await client.get(f"{self.url}/health", timeout=5)
+                if resp.status_code == 200:
+                    log.info("Inference server is up")
+                    return True
+            except Exception:
+                if attempt % 10 == 0:
+                    log.info(f"Inference server not ready (attempt {attempt+1})")
+            await asyncio.sleep(2)
+        log.error("Inference server not available after %ds", max_wait)
+        return False
+
     async def wait_for_ready(self, max_wait: int = 120) -> bool:
         """Wait until inference server is healthy and model loaded."""
-        log.info(f"Waiting for inference server at {self.url}...")
+        import asyncio
+        log.info(f"Waiting for model to be loaded at {self.url}...")
         client = await self._get_client()
         for attempt in range(max_wait // 2):
             try:
                 resp = await client.get(f"{self.url}/health", timeout=5)
                 data = resp.json()
                 if data.get("model_loaded"):
-                    log.info(f"Inference server ready: model={data['model_version']}")
+                    log.info(f"Inference server ready: model={data.get('model_version', 'unknown')}")
                     return True
                 if attempt % 10 == 0:
                     log.info(f"Inference server up, waiting for model (attempt {attempt+1})")
             except Exception:
                 if attempt % 10 == 0:
                     log.info(f"Inference server not ready (attempt {attempt+1})")
-            import asyncio
             await asyncio.sleep(2)
-        log.error("Inference server not available")
+        log.warning("Model not loaded after %ds", max_wait)
         return False
 
     async def infer(self, frame_b64: str, confidence: float = 0.5,

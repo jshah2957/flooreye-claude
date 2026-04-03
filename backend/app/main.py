@@ -215,7 +215,8 @@ def create_app() -> FastAPI:
 
     @application.exception_handler(ValueError)
     async def value_error_handler(request, exc):
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
+        log.error("Unexpected ValueError: %s %s — %s", request.method, request.url.path, exc, exc_info=True)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
     @application.exception_handler(Exception)
     async def unhandled_exception_handler(request, exc):

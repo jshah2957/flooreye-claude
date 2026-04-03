@@ -56,6 +56,15 @@ async def provision_agent(
     # Generate docker-compose template
     docker_compose = _generate_docker_compose(agent_id, store.get("name", name), org_id, store_id, edge_api_key)
 
+    # Auto-create Cloudflare tunnel for edge-to-cloud connectivity
+    tunnel_data = None
+    if settings.CF_API_TOKEN and settings.CF_ACCOUNT_ID:
+        try:
+            from app.services.cloudflare_service import create_tunnel
+            tunnel_data = await create_tunnel(agent_id, store.get("name", name))
+        except Exception as e:
+            log.warning("Cloudflare tunnel creation failed (non-critical): %s", e)
+
     agent_doc = {
         "id": agent_id,
         "org_id": org_id,
@@ -77,7 +86,10 @@ async def provision_agent(
         "tunnel_status": None,
         "tunnel_latency_ms": None,
         "camera_count": 0,
-        "cf_tunnel_id": None,
+        "cf_tunnel_id": tunnel_data["tunnel_id"] if tunnel_data else None,
+        "cf_tunnel_token": tunnel_data["tunnel_token"] if tunnel_data else None,
+        "cf_dns_record_id": tunnel_data["dns_record_id"] if tunnel_data else None,
+        "tunnel_hostname": tunnel_data["hostname"] if tunnel_data else None,
         "created_at": now,
     }
     await db.edge_agents.insert_one(agent_doc)
@@ -86,6 +98,8 @@ async def provision_agent(
         "agent_id": agent_id,
         "token": token,
         "docker_compose": docker_compose,
+        "tunnel_token": tunnel_data["tunnel_token"] if tunnel_data else None,
+        "tunnel_hostname": tunnel_data["hostname"] if tunnel_data else None,
     }
 
 
@@ -821,9 +835,20 @@ async def get_agent(db: AsyncIOMotorDatabase, agent_id: str, org_id: str) -> dic
 
 
 async def delete_agent(db: AsyncIOMotorDatabase, agent_id: str, org_id: str) -> None:
-    result = await db.edge_agents.delete_one({**org_query(org_id), "id": agent_id})
-    if result.deleted_count == 0:
+    # Fetch agent before deletion for tunnel cleanup
+    agent = await db.edge_agents.find_one({**org_query(org_id), "id": agent_id})
+    if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+
+    # Clean up Cloudflare tunnel if one was auto-created
+    if agent.get("cf_tunnel_id") and settings.CF_API_TOKEN:
+        try:
+            from app.services.cloudflare_service import delete_tunnel
+            await delete_tunnel(agent["cf_tunnel_id"], agent.get("cf_dns_record_id"))
+        except Exception as e:
+            log.warning("Cloudflare tunnel cleanup failed: %s", e)
+
+    await db.edge_agents.delete_one({"id": agent_id, "org_id": org_id})
     await db.edge_commands.delete_many({"agent_id": agent_id})
     # Unlink cameras — don't delete them, just clear the agent reference
     await db.cameras.update_many(

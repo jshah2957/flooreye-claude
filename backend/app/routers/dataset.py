@@ -158,15 +158,23 @@ async def upload_frame(
 ):
     """Upload a frame image file to S3 and register in dataset."""
     org_id = require_org_id(current_user)
+
+    # Validate content type
+    if file.content_type not in ("image/jpeg", "image/png", "image/webp"):
+        raise HTTPException(status_code=422, detail="Only JPEG, PNG, and WebP images are supported")
+
     contents = await file.read()
     if len(contents) < 100:
         raise HTTPException(status_code=422, detail="File too small")
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="File too large (max 10MB)")
 
     # Upload to S3
     frame_id = str(uuid.uuid4())
-    s3_key = f"dataset/{org_id}/{frame_id}.jpg"
+    ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(file.content_type, ".jpg")
+    s3_key = f"dataset/{org_id}/{frame_id}{ext}"
     from app.utils.s3_utils import upload_to_s3
-    await upload_to_s3(s3_key, contents, "image/jpeg")
+    await upload_to_s3(s3_key, contents, file.content_type or "image/jpeg")
 
     # Create frame doc
     data = DatasetFrameCreate(

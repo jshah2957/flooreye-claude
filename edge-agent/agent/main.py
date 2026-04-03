@@ -1603,22 +1603,23 @@ async def main():
     # Semaphore to limit concurrent inference calls across all cameras
     inference_semaphore = asyncio.Semaphore(config.MAX_CONCURRENT_INFERENCES)
 
-    # Wait for inference server
-    if not await inference.wait_for_ready():
+    # Step 1: Wait for inference server to be UP (doesn't require model loaded)
+    if not await inference.wait_for_server():
         log.error("Cannot start without inference server")
         return
 
-    # Register with backend
+    # Step 2: Register with backend (needed for auth in model download)
     await register_with_backend(cameras)
 
-    # Register all unregistered cameras with cloud
-    await cam_mgr.sync_all_cameras()
-
-    # Register all unregistered devices with cloud
-    await dev_mgr.sync_all_devices()
-
-    # Check for model updates before starting detection
+    # Step 3: Try downloading model from cloud (fixes chicken-and-egg: download BEFORE model check)
     await check_and_download_model(inference)
+
+    # Step 4: Check if model is now loaded (short wait — model should be loaded by now or from bundle)
+    model_ready = await inference.wait_for_ready(max_wait=30)
+
+    # Step 5: Sync cameras and devices with cloud
+    await cam_mgr.sync_all_cameras()
+    await dev_mgr.sync_all_devices()
 
     # Sync validation settings from cloud (uses defaults if unreachable)
     await sync_validation_settings(validator)
@@ -1669,24 +1670,28 @@ async def main():
     if tplink_ctrl.enabled:
         tasks.append(asyncio.create_task(tplink_auto_off_loop(tplink_ctrl)))
 
-    # Use batch inference when enabled and there are multiple cameras
-    use_batch = config.BATCH_INFERENCE and len(cam_objects) > 1
+    # Start detection loops only if model is loaded
     camera_tasks: dict[str, asyncio.Task] = {}
-    if use_batch:
-        tasks.append(
-            asyncio.create_task(
-                batch_camera_loop(cam_objects, inference, uploader_inst, validator, buffer)
-            )
-        )
-        log.info(f"Edge agent running with {len(cameras)} camera(s) (BATCH inference mode)")
+    if not model_ready:
+        log.warning("No AI model loaded — running in degraded mode (heartbeat + commands only, no detection)")
+        log.warning("Push a model from the cloud dashboard or place an .onnx file in ./models/ and restart")
     else:
-        for cam in cam_objects.values():
-            t = asyncio.create_task(
-                threaded_camera_loop(cam, inference, uploader_inst, validator, inference_semaphore, buffer, alert_log)
+        use_batch = config.BATCH_INFERENCE and len(cam_objects) > 1
+        if use_batch:
+            tasks.append(
+                asyncio.create_task(
+                    batch_camera_loop(cam_objects, inference, uploader_inst, validator, buffer)
+                )
             )
-            camera_tasks[cam.name] = t
-            tasks.append(t)
-        log.info(f"Edge agent running with {len(cameras)} camera(s) (per-camera inference mode)")
+            log.info(f"Edge agent running with {len(cameras)} camera(s) (BATCH inference mode)")
+        else:
+            for cam in cam_objects.values():
+                t = asyncio.create_task(
+                    threaded_camera_loop(cam, inference, uploader_inst, validator, inference_semaphore, buffer, alert_log)
+                )
+                camera_tasks[cam.name] = t
+                tasks.append(t)
+            log.info(f"Edge agent running with {len(cameras)} camera(s) (per-camera inference mode)")
 
     # Camera supervisor — monitors camera loops every 30s, restarts failed ones
     if camera_tasks:
