@@ -488,6 +488,8 @@ async def list_incidents(
     camera_id: str | None = None,
     status_filter: str | None = None,
     severity: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
@@ -500,6 +502,13 @@ async def list_incidents(
         query["status"] = status_filter
     if severity:
         query["severity"] = severity
+    if date_from or date_to:
+        ts_query: dict = {}
+        if date_from:
+            ts_query["$gte"] = date_from
+        if date_to:
+            ts_query["$lte"] = date_to
+        query["start_time"] = ts_query
 
     total = await db.events.count_documents(query)
     cursor = (

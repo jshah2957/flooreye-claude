@@ -66,6 +66,7 @@ export default function NotificationCenterPage() {
       });
       return res.data;
     },
+    refetchInterval: 15000,
   });
 
   const { data: deliveriesData, isLoading: deliveriesLoading } = useQuery({
@@ -76,6 +77,7 @@ export default function NotificationCenterPage() {
       });
       return res.data;
     },
+    refetchInterval: 15000,
   });
 
   const { data: stores } = useQuery({

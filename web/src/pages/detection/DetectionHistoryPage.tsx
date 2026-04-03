@@ -121,13 +121,14 @@ export default function DetectionHistoryPage() {
   });
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["detections", page, storeFilter, cameraFilter, wetFilter, modelFilter, minConfidence, dateFrom, dateTo],
+    queryKey: ["detections", page, storeFilter, cameraFilter, wetFilter, modelFilter, minConfidence, flaggedOnly, dateFrom, dateTo],
     queryFn: async () => {
       const params: Record<string, unknown> = { offset: page * limit, limit };
       if (storeFilter) params.store_id = storeFilter;
       if (cameraFilter) params.camera_id = cameraFilter;
       if (wetFilter === "wet") params.is_wet = true;
       if (wetFilter === "dry") params.is_wet = false;
+      if (flaggedOnly) params.is_flagged = true;
       if (modelFilter) params.model_source = modelFilter;
       if (minConfidence > 0) params.min_confidence = minConfidence / 100;
       if (dateFrom) params.date_from = toISODate(dateFrom);
@@ -152,7 +153,7 @@ export default function DetectionHistoryPage() {
   // Bulk mutations
   const bulkFlagMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      await Promise.allSettled(ids.map((id) => api.post(`/detection/history/${id}/flag`)));
+      await api.post("/detection/flagged/bulk-flag", { detection_ids: ids });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["detections"] });
@@ -166,7 +167,7 @@ export default function DetectionHistoryPage() {
 
   const detections = data?.data ?? [];
   const total = data?.meta?.total ?? 0;
-  const filtered = flaggedOnly ? detections.filter((d) => d.is_flagged) : detections;
+  const filtered = detections; // flagged filter now server-side via is_flagged param
 
   const cameraMap = new Map((cameras ?? []).map((c) => [c.id, c.name]));
   const storeMap = new Map((stores ?? []).map((s) => [s.id, s.name]));
@@ -200,7 +201,7 @@ export default function DetectionHistoryPage() {
           disabled={filtered.length === 0}
           className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Download size={16} /> Export CSV
+          <Download size={16} /> Export CSV (current page)
         </button>
       </div>
 

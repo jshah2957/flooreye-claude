@@ -12,6 +12,7 @@ from app.services import report_service
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
 
 
+# TODO: Add format=pdf and format=csv support for compliance report export
 @router.get("/compliance")
 async def compliance_report(
     store_id: Optional[str] = Query(None),

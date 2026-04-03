@@ -6,7 +6,8 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.org_filter import get_org_id, org_query
+from app.core.config import settings
+from app.core.org_filter import get_org_id, org_query, store_access_query
 from app.core.permissions import require_role
 from app.dependencies import get_current_user, get_db
 
@@ -21,13 +22,21 @@ async def dashboard_summary(
 ):
     """Aggregated dashboard data in a single response."""
     org_id = get_org_id(current_user)
-    oq = org_query(org_id)
+    oq = store_access_query(current_user)
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Stores
-    total_stores = await db.stores.count_documents(oq)
-    active_stores = await db.stores.count_documents({**oq, "is_active": {"$ne": False}})
+    # Stores — store_access_query filters by store_id, but stores collection uses id
+    store_query = org_query(org_id)
+    role = current_user.get("role", "")
+    if role not in ("super_admin", "org_admin"):
+        sa = current_user.get("store_access", [])
+        if sa:
+            store_query["id"] = {"$in": sa}
+        elif role in ("store_owner", "viewer", "operator"):
+            store_query["id"] = {"$in": []}
+    total_stores = await db.stores.count_documents(store_query)
+    active_stores = await db.stores.count_documents({**store_query, "is_active": {"$ne": False}})
 
     # Cameras
     total_cameras = await db.cameras.count_documents(oq)
@@ -50,9 +59,9 @@ async def dashboard_summary(
     )
     total_incidents = await db.events.count_documents(oq)
 
-    # Incident severity breakdown
+    # Incident severity breakdown (active incidents only)
     sev_pipeline = [
-        {"$match": oq},
+        {"$match": {**oq, "status": {"$in": ["new", "acknowledged", "active"]}}},
         {"$group": {"_id": "$severity", "count": {"$sum": 1}}},
     ]
     severity_counts = {}
@@ -129,10 +138,9 @@ async def dashboard_summary(
     # Clips
     total_clips = await db.clips.count_documents(oq)
 
-    # System health
-    health = {"mongodb": "ok", "redis": "ok"}
+    # System health — version from FastAPI app config
+    health = {"mongodb": "ok", "redis": "ok", "version": settings.APP_VERSION if hasattr(settings, "APP_VERSION") else "3.0.0"}
     try:
-        from app.core.config import settings
         import redis as _redis
         r = _redis.from_url(settings.REDIS_URL, socket_timeout=2)
         r.ping()

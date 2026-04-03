@@ -184,7 +184,7 @@ export default function DashboardPage() {
     model = null,
     dataset = { total_frames: 0 },
     clips = { total: 0 },
-    health = { mongodb: "unknown", redis: "unknown", version: "3.1.0" },
+    health = { mongodb: "unknown", redis: "unknown", version: "unknown" },
     recent_detections = [],
   } = data;
 
@@ -447,7 +447,7 @@ export default function DashboardPage() {
                 icon={Server}
                 label="Cloud Backend"
                 status="ok"
-                detail={`v${health?.version || "3.1.0"}`}
+                detail={`v${health?.version || "unknown"}`}
               />
               <HealthRow
                 icon={Database}
@@ -649,7 +649,7 @@ export default function DashboardPage() {
           {clips.total} clips
         </Link>
         <span className="text-gray-300">&middot;</span>
-        <span className="text-xs text-gray-400">v3.1.0</span>
+        <span className="text-xs text-gray-400">v{health?.version || "unknown"}</span>
       </div>
     </div>
   );

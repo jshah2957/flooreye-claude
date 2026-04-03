@@ -241,6 +241,7 @@ async def list_detections(
     store_id: str | None = None,
     incident_id: str | None = None,
     is_wet: bool | None = None,
+    is_flagged: bool | None = None,
     model_source: str | None = None,
     min_confidence: float | None = None,
     date_from: datetime | None = None,
@@ -257,6 +258,8 @@ async def list_detections(
         query["incident_id"] = incident_id
     if is_wet is not None:
         query["is_wet"] = is_wet
+    if is_flagged is not None:
+        query["is_flagged"] = is_flagged
     if model_source:
         query["model_source"] = model_source
     if min_confidence is not None:

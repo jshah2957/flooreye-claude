@@ -109,6 +109,9 @@ export default function IncidentsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [severityFilter, setSeverityFilter] = useState("");
   const [storeFilter, setStoreFilter] = useState("");
+  const [cameraFilter, setCameraFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [selected, setSelected] = useState<Incident | null>(null);
   const limit = PAGE_SIZES.INCIDENTS;
@@ -231,15 +234,19 @@ export default function IncidentsPage() {
   });
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["incidents", page, statusFilter, severityFilter, storeFilter],
+    queryKey: ["incidents", page, statusFilter, severityFilter, storeFilter, cameraFilter, dateFrom, dateTo],
     queryFn: async () => {
       const params: Record<string, unknown> = { offset: page * limit, limit };
       if (statusFilter) params.status = statusFilter;
       if (severityFilter) params.severity = severityFilter;
       if (storeFilter) params.store_id = storeFilter;
+      if (cameraFilter) params.camera_id = cameraFilter;
+      if (dateFrom) params.date_from = new Date(dateFrom + "T00:00:00").toISOString();
+      if (dateTo) params.date_to = new Date(dateTo + "T23:59:59").toISOString();
       const res = await api.get<PaginatedResponse<Incident>>("/events", { params });
       return res.data;
     },
+    refetchInterval: 30000, // Polling fallback for WebSocket disconnects
   });
 
   const ackMutation = useMutation({
@@ -390,6 +397,22 @@ export default function IncidentsPage() {
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
+
+        <select
+          value={cameraFilter}
+          onChange={(e) => { setCameraFilter(e.target.value); setPage(0); }}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
+        >
+          <option value="">All Cameras</option>
+          {(cameras ?? []).map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]" />
+        <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]" />
 
         <div className="flex-1" />
 

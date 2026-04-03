@@ -102,7 +102,7 @@ export default function Header({ user, onLogout, onMenuToggle }: HeaderProps) {
 
   const handleBellClick = () => {
     clearUnread();
-    navigate("/incidents");
+    navigate("/notification-center");
   };
 
   // Close dropdown on outside click

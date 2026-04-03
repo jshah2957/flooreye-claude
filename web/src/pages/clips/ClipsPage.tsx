@@ -62,6 +62,10 @@ function formatDuration(seconds: number): string {
 export default function ClipsPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const [storeFilter, setStoreFilter] = useState("");
+  const [cameraFilter, setCameraFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const clipLimit = 12;
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [playingClip, setPlayingClip] = useState<Clip | null>(null);
   const [extractingClip, setExtractingClip] = useState<string | null>(null);
@@ -72,10 +76,22 @@ export default function ClipsPage() {
   const [retryCount, setRetryCount] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const { data: stores } = useQuery({
+    queryKey: ["stores-list"],
+    queryFn: async () => { const res = await api.get("/stores", { params: { limit: 100 } }); return res.data.data; },
+  });
+  const { data: cameras } = useQuery({
+    queryKey: ["cameras-list"],
+    queryFn: async () => { const res = await api.get("/cameras", { params: { limit: 100 } }); return res.data.data; },
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["clips"],
+    queryKey: ["clips", storeFilter, cameraFilter, page],
     queryFn: async () => {
-      const res = await api.get("/clips", { params: { limit: 50 } });
+      const params: Record<string, unknown> = { limit: clipLimit, offset: page * clipLimit };
+      if (storeFilter) params.store_id = storeFilter;
+      if (cameraFilter) params.camera_id = cameraFilter;
+      const res = await api.get("/clips", { params });
       return res.data;
     },
     refetchInterval: 15000,
@@ -212,6 +228,21 @@ export default function ClipsPage() {
         </HelpSection>
       </div>
 
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <select value={storeFilter} onChange={(e) => { setStoreFilter(e.target.value); setPage(0); }}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20">
+          <option value="">All Stores</option>
+          {(stores ?? []).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select value={cameraFilter} onChange={(e) => { setCameraFilter(e.target.value); setPage(0); }}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/20">
+          <option value="">All Cameras</option>
+          {(cameras ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <span className="text-xs text-gray-400">Page {page + 1} · {data?.meta?.total ?? 0} total</span>
+      </div>
+
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
           <Loader2 size={28} className="animate-spin text-teal-600" />
@@ -328,6 +359,19 @@ export default function ClipsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && clips.length > 0 && (
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-xs text-gray-500">Page {page + 1} · {data?.meta?.total ?? 0} total clips</p>
+          <div className="flex gap-2">
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">Previous</button>
+            <button onClick={() => setPage(p => p + 1)} disabled={clips.length < clipLimit}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">Next</button>
+          </div>
         </div>
       )}
 

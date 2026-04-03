@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, Query, Request, status
@@ -114,6 +115,8 @@ async def list_events(
     camera_id: Optional[str] = Query(None),
     status_filter: Optional[str] = Query(None, alias="status"),
     severity: Optional[str] = Query(None),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
     limit: int = Query(settings.DETECTION_HISTORY_DEFAULT_LIMIT, ge=1, le=settings.DETECTION_HISTORY_MAX_LIMIT),
     offset: int = Query(0, ge=0),
     db: AsyncIOMotorDatabase = Depends(get_db),
@@ -126,6 +129,8 @@ async def list_events(
         camera_id=camera_id,
         status_filter=status_filter,
         severity=severity,
+        date_from=date_from,
+        date_to=date_to,
         limit=limit,
         offset=offset,
     )
