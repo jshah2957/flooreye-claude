@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 40 (Production Audit + Functionality Fixes + Edge Setup Bundle) — Agentwise 6-specialist audit (83/83 checks pass). 8 functionality fixes (Dockerfile.worker, S3 URL, Redis, LiveStreamPlayer, axios timeout, ValueError handler, dataset upload, playwright). Edge Setup Bundle: auto-CF tunnel creation, ZIP download with compose+env+install+model+source, edge agent startup fix (degraded mode). Docker AutoStart enabled. Production live at app.puddlewatch.com.
+Session 40 (Production Audit + 8 Fixes + Edge Bundle + 14 UI Fixes + Integration Fix) — Agentwise audit (39/39 files pass). 8 functionality fixes. Edge Setup Bundle with auto-CF tunnel. 14 UI fixes across 7 pages (dashboard version, severity donut, store_access, notification refresh, clips filters/pagination, compliance buttons, detection flagged/bulk/sort, incidents camera+date filters+WS fallback). Integration system made global (super_admin configures, all orgs see). Forgot-password SMTP fix. 7 commits. Production live at app.puddlewatch.com.
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform

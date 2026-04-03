@@ -1368,6 +1368,35 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 - All core flows verified unaffected: detection, learning, model upgrade, OTA, notifications
 - Production live at app.puddlewatch.com (all 8 services healthy)
 
+### Continued: 7-Page UI Audit + 14 Fixes
+13. **Dashboard**: Removed 3 hardcoded "v3.1.0" — version now from backend. Severity donut filters active incidents only. store_access_query for RBAC scoping.
+14. **Notification Center**: Added 15s polling (was loading once). Bell link to /notification-center.
+15. **Clips**: Store/camera filter dropdowns + pagination (12/page with prev/next).
+16. **Compliance**: PDF/CSV export buttons disabled with "Coming Soon" (backend has no generation).
+17. **Detection History**: Flagged filter server-side (was client-side). Bulk flag uses single endpoint (was N+1). CSV label "(current page)".
+18. **Incidents**: Camera filter added. Date range filter (backend+frontend). 30s polling fallback for WebSocket.
+
+### Continued: Integration System Fix
+19. **Integrations made global**: No org_id filter — super_admin configures once, all orgs see same config.
+20. **Write restricted to super_admin**: PUT/DELETE require super_admin role. Org_admin gets read-only view with "View" button.
+21. **Worker queries fixed**: SMTP/SMS notification workers query globally — fixes email failures for org users.
+22. **Roboflow queries fixed**: ML pipeline finds config regardless of user's org.
+23. **Forgot-password SMTP fixed**: auth.py passes None instead of user's org_id — password reset works for all users.
+24. **Frontend guarded**: ApiManagerPage and RoboflowPage save/delete hidden for non-super_admin.
+
+### Final Audit: 39/39 Files Verified
+- Every changed file re-audited by Agentwise specialist
+- 6 protected files (model_service, learning, training, mobile, notifications) confirmed NOT changed
+- All 278 routes, TypeScript clean, build passes, production healthy
+
+### Stats (Full Session 40)
+- 7 commits pushed to GitHub
+- 33 files changed + 2 new files
+- 8 functionality fixes + 14 UI fixes + integration system fix + edge bundle
+- 39/39 final audit checks: ALL PASS
+- Production live at app.puddlewatch.com (all 8 services healthy)
+
 ### Next Session Plan
 - Security fixes: token blacklist bypass, logout blacklisting, refresh token rotation, 42 body:dict to Pydantic, OpenAPI docs conditional
 - Learning system: 8 remaining large-effort features
+- Live Monitoring: WebSocket frame delivery (scalability), detection overlays
