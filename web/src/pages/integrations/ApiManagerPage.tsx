@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Cloud,
@@ -382,6 +383,8 @@ function SkeletonCard() {
 export default function ApiManagerPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
 
   // UI state
   const [drawerService, setDrawerService] = useState<string | null>(null);
@@ -739,7 +742,7 @@ export default function ApiManagerPage() {
               }}
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
-              Configure Now
+              {isSuperAdmin ? "Configure Now" : "View Configuration"}
             </button>
             <button
               onClick={() => setInfoService(null)}
@@ -848,6 +851,7 @@ export default function ApiManagerPage() {
                     Test Connection
                   </button>
                 )}
+                {isSuperAdmin && (
                 <button
                   onClick={handleSave}
                   disabled={saveMutation.isPending || isManaged}
@@ -856,10 +860,16 @@ export default function ApiManagerPage() {
                   {saveMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                   Save & Encrypt
                 </button>
+                )}
+                {!isSuperAdmin && (
+                <div className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-400">
+                  Read-only — configured by admin
+                </div>
+                )}
               </div>
 
-              {/* Reset */}
-              {isConfigured && !isManaged && (
+              {/* Reset — super_admin only */}
+              {isConfigured && !isManaged && isSuperAdmin && (
                 <button
                   onClick={() => {
                     if (confirm(`Reset ${meta.label} configuration? This cannot be undone.`)) {
@@ -934,12 +944,14 @@ export default function ApiManagerPage() {
 
         {/* Bottom: action buttons */}
         <div className="flex gap-2">
+          {isSuperAdmin && (
           <button
             onClick={() => openDrawer(serviceKey)}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
           >
             <Settings2 size={13} /> Configure
           </button>
+          )}
           <button
             onClick={() => testMutation.mutate(serviceKey)}
             disabled={status === "not_configured" || isTesting || testMutation.isPending}

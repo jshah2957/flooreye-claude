@@ -31,8 +31,9 @@ async def _get_roboflow_credentials(db, org_id: str) -> tuple[str, str]:
     workspace = settings.ROBOFLOW_WORKSPACE if hasattr(settings, "ROBOFLOW_WORKSPACE") else ""
 
     if not api_key:
+        # Roboflow config is global — configured by super_admin
         integration = await db.integration_configs.find_one(
-            {"org_id": org_id, "service": "roboflow"}
+            {"service": "roboflow"}
         )
         if integration and integration.get("config_encrypted"):
             from app.core.encryption import decrypt_config

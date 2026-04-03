@@ -85,7 +85,8 @@ async def list_projects(
 ):
     org_id = get_org_id(current_user)
     # Check for stored Roboflow integration config (config is AES-256-GCM encrypted)
-    integration = await db.integration_configs.find_one({"org_id": org_id, "service": "roboflow"})
+    # Roboflow config is global — configured by super_admin
+    integration = await db.integration_configs.find_one({"service": "roboflow"})
     if not integration or not integration.get("config_encrypted"):
         return {"data": [], "meta": {"message": "Roboflow integration not configured"}}
     try:
@@ -207,8 +208,9 @@ async def _fetch_roboflow_classes(
     db: AsyncIOMotorDatabase, org_id: str
 ) -> dict:
     """Fetch class definitions from Roboflow API and cache them in MongoDB."""
+    # Roboflow config is global — configured by super_admin
     config = await db.integration_configs.find_one(
-        {"org_id": org_id, "service": "roboflow"}
+        {"service": "roboflow"}
     )
     if not config or not config.get("config_encrypted"):
         # Return locally cached classes if no Roboflow integration configured

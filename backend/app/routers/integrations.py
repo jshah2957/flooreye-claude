@@ -17,9 +17,8 @@ async def list_integrations(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    integrations = await integration_service.list_integrations(
-        db, get_org_id(current_user)
-    )
+    # Integrations are global — list without org_id filter so all roles see the same config
+    integrations = await integration_service.list_integrations(db, None)
     return {"data": integrations}
 
 
@@ -28,9 +27,8 @@ async def integration_status(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("viewer")),
 ):
-    statuses = await integration_service.get_integration_status(
-        db, get_org_id(current_user)
-    )
+    # Global status — no org_id filter
+    statuses = await integration_service.get_integration_status(db, None)
     return {"data": statuses}
 
 
@@ -41,10 +39,9 @@ async def test_history(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    org_id = get_org_id(current_user)
-    query = org_query(org_id)
-    total = await db.integration_test_history.count_documents(query)
-    cursor = db.integration_test_history.find(query).sort("tested_at", -1).skip(offset).limit(limit)
+    # Global history — no org_id filter
+    total = await db.integration_test_history.count_documents({})
+    cursor = db.integration_test_history.find({}).sort("tested_at", -1).skip(offset).limit(limit)
     docs = await cursor.to_list(length=limit)
     for d in docs:
         d.pop("_id", None)
@@ -56,9 +53,8 @@ async def test_all(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    results = await integration_service.test_all_integrations(
-        db, get_org_id(current_user)
-    )
+    # Any admin can test connections
+    results = await integration_service.test_all_integrations(db, None)
     return {"data": results}
 
 
@@ -68,9 +64,8 @@ async def get_integration(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    integration = await integration_service.get_integration(
-        db, get_org_id(current_user), service
-    )
+    # Global config — no org_id filter
+    integration = await integration_service.get_integration(db, None, service)
     return {"data": integration}
 
 
@@ -80,12 +75,13 @@ async def save_integration(
     body: IntegrationSaveRequest,
     request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: dict = Depends(require_role("org_admin")),
+    current_user: dict = Depends(require_role("super_admin")),
 ):
+    # Only super_admin can save — config is global (org_id=None)
     result = await integration_service.save_integration(
-        db, get_org_id(current_user), service, body.config, current_user["id"]
+        db, None, service, body.config, current_user["id"]
     )
-    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
+    await log_action(db, current_user["id"], current_user["email"], "",
                      "integration_saved", "integration", service, {}, request)
     return {"data": result}
 
@@ -95,12 +91,11 @@ async def delete_integration(
     service: str,
     request: Request,
     db: AsyncIOMotorDatabase = Depends(get_db),
-    current_user: dict = Depends(require_role("org_admin")),
+    current_user: dict = Depends(require_role("super_admin")),
 ):
-    await integration_service.delete_integration(
-        db, get_org_id(current_user), service
-    )
-    await log_action(db, current_user["id"], current_user["email"], get_org_id(current_user) or "",
+    # Only super_admin can delete — config is global
+    await integration_service.delete_integration(db, None, service)
+    await log_action(db, current_user["id"], current_user["email"], "",
                      "integration_deleted", "integration", service, {}, request)
     return {"data": {"ok": True}}
 
@@ -111,7 +106,6 @@ async def test_integration(
     db: AsyncIOMotorDatabase = Depends(get_db),
     current_user: dict = Depends(require_role("org_admin")),
 ):
-    result = await integration_service.test_integration(
-        db, get_org_id(current_user), service
-    )
+    # Any admin can test connections
+    result = await integration_service.test_integration(db, None, service)
     return {"data": result}

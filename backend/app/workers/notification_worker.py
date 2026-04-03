@@ -187,10 +187,8 @@ def send_email_notification(self, recipient: str, incident_id: str, severity: st
             client = AsyncIOMotorClient(settings.MONGODB_URI)
             db = client[settings.MONGODB_DB]
 
-            # SMTP config
+            # SMTP config — global (not per-org), configured by super_admin
             query = {"service": "smtp"}
-            if org_id:
-                query["org_id"] = org_id
             smtp_config = loop.run_until_complete(
                 db.integration_configs.find_one(query)
             )
@@ -379,9 +377,8 @@ def send_sms_notification(self, phone: str, incident_id: str, severity: str, org
             from motor.motor_asyncio import AsyncIOMotorClient
             client = AsyncIOMotorClient(settings.MONGODB_URI)
             db = client[settings.MONGODB_DB]
+            # SMS/Twilio config — global (not per-org), configured by super_admin
             query = {"service": "sms"}
-            if org_id:
-                query["org_id"] = org_id
             sms_config = loop.run_until_complete(
                 db.integration_configs.find_one(query)
             )
