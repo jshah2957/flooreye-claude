@@ -1337,3 +1337,37 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 ### Next Session Plan
 - 8 remaining features are large-effort (video testing, A/B testing, active learning, dataset import, dedup, health checks, auto-annotation, live RTSP)
 - Pick based on priority or move to other FloorEye work
+
+---
+
+## Session 40 — Production Audit + Functionality Fixes + Edge Setup Bundle
+### Date: 2026-04-03
+### Goal: Full production readiness audit, fix functionality issues, build edge setup bundle
+
+### Completed
+1. **Production Readiness Audit**: Agentwise 6-specialist parallel audit (Backend, DevOps, Database, Security, Frontend, Testing). 43 findings, verified against actual code (40 confirmed, 2 debunked, 1 corrected). Root cause analysis for all findings.
+2. **Functionality Fix: Dockerfile.worker**: Multi-stage build, non-root user (appuser), mongodump installed. Fixed SHA1 GPG key rejection by Debian 12+.
+3. **Functionality Fix: S3_PUBLIC_URL**: Changed from `http://localhost/storage` to `https://app.puddlewatch.com/storage`. Fixes broken images for remote users.
+4. **Functionality Fix: Redis**: Added `--maxmemory 384mb --maxmemory-policy allkeys-lru`. Prevents OOM crash at 512MB container limit.
+5. **Functionality Fix: LiveStreamPlayer**: Replaced `localStorage.getItem("flooreye_token")` (never set) with `getAccessToken()` from api.ts.
+6. **Functionality Fix: Axios Timeout**: Added `timeout: 30_000` to web client. Prevents infinite request hangs.
+7. **Functionality Fix: ValueError Handler**: `org_filter.require_org_id()` now raises HTTPException directly. Global handler returns generic "Internal server error" instead of leaking `str(exc)`.
+8. **Functionality Fix: Dataset Upload**: Added content-type validation (JPEG/PNG/WebP only), 10MB size limit, correct file extension per type.
+9. **Functionality Fix: Playwright Dep**: Removed from production dependencies (covered by `@playwright/test` in devDeps).
+10. **Edge Setup Bundle**: New `cloudflare_service.py` (auto-create/delete CF tunnels), `edge_bundle_service.py` (ZIP generation), bundle endpoint, frontend Download Bundle button.
+11. **Edge Startup Fix**: Added `wait_for_server()` method. Reordered main.py: download model BEFORE checking model_loaded. Agent starts in degraded mode (heartbeat + commands) if no model.
+12. **Infrastructure**: Docker Desktop AutoStart enabled. Production restored at app.puddlewatch.com.
+
+### Stats
+- 3 commits pushed
+- 780 lines added, 57 removed across 15 files (+ 2 new files)
+- 1 new API endpoint (POST /edge/agents/{id}/bundle)
+- 8 functionality fixes verified
+- 83/83 agentwise verification checks passed
+- Bundle ZIP generation tested: 106KB, 37 files
+- All core flows verified unaffected: detection, learning, model upgrade, OTA, notifications
+- Production live at app.puddlewatch.com (all 8 services healthy)
+
+### Next Session Plan
+- Security fixes: token blacklist bypass, logout blacklisting, refresh token rotation, 42 body:dict to Pydantic, OpenAPI docs conditional
+- Learning system: 8 remaining large-effort features

@@ -1,32 +1,37 @@
 # FloorEye Session State
-# Last session: 39 (Learning System Gap Fix — All 6 Phases + Live Testing + Production Deploy)
-# Status: Production live at app.puddlewatch.com, 33 learning endpoints, 7 UI pages, zero hardcoded values
-# Date: 2026-04-02
+# Last session: 40 (Production Audit + Functionality Fixes + Edge Setup Bundle)
+# Status: Production live at app.puddlewatch.com, all 8 services running, edge bundle system operational
+# Date: 2026-04-03
 
 ## NEXT SESSION TASK
-Learning system is feature-complete (79% coverage, 52/66 features). Remaining 8 features are large-effort items (video testing, A/B testing, active learning, dataset import, dedup, health checks, auto-annotation, live RTSP). Pick one based on priority or move to other FloorEye work.
+Security fixes deferred from audit: token blacklist bypass, logout blacklisting, refresh token rotation, 42 body:dict to Pydantic schemas, OpenAPI docs conditional. Also: 8 remaining learning features (video testing, A/B testing, active learning, dataset import, dedup, health checks, auto-annotation, live RTSP).
 
-## What Was Done This Session (Session 39)
+## What Was Done This Session (Session 40)
 
-### Learning System Gap Fix — 6 Phases (2,494 lines added, 14 files)
-- **Phase 1**: Replaced 76 hardcoded values with constants (learning_constants.py + learning.ts)
-- **Phase 2**: New Model Testing page (image upload, ONNX inference, batch test, confidence slider, JSON export)
-- **Phase 3**: Annotation Studio completion (drag-to-move, pan, brightness/contrast, copy/paste, validation, per-class colors, new class creation)
-- **Phase 4**: Class Management (5 CRUD endpoints + Settings UI with rename/delete/merge)
-- **Phase 5**: Dataset/Analytics (export YOLO/COCO buttons, upload drag-and-drop, ONNX download, training history chart, cost estimate)
-- **Phase 6**: Polish (compare training runs, early stopping, confidence threshold on comparison, model performance chart)
+### Production Readiness Audit (Agentwise 6-specialist parallel audit)
+- Full codebase audit: Backend, DevOps, Database, Security, Frontend, Testing specialists
+- 43 findings identified, verified against actual code (40 confirmed, 2 debunked, 1 corrected)
+- Root cause analysis for all findings (intentional vs oversight vs limitation)
 
-### Live Testing
-- Rebuilt Docker services, tested 39/39 endpoints — all pass
-- Found and fixed class management bug (missing uuid id + org_id null handling)
+### Functionality Fixes (8 fixes, all verified)
+1. Dockerfile.worker: multi-stage build, non-root user, mongodump installed
+2. S3_PUBLIC_URL: localhost to app.puddlewatch.com (presigned URLs work remotely)
+3. Redis: maxmemory 384mb + allkeys-lru eviction policy
+4. LiveStreamPlayer: localStorage bug to getAccessToken()
+5. api.ts: 30s axios timeout
+6. ValueError handler: stops leaking internals, org_filter uses HTTPException
+7. Dataset upload: content-type validation (JPEG/PNG/WebP) + 10MB limit
+8. package.json: playwright moved from deps to devDeps
 
-### Production Deploy
-- Fixed cloudflared tunnel (--config flag reads tunnel ID from config.yml, no hardcoded values)
-- Fixed MongoDB healthcheck (added auth credentials)
-- All 8 prod services running: backend, web, mongodb, redis, minio, worker, worker-learning, cloudflared
-- app.puddlewatch.com verified live
+### Edge Setup Bundle (new feature, ~560 lines, 2 new files + 5 modified)
+- cloudflare_service.py: auto-create/delete CF tunnels via API
+- edge_bundle_service.py: generate ZIP bundle (compose, .env, install.sh, model, source)
+- edge_service.py: tunnel auto-creation in provision, cleanup on delete
+- edge.py: POST /agents/{id}/bundle endpoint
+- EdgeManagementPage: Download Bundle button + instructions + manual fallback
+- Edge agent startup fix: download model BEFORE checking model_loaded
+- Degraded mode: agent starts without model (heartbeat + commands only)
 
-### Documentation
-- .claude/LEARNING_SYSTEM_FINAL_COMPLETE_REPORT.md
-- .claude/DEPLOYMENT_STATUS_REPORT.md
-- Inline LIMITATION/FIX comments in all learning files + docker-compose + .env
+### Infrastructure
+- Docker Desktop AutoStart set to true
+- Production restored and verified at app.puddlewatch.com

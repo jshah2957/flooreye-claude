@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 39 (Learning System Gap Fix + Production Deploy) — Fixed all 76 hardcoded values (0 remaining). Added 15 new endpoints (33 total learning). Built Model Testing page (7th learning page). Completed Annotation Studio (drag, pan, brightness, copy/paste, validation, per-class colors). Built Class Management (5 endpoints + UI). Added exports, uploads, training comparison, early stopping, performance charts. Fixed class management bug. Fixed cloudflared tunnel. Restored app.puddlewatch.com production. All 8 prod services running. 39/39 endpoints tested live.
+Session 40 (Production Audit + Functionality Fixes + Edge Setup Bundle) — Agentwise 6-specialist audit (83/83 checks pass). 8 functionality fixes (Dockerfile.worker, S3 URL, Redis, LiveStreamPlayer, axios timeout, ValueError handler, dataset upload, playwright). Edge Setup Bundle: auto-CF tunnel creation, ZIP download with compose+env+install+model+source, edge agent startup fix (degraded mode). Docker AutoStart enabled. Production live at app.puddlewatch.com.
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform
