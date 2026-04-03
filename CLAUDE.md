@@ -2,7 +2,7 @@
 # READ THIS ENTIRE FILE BEFORE DOING ANYTHING
 
 ## Last Updated
-Session 40 (Production Audit + 8 Fixes + Edge Bundle + 14 UI Fixes + Integration Fix) — Agentwise audit (39/39 files pass). 8 functionality fixes. Edge Setup Bundle with auto-CF tunnel. 14 UI fixes across 7 pages (dashboard version, severity donut, store_access, notification refresh, clips filters/pagination, compliance buttons, detection flagged/bulk/sort, incidents camera+date filters+WS fallback). Integration system made global (super_admin configures, all orgs see). Forgot-password SMTP fix. 7 commits. Production live at app.puddlewatch.com.
+Session 40 (Full: Audit + 8 Fixes + Edge Bundle + 14 UI Fixes + Integration Fix + UI Organization) — 6-phase session. Agentwise audit (39/39 files). 8 functionality fixes. Edge Setup Bundle with auto-CF tunnel + ZIP download. 14 UI fixes across 7 pages. Integration system global (super_admin only). UI organization: HelpSection on 12 pages, 10-step setup checklist, sidebar reordered (setup-first), next-step banners. 10 commits, 279 routes. Production live at app.puddlewatch.com.
 
 ## Project
 FloorEye v3.0 — Enterprise AI Wet Floor & Spill Detection Platform

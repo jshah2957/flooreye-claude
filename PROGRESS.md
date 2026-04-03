@@ -1396,6 +1396,19 @@ Phase 11 — Polish, Security, Production is now COMPLETE.
 - 39/39 final audit checks: ALL PASS
 - Production live at app.puddlewatch.com (all 8 services healthy)
 
+### Continued: UI Organization (4 phases)
+25. **Phase 1 — Help Sections**: Wired PAGE_HELP to 12 pages (Dashboard, Stores, CameraDetail, EdgeManagement, DetectionControl, ClassManager, ModelRegistry, Devices, Notifications, Storage, Compliance, ApiTester). Added new `stores` entry to help.ts.
+26. **Phase 2 — Setup Checklist**: New `GET /dashboard/setup-status` endpoint tracking 10 steps. Progress bar on Dashboard with clickable checklist, dismissable, auto-refreshes.
+27. **Phase 3 — Next-Step Banners**: StoresPage hints to provision edge + add cameras. EdgeManagementPage hints to add cameras when agent online.
+28. **Phase 4 — Sidebar Reorder**: OVERVIEW → SETUP → MONITORING → DETECTION → ML & AI → SETTINGS → TOOLS → PROFILE. Added Detection History + User Manual to store_owner/viewer sidebar. Merged ML & LEARNING sections.
+
+### Final Session 40 Stats
+- 10 commits pushed to GitHub
+- 50+ files changed across backend + frontend + edge agent + Docker
+- 279 API routes (was 277)
+- 6 phases of work: audit → fixes → bundle → UI audit → integration fix → UI organization
+- Production live at app.puddlewatch.com (all 8 services healthy)
+
 ### Next Session Plan
 - Security fixes: token blacklist bypass, logout blacklisting, refresh token rotation, 42 body:dict to Pydantic, OpenAPI docs conditional
 - Learning system: 8 remaining large-effort features
