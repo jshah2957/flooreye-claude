@@ -20,6 +20,8 @@ import api from "@/lib/api";
 import type { Store, Camera as CameraType, PaginatedResponse } from "@/types";
 import { useToast } from "@/components/ui/Toast";
 import { SyncTracker } from '../../components/detection/SyncTracker';
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 type Scope = "global" | "org" | "store" | "camera";
 
@@ -212,6 +214,9 @@ export default function DetectionControlPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Detection Control Center</h1>
         <p className="mt-1 text-sm text-gray-500">Configure detection settings with scoped inheritance</p>
+        <HelpSection title={PAGE_HELP.detectionControl.title}>
+          {PAGE_HELP.detectionControl.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">

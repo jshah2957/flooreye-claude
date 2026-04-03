@@ -24,6 +24,8 @@ import EmptyState from "@/components/shared/EmptyState";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { INTERVALS } from "@/constants";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 interface EdgeAgent {
   id: string;
@@ -364,6 +366,9 @@ export default function EdgeManagementPage() {
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">{agents.length}</span>
           </div>
           <p className="mt-1 text-sm text-gray-500">{agents.length} agent{agents.length !== 1 ? "s" : ""} · On-premise devices for local camera detection + IoT control</p>
+        <HelpSection title={PAGE_HELP.edgeManagement.title}>
+          {PAGE_HELP.edgeManagement.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <div className="flex gap-2">
           <button
@@ -392,6 +397,12 @@ export default function EdgeManagementPage() {
           ) : agents.length === 0 ? (
             <EmptyState icon={Server} title="No edge agents" description="Provision your first edge agent to start monitoring." actionLabel="Provision" onAction={() => setProvisionOpen(true)} />
           ) : (
+            <>
+            {agents.some(a => a.status === "online") && (
+              <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Agent online! Next: <a href="/cameras/wizard" className="font-medium underline">Add cameras</a> via the Camera Wizard, then configure ROI and enable detection.
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {agents.map((agent) => {
                 const isOnline = agent.status === "online";
@@ -513,6 +524,7 @@ export default function EdgeManagementPage() {
                 );
               })}
             </div>
+            </>
           )}
         </div>
 

@@ -9,6 +9,8 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 interface Device {
   id: string;
@@ -308,6 +310,9 @@ export default function DevicesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">IoT Devices</h1>
           <p className="mt-1 text-sm text-gray-500">{devices.length} device{devices.length !== 1 ? "s" : ""} · Warning signs, alarms, smart plugs (TP-Link, MQTT, Webhook)</p>
+        <HelpSection title={PAGE_HELP.devices.title}>
+          {PAGE_HELP.devices.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <button onClick={() => setDrawerOpen(true)}
           className="inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#0F766E]">

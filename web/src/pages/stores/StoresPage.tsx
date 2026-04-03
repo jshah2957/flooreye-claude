@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 import { Plus, Search, Pencil, Trash2, Store as StoreIcon, Loader2, MoreHorizontal, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 
 import api from "@/lib/api";
@@ -100,6 +102,9 @@ export default function StoresPage() {
           <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
             {total}
           </span>
+          <HelpSection title={PAGE_HELP.stores.title}>
+            {PAGE_HELP.stores.content.map((line, i) => <p key={i}>{line}</p>)}
+          </HelpSection>
         </div>
         <button
           onClick={openCreate}
@@ -109,6 +114,13 @@ export default function StoresPage() {
           Add Store
         </button>
       </div>
+
+      {/* Next step hint */}
+      {stores.length > 0 && (
+        <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          Next: <Link to="/edge" className="font-medium underline">Provision an edge agent</Link> for your store, then <Link to="/cameras/wizard" className="font-medium underline">add cameras</Link>.
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">

@@ -7,6 +7,8 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 interface ModelVersion {
   id: string;
@@ -108,6 +110,9 @@ export default function ModelRegistryPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Model Registry</h1>
           <p className="mt-1 text-sm text-gray-500">AI models: Draft → Staging → Production → Retired. Promote to deploy to edge agents.</p>
+        <HelpSection title={PAGE_HELP.modelRegistry.title}>
+          {PAGE_HELP.modelRegistry.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

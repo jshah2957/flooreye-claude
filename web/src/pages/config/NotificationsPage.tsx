@@ -19,6 +19,8 @@ import api from "@/lib/api";
 import EmptyState from "@/components/shared/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 interface NotificationRule {
   id: string;
@@ -294,6 +296,9 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Notification Settings</h1>
           <p className="mt-1 text-sm text-gray-500">Configure alert rules · Channels: Email, Push, SMS, Webhook · Set quiet hours and severity filters</p>
+        <HelpSection title={PAGE_HELP.notifications.title}>
+          {PAGE_HELP.notifications.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <button
           onClick={openCreateDrawer}

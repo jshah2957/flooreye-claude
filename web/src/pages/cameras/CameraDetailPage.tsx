@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 import {
   ArrowLeft,
   Loader2,
@@ -462,6 +464,9 @@ export default function CameraDetailPage() {
           <p className="mt-1 text-sm text-gray-400">
             {(camera.stream_type ?? 'rtsp').toUpperCase()} &middot; {camera.floor_type ?? 'tile'} &middot; {camera.resolution ?? "Unknown"}
           </p>
+          <HelpSection title={PAGE_HELP.cameraDetail.title}>
+            {PAGE_HELP.cameraDetail.content.map((line, i) => <p key={i}>{line}</p>)}
+          </HelpSection>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button

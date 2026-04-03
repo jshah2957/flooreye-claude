@@ -30,6 +30,8 @@ import {
 
 import api from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 // -- Helpers --
 function timeAgo(dateStr: string): string {
@@ -211,7 +213,18 @@ export default function DashboardPage() {
   );
 
   // Getting started (admin with 0 cameras)
-  const showGettingStarted = isAdmin && cameras.total === 0;
+  const [setupDismissed, setSetupDismissed] = useState(() => localStorage.getItem("flooreye_setup_dismissed") === "true");
+
+  const { data: setupData } = useQuery({
+    queryKey: ["setup-status"],
+    queryFn: async () => {
+      const res = await api.get("/dashboard/setup-status");
+      return res.data.data as { steps: Array<{ key: string; label: string; done: boolean; link: string; count?: number }>; completed: number; total: number };
+    },
+    refetchInterval: 30000,
+    enabled: isAdmin,
+  });
+  const showSetupChecklist = isAdmin && setupData && setupData.completed < setupData.total && !setupDismissed;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -222,6 +235,9 @@ export default function DashboardPage() {
           <p className="mt-1 text-sm text-gray-500">
             Platform overview · Refreshes every 30s
           </p>
+        <HelpSection title={PAGE_HELP.dashboard.title}>
+          {PAGE_HELP.dashboard.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <button
           onClick={() => refetch()}
@@ -231,29 +247,34 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Getting Started */}
-      {showGettingStarted && (
+      {/* Setup Checklist */}
+      {showSetupChecklist && setupData && (
         <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50 p-5">
-          <h3 className="font-semibold text-teal-800">Getting Started</h3>
-          <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-teal-700">
-            <li>
-              <Link to="/stores" className="underline">
-                Create a store
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-teal-800">
+              Setup Progress: {setupData.completed} of {setupData.total} complete
+            </h3>
+            <button onClick={() => { setSetupDismissed(true); localStorage.setItem("flooreye_setup_dismissed", "true"); }}
+              className="text-xs text-teal-600 hover:text-teal-800 underline">Dismiss</button>
+          </div>
+          <div className="mt-2 h-2 w-full rounded-full bg-teal-200">
+            <div className="h-2 rounded-full bg-teal-600 transition-all duration-500"
+              style={{ width: `${(setupData.completed / setupData.total) * 100}%` }} />
+          </div>
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            {setupData.steps.map((step) => (
+              <Link key={step.key} to={step.link}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${step.done ? "text-teal-700 bg-teal-100/50" : "text-teal-900 bg-white border border-teal-200 hover:bg-teal-50 font-medium"}`}>
+                {step.done ? (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white text-xs">✓</span>
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-teal-400 text-xs text-teal-500">○</span>
+                )}
+                {step.label}
+                {step.count != null && step.count > 0 && <span className="ml-auto text-xs text-teal-500">({step.count})</span>}
               </Link>
-            </li>
-            <li>
-              <Link to="/cameras/wizard" className="underline">
-                Add a camera
-              </Link>
-            </li>
-            <li>Draw ROI on camera detail page</li>
-            <li>
-              <Link to="/models" className="underline">
-                Deploy AI model
-              </Link>
-            </li>
-            <li>Run your first detection</li>
-          </ol>
+            ))}
+          </div>
         </div>
       )}
 

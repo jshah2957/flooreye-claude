@@ -196,3 +196,39 @@ async def dashboard_summary(
             "recent_detections": recent_detections,
         },
     }
+
+
+@router.get("/setup-status")
+async def setup_status(
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    current_user: dict = Depends(require_role("viewer")),
+):
+    """Check which setup steps are complete. Used by the dashboard setup checklist."""
+    org_id = get_org_id(current_user)
+    oq = org_query(org_id)
+
+    stores = await db.stores.count_documents(oq)
+    agents = await db.edge_agents.count_documents(oq)
+    agents_online = await db.edge_agents.count_documents({**oq, "status": "online"})
+    cameras = await db.cameras.count_documents(oq)
+    cameras_with_roi = await db.cameras.count_documents({**oq, "roi_polygon": {"$exists": True, "$ne": None, "$ne": []}})
+    cameras_with_dry_ref = await db.cameras.count_documents({**oq, "dry_reference_frames": {"$exists": True, "$ne": None, "$ne": []}})
+    cameras_detection_on = await db.cameras.count_documents({**oq, "detection_enabled": True})
+    prod_model = await db.model_versions.count_documents({**oq, "status": "production"})
+    notif_rules = await db.notification_rules.count_documents(oq)
+    integrations = await db.integration_configs.count_documents({})
+
+    steps = [
+        {"key": "store", "label": "Create a store", "done": stores > 0, "link": "/stores", "count": stores},
+        {"key": "edge", "label": "Provision an edge agent", "done": agents > 0, "link": "/edge", "count": agents},
+        {"key": "edge_online", "label": "Edge agent online", "done": agents_online > 0, "link": "/edge", "count": agents_online},
+        {"key": "camera", "label": "Add a camera", "done": cameras > 0, "link": "/cameras/wizard", "count": cameras},
+        {"key": "roi", "label": "Configure ROI on camera", "done": cameras_with_roi > 0, "link": "/cameras", "count": cameras_with_roi},
+        {"key": "dry_ref", "label": "Capture dry reference", "done": cameras_with_dry_ref > 0, "link": "/cameras", "count": cameras_with_dry_ref},
+        {"key": "detection", "label": "Enable detection", "done": cameras_detection_on > 0, "link": "/cameras", "count": cameras_detection_on},
+        {"key": "model", "label": "Deploy AI model", "done": prod_model > 0, "link": "/models"},
+        {"key": "notifications", "label": "Create notification rule", "done": notif_rules > 0, "link": "/notifications"},
+        {"key": "integrations", "label": "Configure integrations", "done": integrations > 0, "link": "/integrations/api-manager"},
+    ]
+    completed = sum(1 for s in steps if s["done"])
+    return {"data": {"steps": steps, "completed": completed, "total": len(steps)}}

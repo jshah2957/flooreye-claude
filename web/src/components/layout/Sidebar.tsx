@@ -75,91 +75,79 @@ const SIMPLE_NAV_ITEMS: NavItem[] = [
   { label: "Store Status", path: "/stores", icon: Building2 },
   { label: "Alerts", path: "/incidents", icon: AlertTriangle },
   { label: "Live Cameras", path: "/monitoring", icon: Camera },
+  { label: "Detection History", path: "/detection/history", icon: History },
   { label: "Settings", path: "/notifications", icon: Settings },
   { label: "Notification Preferences", path: "/profile/notification-preferences", icon: UserCog },
+  { label: "User Manual", path: "/docs", icon: BookOpen },
 ];
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: "MONITORING",
+    title: "OVERVIEW",
     items: [
       { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, minRole: ALL_ROLES },
       { label: "Notification Center", path: "/notification-center", icon: Bell, minRole: ALL_ROLES },
+    ],
+  },
+  {
+    title: "SETUP",
+    minRole: ADMIN_PLUS,
+    items: [
+      { label: "Stores", path: "/stores", icon: Store, minRole: ADMIN_PLUS },
+      { label: "Cameras", path: "/cameras", icon: Camera, minRole: ADMIN_PLUS },
+      { label: "Edge Agents", path: "/edge", icon: Cpu, minRole: ADMIN_PLUS },
+      { label: "IoT Devices", path: "/devices", icon: Joystick, minRole: ADMIN_PLUS },
+    ],
+  },
+  {
+    title: "MONITORING",
+    items: [
       { label: "Live Monitoring", path: "/monitoring", icon: Monitor, minRole: OPERATOR_PLUS },
       { label: "Recorded Clips", path: "/clips", icon: Film, minRole: ALL_ROLES },
       { label: "Compliance Report", path: "/compliance", icon: ShieldCheck, minRole: ALL_ROLES },
     ],
   },
   {
-    title: "DETECTION & REVIEW",
+    title: "DETECTION",
     items: [
       { label: "Detection History", path: "/detection/history", icon: History, minRole: ALL_ROLES },
       { label: "Incident Management", path: "/incidents", icon: AlertTriangle, minRole: OPERATOR_PLUS },
+      { label: "Detection Control", path: "/detection-control", icon: Sliders, minRole: ADMIN_PLUS },
+      { label: "Class Manager", path: "/detection-control/classes", icon: Layers, minRole: ADMIN_PLUS },
     ],
   },
   {
-    title: "ML & TRAINING",
+    title: "ML & AI",
     minRole: ML_PLUS,
     items: [
       { label: "Dataset Management", path: "/dataset", icon: Database, minRole: ML_PLUS },
       { label: "Model Registry", path: "/models", icon: Boxes, minRole: ML_PLUS },
       { label: "Test Inference", path: "/ml/test-inference", icon: TestTube, minRole: ML_PLUS },
-    ],
-  },
-  {
-    title: "LEARNING",
-    minRole: ML_PLUS,
-    items: [
       { label: "Learning Dashboard", path: "/learning", icon: BrainCircuit, minRole: ML_PLUS },
-      { label: "Dataset Browser", path: "/learning/dataset", icon: Database, minRole: ML_PLUS },
       { label: "Annotation Studio", path: "/learning/annotate", icon: Layers, minRole: ML_PLUS },
       { label: "Training Jobs", path: "/learning/training", icon: Cpu, minRole: ML_PLUS },
       { label: "Model Comparison", path: "/learning/models", icon: Boxes, minRole: ML_PLUS },
       { label: "Model Testing", path: "/learning/test", icon: FlaskConical, minRole: ML_PLUS },
-      { label: "Settings", path: "/learning/settings", icon: Settings, minRole: ADMIN_PLUS },
+      { label: "Dataset Browser", path: "/learning/dataset", icon: Database, minRole: ML_PLUS },
+      { label: "Learning Settings", path: "/learning/settings", icon: Settings, minRole: ADMIN_PLUS },
     ],
   },
   {
-    title: "CONFIGURATION",
+    title: "SETTINGS",
     minRole: ADMIN_PLUS,
     items: [
-      { label: "Stores", path: "/stores", icon: Store, minRole: ADMIN_PLUS },
-      { label: "Cameras", path: "/cameras", icon: Camera, minRole: ADMIN_PLUS },
-      { label: "Device Control", path: "/devices", icon: Joystick, minRole: ADMIN_PLUS },
-      { label: "Notification Settings", path: "/notifications", icon: Bell, minRole: ADMIN_PLUS },
-      { label: "Storage Settings", path: "/settings/storage", icon: HardDrive, minRole: ADMIN_PLUS },
-    ],
-  },
-  {
-    title: "DETECTION CONTROL",
-    minRole: ADMIN_PLUS,
-    items: [
-      { label: "Detection Control Center", path: "/detection-control", icon: Sliders, minRole: ADMIN_PLUS },
-      { label: "Class Manager", path: "/detection-control/classes", icon: Layers, minRole: ADMIN_PLUS },
-    ],
-  },
-  {
-    title: "INTEGRATIONS",
-    minRole: ADMIN_PLUS,
-    items: [
-      { label: "API Integration Manager", path: "/integrations/api-manager", icon: Plug, minRole: ADMIN_PLUS },
-      { label: "API Testing Console", path: "/integrations/api-tester", icon: Terminal, minRole: ADMIN_PLUS },
-      { label: "Roboflow Integration", path: "/integrations/roboflow", icon: BrainCircuit, minRole: ADMIN_PLUS },
-    ],
-  },
-  {
-    title: "EDGE MANAGEMENT",
-    minRole: ADMIN_PLUS,
-    items: [
-      { label: "Edge Agents", path: "/edge", icon: Cpu, minRole: ADMIN_PLUS },
-    ],
-  },
-  {
-    title: "ADMINISTRATION",
-    minRole: ADMIN_PLUS,
-    items: [
+      { label: "Notification Rules", path: "/notifications", icon: Bell, minRole: ADMIN_PLUS },
+      { label: "Storage", path: "/settings/storage", icon: HardDrive, minRole: ADMIN_PLUS },
+      { label: "Integrations", path: "/integrations/api-manager", icon: Plug, minRole: ADMIN_PLUS },
+      { label: "Roboflow", path: "/integrations/roboflow", icon: BrainCircuit, minRole: ADMIN_PLUS },
       { label: "User Management", path: "/admin/users", icon: Users, minRole: ADMIN_PLUS },
-      { label: "System Logs & Audit", path: "/admin/logs", icon: FileText, minRole: ADMIN_PLUS },
+    ],
+  },
+  {
+    title: "TOOLS",
+    items: [
+      { label: "API Testing Console", path: "/integrations/api-tester", icon: Terminal, minRole: ADMIN_PLUS },
+      { label: "System Logs", path: "/admin/logs", icon: FileText, minRole: ADMIN_PLUS },
       { label: "User Manual", path: "/docs", icon: BookOpen, minRole: ALL_ROLES },
     ],
   },

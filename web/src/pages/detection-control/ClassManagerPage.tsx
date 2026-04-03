@@ -12,6 +12,8 @@ import {
 
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 /* -- Types -- */
 
@@ -181,6 +183,9 @@ export default function ClassManagerPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Class Manager</h1>
           <p className="mt-1 text-sm text-gray-500">Configure detection classes, thresholds, and alert behavior</p>
+        <HelpSection title={PAGE_HELP.classManager.title}>
+          {PAGE_HELP.classManager.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <button
           onClick={openCreate}

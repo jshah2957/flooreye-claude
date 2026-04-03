@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/api";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 interface ComplianceData {
   total_incidents: number;
@@ -78,6 +80,9 @@ export default function CompliancePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Compliance Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">Incident response metrics and compliance reporting</p>
+        <HelpSection title={PAGE_HELP.compliance.title}>
+          {PAGE_HELP.compliance.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
         </div>
         <button
           onClick={() => refetch()}

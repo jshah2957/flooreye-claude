@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/api";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 /* -- Types -- */
 
@@ -572,6 +574,9 @@ export default function ApiTesterPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">API Testing Console</h1>
         <p className="mt-1 text-sm text-gray-500">Send requests to any FloorEye API endpoint. Your auth token is automatically included.</p>
+        <HelpSection title={PAGE_HELP.apiTester.title}>
+          {PAGE_HELP.apiTester.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
       </div>
 
       {/* Mobile Tabs */}

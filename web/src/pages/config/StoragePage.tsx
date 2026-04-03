@@ -5,6 +5,8 @@ import { HardDrive, Loader2, Cloud, Server, Globe, CheckCircle, XCircle, Databas
 
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/Toast";
+import HelpSection from "@/components/ui/HelpSection";
+import { PAGE_HELP } from "@/constants/help";
 
 const PROVIDER_OPTIONS = [
   { key: "s3", label: "Amazon S3", description: "AWS S3 cloud storage", icon: Cloud, color: "text-orange-600", bg: "bg-orange-50" },
@@ -49,6 +51,9 @@ export default function StoragePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Storage Configuration</h1>
         <p className="mt-1 text-sm text-gray-500">Configure S3-compatible object storage for frames, clips, and models</p>
+        <HelpSection title={PAGE_HELP.storage.title}>
+          {PAGE_HELP.storage.content.map((line, i) => <p key={i}>{line}</p>)}
+        </HelpSection>
       </div>
 
       {isLoading ? (

@@ -154,4 +154,14 @@ export const PAGE_HELP = {
       "Copy as cURL: Get the equivalent command-line command.",
     ],
   },
+  stores: {
+    title: "Store Management",
+    content: [
+      "Stores represent your physical locations (buildings, facilities, warehouses).",
+      "Each store can have multiple cameras, IoT devices, and an edge agent.",
+      "Create a store first, then provision an edge agent and add cameras.",
+      "Store status shows active/inactive. Inactive stores pause all detection.",
+      "Click a store to see its cameras, incidents, and configuration details.",
+    ],
+  },
 } as const;
