@@ -171,7 +171,8 @@ async def forgot_password(
     # Try to send email via SMTP integration
     try:
         from app.services.integration_service import get_integration
-        smtp_config = await get_integration(db, user.get("org_id", ""), "smtp")
+        # SMTP config is global — configured by super_admin, not per-org
+        smtp_config = await get_integration(db, None, "smtp")
         if smtp_config and smtp_config.get("status") == "connected":
             import smtplib
             from email.mime.text import MIMEText

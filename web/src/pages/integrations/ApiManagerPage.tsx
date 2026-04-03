@@ -944,14 +944,12 @@ export default function ApiManagerPage() {
 
         {/* Bottom: action buttons */}
         <div className="flex gap-2">
-          {isSuperAdmin && (
           <button
             onClick={() => openDrawer(serviceKey)}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
           >
-            <Settings2 size={13} /> Configure
+            <Settings2 size={13} /> {isSuperAdmin ? "Configure" : "View"}
           </button>
-          )}
           <button
             onClick={() => testMutation.mutate(serviceKey)}
             disabled={status === "not_configured" || isTesting || testMutation.isPending}

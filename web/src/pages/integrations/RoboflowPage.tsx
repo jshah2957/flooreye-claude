@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Cloud, Loader2, Play, CheckCircle2, XCircle, Eye, EyeOff, Layers } from "lucide-react";
 
 import api from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 
@@ -11,6 +12,8 @@ export default function RoboflowPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { success, error: showError } = useToast();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
   const [apiKey, setApiKey] = useState("");
   const [modelId, setModelId] = useState("");
   const [apiUrl, setApiUrl] = useState("");
@@ -130,6 +133,7 @@ export default function RoboflowPage() {
               />
             </div>
             <div className="flex gap-3 pt-1">
+              {isSuperAdmin ? (
               <button
                 onClick={() => saveMutation.mutate()}
                 disabled={!apiKey || saveMutation.isPending}
@@ -138,6 +142,11 @@ export default function RoboflowPage() {
                 {saveMutation.isPending && <Loader2 size={14} className="animate-spin" />}
                 Save
               </button>
+              ) : (
+              <span className="flex items-center gap-2 rounded-xl bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-400">
+                Read-only — configured by admin
+              </span>
+              )}
               <button
                 onClick={() => testMutation.mutate()}
                 disabled={(!integration && !apiKey) || testMutation.isPending}
