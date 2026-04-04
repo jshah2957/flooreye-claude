@@ -80,3 +80,7 @@ celerybeat.pid
 # Sentry
 .sentryclirc
 backend/secrets/
+
+# Company registration documents (confidential)
+docs/company-registration/*.pdf
+docs/company-registration/generate_pdfs.py
